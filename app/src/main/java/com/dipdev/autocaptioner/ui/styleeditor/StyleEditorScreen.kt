@@ -1,0 +1,200 @@
+package com.dipdev.autocaptioner.ui.styleeditor
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ClosedCaption
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
+import kotlinx.coroutines.delay
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
+import com.dipdev.autocaptioner.ui.styleeditor.tabs.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StyleEditorScreen(
+    projectId: String,
+    onNavigateBack: () -> Unit,
+    onNavigateToCaptionEditor: () -> Unit,
+    onSaved: () -> Unit,
+    viewModel: StyleEditorViewModel = hiltViewModel()
+) {
+    val project by viewModel.project.collectAsState()
+    val styles by viewModel.styles.collectAsState()
+    val activeStyle by viewModel.activeStyle.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
+    var showExportWarning by remember { mutableStateOf(false) }
+
+    val segments by viewModel.segments.collectAsState()
+    val wordsMap by viewModel.wordsMap.collectAsState()
+    val currentPositionMs by viewModel.currentPositionMs.collectAsState()
+
+    var showPresets by remember { mutableStateOf(false) }
+
+    LaunchedEffect(projectId) {
+        viewModel.loadStyles(projectId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Style Editor", fontWeight = FontWeight.SemiBold, fontSize = 20.sp) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToCaptionEditor) {
+                        Icon(Icons.Default.ClosedCaption, "Edit Captions")
+                    }
+                    IconButton(
+                        onClick = {
+                            if (project?.hasVisitedCaptionEditor == false) {
+                                showExportWarning = true
+                            } else {
+                                viewModel.saveAndApply(projectId)
+                                onSaved()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.FileDownload, "Export Video")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        if (showExportWarning) {
+            AlertDialog(
+                onDismissRequest = { showExportWarning = false },
+                title = { Text("Review Recommended") },
+                text = { Text("You haven't checked the accuracy of your AI captions. Please review them before exporting.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showExportWarning = false
+                        onNavigateToCaptionEditor()
+                    }) {
+                        Text("Review Captions")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showExportWarning = false
+                        viewModel.saveAndApply(projectId)
+                        onSaved()
+                    }) {
+                        Text("Export Anyway")
+                    }
+                }
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+
+            // Caption live preview taking available space
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                activeStyle?.let { style ->
+                    VideoPreview(
+                        style = style,
+                        videoPath = project?.workingVideoPath,
+                        videoWidth = project?.videoWidth ?: 1080,
+                        videoHeight = project?.videoHeight ?: 1920,
+                        segments = segments,
+                        wordsMap = wordsMap,
+                        currentPositionMs = currentPositionMs,
+                        onPositionChanged = { ms -> viewModel.updatePlaybackPosition(ms) },
+                        onPositionYChange = viewModel::updatePositionY
+                    )
+                }
+            }
+
+            // Contextual Tab content
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp) // Fixed height for options
+            ) {
+                activeStyle?.let { style ->
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        when (selectedTab) {
+                            StyleTab.TEXT -> TextTab(
+                                style = style,
+                                onFontSizeChange = viewModel::updateFontSize,
+                                onFontWeightChange = viewModel::updateFontWeight,
+                                onMaxWordsChange = viewModel::updateMaxWordsPerLine,
+                                onMaxLinesChange = viewModel::updateMaxLines,
+                                onAlignmentChange = viewModel::updateAlignment
+                            )
+                            StyleTab.COLOR -> ColorTab(
+                                style = style,
+                                onTextColorChange = viewModel::updateTextColor,
+                                onHighlightColorChange = viewModel::updateHighlightColor,
+                                onOutlineColorChange = viewModel::updateOutlineColor,
+                                onOutlineWidthChange = viewModel::updateOutlineWidth,
+                                onBackgroundTypeChange = viewModel::updateBackgroundType,
+                                onBackgroundColorChange = viewModel::updateBackgroundColor,
+                                onBackgroundOpacityChange = viewModel::updateBackgroundOpacity
+                            )
+                            StyleTab.ANIMATION -> AnimationTab(
+                                style = style,
+                                onDisplayModeChange = viewModel::updateDisplayMode,
+                                onWordEnterChange = viewModel::updateWordEnterAnimation,
+                                onWordExitChange = viewModel::updateWordExitAnimation,
+                                onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode
+                            )
+                            StyleTab.PRESETS -> PresetsTab(
+                                styles = styles,
+                                activeStyle = activeStyle,
+                                onPresetSelected = { viewModel.selectPreset(it) }
+                            )
+                        }
+                    }
+                }
+            }
+
+
+
+            // Icon-based bottom bar
+            StyleEditorBottomBar(
+                selectedTab = selectedTab,
+                onTabSelected = { viewModel.selectTab(it) }
+            )
+        }
+    }
+}
