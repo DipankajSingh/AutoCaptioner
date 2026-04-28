@@ -71,7 +71,11 @@ data class ProjectEntity(
     // Unix timestamps in milliseconds
     // Used for sorting projects in home screen ("2 hours ago")
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+
+    // Absolute path of the last successfully exported video file
+    // Null until the user has exported at least once
+    val exportedVideoPath: String? = null
 )
 
 // Represents where the project is in the processing pipeline

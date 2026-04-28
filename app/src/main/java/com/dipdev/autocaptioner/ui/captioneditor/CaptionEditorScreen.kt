@@ -1,8 +1,9 @@
 package com.dipdev.autocaptioner.ui.captioneditor
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,16 +11,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -28,8 +28,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dipdev.autocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.autocaptioner.data.db.entity.CaptionWordEntity
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -138,8 +136,8 @@ fun CaptionEditorScreen(
                         words = words,
                         isExpanded = isExpanded,
                         onToggleExpand = { viewModel.toggleSegmentExpanded(segment.id) },
-                        onTextChange = { newText ->
-                            viewModel.updateSegmentText(segment, newText)
+                        onSaveText = { newText ->
+                            viewModel.saveSegmentText(segment, newText)
                         },
                         onWordLongPress = { word ->
                             viewModel.toggleWordEmphasis(word)
@@ -157,7 +155,7 @@ private fun SegmentCard(
     words: List<CaptionWordEntity>,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    onTextChange: (String) -> Unit,
+    onSaveText: (String) -> Unit,          // called only on focus-lost, not every keystroke
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
     Card(
@@ -181,10 +179,8 @@ private fun SegmentCard(
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
-                    imageVector = if (isExpanded)
-                        Icons.Default.KeyboardArrowUp
-                    else
-                        Icons.Default.KeyboardArrowDown,
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
+                                  else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -193,20 +189,21 @@ private fun SegmentCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (isExpanded) {
-                // Editable text field
+                // Local text state — does NOT hit the DB on every keystroke
                 var text by remember(segment.id) { mutableStateOf(segment.text) }
 
                 BasicTextField(
                     value = text,
-                    onValueChange = {
-                        text = it
-                        onTextChange(it)
-                    },
+                    onValueChange = { text = it },   // local only — fast, no DB
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(10.dp),
+                        .padding(10.dp)
+                        .onFocusChanged { state ->
+                            // Commit to DB only when the field loses focus
+                            if (!state.isFocused) onSaveText(text)
+                        },
                     textStyle = TextStyle(
                         fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface
@@ -230,7 +227,7 @@ private fun SegmentCard(
                     )
                 }
             } else {
-                // Collapsed — just show text
+                // Collapsed — just show text preview
                 Text(
                     text = segment.text,
                     fontSize = 14.sp,

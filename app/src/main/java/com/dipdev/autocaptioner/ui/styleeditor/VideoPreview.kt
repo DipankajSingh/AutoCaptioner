@@ -70,7 +70,7 @@ fun VideoPreview(
                 },
             contentAlignment = Alignment.Center
         ) {
-            BoxWithConstraints(
+            Box(
                 modifier = Modifier
                     .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = videoAspectRatio < 1f)
             ) {

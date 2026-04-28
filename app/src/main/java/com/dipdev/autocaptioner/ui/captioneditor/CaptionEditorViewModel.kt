@@ -10,11 +10,10 @@ import com.dipdev.autocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.autocaptioner.data.repository.CaptionRepository
 import com.dipdev.autocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -33,24 +32,41 @@ class CaptionEditorViewModel @Inject constructor(
     private val _wordsMap = MutableStateFlow<Map<String, List<CaptionWordEntity>>>(emptyMap())
     val wordsMap: StateFlow<Map<String, List<CaptionWordEntity>>> = _wordsMap.asStateFlow()
 
-    // Which segment is currently expanded in the editor
     private val _expandedSegmentId = MutableStateFlow<String?>(null)
     val expandedSegmentId: StateFlow<String?> = _expandedSegmentId.asStateFlow()
+
+    // ── Word-watcher jobs keyed by segmentId ─────────────────────────────
+    // We keep exactly ONE collector per segment. When the segment list changes
+    // we cancel collectors for removed segments and start ones for new segments.
+    private val wordJobs = mutableMapOf<String, Job>()
 
     fun loadProject(projectId: String) {
         viewModelScope.launch {
             _project.value = projectRepository.getProjectById(projectId)
             projectRepository.updateVisitedCaptionEditor(projectId, true)
 
-            // Collect segments as a flow so edits update the UI automatically
             captionRepository.getSegmentsForProject(projectId).collect { segs ->
                 _segments.value = segs
 
-                // Load words for each segment correctly without blocking
+                val newIds = segs.map { it.id }.toSet()
+
+                // Cancel watchers for segments that are no longer present
+                val removed = wordJobs.keys - newIds
+                removed.forEach { id ->
+                    wordJobs.remove(id)?.cancel()
+                }
+
+                // Start a watcher only for segments we haven't seen before
                 segs.forEach { seg ->
-                    launch {
-                        captionRepository.getWordsForSegment(seg.id).collect { words ->
-                            _wordsMap.value = _wordsMap.value.toMutableMap().apply { put(seg.id, words) }
+                    if (!wordJobs.containsKey(seg.id)) {
+                        wordJobs[seg.id] = launch {
+                            captionRepository.getWordsForSegment(seg.id).collect { words ->
+                                // Build a new map only when actually different
+                                val current = _wordsMap.value
+                                if (current[seg.id] != words) {
+                                    _wordsMap.value = current.toMutableMap().apply { put(seg.id, words) }
+                                }
+                            }
                         }
                     }
                 }
@@ -62,24 +78,30 @@ class CaptionEditorViewModel @Inject constructor(
         _expandedSegmentId.value = if (_expandedSegmentId.value == segmentId) null else segmentId
     }
 
-    fun updateSegmentText(segment: CaptionSegmentEntity, newText: String) {
+    /**
+     * Called when the user finishes editing a segment (focus lost / done).
+     * NOT called on every keystroke — the text field handles its own local state.
+     */
+    fun saveSegmentText(segment: CaptionSegmentEntity, newText: String) {
+        val trimmed = newText.trim()
+        if (trimmed == segment.text) return  // nothing changed, skip DB round-trip
+
         viewModelScope.launch {
-            captionRepository.updateSegment(segment.copy(text = newText))
-            
-            // Re-sync Word Entities
-            val newWordsList = newText.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+            captionRepository.updateSegment(segment.copy(text = trimmed))
+
+            val newWordsList = trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }
             val oldWordsList = _wordsMap.value[segment.id] ?: emptyList()
 
             if (newWordsList.size == oldWordsList.size) {
-                // Same token count -> just update the strings without destroying timing/emphasis
+                // Same token count → just update strings, preserving timing/emphasis
                 val updatedEntities = oldWordsList.zip(newWordsList) { entity, newWord ->
                     entity.copy(word = newWord)
                 }
                 captionRepository.updateWords(updatedEntities)
             } else {
-                // Word count changed -> distribute time linearly
+                // Word count changed → redistribute time linearly
                 val duration = segment.endTimeMs - segment.startTimeMs
-                val timePerWord = if (newWordsList.isNotEmpty()) duration / newWordsList.size else 0
+                val timePerWord = if (newWordsList.isNotEmpty()) duration / newWordsList.size else 0L
 
                 val newEntities = newWordsList.mapIndexed { index, word ->
                     CaptionWordEntity(
@@ -95,7 +117,6 @@ class CaptionEditorViewModel @Inject constructor(
                         emphasisType = EmphasisType.NONE
                     )
                 }
-
                 captionRepository.replaceWordsForSegment(segment.id, newEntities)
             }
         }
@@ -111,9 +132,7 @@ class CaptionEditorViewModel @Inject constructor(
         }
     }
 
-    // ---- Retranscribe ----
-    // Resets the project back to IMPORTED status and signals the UI to
-    // navigate back to ProcessingScreen so Whisper runs again from scratch.
+    // ── Retranscribe ──────────────────────────────────────────────────────
     private val _retranscribeRequested = MutableStateFlow(false)
     val retranscribeRequested: StateFlow<Boolean> = _retranscribeRequested.asStateFlow()
 
@@ -126,5 +145,11 @@ class CaptionEditorViewModel @Inject constructor(
 
     fun retranscribeHandled() {
         _retranscribeRequested.value = false
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        wordJobs.values.forEach { it.cancel() }
+        wordJobs.clear()
     }
 }

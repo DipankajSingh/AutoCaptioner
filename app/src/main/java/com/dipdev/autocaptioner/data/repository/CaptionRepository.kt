@@ -118,7 +118,7 @@ class CaptionRepository @Inject constructor(
         for (word in allWords) {
             val trimmed = word.word.trim()
             if (trimmed.startsWith("'") && merged.isNotEmpty()) {
-                val prev = merged.removeLast()
+                val prev = merged.removeAt(merged.lastIndex)
                 merged.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
                 // Delete the dangling suffix row
                 wordDao.deleteWord(word.id)

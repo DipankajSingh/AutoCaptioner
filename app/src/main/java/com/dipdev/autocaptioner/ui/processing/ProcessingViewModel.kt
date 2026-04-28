@@ -434,7 +434,7 @@ class ProcessingViewModel @Inject constructor(
         for (word in words) {
             val trimmed = word.word.trim()
             if (trimmed.startsWith("'") && result.isNotEmpty()) {
-                val prev = result.removeLast()
+                val prev = result.removeAt(result.lastIndex)
                 result.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
             } else {
                 result.add(word)

@@ -1,10 +1,13 @@
 package com.dipdev.autocaptioner.ui.export
 
 import android.content.Context
+import android.content.Intent
 import android.os.Environment
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
@@ -25,8 +28,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
-enum class ExportState { IDLE, READY, RUNNING, SUCCESS, CANCELLED, ERROR }
+enum class ExportState { IDLE, READY, ALREADY_EXPORTED, RUNNING, SUCCESS, CANCELLED, ERROR }
 
+@UnstableApi
 @HiltViewModel
 class ExportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -42,16 +46,27 @@ class ExportViewModel @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-    
+
     private val _outputPath = MutableStateFlow<String?>(null)
     val outputPath: StateFlow<String?> = _outputPath.asStateFlow()
 
     private var activeTransformer: Transformer? = null
 
-    /** Call once on screen entry — moves to READY without starting export */
-    fun prepareExport() {
-        if (_exportState.value == ExportState.IDLE) {
-            _exportState.value = ExportState.READY
+    /**
+     * Called once when the export screen opens.
+     * If this project has been exported before, restore the path and show
+     * the ALREADY_EXPORTED state so the user can watch or re-export.
+     */
+    fun prepareExport(projectId: String) {
+        viewModelScope.launch {
+            val project = projectRepository.getProjectById(projectId)
+            val existingPath = project?.exportedVideoPath
+            if (existingPath != null && File(existingPath).exists()) {
+                _outputPath.value = existingPath
+                _exportState.value = ExportState.ALREADY_EXPORTED
+            } else if (_exportState.value == ExportState.IDLE) {
+                _exportState.value = ExportState.READY
+            }
         }
     }
 
@@ -61,23 +76,33 @@ class ExportViewModel @Inject constructor(
         _exportState.value = ExportState.CANCELLED
     }
 
+    /** Reset to READY so the user can trigger a fresh export */
+    fun resetForReExport() {
+        _progress.value = 0f
+        _exportState.value = ExportState.READY
+    }
+
     fun startExport(projectId: String) {
         if (_exportState.value == ExportState.RUNNING) return
         _exportState.value = ExportState.RUNNING
+        _progress.value = 0f
 
         viewModelScope.launch {
             try {
-                val project = projectRepository.getProjectById(projectId) ?: throw Exception("Project not found")
-                val styleId = project.activeStyleId ?: throw Exception("Style not assigned")
-                val activeStyle = captionRepository.getStyleById(styleId) ?: throw Exception("Style not found")
-                
+                val project = projectRepository.getProjectById(projectId)
+                    ?: throw Exception("Project not found")
+                val styleId = project.activeStyleId
+                    ?: throw Exception("Style not assigned")
+                val activeStyle = captionRepository.getStyleById(styleId)
+                    ?: throw Exception("Style not found")
+
                 val segments = captionRepository.getSegmentsOnce(projectId)
                 val wordsList = captionRepository.getAllWordsForProject(projectId)
                 val wordsMap = wordsList.groupBy { it.segmentId }
 
                 val isPortrait = project.videoRotation == 90 || project.videoRotation == 270
-                val displayWidth = if (isPortrait) project.videoHeight else project.videoWidth
-                val displayHeight = if (isPortrait) project.videoWidth else project.videoHeight
+                val displayWidth  = if (isPortrait) project.videoHeight else project.videoWidth
+                val displayHeight = if (isPortrait) project.videoWidth  else project.videoHeight
 
                 val overlay = CaptionOverlayEffect(
                     segments = segments,
@@ -87,12 +112,36 @@ class ExportViewModel @Inject constructor(
                     videoHeight = displayHeight
                 )
 
+                // Save inside getExternalFilesDir(Movies) — app-owned but scannable
+                val moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+                    ?: context.filesDir.also { File(it, "exports").mkdirs() }
+                if (!moviesDir.exists()) moviesDir.mkdirs()
+
+                val outFile = File(moviesDir, "AutoCaptioner_${System.currentTimeMillis()}.mp4")
+                _outputPath.value = outFile.absolutePath
+
+                val videoEffects: List<androidx.media3.common.Effect> =
+                    listOf(OverlayEffect(ImmutableList.of(overlay)))
+                val audioProcessors: List<androidx.media3.common.audio.AudioProcessor> = emptyList()
+                val effects = androidx.media3.transformer.Effects(audioProcessors, videoEffects)
+
+                val editedMediaItem = EditedMediaItem.Builder(MediaItem.fromUri(project.workingVideoPath))
+                    .setEffects(effects)
+                    .build()
+
                 val transformer = Transformer.Builder(context)
                     .addListener(object : Transformer.Listener {
                         override fun onCompleted(composition: Composition, exportResult: ExportResult) {
                             _exportState.value = ExportState.SUCCESS
                             viewModelScope.launch {
-                                projectRepository.updateProject(project.copy(status = ProjectStatus.EXPORTED))
+                                // Persist both status and the output path
+                                projectRepository.updateProject(
+                                    project.copy(
+                                        status = ProjectStatus.EXPORTED,
+                                        exportedVideoPath = outFile.absolutePath,
+                                        updatedAt = System.currentTimeMillis()
+                                    )
+                                )
                             }
                         }
 
@@ -107,22 +156,6 @@ class ExportViewModel @Inject constructor(
                     })
                     .build()
 
-                val rootDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-                if (rootDir != null && !rootDir.exists()) {
-                    rootDir.mkdirs()
-                }
-                
-                val outFile = File(rootDir, "Export_${System.currentTimeMillis()}.mp4")
-                _outputPath.value = outFile.absolutePath
-
-                val videoEffects: List<androidx.media3.common.Effect> = listOf(OverlayEffect(ImmutableList.of(overlay)))
-                val audioProcessors: List<androidx.media3.common.audio.AudioProcessor> = emptyList()
-                val transformerEffects = androidx.media3.common.Effect::class.java.let { androidx.media3.common.Effect::class.java.cast(null); androidx.media3.common.Effect::class.java.let { null }; androidx.media3.transformer.Effects(audioProcessors, videoEffects) } 
-                
-                val editedMediaItem = EditedMediaItem.Builder(MediaItem.fromUri(project.workingVideoPath))
-                    .setEffects(transformerEffects)
-                    .build()
-                
                 activeTransformer = transformer
                 transformer.start(editedMediaItem, outFile.absolutePath)
                 trackProgress(transformer)
@@ -133,7 +166,22 @@ class ExportViewModel @Inject constructor(
             }
         }
     }
-    
+
+    /** Build a content:// URI via FileProvider and launch a share sheet */
+    fun shareVideo(path: String): Intent {
+        val file = File(path)
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        return Intent(Intent.ACTION_SEND).apply {
+            type = "video/mp4"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
     private fun trackProgress(transformer: Transformer) {
         viewModelScope.launch {
             while (_exportState.value == ExportState.RUNNING) {
