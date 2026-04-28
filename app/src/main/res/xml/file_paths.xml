@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Shares files from getExternalFilesDir() — where we save the exported video -->
+    <external-files-path name="exported_videos" path="Movies/" />
+    <!-- Also cover internal files if needed -->
+    <files-path name="internal_files" path="." />
+</paths>
