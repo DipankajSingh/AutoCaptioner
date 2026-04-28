@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,7 +41,11 @@ fun ProcessingScreen(
         when (val current = step) {
             is ProcessingStep.Idle,
             is ProcessingStep.ExtractingAudio -> {
-                CircularProgressIndicator(modifier = Modifier.size(64.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = "Extracting Audio",
@@ -56,7 +61,11 @@ fun ProcessingScreen(
             }
 
             is ProcessingStep.Transcribing -> {
-                CircularProgressIndicator(modifier = Modifier.size(64.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = "Transcribing",
@@ -73,7 +82,11 @@ fun ProcessingScreen(
             }
 
             is ProcessingStep.Saving -> {
-                CircularProgressIndicator(modifier = Modifier.size(64.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
                     text = "Saving Captions",

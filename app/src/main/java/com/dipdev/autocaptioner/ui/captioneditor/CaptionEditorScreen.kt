@@ -85,7 +85,11 @@ fun CaptionEditorScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(0.6f).height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             }
         } else {
             LazyColumn(

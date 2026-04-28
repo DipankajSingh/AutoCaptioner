@@ -53,4 +53,8 @@ interface CaptionWordDao {
     // Delete all words for a project (used when re-transcribing)
     @Query("DELETE FROM caption_words WHERE projectId = :projectId")
     suspend fun deleteWordsForProject(projectId: String)
+
+    // Delete all words for a segment (used when restructuring edited text)
+    @Query("DELETE FROM caption_words WHERE segmentId = :segmentId")
+    suspend fun deleteWordsForSegment(segmentId: String)
 }

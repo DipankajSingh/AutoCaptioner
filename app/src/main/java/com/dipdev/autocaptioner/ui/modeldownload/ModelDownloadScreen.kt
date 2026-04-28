@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,11 @@ fun ModelDownloadScreen(
         when (val state = downloadState) {
 
             is DownloadState.Starting -> {
-                CircularProgressIndicator(modifier = Modifier.size(64.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(0.6f).height(10.dp).clip(RoundedCornerShape(5.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text("Preparing download...", fontSize = 16.sp)
             }

@@ -26,7 +26,7 @@ import com.dipdev.autocaptioner.data.db.entity.ProjectEntity
         CaptionWordEntity::class,
         CaptionStyleEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
     autoMigrations = []
 

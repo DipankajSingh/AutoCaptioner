@@ -95,6 +95,9 @@ data class CaptionStyleEntity(
     
     // Maximum number of lines shown vertically before cutting off text
     val maxLines: Int = 2,
+    
+    // Non-destructively strip punctuation from text rendering
+    val removePunctuation: Boolean = false,
 
     // ---- DISPLAY MODE ----
 

@@ -135,6 +135,15 @@ class CaptionRepository @Inject constructor(
         wordDao.updateEmphasis(wordId, isEmphasized, emphasisType)
     }
 
+    suspend fun replaceWordsForSegment(segmentId: String, newWords: List<CaptionWordEntity>) {
+        wordDao.deleteWordsForSegment(segmentId)
+        wordDao.insertAll(newWords)
+    }
+
+    suspend fun updateWords(words: List<CaptionWordEntity>) {
+        wordDao.insertAll(words)
+    }
+
     // ================================================================
     // STYLES
     // ================================================================

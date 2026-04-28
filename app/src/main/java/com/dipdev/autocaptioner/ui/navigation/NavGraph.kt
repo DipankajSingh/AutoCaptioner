@@ -73,7 +73,16 @@ fun NavGraph(
                 },
                 onNavigateToEditor = { projectId ->
                     navController.navigate(Screen.StyleEditor.createRoute(projectId))
+                },
+                onNavigateToModelManager = {
+                    navController.navigate(Screen.ModelManager.route)
                 }
+            )
+        }
+
+        composable(Screen.ModelManager.route) {
+            com.dipdev.autocaptioner.ui.modelmanager.ModelManagerScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -125,6 +134,9 @@ fun NavGraph(
                 onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId))
                 },
+                onNavigateToExport = {
+                    navController.navigate(Screen.Export.createRoute(projectId))
+                },
                 onSaved = { navController.popBackStack() }
             )
         }
@@ -136,7 +148,10 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            // TODO: ExportScreen(projectId = projectId)
+            com.dipdev.autocaptioner.ui.export.ExportScreen(
+                projectId = projectId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

@@ -42,6 +42,7 @@ fun StyleEditorScreen(
     projectId: String,
     onNavigateBack: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
+    onNavigateToExport: () -> Unit,
     onSaved: () -> Unit,
     viewModel: StyleEditorViewModel = hiltViewModel()
 ) {
@@ -80,7 +81,7 @@ fun StyleEditorScreen(
                                 showExportWarning = true
                             } else {
                                 viewModel.saveAndApply(projectId)
-                                onSaved()
+                                onNavigateToExport()
                             }
                         }
                     ) {
@@ -108,7 +109,7 @@ fun StyleEditorScreen(
                     TextButton(onClick = {
                         showExportWarning = false
                         viewModel.saveAndApply(projectId)
-                        onSaved()
+                        onNavigateToExport()
                     }) {
                         Text("Export Anyway")
                     }
@@ -128,11 +129,15 @@ fun StyleEditorScreen(
                     .weight(1f)
             ) {
                 activeStyle?.let { style ->
+                    val isPortrait = (project?.videoRotation == 90 || project?.videoRotation == 270)
+                    val outWidth = if (isPortrait) project?.videoHeight ?: 1080 else project?.videoWidth ?: 1080
+                    val outHeight = if (isPortrait) project?.videoWidth ?: 1920 else project?.videoHeight ?: 1920
+
                     VideoPreview(
                         style = style,
                         videoPath = project?.workingVideoPath,
-                        videoWidth = project?.videoWidth ?: 1080,
-                        videoHeight = project?.videoHeight ?: 1920,
+                        videoWidth = outWidth,
+                        videoHeight = outHeight,
                         segments = segments,
                         wordsMap = wordsMap,
                         currentPositionMs = currentPositionMs,
@@ -159,6 +164,7 @@ fun StyleEditorScreen(
                                 onFontWeightChange = viewModel::updateFontWeight,
                                 onMaxWordsChange = viewModel::updateMaxWordsPerLine,
                                 onMaxLinesChange = viewModel::updateMaxLines,
+                                onRemovePunctuationChange = viewModel::updateRemovePunctuation,
                                 onAlignmentChange = viewModel::updateAlignment
                             )
                             StyleTab.COLOR -> ColorTab(

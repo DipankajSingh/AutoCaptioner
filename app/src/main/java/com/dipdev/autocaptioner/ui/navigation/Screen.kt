@@ -19,6 +19,9 @@ sealed class Screen(val route: String) {
     // Checks device RAM/CPU and recommends a model
     data object DeviceCheck : Screen("device_check")
 
+    // Dedicated screen to download, switch, and delete models
+    data object ModelManager : Screen("model_manager")
+
     // Downloads the selected Whisper model with progress
     data object ModelDownload : Screen("model_download/{modelId}") {
         // Helper function to build the route with actual modelId

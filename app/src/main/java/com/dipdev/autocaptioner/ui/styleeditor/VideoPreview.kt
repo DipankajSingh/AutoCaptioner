@@ -84,11 +84,10 @@ fun VideoPreview(
             },
         contentAlignment = Alignment.Center
     ) {
-        // Aspect-ratio bound container precisely mirroring the video frame
+        // Aspect-ratio bound container precisely mirroring the video frame without clipping
         BoxWithConstraints(
             modifier = Modifier
-                .aspectRatio(videoAspectRatio)
-                .fillMaxHeight()
+                .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = videoAspectRatio < 1f)
         ) {
             AndroidView(
                 factory = { ctx ->

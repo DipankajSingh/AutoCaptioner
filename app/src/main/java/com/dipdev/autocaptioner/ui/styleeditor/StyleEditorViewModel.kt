@@ -166,6 +166,10 @@ class StyleEditorViewModel @Inject constructor(
         _activeStyle.value = _activeStyle.value?.copy(maxLines = count)
     }
 
+    fun updateRemovePunctuation(remove: Boolean) {
+        _activeStyle.value = _activeStyle.value?.copy(removePunctuation = remove)
+    }
+
     fun saveAndApply(projectId: String) {
         viewModelScope.launch {
             val style = _activeStyle.value ?: return@launch

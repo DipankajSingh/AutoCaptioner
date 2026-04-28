@@ -36,6 +36,7 @@ import java.util.Locale
 fun HomeScreen(
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToEditor: (String) -> Unit,
+    onNavigateToModelManager: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val projects by viewModel.projects.collectAsState()
@@ -70,17 +71,23 @@ fun HomeScreen(
                 actions = {
                     // Show active model name as a chip
                     activeModel?.let { model ->
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.padding(end = 12.dp)
+                        FilledTonalButton(
+                            onClick = onNavigateToModelManager,
+                            modifier = Modifier.padding(end = 12.dp),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
                             Text(
                                 text = model.displayName.split("—").first().trim(),
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                fontSize = 13.sp
                             )
+                        }
+                    } ?: run {
+                        FilledTonalButton(
+                            onClick = onNavigateToModelManager,
+                            modifier = Modifier.padding(end = 12.dp),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text("Select Engine", fontSize = 13.sp)
                         }
                     }
                 }
@@ -145,7 +152,11 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(0.6f).height(10.dp).clip(RoundedCornerShape(5.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Importing video...")
                     }

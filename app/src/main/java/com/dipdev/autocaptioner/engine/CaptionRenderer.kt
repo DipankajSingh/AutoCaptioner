@@ -149,7 +149,8 @@ object CaptionRenderer {
                         val spaceWidth = textPaint.measureText(" ")
                         val radius = lineRect.height() / 4f
                         lineWords.forEach { w ->
-                            val drawBoxWidth = textPaint.measureText(w.text)
+                            val sanitized = if (style.removePunctuation) w.text.replace(Regex("[,.!?]"), "") else w.text
+                            val drawBoxWidth = textPaint.measureText(sanitized)
                             val wordRect = RectF(
                                 wordX - (paddingX / 2f),
                                 lineTop - paddingY,
@@ -165,7 +166,12 @@ object CaptionRenderer {
             
             // Draw text
             lineWords.forEach { w ->
-                val baseText = w.text
+                val baseText = if (style.removePunctuation) {
+                    w.text.replace(Regex("[,.!?]"), "")
+                } else {
+                    w.text
+                }
+                
                 val drawColor = if (w.isActive && style.displayMode != DisplayMode.PHRASE) {
                     style.highlightColor.toInt()
                 } else {

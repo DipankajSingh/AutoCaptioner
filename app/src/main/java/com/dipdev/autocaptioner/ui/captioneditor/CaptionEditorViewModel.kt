@@ -64,6 +64,39 @@ class CaptionEditorViewModel @Inject constructor(
     fun updateSegmentText(segment: CaptionSegmentEntity, newText: String) {
         viewModelScope.launch {
             captionRepository.updateSegment(segment.copy(text = newText))
+            
+            // Re-sync Word Entities
+            val newWordsList = newText.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+            val oldWordsList = _wordsMap.value[segment.id] ?: emptyList()
+
+            if (newWordsList.size == oldWordsList.size) {
+                // Same token count -> just update the strings without destroying timing/emphasis
+                val updatedEntities = oldWordsList.zip(newWordsList) { entity, newWord ->
+                    entity.copy(word = newWord)
+                }
+                captionRepository.updateWords(updatedEntities)
+            } else {
+                // Word count changed -> distribute time linearly
+                val duration = segment.endTimeMs - segment.startTimeMs
+                val timePerWord = if (newWordsList.isNotEmpty()) duration / newWordsList.size else 0
+
+                val newEntities = newWordsList.mapIndexed { index, word ->
+                    CaptionWordEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        projectId = segment.projectId,
+                        segmentId = segment.id,
+                        word = word,
+                        index = index,
+                        startTimeMs = segment.startTimeMs + (timePerWord * index),
+                        endTimeMs = segment.startTimeMs + (timePerWord * (index + 1)),
+                        confidence = 1.0f,
+                        isEmphasized = false,
+                        emphasisType = EmphasisType.NONE
+                    )
+                }
+
+                captionRepository.replaceWordsForSegment(segment.id, newEntities)
+            }
         }
     }
 

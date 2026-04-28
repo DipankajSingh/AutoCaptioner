@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.FormatAlignLeft
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LineWeight
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.ViewHeadline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +22,7 @@ import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.autocaptioner.data.db.entity.TextAlignment
 import com.dipdev.autocaptioner.ui.styleeditor.PremiumSlider
 
-enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT }
+enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION }
 
 @Composable
 fun TextTab(
@@ -30,6 +31,7 @@ fun TextTab(
     onFontWeightChange: (Int) -> Unit,
     onMaxWordsChange: (Int) -> Unit,
     onMaxLinesChange: (Int) -> Unit,
+    onRemovePunctuationChange: (Boolean) -> Unit,
     onAlignmentChange: (TextAlignment) -> Unit
 ) {
     var activeTool by remember { mutableStateOf<TextSubTool?>(null) }
@@ -71,6 +73,12 @@ fun TextTab(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(onClick = { activeTool = TextSubTool.MAX_LINES }) { Icon(Icons.Default.Menu, "Max Vertical Lines") }
                     Text("Max Lines", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { activeTool = TextSubTool.PUNCTUATION }) { Icon(Icons.Default.TextFormat, "Punctuation") }
+                    Text("Symbols", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -130,6 +138,15 @@ fun TextTab(
                             )
                         }
                     }
+                }
+                TextSubTool.PUNCTUATION -> {
+                    Text("Strip Punctuation", fontSize = 12.sp)
+                    Switch(
+                        checked = style.removePunctuation,
+                        onCheckedChange = { onRemovePunctuationChange(it) },
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
                 }
                 null -> {}
             }
