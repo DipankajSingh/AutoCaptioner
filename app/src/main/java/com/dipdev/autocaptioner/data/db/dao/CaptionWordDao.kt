@@ -57,4 +57,12 @@ interface CaptionWordDao {
     // Delete all words for a segment (used when restructuring edited text)
     @Query("DELETE FROM caption_words WHERE segmentId = :segmentId")
     suspend fun deleteWordsForSegment(segmentId: String)
+
+    // Delete a single word by id (used when merging contractions)
+    @Query("DELETE FROM caption_words WHERE id = :wordId")
+    suspend fun deleteWord(wordId: String)
+
+    // Update a single word entity (used when merging contractions in-place)
+    @Update
+    suspend fun updateWord(word: CaptionWordEntity)
 }

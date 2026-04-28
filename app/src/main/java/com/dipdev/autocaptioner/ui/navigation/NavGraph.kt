@@ -99,7 +99,8 @@ fun NavGraph(
                     navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
                         popUpTo(Screen.Processing.route) { inclusive = true }
                     }
-                }
+                },
+                onCancel = { navController.popBackStack() }
             )
         }
 
@@ -116,6 +117,11 @@ fun NavGraph(
                 onNavigateToStyleEditor = {
                     navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
                         popUpTo(Screen.Home.route) { inclusive = false }
+                    }
+                },
+                onNavigateToProcessing = { pid ->
+                    navController.navigate(Screen.Processing.createRoute(pid)) {
+                        popUpTo(Screen.CaptionEditor.route) { inclusive = true }
                     }
                 }
             )

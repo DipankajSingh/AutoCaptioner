@@ -2,32 +2,27 @@ package com.dipdev.autocaptioner.ui.styleeditor
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.dipdev.autocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.autocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.autocaptioner.engine.CaptionRenderer
-import kotlinx.coroutines.delay
 
 @Composable
 fun VideoPreview(
@@ -38,28 +33,15 @@ fun VideoPreview(
     segments: List<CaptionSegmentEntity>,
     wordsMap: Map<String, List<CaptionWordEntity>>,
     currentPositionMs: Long,
+    durationMs: Long,
+    exoPlayer: ExoPlayer?,
     onPositionChanged: (Long) -> Unit,
-    onPositionYChange: (Float) -> Unit
+    onPositionYChange: (Float) -> Unit,
+    onSeek: (Long) -> Unit
 ) {
-    val context = LocalContext.current
-    if (videoPath == null) return
+    if (videoPath == null || exoPlayer == null) return
 
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = MediaItem.fromUri(android.net.Uri.parse(videoPath))
-            setMediaItem(mediaItem)
-            repeatMode = Player.REPEAT_MODE_ALL
-            prepare()
-            playWhenReady = false
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-
+    // Poll playback position on every frame
     LaunchedEffect(exoPlayer) {
         while (true) {
             androidx.compose.runtime.withFrameMillis {
@@ -67,63 +49,153 @@ fun VideoPreview(
             }
         }
     }
+
     val videoAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
         videoWidth.toFloat() / videoHeight.toFloat()
     } else {
         9f / 16f
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                exoPlayer.playWhenReady = !exoPlayer.playWhenReady
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        // Aspect-ratio bound container precisely mirroring the video frame without clipping
-        BoxWithConstraints(
+    Column(modifier = Modifier.fillMaxSize()) {
+        // ── Video + caption overlay ──────────────────────────────────────
+        Box(
             modifier = Modifier
-                .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = videoAspectRatio < 1f)
-        ) {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        player = exoPlayer
-                        useController = false
-                    }
+                .weight(1f)
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    exoPlayer.playWhenReady = !exoPlayer.playWhenReady
                 },
-                modifier = Modifier.matchParentSize()
-            )
-        
-        val currentPosY by rememberUpdatedState(style.positionY)
-        
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectVerticalDragGestures { change, dragAmount ->
-                    change.consume()
-                    val heightPixels = size.height.toFloat()
-                    val newRatio = (currentPosY + (dragAmount / heightPixels)).coerceIn(0f, 1f)
-                    onPositionYChange(newRatio)
+            contentAlignment = Alignment.Center
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = videoAspectRatio < 1f)
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = exoPlayer
+                            useController = false
+                        }
+                    },
+                    update = { view -> view.player = exoPlayer },
+                    modifier = Modifier.matchParentSize()
+                )
+
+                val currentPosY by rememberUpdatedState(style.positionY)
+
+                Canvas(modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { change, dragAmount ->
+                            change.consume()
+                            val heightPixels = size.height.toFloat()
+                            val newRatio = (currentPosY + (dragAmount / heightPixels)).coerceIn(0f, 1f)
+                            onPositionYChange(newRatio)
+                        }
+                    }
+                ) {
+                    drawIntoCanvas { canvas ->
+                        CaptionRenderer.draw(
+                            canvas = canvas.nativeCanvas,
+                            currentPositionMs = currentPositionMs,
+                            videoWidth = size.width.toInt(),
+                            videoHeight = size.height.toInt(),
+                            style = style,
+                            segments = segments,
+                            wordsMap = wordsMap
+                        )
+                    }
                 }
             }
-        ) {
-            drawIntoCanvas { canvas ->
-                CaptionRenderer.draw(
-                    canvas = canvas.nativeCanvas,
-                    currentPositionMs = currentPositionMs,
-                    videoWidth = size.width.toInt(),
-                    videoHeight = size.height.toInt(),
-                    style = style,
-                    segments = segments,
-                    wordsMap = wordsMap
+        }
+
+        // ── Seek bar ────────────────────────────────────────────────────
+        if (durationMs > 0) {
+            SeekBar(
+                positionMs = currentPositionMs,
+                durationMs = durationMs,
+                onSeek = onSeek,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+/**
+ * A minimal custom seek bar — a thin rounded track with a draggable thumb.
+ * No Material Slider used so we have full visual control (no ticks, no label pop-ups).
+ */
+@Composable
+private fun SeekBar(
+    positionMs: Long,
+    durationMs: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Track the drag fraction locally so the thumb feels instant
+    var dragFraction by remember { mutableFloatStateOf(-1f) }
+    val displayFraction = if (dragFraction >= 0f) dragFraction
+                          else if (durationMs > 0) positionMs.toFloat() / durationMs.toFloat()
+                          else 0f
+
+    BoxWithConstraints(
+        modifier = modifier
+            .height(20.dp)
+            .pointerInput(durationMs) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        dragFraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = {
+                        if (dragFraction >= 0f) {
+                            onSeek((dragFraction * durationMs).toLong())
+                            dragFraction = -1f
+                        }
+                    },
+                    onDragCancel = { dragFraction = -1f },
+                    onHorizontalDrag = { change, _ ->
+                        change.consume()
+                        dragFraction = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
+                    }
+                )
+            },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        val trackWidthPx = constraints.maxWidth.toFloat()
+        val thumbX = (displayFraction * trackWidthPx).coerceIn(0f, trackWidthPx)
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val trackHeight = 4.dp.toPx()
+            val cy = size.height / 2f
+
+            // Background track
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.25f),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, cy - trackHeight / 2f),
+                size = androidx.compose.ui.geometry.Size(size.width, trackHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
+            )
+            // Filled progress
+            if (thumbX > 0f) {
+                drawRoundRect(
+                    color = Color.White,
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, cy - trackHeight / 2f),
+                    size = androidx.compose.ui.geometry.Size(thumbX, trackHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
                 )
             }
-        }
+            // Thumb dot
+            drawCircle(
+                color = Color.White,
+                radius = 6.dp.toPx(),
+                center = androidx.compose.ui.geometry.Offset(thumbX, cy)
+            )
         }
     }
 }

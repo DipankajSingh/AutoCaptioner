@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,15 +37,24 @@ fun CaptionEditorScreen(
     projectId: String,
     onNavigateBack: () -> Unit,
     onNavigateToStyleEditor: () -> Unit,
+    onNavigateToProcessing: (String) -> Unit,
     viewModel: CaptionEditorViewModel = hiltViewModel()
 ) {
     val project by viewModel.project.collectAsState()
     val segments by viewModel.segments.collectAsState()
     val wordsMap by viewModel.wordsMap.collectAsState()
     val expandedSegmentId by viewModel.expandedSegmentId.collectAsState()
+    val retranscribeRequested by viewModel.retranscribeRequested.collectAsState()
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
+    }
+
+    LaunchedEffect(retranscribeRequested) {
+        if (retranscribeRequested) {
+            viewModel.retranscribeHandled()
+            onNavigateToProcessing(projectId)
+        }
     }
 
     Scaffold(
@@ -59,6 +69,17 @@ fun CaptionEditorScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.retranscribe(projectId) }
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Retranscribe",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )

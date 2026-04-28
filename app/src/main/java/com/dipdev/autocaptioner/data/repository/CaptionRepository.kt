@@ -104,6 +104,43 @@ class CaptionRepository @Inject constructor(
         segmentDao.updateSegment(segment.copy(isEdited = true))
     }
 
+    /**
+     * Post-process existing DB words to merge split contractions.
+     * Whisper tokenises "it's" as ["it", "'s"] — this pass collapses them
+     * in-place and rebuilds the parent segment text to match.
+     */
+    suspend fun fixContractionsForProject(projectId: String) {
+        val allWords = wordDao.getAllWordsForProject(projectId)
+        val segments = segmentDao.getSegmentsForProjectOnce(projectId)
+
+        // Merge contraction suffixes into the preceding word
+        val merged = mutableListOf<CaptionWordEntity>()
+        for (word in allWords) {
+            val trimmed = word.word.trim()
+            if (trimmed.startsWith("'") && merged.isNotEmpty()) {
+                val prev = merged.removeLast()
+                merged.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
+                // Delete the dangling suffix row
+                wordDao.deleteWord(word.id)
+            } else {
+                merged.add(word)
+            }
+        }
+
+        // Persist merged words and rebuild segment text
+        for (w in merged) {
+            wordDao.updateWord(w)
+        }
+        for (seg in segments) {
+            val segWords = merged.filter { it.segmentId == seg.id }.sortedBy { it.index }
+            val newText = segWords.joinToString(" ") { it.word }
+            if (newText != seg.text) {
+                segmentDao.updateSegment(seg.copy(text = newText))
+            }
+        }
+        Log.i(TAG, "fixContractionsForProject: processed ${merged.size} words for $projectId")
+    }
+
     // ================================================================
     // WORDS
     // ================================================================

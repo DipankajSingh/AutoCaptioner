@@ -1,6 +1,8 @@
 package com.dipdev.autocaptioner.ui.processing
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -19,14 +21,17 @@ import androidx.hilt.navigation.compose.hiltViewModel
 fun ProcessingScreen(
     projectId: String,
     onDone: () -> Unit,
+    onCancel: () -> Unit,
     viewModel: ProcessingViewModel = hiltViewModel()
 ) {
     val step by viewModel.step.collectAsState()
 
+    // Prepare the screen — move to Ready state (check if already transcribed)
     LaunchedEffect(projectId) {
-        viewModel.startProcessing(projectId)
+        viewModel.prepareForProject(projectId)
     }
 
+    // Auto-navigate when done
     LaunchedEffect(step) {
         if (step is ProcessingStep.Done) onDone()
     }
@@ -39,62 +44,107 @@ fun ProcessingScreen(
         verticalArrangement = Arrangement.Center
     ) {
         when (val current = step) {
+
+            // ── Ready: user decides when to start ──────────────────────
             is ProcessingStep.Idle,
+            is ProcessingStep.Ready -> {
+                Text(
+                    text = "Ready to Transcribe",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "The AI will analyse your video and generate\nword-level captions with timestamps.",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 22.sp
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = { viewModel.startProcessing(projectId) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Start Transcription", fontSize = 16.sp)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel")
+                }
+            }
+
+            // ── In progress states ──────────────────────────────────────
             is ProcessingStep.ExtractingAudio -> {
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    modifier = Modifier.fillMaxWidth().height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Extracting Audio",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Extracting Audio", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Pulling audio track from your video...",
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
                 )
+                Spacer(modifier = Modifier.height(32.dp))
+                OutlinedButton(
+                    onClick = { viewModel.cancel(); onCancel() },
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Cancel") }
             }
 
             is ProcessingStep.Transcribing -> {
+                val animatedProgress by animateFloatAsState(
+                    targetValue = current.progress,
+                    animationSpec = androidx.compose.animation.core.tween(400),
+                    label = "transcription_progress"
+                )
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    progress = { animatedProgress },
+                    modifier = Modifier.fillMaxWidth().height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Transcribing",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Transcribing", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "AI is generating captions with word timestamps...\nThis may take a moment.",
+                    text = if (current.progress > 0f)
+                        "${(current.progress * 100).toInt()}% complete"
+                    else
+                        "AI is generating captions with word timestamps...\nThis may take a moment.",
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp
                 )
+                Spacer(modifier = Modifier.height(32.dp))
+                OutlinedButton(
+                    onClick = { viewModel.cancel(); onCancel() },
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Cancel") }
             }
 
             is ProcessingStep.Saving -> {
                 LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)),
+                    modifier = Modifier.fillMaxWidth().height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Saving Captions",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Saving Captions", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
 
+            // ── Done ────────────────────────────────────────────────────
             is ProcessingStep.Done -> {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
@@ -103,13 +153,33 @@ fun ProcessingScreen(
                     modifier = Modifier.size(80.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Captions Ready!",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Captions Ready!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
             }
 
+            // ── Cancelled ───────────────────────────────────────────────
+            is ProcessingStep.Cancelled -> {
+                Text("Cancelled", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Transcription was stopped.",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = { viewModel.startProcessing(projectId) },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Try Again") }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onCancel,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Go Back") }
+            }
+
+            // ── Error ───────────────────────────────────────────────────
             is ProcessingStep.Error -> {
                 Icon(
                     imageVector = Icons.Default.Warning,
@@ -118,11 +188,7 @@ fun ProcessingScreen(
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Processing Failed",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Processing Failed", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = current.message,
@@ -130,9 +196,17 @@ fun ProcessingScreen(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = { viewModel.startProcessing(projectId) }) {
-                    Text("Retry")
-                }
+                Button(
+                    onClick = { viewModel.startProcessing(projectId) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Retry") }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Go Back") }
             }
         }
     }

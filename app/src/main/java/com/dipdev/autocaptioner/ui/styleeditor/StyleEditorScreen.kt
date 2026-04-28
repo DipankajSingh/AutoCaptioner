@@ -55,6 +55,12 @@ fun StyleEditorScreen(
     val segments by viewModel.segments.collectAsState()
     val wordsMap by viewModel.wordsMap.collectAsState()
     val currentPositionMs by viewModel.currentPositionMs.collectAsState()
+    val videoDurationMs by viewModel.videoDurationMs.collectAsState()
+
+    // Init player once we have the video path — idempotent inside ViewModel
+    LaunchedEffect(project?.workingVideoPath) {
+        project?.workingVideoPath?.let { viewModel.initPlayer(it) }
+    }
 
     var showPresets by remember { mutableStateOf(false) }
 
@@ -141,8 +147,11 @@ fun StyleEditorScreen(
                         segments = segments,
                         wordsMap = wordsMap,
                         currentPositionMs = currentPositionMs,
+                        durationMs = videoDurationMs,
+                        exoPlayer = viewModel.exoPlayer,
                         onPositionChanged = { ms -> viewModel.updatePlaybackPosition(ms) },
-                        onPositionYChange = viewModel::updatePositionY
+                        onPositionYChange = viewModel::updatePositionY,
+                        onSeek = viewModel::seekTo
                     )
                 }
             }

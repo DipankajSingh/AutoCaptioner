@@ -6,6 +6,7 @@ import com.dipdev.autocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.autocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.autocaptioner.data.db.entity.EmphasisType
 import com.dipdev.autocaptioner.data.db.entity.ProjectEntity
+import com.dipdev.autocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.autocaptioner.data.repository.CaptionRepository
 import com.dipdev.autocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -108,5 +109,22 @@ class CaptionEditorViewModel @Inject constructor(
                 emphasisType = EmphasisType.BOUNCE
             )
         }
+    }
+
+    // ---- Retranscribe ----
+    // Resets the project back to IMPORTED status and signals the UI to
+    // navigate back to ProcessingScreen so Whisper runs again from scratch.
+    private val _retranscribeRequested = MutableStateFlow(false)
+    val retranscribeRequested: StateFlow<Boolean> = _retranscribeRequested.asStateFlow()
+
+    fun retranscribe(projectId: String) {
+        viewModelScope.launch {
+            projectRepository.updateStatus(projectId, ProjectStatus.IMPORTED)
+            _retranscribeRequested.value = true
+        }
+    }
+
+    fun retranscribeHandled() {
+        _retranscribeRequested.value = false
     }
 }

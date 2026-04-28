@@ -2,6 +2,10 @@ package com.dipdev.autocaptioner.ui.styleeditor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import com.dipdev.autocaptioner.data.db.entity.AnimationType
 import com.dipdev.autocaptioner.data.db.entity.BackgroundType
 import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
@@ -12,6 +16,7 @@ import com.dipdev.autocaptioner.data.db.entity.TextAlignment
 import com.dipdev.autocaptioner.data.repository.CaptionRepository
 import com.dipdev.autocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,9 +26,47 @@ import javax.inject.Inject
 
 @HiltViewModel
 class StyleEditorViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val captionRepository: CaptionRepository,
     private val projectRepository: ProjectRepository
 ) : ViewModel() {
+
+    // ---- ExoPlayer lives in the ViewModel so it survives navigation ----
+    // Initialised lazily once we know the video path from the project
+    var exoPlayer: ExoPlayer? = null
+        private set
+
+    private val _videoDurationMs = MutableStateFlow(0L)
+    val videoDurationMs: StateFlow<Long> = _videoDurationMs.asStateFlow()
+
+    fun initPlayer(videoPath: String) {
+        if (exoPlayer != null) return           // already alive — don't recreate
+        val player = ExoPlayer.Builder(appContext).build().apply {
+            setMediaItem(MediaItem.fromUri(android.net.Uri.parse(videoPath)))
+            repeatMode = Player.REPEAT_MODE_ALL
+            prepare()
+            playWhenReady = false
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_READY && _videoDurationMs.value == 0L) {
+                        _videoDurationMs.value = duration.coerceAtLeast(0L)
+                    }
+                }
+            })
+        }
+        exoPlayer = player
+    }
+
+    fun seekTo(ms: Long) {
+        exoPlayer?.seekTo(ms)
+        _currentPositionMs.value = ms
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        exoPlayer?.release()
+        exoPlayer = null
+    }
 
     private val _styles = MutableStateFlow<List<CaptionStyleEntity>>(emptyList())
     val styles: StateFlow<List<CaptionStyleEntity>> = _styles.asStateFlow()

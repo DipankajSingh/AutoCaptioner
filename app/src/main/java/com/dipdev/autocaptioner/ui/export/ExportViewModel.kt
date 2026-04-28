@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
-enum class ExportState { IDLE, RUNNING, SUCCESS, ERROR }
+enum class ExportState { IDLE, READY, RUNNING, SUCCESS, CANCELLED, ERROR }
 
 @HiltViewModel
 class ExportViewModel @Inject constructor(
@@ -45,6 +45,21 @@ class ExportViewModel @Inject constructor(
     
     private val _outputPath = MutableStateFlow<String?>(null)
     val outputPath: StateFlow<String?> = _outputPath.asStateFlow()
+
+    private var activeTransformer: Transformer? = null
+
+    /** Call once on screen entry — moves to READY without starting export */
+    fun prepareExport() {
+        if (_exportState.value == ExportState.IDLE) {
+            _exportState.value = ExportState.READY
+        }
+    }
+
+    fun cancelExport() {
+        activeTransformer?.cancel()
+        activeTransformer = null
+        _exportState.value = ExportState.CANCELLED
+    }
 
     fun startExport(projectId: String) {
         if (_exportState.value == ExportState.RUNNING) return
@@ -108,6 +123,7 @@ class ExportViewModel @Inject constructor(
                     .setEffects(transformerEffects)
                     .build()
                 
+                activeTransformer = transformer
                 transformer.start(editedMediaItem, outFile.absolutePath)
                 trackProgress(transformer)
 
