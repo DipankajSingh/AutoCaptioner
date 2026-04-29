@@ -206,7 +206,7 @@ fun StyleEditorScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp) // Restored compact view
+                    .height(100.dp)
             ) {
                 activeStyle?.let { style ->
                     Box(modifier = Modifier.fillMaxSize()) {
