@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dipdev.autocaptioner.ui.components.LanguageDropdown
 
 @Composable
 fun ProcessingScreen(
@@ -25,13 +26,12 @@ fun ProcessingScreen(
     viewModel: ProcessingViewModel = hiltViewModel()
 ) {
     val step by viewModel.step.collectAsState()
+    val selectedLanguage by viewModel.selectedLanguage.collectAsState()
 
-    // Prepare the screen — move to Ready state (check if already transcribed)
     LaunchedEffect(projectId) {
         viewModel.prepareForProject(projectId)
     }
 
-    // Auto-navigate when done
     LaunchedEffect(step) {
         if (step is ProcessingStep.Done) onDone()
     }
@@ -45,7 +45,7 @@ fun ProcessingScreen(
     ) {
         when (val current = step) {
 
-            // ── Ready: user decides when to start ──────────────────────
+            // ── Ready: user selects language and taps Start ─────────────
             is ProcessingStep.Idle,
             is ProcessingStep.Ready -> {
                 Text(
@@ -60,7 +60,15 @@ fun ProcessingScreen(
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp
                 )
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Language selector
+                LanguageDropdown(
+                    selectedLanguage  = selectedLanguage,
+                    onLanguageSelected = { viewModel.selectLanguage(it) }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = { viewModel.startProcessing(projectId) },
                     modifier = Modifier.fillMaxWidth(),
@@ -78,7 +86,7 @@ fun ProcessingScreen(
                 }
             }
 
-            // ── In progress states ──────────────────────────────────────
+            // ── Extracting audio ─────────────────────────────────────────
             is ProcessingStep.ExtractingAudio -> {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().height(10.dp)
@@ -101,6 +109,7 @@ fun ProcessingScreen(
                 ) { Text("Cancel") }
             }
 
+            // ── Transcribing ─────────────────────────────────────────────
             is ProcessingStep.Transcribing -> {
                 val animatedProgress by animateFloatAsState(
                     targetValue = current.progress,
@@ -133,6 +142,7 @@ fun ProcessingScreen(
                 ) { Text("Cancel") }
             }
 
+            // ── Saving ───────────────────────────────────────────────────
             is ProcessingStep.Saving -> {
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().height(10.dp)
@@ -144,7 +154,7 @@ fun ProcessingScreen(
                 Text("Saving Captions", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
 
-            // ── Done ────────────────────────────────────────────────────
+            // ── Done ─────────────────────────────────────────────────────
             is ProcessingStep.Done -> {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
@@ -156,7 +166,7 @@ fun ProcessingScreen(
                 Text("Captions Ready!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
             }
 
-            // ── Cancelled ───────────────────────────────────────────────
+            // ── Cancelled ────────────────────────────────────────────────
             is ProcessingStep.Cancelled -> {
                 Text("Cancelled", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -179,7 +189,7 @@ fun ProcessingScreen(
                 ) { Text("Go Back") }
             }
 
-            // ── Error ───────────────────────────────────────────────────
+            // ── Error ────────────────────────────────────────────────────
             is ProcessingStep.Error -> {
                 Icon(
                     imageVector = Icons.Default.Warning,

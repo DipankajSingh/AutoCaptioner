@@ -65,4 +65,8 @@ interface CaptionWordDao {
     // Update a single word entity (used when merging contractions in-place)
     @Update
     suspend fun updateWord(word: CaptionWordEntity)
+
+    // Update a list of existing word entities (preserves IDs, updates only changed fields)
+    @Update
+    suspend fun updateWords(words: List<CaptionWordEntity>)
 }

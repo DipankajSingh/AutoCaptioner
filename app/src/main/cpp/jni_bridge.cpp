@@ -41,7 +41,7 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_loadModel(
 
 JNIEXPORT jstring JNICALL
 Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribe(
-        JNIEnv * env, jobject, jfloatArray audio_data, jstring lang_str) {
+        JNIEnv * env, jobject, jfloatArray audio_data, jstring lang_str, jint n_threads) {
 
     if (g_ctx == nullptr) {
         LOGE("Model not loaded!");
@@ -53,7 +53,7 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribe(
     jfloat * samples = env->GetFloatArrayElements(audio_data, nullptr);
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-    params.n_threads        = 4;
+    params.n_threads        = (int) n_threads;
     params.language         = lang;
     params.translate        = false;
     params.print_special    = false;
@@ -86,7 +86,7 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribe(
 
 JNIEXPORT jobjectArray JNICALL
 Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
-        JNIEnv * env, jobject, jfloatArray audio_data, jstring lang_str) {
+        JNIEnv * env, jobject, jfloatArray audio_data, jstring lang_str, jint n_threads) {
 
     if (g_ctx == nullptr) {
         LOGE("Model not loaded!");
@@ -98,7 +98,7 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamp
     jfloat * samples = env->GetFloatArrayElements(audio_data, nullptr);
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-    params.n_threads        = 4;
+    params.n_threads        = (int) n_threads;
     params.language         = lang;
     params.translate        = false;
     params.print_special    = false;

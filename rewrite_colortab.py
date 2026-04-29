@@ -1,4 +1,6 @@
-package com.dipdev.autocaptioner.ui.styleeditor.tabs
+import sys
+
+content = """package com.dipdev.autocaptioner.ui.styleeditor.tabs
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -207,3 +209,7 @@ fun ColorTab(
         }
     }
 }
+"""
+
+with open("app/src/main/java/com/dipdev/autocaptioner/ui/styleeditor/tabs/ColorTab.kt", "w") as f:
+    f.write(content)

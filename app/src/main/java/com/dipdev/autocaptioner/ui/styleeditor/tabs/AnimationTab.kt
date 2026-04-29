@@ -1,12 +1,15 @@
 package com.dipdev.autocaptioner.ui.styleeditor.tabs
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +23,7 @@ import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.autocaptioner.data.db.entity.DisplayMode
 import com.dipdev.autocaptioner.data.db.entity.KaraokeHighlightMode
 
-enum class AnimSubTool { MODE, HIGHLIGHT, ENTER }
+enum class AnimSubTool { MODE, HIGHLIGHT, ENTER, SPEED }
 
 @Composable
 fun AnimationTab(
@@ -28,7 +31,8 @@ fun AnimationTab(
     onDisplayModeChange: (DisplayMode) -> Unit,
     onWordEnterChange: (AnimationType) -> Unit,
     onWordExitChange: (AnimationType) -> Unit,
-    onKaraokeHighlightChange: (KaraokeHighlightMode) -> Unit
+    onKaraokeHighlightChange: (KaraokeHighlightMode) -> Unit,
+    onAnimationDurationChange: (Int) -> Unit,
 ) {
     var activeTool by remember { mutableStateOf<AnimSubTool?>(null) }
 
@@ -59,6 +63,12 @@ fun AnimationTab(
                     Text("Animation", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { activeTool = AnimSubTool.SPEED }) { Icon(Icons.Default.Speed, "Anim Speed") }
+                    Text("Speed", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     } else {
         Row(
@@ -70,45 +80,64 @@ fun AnimationTab(
             Box(modifier = Modifier.weight(1f)) {
                 when (activeTool) {
                     AnimSubTool.MODE -> {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item {
-                                DisplayMode.entries.forEach { mode ->
-                                    FilterChip(
-                                        selected = style.displayMode == mode,
-                                        onClick = { onDisplayModeChange(mode) },
-                                        label = { Text(mode.name.lowercase().replaceFirstChar { it.uppercaseChar() }, fontSize = 12.sp) },
-                                        modifier = Modifier.padding(end = 6.dp)
-                                    )
-                                }
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            DisplayMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = style.displayMode == mode,
+                                    onClick = { onDisplayModeChange(mode) },
+                                    label = { Text(mode.name.split('_').joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercaseChar() } }, fontSize = 12.sp) },
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
                             }
                         }
                     }
                     AnimSubTool.HIGHLIGHT -> {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item {
-                                KaraokeHighlightMode.entries.forEach { mode ->
-                                    FilterChip(
-                                        selected = style.karaokeHighlightMode == mode,
-                                        onClick = { onKaraokeHighlightChange(mode) },
-                                        label = { Text(mode.name.lowercase().replaceFirstChar { it.uppercaseChar() }, fontSize = 12.sp) },
-                                        modifier = Modifier.padding(end = 6.dp)
-                                    )
-                                }
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            KaraokeHighlightMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = style.karaokeHighlightMode == mode,
+                                    onClick = { onKaraokeHighlightChange(mode) },
+                                    label = { Text(mode.name.split('_').joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercaseChar() } }, fontSize = 12.sp) },
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
                             }
                         }
                     }
                     AnimSubTool.ENTER -> {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item {
-                                AnimationType.entries.filter { it != AnimationType.ELASTIC }.forEach { anim ->
-                                    FilterChip(
-                                        selected = style.wordEnterAnimation == anim,
-                                        onClick = { onWordEnterChange(anim) },
-                                        label = { Text(anim.name.lowercase().replaceFirstChar { it.uppercaseChar() }, fontSize = 12.sp) },
-                                        modifier = Modifier.padding(end = 6.dp)
-                                    )
-                                }
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AnimationType.entries.filter { it != AnimationType.ELASTIC }.forEach { anim ->
+                                FilterChip(
+                                    selected = style.wordEnterAnimation == anim,
+                                    onClick = { onWordEnterChange(anim) },
+                                    label = { Text(anim.name.split('_').joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercaseChar() } }, fontSize = 12.sp) },
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
                             }
+                        }
+                    }
+                    AnimSubTool.SPEED -> {
+                        androidx.compose.foundation.layout.Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "Speed: ${style.animationDurationMs} ms",
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            com.dipdev.autocaptioner.ui.styleeditor.PremiumSlider(
+                                value = style.animationDurationMs.toFloat(),
+                                onValueChange = { onAnimationDurationChange(it.toInt()) },
+                                valueRange = 50f..600f
+                            )
                         }
                     }
                     null -> {}

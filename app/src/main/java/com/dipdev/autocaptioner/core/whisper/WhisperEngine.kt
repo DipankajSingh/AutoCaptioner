@@ -11,29 +11,36 @@ class WhisperEngine(private val context: Context) {
     companion object {
         private const val TAG = "WhisperEngine"
 
-        // This must match the library name in CMakeLists.txt
-        // add_library(whisper-lib ...) → System.loadLibrary("whisper-lib")
+        // Determine optimal thread count once — use all available cores, cap at 8
+        // to avoid thermal throttling on high-core-count devices.
+        private val THREAD_COUNT: Int =
+            Runtime.getRuntime().availableProcessors().coerceIn(1, 8)
+
         init {
             System.loadLibrary("whisper-lib")
         }
     }
 
     // -------------------------------------------------------
-    // These 4 functions are implemented in jni_bridge.cpp
-    // The names here MUST match the Kotlin class name
-    // used in the JNI function names in jni_bridge.cpp
+    // JNI functions — signatures must match jni_bridge.cpp exactly.
+    // Both transcribe functions now accept nThreads as a parameter.
     // -------------------------------------------------------
     private external fun loadModel(modelPath: String): Boolean
-    private external fun transcribe(audioData: FloatArray, language: String): String
+    private external fun transcribe(audioData: FloatArray, language: String, nThreads: Int): String
     private external fun isModelLoaded(): Boolean
     private external fun freeModel()
-    private external fun transcribeWithTimestamps(audioData: FloatArray, language: String): Array<String>?
+    private external fun transcribeWithTimestamps(
+        audioData: FloatArray,
+        language: String,
+        nThreads: Int
+    ): Array<String>?
+
     // -------------------------------------------------------
-    // Public API — what the rest of your app calls
+    // Public API
     // -------------------------------------------------------
 
     /**
-     * Call this once when app starts.
+     * Call this once before transcribing.
      * modelFile must be in internal storage (not assets).
      * Returns true if model loaded successfully.
      */
@@ -45,7 +52,7 @@ class WhisperEngine(private val context: Context) {
             }
             val success = loadModel(modelFile.absolutePath)
             if (success) {
-                Log.i(TAG, "Model initialized successfully")
+                Log.i(TAG, "Model initialized successfully (threads=$THREAD_COUNT)")
             } else {
                 Log.e(TAG, "Failed to initialize model")
             }
@@ -55,8 +62,7 @@ class WhisperEngine(private val context: Context) {
 
     /**
      * Transcribe raw 16kHz mono float32 audio samples.
-     * Returns the transcribed text string.
-     * language → "en", "hi", "auto" etc.
+     * language → "en", "hi", "auto", etc.
      */
     suspend fun transcribeAudio(
         samples: FloatArray,
@@ -67,20 +73,24 @@ class WhisperEngine(private val context: Context) {
                 Log.e(TAG, "Cannot transcribe — model not loaded")
                 return@withContext ""
             }
-            Log.i(TAG, "Transcribing ${samples.size} samples...")
-            val result = transcribe(samples, language)
+            Log.i(TAG, "Transcribing ${samples.size} samples (lang=$language, threads=$THREAD_COUNT)...")
+            val result = transcribe(samples, language, THREAD_COUNT)
             Log.i(TAG, "Result: $result")
             result
         }
     }
 
+    /**
+     * Transcribe with per-word timestamps. Returns empty list if model not loaded.
+     */
     suspend fun transcribeWithWordTimestamps(
         samples: FloatArray,
         language: String = "en"
     ): List<WordTimestamp> {
         return withContext(Dispatchers.Default) {
             if (!isModelLoaded()) return@withContext emptyList()
-            val raw = transcribeWithTimestamps(samples, language) ?: return@withContext emptyList()
+            val raw = transcribeWithTimestamps(samples, language, THREAD_COUNT)
+                ?: return@withContext emptyList()
             raw.mapNotNull { entry ->
                 val parts = entry.split("|")
                 if (parts.size != 4) return@mapNotNull null
@@ -101,14 +111,12 @@ class WhisperEngine(private val context: Context) {
         val confidence: Float
     )
 
-    /**
-     * Check if model is ready to use
-     */
+    /** Check if model is ready to use. */
     fun isReady(): Boolean = isModelLoaded()
 
     /**
-     * Call this in onDestroy() or when done transcribing.
-     * Frees the model from RAM (~150MB for base.en)
+     * Call in onDestroy() or when done transcribing.
+     * Frees the model from RAM (~75-466MB depending on model).
      */
     fun release() {
         freeModel()
@@ -117,8 +125,7 @@ class WhisperEngine(private val context: Context) {
 
     /**
      * Copies model from assets folder to internal storage.
-     * Call this only during first launch / model download.
-     * Internal storage path is where whisper.cpp can read it.
+     * Call only during first launch / model download.
      */
     suspend fun copyModelFromAssets(assetFileName: String): File {
         return withContext(Dispatchers.IO) {

@@ -53,53 +53,50 @@ class ProjectRepository @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 // Step 1 — Read video metadata using MediaMetadataRetriever
-                // This is Android's built-in tool for reading video properties
-                // without loading the whole video into memory
                 val retriever = MediaMetadataRetriever()
-                retriever.setDataSource(context, videoUri)
+                val durationMs: Long
+                val width: Int
+                val height: Int
+                val rotation: Int
+                val fps: Float
+                val fileName: String?
 
-                // Extract all the metadata we need
-                val durationMs = retriever
-                    .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                    ?.toLongOrNull() ?: 0L
+                try {
+                    retriever.setDataSource(context, videoUri)
 
-                val width = retriever
-                    .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                    ?.toIntOrNull() ?: 0
+                    durationMs = retriever
+                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        ?.toLongOrNull() ?: 0L
 
-                val height = retriever
-                    .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                    ?.toIntOrNull() ?: 0
+                    width = retriever
+                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                        ?.toIntOrNull() ?: 0
 
-                val rotation = retriever
-                    .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-                    ?.toIntOrNull() ?: 0
+                    height = retriever
+                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                        ?.toIntOrNull() ?: 0
 
-                // FPS is returned as a string like "30/1" or "29.97"
-                // We parse it carefully to handle both formats
-                val fpsString = retriever
-                    .extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
-                val fps = parseFps(fpsString) ?: 30f
+                    rotation = retriever
+                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                        ?.toIntOrNull() ?: 0
 
-                // Get original filename from URI for the project title
-                val fileName = getFileName(videoUri) ?: "Video"
+                    val fpsString = retriever
+                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+                    fps = parseFps(fpsString) ?: 30f
 
-                retriever.release() // always release to free memory
+                    fileName = getFileName(videoUri) ?: "Video"
+                } finally {
+                    retriever.release() // always released — even if extraction throws
+                }
 
                 // Step 2 — Create project folder in internal storage
-                // Internal storage path: /data/data/com.dipdev.autocaptioner/files/projects/
-                // Each project gets its own subfolder with a UUID name
                 val projectId = UUID.randomUUID().toString()
                 val projectDir = File(context.filesDir, "projects/$projectId")
-                projectDir.mkdirs() // creates the directory and all parents
+                projectDir.mkdirs()
 
                 Log.i(TAG, "Created project directory: ${projectDir.absolutePath}")
 
                 // Step 3 — Copy video to internal storage
-                // We copy instead of using the original URI because:
-                // 1. The original URI might become invalid (user deletes from gallery)
-                // 2. We need a stable file path for FFmpeg/Media3
-                // 3. We might modify the video during processing
                 val videoFile = File(projectDir, "original.mp4")
                 context.contentResolver.openInputStream(videoUri)?.use { input ->
                     videoFile.outputStream().use { output ->
@@ -110,7 +107,6 @@ class ProjectRepository @Inject constructor(
                 Log.i(TAG, "Video copied to: ${videoFile.absolutePath}")
 
                 // Step 4 — Extract thumbnail (first frame of video)
-                // Used in the home screen project card
                 val thumbnailFile = File(projectDir, "thumbnail.jpg")
                 extractThumbnail(videoUri, thumbnailFile)
 
@@ -139,7 +135,6 @@ class ProjectRepository @Inject constructor(
                 projectDao.insertProject(project)
                 Log.i(TAG, "Project saved to DB: $projectId")
 
-                // Return success with the new projectId
                 Result.success(projectId)
 
             } catch (e: Exception) {
@@ -171,6 +166,15 @@ class ProjectRepository @Inject constructor(
         projectDao.updateProject(project)
     }
 
+    // ---- Rename project ----
+    suspend fun renameProject(projectId: String, newTitle: String) {
+        val project = projectDao.getProjectById(projectId) ?: return
+        projectDao.updateProject(
+            project.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis())
+        )
+        Log.i(TAG, "Project renamed to: $newTitle")
+    }
+
     // ---- Delete project ----
     // Also deletes all files from internal storage
     suspend fun deleteProject(projectId: String) {
@@ -198,23 +202,18 @@ class ProjectRepository @Inject constructor(
     private fun extractThumbnail(videoUri: Uri, outputFile: File) {
         try {
             val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(context, videoUri)
-
-            // getFrameAtTime(0) = first frame of the video
-            // OPTION_CLOSEST = get the exact frame at time 0
-            val bitmap = retriever.getFrameAtTime(
-                0,
-                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-            )
-            retriever.release()
+            val bitmap = try {
+                retriever.setDataSource(context, videoUri)
+                retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            } finally {
+                retriever.release() // always released even if getFrameAtTime throws
+            }
 
             if (bitmap != null) {
                 outputFile.outputStream().use { out ->
-                    // Compress as JPEG at 80% quality
-                    // 80% is a good balance — looks good, small file size
                     bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
                 }
-                bitmap.recycle() // always recycle bitmaps to free memory
+                bitmap.recycle()
             }
         } catch (e: Exception) {
             // Thumbnail failure is non-fatal — app works without it

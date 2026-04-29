@@ -75,7 +75,12 @@ data class ProjectEntity(
 
     // Absolute path of the last successfully exported video file
     // Null until the user has exported at least once
-    val exportedVideoPath: String? = null
+    val exportedVideoPath: String? = null,
+
+    // Language code used for transcription — "en", "hi", "auto", etc.
+    // Null means not yet set, defaults to "en" in the processing flow.
+    // Stored so re-transcription uses the same language automatically.
+    val transcriptionLanguage: String? = "en"
 )
 
 // Represents where the project is in the processing pipeline

@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -19,12 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
+import com.dipdev.autocaptioner.ui.components.VideoPlayerCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,10 +33,8 @@ fun ExportScreen(
     val context = LocalContext.current
     val exportState by viewModel.exportState.collectAsState()
     val progress by viewModel.progress.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
     val outputPath by viewModel.outputPath.collectAsState()
 
-    // Prepare — check if already exported, otherwise show READY
     LaunchedEffect(Unit) {
         viewModel.prepareExport(projectId)
     }
@@ -64,28 +59,15 @@ fun ExportScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            when (exportState) {
+            when (val state = exportState) {
 
-                // ── Already exported: show the video + re-export button ──
-                ExportState.ALREADY_EXPORTED,
-                ExportState.SUCCESS -> {
+                // ── Success / Already Exported ────────────────────────────
+                is ExportState.AlreadyExported,
+                is ExportState.Success,
+                is ExportState.SavedToGallery -> {
                     val path = outputPath
-                    val player = if (path != null) {
-                        remember(path) {
-                            ExoPlayer.Builder(context).build().apply {
-                                setMediaItem(MediaItem.fromUri(path))
-                                repeatMode = Player.REPEAT_MODE_ALL
-                                prepare()
-                                playWhenReady = true
-                            }
-                        }
-                    } else null
 
-                    if (player != null) {
-                        DisposableEffect(player) { onDispose { player.release() } }
-                    }
-
-                    if (exportState == ExportState.SUCCESS) {
+                    if (state is ExportState.Success || state is ExportState.SavedToGallery) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
@@ -96,44 +78,38 @@ fun ExportScreen(
                     }
 
                     Text(
-                        text = if (exportState == ExportState.SUCCESS) "Export Complete!" else "Previously Exported",
+                        text = when (state) {
+                            is ExportState.Success        -> "Export Complete!"
+                            is ExportState.SavedToGallery -> "Saved to Gallery!"
+                            else                          -> "Previously Exported"
+                        },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Video player
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                    ) {
-                        if (player != null) {
-                            AndroidView(
-                                factory = { ctx ->
-                                    PlayerView(ctx).apply {
-                                        this.player = player
-                                        useController = true
-                                        setShowNextButton(false)
-                                        setShowPreviousButton(false)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Video file not found", color = MaterialTheme.colorScheme.error)
-                            }
+                    // Video preview
+                    if (path != null) {
+                        VideoPlayerCard(
+                            path     = path,
+                            modifier = Modifier.fillMaxWidth().weight(1f)
+                        )
+                    } else {
+                        Box(
+                            Modifier.fillMaxWidth().weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Video file not found", color = MaterialTheme.colorScheme.error)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Action buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         // Re-export
                         OutlinedButton(
@@ -142,9 +118,27 @@ fun ExportScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Re-export")
+                                modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Re-export", fontSize = 13.sp)
+                        }
+
+                        // Save to Gallery
+                        Button(
+                            onClick = {
+                                if (path != null) viewModel.saveToGallery(path)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null,
+                                modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Gallery", fontSize = 13.sp)
                         }
 
                         // Share
@@ -162,9 +156,9 @@ fun ExportScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null,
-                                modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Share")
+                                modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Share", fontSize = 13.sp)
                         }
                     }
 
@@ -174,9 +168,9 @@ fun ExportScreen(
                     }
                 }
 
-                // ── Ready: user taps to start ───────────────────────────
-                ExportState.IDLE,
-                ExportState.READY -> {
+                // ── Idle / Ready ─────────────────────────────────────────
+                is ExportState.Idle,
+                is ExportState.Ready -> {
                     Icon(
                         imageVector = Icons.Default.Share,
                         contentDescription = null,
@@ -208,8 +202,8 @@ fun ExportScreen(
                     ) { Text("Cancel") }
                 }
 
-                // ── Running ─────────────────────────────────────────────
-                ExportState.RUNNING -> {
+                // ── Running ──────────────────────────────────────────────
+                is ExportState.Running -> {
                     val animatedProgress by animateFloatAsState(
                         targetValue = progress,
                         animationSpec = tween(300),
@@ -237,8 +231,8 @@ fun ExportScreen(
                     ) { Text("Cancel") }
                 }
 
-                // ── Cancelled ───────────────────────────────────────────
-                ExportState.CANCELLED -> {
+                // ── Cancelled ────────────────────────────────────────────
+                is ExportState.Cancelled -> {
                     Text("Export Cancelled", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -260,13 +254,13 @@ fun ExportScreen(
                     ) { Text("Go Back") }
                 }
 
-                // ── Error ───────────────────────────────────────────────
-                ExportState.ERROR -> {
+                // ── Error ────────────────────────────────────────────────
+                is ExportState.Error -> {
                     Text("Export Failed", fontSize = 22.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = errorMessage ?: "Unknown error occurred.",
+                        text = state.message,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center

@@ -60,6 +60,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun renameProject(projectId: String, newTitle: String) {
+        viewModelScope.launch {
+            projectRepository.renameProject(projectId, newTitle)
+        }
+    }
+
     fun resetImportState() {
         _importState.value = ImportState.Idle
     }

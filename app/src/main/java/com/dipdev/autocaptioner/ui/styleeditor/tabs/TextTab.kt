@@ -4,10 +4,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
-import androidx.compose.material.icons.filled.FormatAlignLeft
+import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.LineWeight
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.ViewHeadline
 import androidx.compose.material3.*
@@ -22,7 +23,7 @@ import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.autocaptioner.data.db.entity.TextAlignment
 import com.dipdev.autocaptioner.ui.styleeditor.PremiumSlider
 
-enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION }
+enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION, ITALIC, SPACING }
 
 @Composable
 fun TextTab(
@@ -32,7 +33,9 @@ fun TextTab(
     onMaxWordsChange: (Int) -> Unit,
     onMaxLinesChange: (Int) -> Unit,
     onRemovePunctuationChange: (Boolean) -> Unit,
-    onAlignmentChange: (TextAlignment) -> Unit
+    onAlignmentChange: (TextAlignment) -> Unit,
+    onLetterSpacingChange: (Float) -> Unit,
+    onIsItalicChange: (Boolean) -> Unit,
 ) {
     var activeTool by remember { mutableStateOf<TextSubTool?>(null) }
 
@@ -79,6 +82,18 @@ fun TextTab(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(onClick = { activeTool = TextSubTool.PUNCTUATION }) { Icon(Icons.Default.TextFormat, "Punctuation") }
                     Text("Symbols", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { activeTool = TextSubTool.ITALIC }) { Icon(Icons.Default.FormatItalic, "Italic") }
+                    Text("Italic", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { activeTool = TextSubTool.SPACING }) { Icon(Icons.Default.SpaceBar, "Spacing") }
+                    Text("Spacing", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -134,7 +149,7 @@ fun TextTab(
                             FilterChip(
                                 selected = style.alignment == align,
                                 onClick = { onAlignmentChange(align) },
-                                label = { Text(align.name.lowercase().replaceFirstChar { it.uppercaseChar() }, fontSize = 12.sp) }
+                                label = { Text(align.name.split('_').joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercaseChar() } }, fontSize = 12.sp) }
                             )
                         }
                     }
@@ -147,6 +162,24 @@ fun TextTab(
                         modifier = Modifier.padding(start = 16.dp)
                     )
                     Spacer(modifier = Modifier.weight(1f))
+                }
+                TextSubTool.ITALIC -> {
+                    Text("Italic", fontSize = 12.sp)
+                    Switch(
+                        checked = style.isItalic,
+                        onCheckedChange = { onIsItalicChange(it) },
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+                TextSubTool.SPACING -> {
+                    Text("Spacing", fontSize = 12.sp, modifier = Modifier.width(64.dp))
+                    PremiumSlider(
+                        value = style.letterSpacing,
+                        onValueChange = onLetterSpacingChange,
+                        valueRange = 0f..0.3f,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 null -> {}
             }

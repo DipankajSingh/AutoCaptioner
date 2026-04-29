@@ -10,23 +10,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.dipdev.autocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.autocaptioner.data.db.entity.ProjectStatus
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -129,7 +123,6 @@ fun HomeScreen(
                         ProjectCard(
                             project = project,
                             onClick = {
-                                // Resume from where user left off
                                 when (project.status) {
                                     ProjectStatus.IMPORTED,
                                     ProjectStatus.EXTRACTING_AUDIO,
@@ -137,7 +130,8 @@ fun HomeScreen(
                                     else -> onNavigateToEditor(project.id)
                                 }
                             },
-                            onDelete = { viewModel.deleteProject(project) }
+                            onDelete = { viewModel.deleteProject(project) },
+                            onRename = { newTitle -> viewModel.renameProject(project.id, newTitle) }
                         )
                     }
                 }
@@ -206,121 +200,5 @@ private fun EmptyState(onImport: () -> Unit) {
             Spacer(modifier = Modifier.width(8.dp))
             Text("Import Video")
         }
-    }
-}
-
-@Composable
-private fun ProjectCard(
-    project: ProjectEntity,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Thumbnail
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                project.thumbnailPath?.let { path ->
-                    AsyncImage(
-                        model = File(path),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = project.title,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = formatDuration(project.videoDurationMs),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                StatusChip(status = project.status)
-            }
-
-            // 3-dot menu
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null)
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        onClick = {
-                            showMenu = false
-                            onDelete()
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusChip(status: ProjectStatus) {
-    val (label, color) = when (status) {
-        ProjectStatus.IMPORTED -> "Imported" to MaterialTheme.colorScheme.outline
-        ProjectStatus.EXTRACTING_AUDIO -> "Extracting..." to MaterialTheme.colorScheme.tertiary
-        ProjectStatus.TRANSCRIBING -> "Transcribing..." to MaterialTheme.colorScheme.tertiary
-        ProjectStatus.TRANSCRIBED -> "Ready to Export" to MaterialTheme.colorScheme.primary
-        ProjectStatus.EXPORTED -> "Exported" to MaterialTheme.colorScheme.secondary
-    }
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = color.copy(alpha = 0.15f)
-    ) {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = color,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
-    }
-}
-
-private fun formatDuration(ms: Long): String {
-    val seconds = ms / 1000
-    val minutes = seconds / 60
-    val hours = minutes / 60
-    return if (hours > 0) {
-        "%d:%02d:%02d".format(hours, minutes % 60, seconds % 60)
-    } else {
-        "%d:%02d".format(minutes, seconds % 60)
     }
 }

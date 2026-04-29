@@ -5,15 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dipdev.autocaptioner.ui.MainViewModel
 import com.dipdev.autocaptioner.ui.navigation.NavGraph
 import com.dipdev.autocaptioner.ui.theme.AutoCaptionerTheme
@@ -22,12 +20,22 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // viewModels() is the Activity-level ViewModel delegate
-    // Hilt wires the dependencies automatically
     private val mainViewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install the splash screen BEFORE super.onCreate and setContent.
+        // keepOnScreenCondition returns true while startDestination is null,
+        // which holds the OS-drawn splash screen in place.
+        // When startDestination becomes non-null the condition returns false
+        // and the splash screen exits with a fade animation into the app.
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Keep the splash screen visible until we know where to navigate
+        splashScreen.setKeepOnScreenCondition {
+            mainViewModel.startDestination.value == null
+        }
+
         enableEdgeToEdge()
         setContent {
             AutoCaptionerTheme {
@@ -37,18 +45,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val startDestination by mainViewModel.startDestination.collectAsState()
 
-                    if (startDestination == null) {
-                        // Still deciding — show a minimal centered spinner
-                        // This typically takes < 100ms so user barely sees it
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        // Start destination is known — launch nav graph directly
-                        NavGraph(startDestination = startDestination!!)
+                    // startDestination is guaranteed non-null here because
+                    // the splash screen holds until it resolves.
+                    // We still guard with ?: to be safe.
+                    startDestination?.let { dest ->
+                        NavGraph(startDestination = dest)
                     }
                 }
             }

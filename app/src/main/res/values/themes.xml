@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.AutoCaptioner" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        Base theme inherits from Theme.SplashScreen.
+        This is what makes the OS splash screen work correctly.
+        postSplashScreenTheme = the theme applied AFTER the splash dismisses.
+        windowSplashScreenBackground = colour shown behind the icon.
+        windowSplashScreenAnimatedIcon = the animated/static icon in the centre.
+    -->
+    <style name="Theme.AutoCaptioner" parent="Theme.SplashScreen">
+        <!-- Splash screen background colour — use your brand colour -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Use the launcher foreground icon as the splash icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <!-- After splash dismisses, apply Material3 dynamic colour theme -->
+        <item name="postSplashScreenTheme">@style/Theme.AutoCaptioner.App</item>
+    </style>
+
+    <!--
+        This is the actual runtime theme — applied once the splash is done.
+        Must be a No-Action-Bar theme so Compose can draw its own TopAppBar.
+    -->
+    <style name="Theme.AutoCaptioner.App" parent="android:Theme.Material.Light.NoActionBar" />
+
 </resources>

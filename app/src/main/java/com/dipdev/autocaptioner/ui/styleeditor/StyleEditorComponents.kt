@@ -2,8 +2,10 @@ package com.dipdev.autocaptioner.ui.styleeditor
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.Palette
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -78,31 +82,53 @@ fun PresetsStrip(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PresetChip(
     style: CaptionStyleEntity,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
-    FilterChip(
-        selected = isSelected,
-        onClick = onClick,
-        label = { Text(style.name, fontSize = 13.sp) },
-        shape = RoundedCornerShape(20.dp)
-    )
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+    ) {
+        Text(
+            text = style.name,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+    }
 }
 
 
 
 @Composable
 fun BottomTabItem(name: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
-    val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    val tint by androidx.compose.animation.animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (selected) 1.1f else 1.0f)
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally, 
-        modifier = Modifier.clickable(onClick = onClick).padding(8.dp)
+        modifier = Modifier
+            .clickable(
+                interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(8.dp)
+            .graphicsLayer(scaleX = scale, scaleY = scale)
     ) {
         Icon(icon, contentDescription = name, tint = tint)
-        Text(name, fontSize = 10.sp, color = tint, fontWeight = if(selected) FontWeight.Bold else FontWeight.Normal)
+        if (selected) {
+            Text(name, fontSize = 10.sp, color = tint, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -121,7 +147,7 @@ fun StyleEditorBottomBar(
     ) {
         BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT) { onTabSelected(StyleTab.TEXT) }
         BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR) { onTabSelected(StyleTab.COLOR) }
-        BottomTabItem("Animation", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION) { onTabSelected(StyleTab.ANIMATION) }
+        BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION) { onTabSelected(StyleTab.ANIMATION) }
         BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS) { onTabSelected(StyleTab.PRESETS) }
     }
 }
@@ -130,7 +156,8 @@ fun StyleEditorBottomBar(
 fun PresetsTab(
     styles: List<CaptionStyleEntity>,
     activeStyle: CaptionStyleEntity?,
-    onPresetSelected: (CaptionStyleEntity) -> Unit
+    onPresetSelected: (CaptionStyleEntity) -> Unit,
+    onPresetLongClicked: (CaptionStyleEntity) -> Unit = {}
 ) {
     if (styles.isNotEmpty()) {
         LazyRow(
@@ -142,7 +169,8 @@ fun PresetsTab(
                 PresetChip(
                     style = style,
                     isSelected = activeStyle?.name == style.name,
-                    onClick = { onPresetSelected(style) }
+                    onClick = { onPresetSelected(style) },
+                    onLongClick = { onPresetLongClicked(style) }
                 )
             }
         }

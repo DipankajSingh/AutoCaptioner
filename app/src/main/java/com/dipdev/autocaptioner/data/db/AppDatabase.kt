@@ -28,7 +28,7 @@ import com.dipdev.autocaptioner.data.db.entity.ProjectEntity
         CaptionWordEntity::class,
         CaptionStyleEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
     autoMigrations = []
 )
@@ -52,6 +52,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE projects ADD COLUMN exportedVideoPath TEXT")
+            }
+        }
+
+        /** Add transcriptionLanguage column (nullable TEXT, default 'en') */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE projects ADD COLUMN transcriptionLanguage TEXT DEFAULT 'en'")
             }
         }
     }

@@ -41,11 +41,18 @@ fun VideoPreview(
 ) {
     if (videoPath == null || exoPlayer == null) return
 
-    // Poll playback position on every frame
+    // Poll playback position on every frame when playing; slow-poll when paused
     LaunchedEffect(exoPlayer) {
         while (true) {
-            androidx.compose.runtime.withFrameMillis {
+            if (exoPlayer.isPlaying) {
+                // Sync position every display frame while playing
+                withFrameMillis {
+                    onPositionChanged(exoPlayer.currentPosition)
+                }
+            } else {
+                // Paused — one update then sleep to avoid constant recomposition
                 onPositionChanged(exoPlayer.currentPosition)
+                kotlinx.coroutines.delay(250)
             }
         }
     }
@@ -81,7 +88,11 @@ fun VideoPreview(
                             useController = false
                         }
                     },
-                    update = { view -> view.player = exoPlayer },
+                    update = { view -> 
+                        if (view.player != exoPlayer) {
+                            view.player = exoPlayer 
+                        }
+                    },
                     modifier = Modifier.matchParentSize()
                 )
 

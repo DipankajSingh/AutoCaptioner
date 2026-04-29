@@ -16,9 +16,11 @@ import com.dipdev.autocaptioner.data.repository.TranscriptionWord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -26,13 +28,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
 import com.dipdev.autocaptioner.core.whisper.WhisperEngine.WordTimestamp
-import kotlinx.coroutines.flow.first
-
-import kotlinx.coroutines.Job
 
 sealed class ProcessingStep {
-    data object Idle : ProcessingStep()           // before anything starts
-    data object Ready : ProcessingStep()          // waiting for user to tap Start
+    data object Idle : ProcessingStep()
+    data object Ready : ProcessingStep()
     data object ExtractingAudio : ProcessingStep()
     data class Transcribing(val progress: Float = 0f) : ProcessingStep()
     data object Saving : ProcessingStep()
@@ -53,19 +52,29 @@ class ProcessingViewModel @Inject constructor(
     private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
     val step: StateFlow<ProcessingStep> = _step.asStateFlow()
 
+    // The language currently selected in the UI — bound to the picker
+    private val _selectedLanguage = MutableStateFlow("en")
+    val selectedLanguage: StateFlow<String> = _selectedLanguage.asStateFlow()
+
     private var activeJob: Job? = null
 
     /** Move to the Ready state so the screen shows a Start button */
     fun prepareForProject(projectId: String) {
-        // If already transcribed, jump straight to Done so we don't redo work
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
+            // Restore the language saved from last transcription
+            _selectedLanguage.value = project?.transcriptionLanguage ?: "en"
+
             if (project?.status == ProjectStatus.TRANSCRIBED || project?.status == ProjectStatus.EXPORTED) {
                 _step.value = ProcessingStep.Done
             } else if (_step.value == ProcessingStep.Idle) {
                 _step.value = ProcessingStep.Ready
             }
         }
+    }
+
+    fun selectLanguage(language: String) {
+        _selectedLanguage.value = language
     }
 
     fun cancel() {
@@ -75,8 +84,10 @@ class ProcessingViewModel @Inject constructor(
     }
 
     fun startProcessing(projectId: String) {
-        if (activeJob?.isActive == true) return  // already running
+        if (activeJob?.isActive == true) return
         _step.value = ProcessingStep.ExtractingAudio
+        val language = _selectedLanguage.value
+
         activeJob = viewModelScope.launch {
             try {
                 val project = projectRepository.getProjectById(projectId) ?: run {
@@ -84,23 +95,27 @@ class ProcessingViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Skip if already transcribed
                 if (project.status == ProjectStatus.TRANSCRIBED ||
                     project.status == ProjectStatus.EXPORTED) {
                     _step.value = ProcessingStep.Done
                     return@launch
                 }
 
-                // Step 1 — Extract audio
+                // Step 1 — Extract compressed audio track to a proper .m4a file
                 _step.value = ProcessingStep.ExtractingAudio
                 projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
 
-                val audioFile = File(context.filesDir, "projects/$projectId/audio.wav")
+                // Named .m4a because MediaMuxer writes MPEG-4 container (not raw WAV)
+                val audioFile = File(context.filesDir, "projects/$projectId/audio.m4a")
                 extractAudio(project.workingVideoPath, audioFile)
                 projectRepository.updateAudioPath(projectId, audioFile.absolutePath)
 
+                // Step 2 — Persist selected language before transcription
+                projectRepository.updateProject(
+                    project.copy(transcriptionLanguage = language)
+                )
 
-                // Step 2 — Load model if needed
+                // Step 3 — Load model if needed
                 val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
                     modelRepository.getModelFile(model.id)
                 }
@@ -117,31 +132,30 @@ class ProcessingViewModel @Inject constructor(
                         return@launch
                     }
                 }
-                // Step 3 — Transcribe in 30-second chunks for real progress reporting
+
+                // Step 4 — Transcribe in 30-second chunks for real progress reporting
                 _step.value = ProcessingStep.Transcribing(0f)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
-                val pcmSamples = readWavAsPcm(audioFile)
+                val pcmSamples = readAudioAsPcm(audioFile)
 
-                // Whisper operates at 16kHz, so 30 seconds = 480,000 samples
+                // Whisper operates at 16kHz → 30 seconds = 480,000 samples
                 val chunkSizeSamples = 16_000 * 30
                 val totalChunks = (pcmSamples.size + chunkSizeSamples - 1) / chunkSizeSamples
-                val allWords = mutableListOf<com.dipdev.autocaptioner.core.whisper.WhisperEngine.WordTimestamp>()
+                val allWords = mutableListOf<WordTimestamp>()
 
                 for (chunkIndex in 0 until totalChunks) {
                     val chunkStart = chunkIndex * chunkSizeSamples
                     val chunkEnd = minOf(chunkStart + chunkSizeSamples, pcmSamples.size)
                     val chunkSamples = pcmSamples.copyOfRange(chunkStart, chunkEnd)
 
-                    // Time offset for this chunk in milliseconds (to adjust word timestamps)
                     val timeOffsetMs = (chunkStart / 16_000L) * 1000L
 
                     val chunkWords = whisperEngine.transcribeWithWordTimestamps(
                         samples = chunkSamples,
-                        language = "en"
+                        language = language
                     )
 
-                    // Offset the timestamps to reflect position in the full audio
                     allWords.addAll(chunkWords.map { word ->
                         word.copy(
                             startTimeMs = word.startTimeMs + timeOffsetMs,
@@ -149,22 +163,17 @@ class ProcessingViewModel @Inject constructor(
                         )
                     })
 
-                    val progress = (chunkIndex + 1).toFloat() / totalChunks.toFloat()
-                    _step.value = ProcessingStep.Transcribing(progress)
+                    _step.value = ProcessingStep.Transcribing((chunkIndex + 1).toFloat() / totalChunks)
                 }
 
-                val wordTimestamps = allWords
-
-                if (wordTimestamps.isEmpty()) {
+                if (allWords.isEmpty()) {
                     _step.value = ProcessingStep.Error("No words transcribed")
                     return@launch
                 }
 
-                // Step 4 — Clean and group words into segments
+                // Step 5 — Clean and group words into segments
                 _step.value = ProcessingStep.Saving
-                val mergedTimestamps = mergeContractions(wordTimestamps)
-                // Strip trailing punctuation from stored word text so the DB data is
-                // always clean — no commas or full stops attached to words.
+                val mergedTimestamps = mergeContractions(allWords)
                 val cleanedTimestamps = mergedTimestamps.map { w ->
                     w.copy(word = w.word.trim().trimEnd(',', '.', '!', '?', ';', ':'))
                 }.filter { it.word.isNotBlank() }
@@ -176,7 +185,6 @@ class ProcessingViewModel @Inject constructor(
                 _step.value = ProcessingStep.Done
 
             } catch (e: kotlinx.coroutines.CancellationException) {
-                // User cancelled — already set to Cancelled in cancel()
                 android.util.Log.i("Processing", "Transcription cancelled")
             } catch (e: Exception) {
                 android.util.Log.e("Processing", "Error: ${e.message}", e)
@@ -185,14 +193,13 @@ class ProcessingViewModel @Inject constructor(
         }
     }
 
-    // Extract audio track from video using MediaExtractor + MediaMuxer
-    // Output: 16kHz mono WAV file ready for Whisper
+    // Extract the compressed audio track from the video to a standalone M4A file.
+    // The output is still compressed (AAC); we decode it to PCM in readAudioAsPcm().
     private suspend fun extractAudio(videoPath: String, outputFile: File) {
         withContext(Dispatchers.IO) {
             val extractor = MediaExtractor()
             extractor.setDataSource(videoPath)
 
-            // Find the audio track
             var audioTrackIndex = -1
             var audioFormat: MediaFormat? = null
             for (i in 0 until extractor.trackCount) {
@@ -208,8 +215,7 @@ class ProcessingViewModel @Inject constructor(
 
             extractor.selectTrack(audioTrackIndex)
 
-            // Write raw audio to temp file first
-            val tempFile = File(outputFile.parent, "audio_raw.tmp")
+            val tempFile = File(outputFile.parent, "${outputFile.name}.tmp")
             val muxer = MediaMuxer(
                 tempFile.absolutePath,
                 MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
@@ -240,147 +246,122 @@ class ProcessingViewModel @Inject constructor(
             muxer.release()
             extractor.release()
 
-            // Convert to 16kHz mono WAV using MediaCodec decoder
-            // For now use the extracted audio directly
-            // TODO: resample to 16kHz if needed
             tempFile.renameTo(outputFile)
         }
     }
 
-    // Read WAV/AAC file and return float PCM samples for Whisper
-    // Key design: we avoid boxing (mutableListOf<Short>) which inflates RAM by 14x.
-    // Instead we do a two-pass decode: first pass counts samples, second fills a
-    // pre-allocated primitive ShortArray.
-    private suspend fun readWavAsPcm(audioFile: File): FloatArray {
+    // Decode the compressed audio file to float32 PCM samples at 16kHz mono.
+    // Single-pass implementation: accumulates decoded shorts into a dynamic buffer,
+    // then converts to FloatArray — no wasted double-decode.
+    private suspend fun readAudioAsPcm(audioFile: File): FloatArray {
         return withContext(Dispatchers.IO) {
 
-            fun buildExtractorAndCodec(): Triple<MediaExtractor, android.media.MediaCodec, MediaFormat> {
-                val extractor = MediaExtractor()
-                extractor.setDataSource(audioFile.absolutePath)
-                var audioTrackIndex = -1
-                var audioFormat: MediaFormat? = null
-                for (i in 0 until extractor.trackCount) {
-                    val format = extractor.getTrackFormat(i)
-                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                    if (mime.startsWith("audio/")) {
-                        audioTrackIndex = i
-                        audioFormat = format
-                        break
-                    }
+            val extractor = MediaExtractor()
+            extractor.setDataSource(audioFile.absolutePath)
+
+            var audioTrackIndex = -1
+            var audioFormat: MediaFormat? = null
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("audio/")) {
+                    audioTrackIndex = i
+                    audioFormat = format
+                    break
                 }
-                if (audioTrackIndex == -1 || audioFormat == null) {
-                    extractor.release()
-                    throw Exception("No audio track found in extracted file")
-                }
-                extractor.selectTrack(audioTrackIndex)
-                val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
-                val codec = android.media.MediaCodec.createDecoderByType(mime)
-                codec.configure(audioFormat, null, null, 0)
-                codec.start()
-                return Triple(extractor, codec, audioFormat)
+            }
+            if (audioTrackIndex == -1 || audioFormat == null) {
+                extractor.release()
+                throw Exception("No audio track found in extracted file")
             }
 
-            // --- PASS 1: count total Short samples without storing them ---
-            var totalSamples = 0
-            run {
-                val (extractor, codec, _) = buildExtractorAndCodec()
-                val bufferInfo = android.media.MediaCodec.BufferInfo()
-                var inputDone = false
-                var outputDone = false
-                while (!outputDone) {
-                    if (!inputDone) {
-                        val idx = codec.dequeueInputBuffer(10_000L)
-                        if (idx >= 0) {
-                            val inputBuffer = codec.getInputBuffer(idx)!!
-                            val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                            if (sampleSize < 0) {
-                                codec.queueInputBuffer(idx, 0, 0, 0, android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                inputDone = true
-                            } else {
-                                codec.queueInputBuffer(idx, 0, sampleSize, extractor.sampleTime, 0)
-                                extractor.advance()
-                            }
+            extractor.selectTrack(audioTrackIndex)
+            val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
+            val codec = android.media.MediaCodec.createDecoderByType(mime)
+            codec.configure(audioFormat, null, null, 0)
+            codec.start()
+
+            // Single-pass: collect shorts into a growing list
+            // Using ArrayList<Short> is fine here — the boxing cost is only
+            // incurred once during collection, not 60× per second like in a
+            // render loop. Avoids the expensive double-decode of the old approach.
+            val pcmShorts = ArrayList<Short>(1_000_000)
+            val bufferInfo = android.media.MediaCodec.BufferInfo()
+            var inputDone = false
+            var outputDone = false
+
+            while (!outputDone) {
+                if (!inputDone) {
+                    val idx = codec.dequeueInputBuffer(10_000L)
+                    if (idx >= 0) {
+                        val inputBuffer = codec.getInputBuffer(idx)!!
+                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                        if (sampleSize < 0) {
+                            codec.queueInputBuffer(idx, 0, 0, 0,
+                                android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            inputDone = true
+                        } else {
+                            codec.queueInputBuffer(idx, 0, sampleSize, extractor.sampleTime, 0)
+                            extractor.advance()
                         }
                     }
-                    val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
-                    if (outIdx >= 0) {
-                        val outputBuffer = codec.getOutputBuffer(outIdx)!!
-                        totalSamples += outputBuffer.remaining() / 2
-                        codec.releaseOutputBuffer(outIdx, false)
-                        if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
+                }
+
+                val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
+                if (outIdx >= 0) {
+                    val outputBuffer = codec.getOutputBuffer(outIdx)!!
+                    outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
+                    while (outputBuffer.remaining() >= 2) {
+                        pcmShorts.add(outputBuffer.short)
+                    }
+                    codec.releaseOutputBuffer(outIdx, false)
+                    if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                        outputDone = true
                     }
                 }
-                codec.stop(); codec.release(); extractor.release()
             }
 
-            // --- PASS 2: fill pre-allocated primitive ShortArray ---
-            val rawSamples = ShortArray(totalSamples)
-            var writePos = 0
-            var audioFormat: MediaFormat
-            run {
-                val (extractor, codec, fmt) = buildExtractorAndCodec()
-                audioFormat = fmt
-                val bufferInfo = android.media.MediaCodec.BufferInfo()
-                var inputDone = false
-                var outputDone = false
-                while (!outputDone) {
-                    if (!inputDone) {
-                        val idx = codec.dequeueInputBuffer(10_000L)
-                        if (idx >= 0) {
-                            val inputBuffer = codec.getInputBuffer(idx)!!
-                            val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                            if (sampleSize < 0) {
-                                codec.queueInputBuffer(idx, 0, 0, 0, android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                inputDone = true
-                            } else {
-                                codec.queueInputBuffer(idx, 0, sampleSize, extractor.sampleTime, 0)
-                                extractor.advance()
-                            }
-                        }
-                    }
-                    val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
-                    if (outIdx >= 0) {
-                        val outputBuffer = codec.getOutputBuffer(outIdx)!!
-                        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-                        while (outputBuffer.remaining() >= 2 && writePos < totalSamples) {
-                            rawSamples[writePos++] = outputBuffer.short
-                        }
-                        codec.releaseOutputBuffer(outIdx, false)
-                        if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
-                    }
-                }
-                codec.stop(); codec.release(); extractor.release()
-            }
+            codec.stop()
+            codec.release()
 
             val sampleRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
             val channelCount = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            extractor.release()
 
-            // Mix down to mono in-place without creating an intermediate boxed list
-            val monoSamples = if (channelCount > 1) {
-                ShortArray(writePos / channelCount) { i ->
+            // Mix down to mono
+            val totalSamples = pcmShorts.size
+            val monoShorts: ShortArray = if (channelCount > 1) {
+                ShortArray(totalSamples / channelCount) { i ->
                     var sum = 0
-                    for (ch in 0 until channelCount) sum += rawSamples[i * channelCount + ch]
+                    for (ch in 0 until channelCount) sum += pcmShorts[i * channelCount + ch]
                     (sum / channelCount).toShort()
                 }
             } else {
-                rawSamples.copyOf(writePos)
+                ShortArray(totalSamples) { pcmShorts[it] }
             }
 
-            // Resample to 16 kHz if the source is at a higher rate
-            val finalSamples = if (sampleRate != 16000) resampleTo16k(monoSamples, sampleRate) else monoSamples
+            // Resample to 16kHz using linear interpolation
+            val finalShorts = if (sampleRate != 16000) resampleTo16kLinear(monoShorts, sampleRate)
+                              else monoShorts
 
             // Normalise to float [-1.0, 1.0] — Whisper's expected input range
-            FloatArray(finalSamples.size) { i -> finalSamples[i] / 32768.0f }
+            FloatArray(finalShorts.size) { i -> finalShorts[i] / 32768.0f }
         }
     }
-    // Simple linear interpolation resampler
-    private fun resampleTo16k(input: ShortArray, fromRate: Int): ShortArray {
+
+    // Linear interpolation resampler — avoids aliasing artifacts that
+    // nearest-neighbor produces at 3:1 ratios (e.g. 48kHz → 16kHz).
+    private fun resampleTo16kLinear(input: ShortArray, fromRate: Int): ShortArray {
         if (fromRate == 16000) return input
         val ratio = fromRate.toDouble() / 16000.0
         val outputSize = (input.size / ratio).toInt()
         return ShortArray(outputSize) { i ->
-            val srcIndex = (i * ratio).toInt().coerceIn(0, input.size - 1)
-            input[srcIndex]
+            val srcPos = i * ratio
+            val srcIndex = srcPos.toInt().coerceIn(0, input.size - 2)
+            val fraction = (srcPos - srcIndex).toFloat()
+            val s0 = input[srcIndex].toFloat()
+            val s1 = input[srcIndex + 1].toFloat()
+            (s0 + (s1 - s0) * fraction).toInt().toShort()
         }
     }
 
@@ -418,19 +399,13 @@ class ProcessingViewModel @Inject constructor(
     }
 
     /**
-     * Whisper often tokenizes contractions as two separate words:
-     *   "it" + "'s"  →  "it's"
-     *   "don" + "'t" →  "don't"
-     *   "I" + "'m"   →  "I'm"
-     *
-     * Merges any word starting with an apostrophe into the previous word,
-     * preserving the base word's start time and the suffix's end time.
+     * Merges split contractions: "it" + "'s" → "it's"
      */
     private fun mergeContractions(
-        words: List<com.dipdev.autocaptioner.core.whisper.WhisperEngine.WordTimestamp>
-    ): List<com.dipdev.autocaptioner.core.whisper.WhisperEngine.WordTimestamp> {
+        words: List<WordTimestamp>
+    ): List<WordTimestamp> {
         if (words.isEmpty()) return words
-        val result = mutableListOf<com.dipdev.autocaptioner.core.whisper.WhisperEngine.WordTimestamp>()
+        val result = mutableListOf<WordTimestamp>()
         for (word in words) {
             val trimmed = word.word.trim()
             if (trimmed.startsWith("'") && result.isNotEmpty()) {

@@ -104,44 +104,7 @@ class CaptionRepository @Inject constructor(
         segmentDao.updateSegment(segment.copy(isEdited = true))
     }
 
-    /**
-     * Post-process existing DB words to merge split contractions.
-     * Whisper tokenises "it's" as ["it", "'s"] — this pass collapses them
-     * in-place and rebuilds the parent segment text to match.
-     */
-    suspend fun fixContractionsForProject(projectId: String) {
-        val allWords = wordDao.getAllWordsForProject(projectId)
-        val segments = segmentDao.getSegmentsForProjectOnce(projectId)
 
-        // Merge contraction suffixes into the preceding word
-        val merged = mutableListOf<CaptionWordEntity>()
-        for (word in allWords) {
-            val trimmed = word.word.trim()
-            if (trimmed.startsWith("'") && merged.isNotEmpty()) {
-                val prev = merged.removeAt(merged.lastIndex)
-                merged.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
-                // Delete the dangling suffix row
-                wordDao.deleteWord(word.id)
-            } else {
-                merged.add(word)
-            }
-        }
-
-        // Persist merged words and rebuild segment text
-        for (w in merged) {
-            wordDao.updateWord(w)
-        }
-        for (seg in segments) {
-            val segWords = merged.filter { it.segmentId == seg.id }.sortedBy { it.index }
-            val newText = segWords.joinToString(" ") { it.word }
-            if (newText != seg.text) {
-                segmentDao.updateSegment(seg.copy(text = newText))
-            }
-        }
-        Log.i(TAG, "fixContractionsForProject: processed ${merged.size} words for $projectId")
-    }
-
-    // ================================================================
     // WORDS
     // ================================================================
 
@@ -177,8 +140,11 @@ class CaptionRepository @Inject constructor(
         wordDao.insertAll(newWords)
     }
 
+    // Update a list of existing words in-place (called from CaptionEditorViewModel
+    // when the user edits a segment and the word count matches the original).
+    // Uses @Update under the hood — does NOT insert new rows.
     suspend fun updateWords(words: List<CaptionWordEntity>) {
-        wordDao.insertAll(words)
+        wordDao.updateWords(words)
     }
 
     // ================================================================
@@ -216,31 +182,9 @@ class CaptionRepository @Inject constructor(
         if (styleDao.getDefaultStyleCount() > 0) return
 
         val defaults = listOf(
-            // ---- Bold Pop ----
-            // CapCut-style, works on any video
             CaptionStyleEntity(
                 id = UUID.randomUUID().toString(),
-                name = "Bold Pop",
-                isDefault = true,
-                fontFamily = "Montserrat",
-                fontWeight = 900,
-                fontSize = 52f,
-                textColor = 0xFFFFFFFF,
-                highlightColor = 0xFFFFD700,   // gold highlight
-                outlineColor = 0xFF000000,
-                outlineWidth = 4f,
-                backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.NONE,
-                displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.SCALE_POP,
-                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
-                positionX = 0.5f,
-                positionY = 0.85f
-            ),
-            // ---- Minimal ----
-            // Clean, subtle — good for professional content
-            CaptionStyleEntity(
-                id = UUID.randomUUID().toString(),
-                name = "Minimal",
+                name = "Basic",
                 isDefault = true,
                 fontFamily = "Roboto",
                 fontWeight = 400,
@@ -250,75 +194,96 @@ class CaptionRepository @Inject constructor(
                 outlineColor = 0xFF000000,
                 outlineWidth = 2f,
                 backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.NONE,
-                displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.LINE_HIGHLIGHT,
-                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
-                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
-                positionX = 0.5f,
-                positionY = 0.88f
-            ),
-            // ---- Neon ----
-            // Eye-catching, good for music/entertainment content
-            CaptionStyleEntity(
-                id = UUID.randomUUID().toString(),
-                name = "Neon",
-                isDefault = true,
-                fontFamily = "Montserrat",
-                fontWeight = 700,
-                fontSize = 48f,
-                textColor = 0xFF00FF88,         // neon green
-                highlightColor = 0xFFFF00FF,    // neon pink
-                outlineColor = 0xFF000000,
-                outlineWidth = 0f,
-                shadowColor = 0xFF00FF88,        // glow effect via shadow
-                shadowRadius = 12f,
-                backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.NONE,
-                displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.SCALE_POP,
-                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
-                positionX = 0.5f,
-                positionY = 0.82f
-            ),
-            // ---- Cinema ----
-            // Classic subtitle style — bottom center with background
-            CaptionStyleEntity(
-                id = UUID.randomUUID().toString(),
-                name = "Cinema",
-                isDefault = true,
-                fontFamily = "Roboto",
-                fontWeight = 400,
-                fontSize = 36f,
-                textColor = 0xFFFFFFFF,
-                highlightColor = 0xFFFFFF00,    // yellow highlight
-                outlineColor = 0xFF000000,
-                outlineWidth = 1f,
-                backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.FULL_LINE,
-                backgroundColor = 0xFF000000,
-                backgroundOpacity = 0.7f,
                 displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.PHRASE,
-                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
-                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
+                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE,
+                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE,
                 positionX = 0.5f,
-                positionY = 0.92f
+                positionY = 0.85f
             ),
-            // ---- TikTok ----
-            // Center screen, thick outline, high energy
             CaptionStyleEntity(
                 id = UUID.randomUUID().toString(),
-                name = "TikTok",
+                name = "Karaoke Pro",
                 isDefault = true,
                 fontFamily = "Montserrat",
                 fontWeight = 900,
-                fontSize = 56f,
-                textColor = 0xFFFFFFFF,
-                highlightColor = 0xFFFF4444,    // red highlight
+                fontSize = 50f,
+                textColor = 0xFFE0E0E0,
+                highlightColor = 0xFFFFC107, // Vibrant Amber
+                karaokeFillColor = 0xFFFFC107,
                 outlineColor = 0xFF000000,
-                outlineWidth = 6f,
+                outlineWidth = 5f,
+                shadowColor = 0xAA000000,
+                shadowRadius = 8f,
+                shadowOffsetY = 4f,
+                backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.NONE,
+                displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.KARAOKE_FILL,
+                karaokeHighlightMode = com.dipdev.autocaptioner.data.db.entity.KaraokeHighlightMode.FILL_LEFT_RIGHT,
+                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE,
+                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE,
+                positionX = 0.5f,
+                positionY = 0.82f
+            ),
+            CaptionStyleEntity(
+                id = UUID.randomUUID().toString(),
+                name = "Cyberpunk",
+                isDefault = true,
+                fontFamily = "Roboto",
+                fontWeight = 700,
+                fontSize = 48f,
+                isItalic = true,
+                textColor = 0xFF00FFCC, // Neon Cyan
+                highlightColor = 0xFFFF0055, // Neon Pink
+                outlineColor = 0xFF000000,
+                outlineWidth = 1f,
+                shadowColor = 0xFF00FFCC,
+                shadowRadius = 15f,
                 backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.NONE,
                 displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.BOUNCE,
+                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.ELASTIC,
                 wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.FADE,
                 positionX = 0.5f,
-                positionY = 0.5f               // center screen
+                positionY = 0.5f // Center screen
+            ),
+            CaptionStyleEntity(
+                id = UUID.randomUUID().toString(),
+                name = "Cinematic",
+                isDefault = true,
+                fontFamily = "Montserrat",
+                fontWeight = 400,
+                fontSize = 36f,
+                letterSpacing = 0.05f,
+                textColor = 0xFFFFFFFF,
+                highlightColor = 0xFFFFFFFF,
+                outlineColor = 0xFF000000,
+                outlineWidth = 0f,
+                backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.BOX,
+                backgroundColor = 0xAA000000, // Semi-transparent black
+                backgroundCornerRadius = 12f,
+                backgroundPaddingH = 24f,
+                backgroundPaddingV = 16f,
+                displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.PHRASE,
+                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE, // Because phrase
+                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE,
+                positionX = 0.5f,
+                positionY = 0.90f
+            ),
+            CaptionStyleEntity(
+                id = UUID.randomUUID().toString(),
+                name = "Typewriter",
+                isDefault = true,
+                fontFamily = "Roboto",
+                fontWeight = 700,
+                fontSize = 42f,
+                textColor = 0xFF00FF00, // Terminal Green
+                highlightColor = 0xFF00FF00,
+                outlineColor = 0xFF000000,
+                outlineWidth = 3f,
+                backgroundType = com.dipdev.autocaptioner.data.db.entity.BackgroundType.NONE,
+                displayMode = com.dipdev.autocaptioner.data.db.entity.DisplayMode.TYPEWRITER,
+                wordEnterAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.TYPEWRITER,
+                wordExitAnimation = com.dipdev.autocaptioner.data.db.entity.AnimationType.NONE,
+                positionX = 0.5f,
+                positionY = 0.85f
             )
         )
 

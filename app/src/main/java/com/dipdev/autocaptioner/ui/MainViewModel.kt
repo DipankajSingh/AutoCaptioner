@@ -18,7 +18,7 @@ class MainViewModel @Inject constructor(
     private val captionRepository: CaptionRepository
 ) : ViewModel() {
 
-    // null = still deciding (show nothing / loading indicator)
+    // null = still deciding (show spinner)
     // non-null = decision made, navigate immediately
     private val _startDestination = MutableStateFlow<String?>(null)
     val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
@@ -28,16 +28,19 @@ class MainViewModel @Inject constructor(
     }
 
     private fun decideStartDestination() {
-        viewModelScope.launch {
-            // Initialize default styles silently in background
-            captionRepository.initializeDefaultStyles()
+        // Seed default styles concurrently — navigation doesn't depend on this.
+        // Running it in parallel means we don't add its DB latency to startup time.
+        viewModelScope.launch { captionRepository.initializeDefaultStyles() }
 
+        // Only the two fast checks (DataStore read + file-exists) gate navigation.
+        // DataStore is a proto file read (~5ms), file-exists is OS stat (~1ms).
+        viewModelScope.launch {
             val onboardingDone = modelRepository.isOnboardingComplete().first()
 
             _startDestination.value = when {
-                !onboardingDone -> "onboarding"
+                !onboardingDone                      -> "onboarding"
                 !modelRepository.hasDownloadedModel() -> "device_check"
-                else -> "home"
+                else                                  -> "home"
             }
         }
     }

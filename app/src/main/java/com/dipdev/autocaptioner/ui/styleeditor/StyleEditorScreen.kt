@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,9 +15,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dipdev.autocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.autocaptioner.ui.styleeditor.tabs.*
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,13 @@ fun StyleEditorScreen(
     val activeStyle by viewModel.activeStyle.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     var showExportWarning by remember { mutableStateOf(false) }
+    var showPresetDialog by remember { mutableStateOf(false) }
+    var presetToDelete by remember { mutableStateOf<CaptionStyleEntity?>(null) }
+
+    BackHandler {
+        viewModel.saveAndApply(projectId)
+        onNavigateBack()
+    }
 
     val segments by viewModel.segments.collectAsState()
     val wordsMap by viewModel.wordsMap.collectAsState()
@@ -44,8 +55,6 @@ fun StyleEditorScreen(
         project?.workingVideoPath?.let { viewModel.initPlayer(it) }
     }
 
-    var showPresets by remember { mutableStateOf(false) }
-
     LaunchedEffect(projectId) {
         viewModel.loadStyles(projectId)
     }
@@ -55,11 +64,17 @@ fun StyleEditorScreen(
             TopAppBar(
                 title = { Text("Style Editor", fontWeight = FontWeight.SemiBold, fontSize = 20.sp) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        viewModel.saveAndApply(projectId)
+                        onNavigateBack()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showPresetDialog = true }) {
+                        Icon(Icons.Default.Save, "Save Preset")
+                    }
                     IconButton(onClick = onNavigateToCaptionEditor) {
                         Icon(Icons.Default.ClosedCaption, "Edit Captions")
                     }
@@ -104,6 +119,55 @@ fun StyleEditorScreen(
                 }
             )
         }
+
+        if (showPresetDialog) {
+            var presetName by remember { mutableStateOf("My Preset") }
+            AlertDialog(
+                onDismissRequest = { showPresetDialog = false },
+                title = { Text("Save Preset") },
+                text = {
+                    OutlinedTextField(
+                        value = presetName,
+                        onValueChange = { presetName = it },
+                        label = { Text("Preset Name") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (presetName.isNotBlank()) {
+                            viewModel.saveAsNewPreset(presetName)
+                        }
+                        showPresetDialog = false
+                    }) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPresetDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
+
+        presetToDelete?.let { style ->
+            AlertDialog(
+                onDismissRequest = { presetToDelete = null },
+                title = { Text("Delete Preset") },
+                text = { Text("Are you sure you want to delete '${style.name}'?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.deletePreset(style)
+                        presetToDelete = null
+                    }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { presetToDelete = null }) { Text("Cancel") }
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -142,12 +206,10 @@ fun StyleEditorScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp) // Fixed height for options
+                    .height(140.dp) // Restored compact view
             ) {
                 activeStyle?.let { style ->
-                    Box(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         when (selectedTab) {
                             StyleTab.TEXT -> TextTab(
                                 style = style,
@@ -156,7 +218,9 @@ fun StyleEditorScreen(
                                 onMaxWordsChange = viewModel::updateMaxWordsPerLine,
                                 onMaxLinesChange = viewModel::updateMaxLines,
                                 onRemovePunctuationChange = viewModel::updateRemovePunctuation,
-                                onAlignmentChange = viewModel::updateAlignment
+                                onAlignmentChange = viewModel::updateAlignment,
+                                onLetterSpacingChange = viewModel::updateLetterSpacing,
+                                onIsItalicChange = viewModel::updateIsItalic
                             )
                             StyleTab.COLOR -> ColorTab(
                                 style = style,
@@ -166,26 +230,31 @@ fun StyleEditorScreen(
                                 onOutlineWidthChange = viewModel::updateOutlineWidth,
                                 onBackgroundTypeChange = viewModel::updateBackgroundType,
                                 onBackgroundColorChange = viewModel::updateBackgroundColor,
-                                onBackgroundOpacityChange = viewModel::updateBackgroundOpacity
+                                onBackgroundOpacityChange = viewModel::updateBackgroundOpacity,
+                                onBackgroundPaddingHChange = viewModel::updateBackgroundPaddingH,
+                                onBackgroundPaddingVChange = viewModel::updateBackgroundPaddingV,
+                                onBackgroundCornerRadiusChange = viewModel::updateBackgroundCornerRadius,
+                                onShadowRadiusChange = viewModel::updateShadowRadius,
+                                onShadowColorChange = viewModel::updateShadowColor
                             )
                             StyleTab.ANIMATION -> AnimationTab(
                                 style = style,
                                 onDisplayModeChange = viewModel::updateDisplayMode,
                                 onWordEnterChange = viewModel::updateWordEnterAnimation,
                                 onWordExitChange = viewModel::updateWordExitAnimation,
-                                onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode
+                                onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode,
+                                onAnimationDurationChange = viewModel::updateAnimationDurationMs
                             )
                             StyleTab.PRESETS -> PresetsTab(
                                 styles = styles,
                                 activeStyle = activeStyle,
-                                onPresetSelected = { viewModel.selectPreset(it) }
+                                onPresetSelected = { viewModel.selectPreset(it) },
+                                onPresetLongClicked = { if (!it.isDefault) presetToDelete = it }
                             )
                         }
                     }
                 }
             }
-
-
 
             // Icon-based bottom bar
             StyleEditorBottomBar(

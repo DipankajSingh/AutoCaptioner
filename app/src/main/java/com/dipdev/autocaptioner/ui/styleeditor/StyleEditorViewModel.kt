@@ -36,6 +36,9 @@ class StyleEditorViewModel @Inject constructor(
     var exoPlayer: ExoPlayer? = null
         private set
 
+    // Track one word-collector job per segment to avoid unbounded coroutine growth
+    private val wordJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
+
     private val _videoDurationMs = MutableStateFlow(0L)
     val videoDurationMs: StateFlow<Long> = _videoDurationMs.asStateFlow()
 
@@ -64,6 +67,8 @@ class StyleEditorViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        wordJobs.values.forEach { it.cancel() }
+        wordJobs.clear()
         exoPlayer?.release()
         exoPlayer = null
     }
@@ -94,7 +99,7 @@ class StyleEditorViewModel @Inject constructor(
         viewModelScope.launch {
             val projectEntity = projectRepository.getProjectById(projectId)
             _project.value = projectEntity
-            
+
             launch {
                 captionRepository.getAllStyles().collect { list ->
                     _styles.value = list
@@ -112,10 +117,22 @@ class StyleEditorViewModel @Inject constructor(
             launch {
                 captionRepository.getSegmentsForProject(projectId).collect { segs ->
                     _segments.value = segs
+
+                    val newIds = segs.map { it.id }.toSet()
+                    // Cancel watchers for segments no longer present
+                    val removed = wordJobs.keys - newIds
+                    removed.forEach { id -> wordJobs.remove(id)?.cancel() }
+
+                    // Start watchers only for new segments
                     segs.forEach { seg ->
-                        launch {
-                            captionRepository.getWordsForSegment(seg.id).collect { words ->
-                                _wordsMap.value = _wordsMap.value.toMutableMap().apply { put(seg.id, words) }
+                        if (!wordJobs.containsKey(seg.id)) {
+                            wordJobs[seg.id] = launch {
+                                captionRepository.getWordsForSegment(seg.id).collect { words ->
+                                    val current = _wordsMap.value
+                                    if (current[seg.id] != words) {
+                                        _wordsMap.value = current.toMutableMap().apply { put(seg.id, words) }
+                                    }
+                                }
                             }
                         }
                     }
@@ -129,9 +146,13 @@ class StyleEditorViewModel @Inject constructor(
     }
 
     fun selectPreset(style: CaptionStyleEntity) {
-        // Make a working copy so edits don't overwrite the preset directly
+        // Reuse the existing Custom style ID if we already have one,
+        // so we don't accumulate orphaned Custom rows in the DB.
+        val existingCustomId = _activeStyle.value
+            ?.takeIf { !it.isDefault }?.id
+            ?: UUID.randomUUID().toString()
         _activeStyle.value = style.copy(
-            id = UUID.randomUUID().toString(),
+            id = existingCustomId,
             isDefault = false,
             name = "Custom"
         )
@@ -178,7 +199,17 @@ class StyleEditorViewModel @Inject constructor(
     }
 
     fun updateDisplayMode(mode: DisplayMode) {
-        _activeStyle.value = _activeStyle.value?.copy(displayMode = mode)
+        var style = _activeStyle.value?.copy(displayMode = mode) ?: return
+        if (mode == DisplayMode.KARAOKE_FILL || mode == DisplayMode.PHRASE) {
+            style = style.copy(
+                wordEnterAnimation = AnimationType.NONE,
+                wordExitAnimation = AnimationType.NONE
+            )
+        }
+        if (mode == DisplayMode.TYPEWRITER) {
+            style = style.copy(wordEnterAnimation = AnimationType.TYPEWRITER)
+        }
+        _activeStyle.value = style
     }
 
     fun updateWordEnterAnimation(anim: AnimationType) {
@@ -213,13 +244,28 @@ class StyleEditorViewModel @Inject constructor(
         _activeStyle.value = _activeStyle.value?.copy(removePunctuation = remove)
     }
 
+    fun updateBackgroundPaddingH(v: Float) { _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingH = v) }
+    fun updateBackgroundPaddingV(v: Float) { _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingV = v) }
+    fun updateBackgroundCornerRadius(v: Float) { _activeStyle.value = _activeStyle.value?.copy(backgroundCornerRadius = v) }
+    fun updateShadowRadius(v: Float)  { _activeStyle.value = _activeStyle.value?.copy(shadowRadius = v) }
+    fun updateShadowColor(v: Long)    { _activeStyle.value = _activeStyle.value?.copy(shadowColor = v) }
+    fun updateAnimationDurationMs(v: Int) { _activeStyle.value = _activeStyle.value?.copy(animationDurationMs = v) }
+    fun updateLetterSpacing(v: Float) { _activeStyle.value = _activeStyle.value?.copy(letterSpacing = v) }
+    fun updateIsItalic(v: Boolean)    { _activeStyle.value = _activeStyle.value?.copy(isItalic = v) }
+
     fun saveAndApply(projectId: String) {
         viewModelScope.launch {
             val style = _activeStyle.value ?: return@launch
-            val styleToSave = if (style.name == "Custom") {
-                style.copy(name = "Custom ${System.currentTimeMillis() % 1000}")
+            val styleToSave = if (style.name == "Custom" || style.isDefault) {
+                style.copy(
+                    id = if (style.isDefault) UUID.randomUUID().toString() else style.id,
+                    name = "Custom ${System.currentTimeMillis() % 1000}",
+                    isDefault = false
+                )
             } else style
+            
             captionRepository.saveStyle(styleToSave)
+
             // Link style to project
             val project = projectRepository.getProjectById(projectId) ?: return@launch
             projectRepository.updateProject(
@@ -228,6 +274,31 @@ class StyleEditorViewModel @Inject constructor(
                     updatedAt = System.currentTimeMillis()
                 )
             )
+        }
+    }
+
+    fun saveAsNewPreset(presetName: String) {
+        viewModelScope.launch {
+            val style = _activeStyle.value ?: return@launch
+            val newPreset = style.copy(
+                id = UUID.randomUUID().toString(),
+                name = presetName,
+                isDefault = false
+            )
+            captionRepository.saveStyle(newPreset)
+            _activeStyle.value = newPreset
+        }
+    }
+
+    fun deletePreset(style: CaptionStyleEntity) {
+        viewModelScope.launch {
+            if (!style.isDefault) {
+                captionRepository.deleteStyle(style)
+                // If we deleted the active style, switch to the first available
+                if (_activeStyle.value?.id == style.id) {
+                    _activeStyle.value = _styles.value.firstOrNull()
+                }
+            }
         }
     }
 }

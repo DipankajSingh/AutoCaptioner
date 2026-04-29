@@ -26,7 +26,7 @@ object DatabaseModule {
         context,
         AppDatabase::class.java,
         "autocaptioner.db"
-    ).addMigrations(AppDatabase.MIGRATION_4_5).build()
+    ).addMigrations(AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6).build()
 
     @Provides
     fun provideProjectDao(db: AppDatabase): ProjectDao = db.projectDao()
