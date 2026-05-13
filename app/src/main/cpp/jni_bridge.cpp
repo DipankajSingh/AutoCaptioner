@@ -13,7 +13,7 @@ static whisper_context * g_ctx = nullptr;
 extern "C" {
 
 JNIEXPORT jboolean JNICALL
-Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_loadModel(
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
         JNIEnv * env, jobject, jstring model_path_str) {
 
     if (g_ctx != nullptr) {
@@ -40,7 +40,7 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_loadModel(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribe(
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
         JNIEnv * env, jobject, jfloatArray audio_data, jstring lang_str, jint n_threads) {
 
     if (g_ctx == nullptr) {
@@ -85,7 +85,7 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribe(
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
         JNIEnv * env, jobject, jfloatArray audio_data, jstring lang_str, jint n_threads) {
 
     if (g_ctx == nullptr) {
@@ -170,12 +170,12 @@ Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamp
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_isModelLoaded(JNIEnv *, jobject) {
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_isModelLoaded(JNIEnv *, jobject) {
     return g_ctx != nullptr ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
-Java_com_dipdev_autocaptioner_core_whisper_WhisperEngine_freeModel(JNIEnv *, jobject) {
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_freeModel(JNIEnv *, jobject) {
 if (g_ctx != nullptr) {
 whisper_free(g_ctx);
 g_ctx = nullptr;

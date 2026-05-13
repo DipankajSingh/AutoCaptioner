@@ -1,0 +1,75 @@
+package com.dipdev.aiautocaptioner.ui.navigation
+
+// Sealed class = a closed set of types
+// Each object inside represents one screen/destination in the app
+// Using sealed class instead of plain strings means:
+// → typos are caught at compile time, not runtime
+// → IDE autocomplete works
+// → refactoring is safe
+
+sealed class Screen(val route: String) {
+
+    // ---- Onboarding flow ----
+    // These screens only appear on first launch
+
+
+    // 3-page welcome/intro screen
+    data object Onboarding : Screen("onboarding")
+
+    // Checks device RAM/CPU and recommends a model
+    data object DeviceCheck : Screen("device_check")
+
+    // Dedicated screen to download, switch, and delete models
+    data object ModelManager : Screen("model_manager")
+
+    // Downloads the selected Whisper model with progress
+    data object ModelDownload : Screen("model_download/{modelId}") {
+        // Helper function to build the route with actual modelId
+        // Usage: Screen.ModelDownload.createRoute("base.en")
+        // Result: "model_download/base.en"
+        fun createRoute(modelId: String) = "model_download/$modelId"
+    }
+
+    // ---- Main app flow ----
+
+    // Home screen — shows recent projects + import button
+    data object Home : Screen("home")
+
+    // About screen — displays T&C, Privacy Policy, Brand info
+    data object About : Screen("about")
+
+    // Processing screen — extract audio + transcribe
+    // Takes projectId as argument so it knows which project to process
+    data object Processing : Screen("processing/{projectId}") {
+        fun createRoute(projectId: String) = "processing/$projectId"
+    }
+
+    // Caption editor — fix words, adjust timing, mark emphasis
+    data object CaptionEditor : Screen("caption_editor/{projectId}") {
+        fun createRoute(projectId: String) = "caption_editor/$projectId"
+    }
+
+    // Style editor — font, color, animation settings
+    data object StyleEditor : Screen("style_editor/{projectId}") {
+        fun createRoute(projectId: String) = "style_editor/$projectId"
+    }
+
+    // Export — FFmpeg / Media3 burns captions into video
+    // Takes optional parameters to control export quality
+    data object Export : Screen("export/{projectId}?bitrate={bitrate}&fps={fps}&height={height}") {
+        fun createRoute(
+            projectId: String,
+            bitrate: Int? = null,
+            fps: Int? = null,
+            height: Int? = null
+        ): String {
+            val base = "export/$projectId"
+            val params = mutableListOf<String>()
+            if (bitrate != null) params.add("bitrate=$bitrate")
+            if (fps != null) params.add("fps=$fps")
+            if (height != null) params.add("height=$height")
+            
+            return if (params.isEmpty()) base else "$base?${params.joinToString("&")}"
+        }
+    }
+}
