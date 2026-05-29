@@ -37,6 +37,14 @@ sealed class Screen(val route: String) {
 
     // About screen — displays T&C, Privacy Policy, Brand info
     data object About : Screen("about")
+    
+    // Settings screen — app appearance
+    data object Settings : Screen("settings")
+    
+    // Export History — view previous exports for a project
+    data object ExportHistory : Screen("export_history/{projectId}") {
+        fun createRoute(projectId: String) = "export_history/$projectId"
+    }
 
     // Processing screen — extract audio + transcribe
     // Takes projectId as argument so it knows which project to process

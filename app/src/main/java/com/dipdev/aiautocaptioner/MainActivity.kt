@@ -38,7 +38,13 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            AutoCaptionerTheme {
+            val appTheme by mainViewModel.appTheme.collectAsState()
+            val glassmorphismEnabled by mainViewModel.isGlassmorphismEnabled.collectAsState()
+
+            AutoCaptionerTheme(
+                appTheme = appTheme,
+                glassmorphismEnabled = glassmorphismEnabled
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

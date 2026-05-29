@@ -12,7 +12,9 @@ import com.dipdev.aiautocaptioner.data.db.dao.ProjectDao
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
+import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
+import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 
 // @Database tells Room: "this class is the main database definition"
 // entities = all tables in this database
@@ -26,9 +28,10 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
         ProjectEntity::class,
         CaptionSegmentEntity::class,
         CaptionWordEntity::class,
-        CaptionStyleEntity::class
+        CaptionStyleEntity::class,
+        ExportedFileEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
     autoMigrations = []
 )
@@ -46,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun captionSegmentDao(): CaptionSegmentDao
     abstract fun captionWordDao(): CaptionWordDao
     abstract fun captionStyleDao(): CaptionStyleDao
+    abstract fun exportedFileDao(): ExportedFileDao
 
     companion object {
         /** Add exportedVideoPath column (nullable, default NULL) */
@@ -59,6 +63,26 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE projects ADD COLUMN transcriptionLanguage TEXT DEFAULT 'en'")
+            }
+        }
+
+        /** Add transcribedWithModelId and exported_files table */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE projects ADD COLUMN transcribedWithModelId TEXT")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `exported_files` (
+                        `id` TEXT NOT NULL,
+                        `projectId` TEXT NOT NULL,
+                        `videoFilePath` TEXT,
+                        `srtFilePath` TEXT,
+                        `exportedAt` INTEGER NOT NULL,
+                        `quality` TEXT,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`projectId`) REFERENCES `projects`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_exported_files_projectId` ON `exported_files` (`projectId`)")
             }
         }
     }

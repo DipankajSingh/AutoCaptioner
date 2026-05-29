@@ -1,6 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,7 +20,9 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProcessingScreen(
     projectId: String,
@@ -28,6 +32,8 @@ fun ProcessingScreen(
 ) {
     val step by viewModel.step.collectAsState()
     val selectedLanguage by viewModel.selectedLanguage.collectAsState()
+    val activeModel by viewModel.activeModel.collectAsState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(projectId) {
         viewModel.prepareForProject(projectId)
@@ -70,9 +76,56 @@ fun ProcessingScreen(
 
                 // Language selector
                 LanguageDropdown(
-                    selectedLanguage  = selectedLanguage,
-                    onLanguageSelected = { viewModel.selectLanguage(it) }
+                    selectedLanguage   = selectedLanguage,
+                    onLanguageSelected = { viewModel.selectLanguage(it) },
+                    isMultilingual     = activeModel?.isMultilingual ?: true
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                val tooltipStateTrim = rememberTooltipState()
+                val tooltipStatePolish = rememberTooltipState()
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = { PlainTooltip { Text("Video trimming is coming in a future update") } },
+                        state = tooltipStateTrim
+                    ) {
+                        OutlinedButton(
+                            onClick = { scope.launch { tooltipStateTrim.show() } },
+                            shape = RoundedCornerShape(4.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                            )
+                        ) {
+                            Text("Trim Video")
+                        }
+                    }
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = { PlainTooltip { Text("Audio polishing is coming in a future update") } },
+                        state = tooltipStatePolish
+                    ) {
+                        OutlinedButton(
+                            onClick = { scope.launch { tooltipStatePolish.show() } },
+                            shape = RoundedCornerShape(4.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                            )
+                        ) {
+                            Text("Polish Audio")
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
@@ -115,12 +168,26 @@ fun ProcessingScreen(
                 ) { Text("Cancel", maxLines = 1) }
             }
 
+            // ── Loading Model ────────────────────────────────────────────
+            is ProcessingStep.LoadingModel -> {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Loading AI Model", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Loading Whisper model into memory...",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+            }
+
             // ── Transcribing ─────────────────────────────────────────────
             is ProcessingStep.Transcribing -> {
+                val rawProgress = current.progress
                 val animatedProgress by animateFloatAsState(
-                    targetValue = current.progress,
-                    animationSpec = androidx.compose.animation.core.tween(400),
-                    label = "transcription_progress"
+                    targetValue    = rawProgress,
+                    animationSpec  = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+                    label          = "transcriptionProgress"
                 )
                 LinearProgressIndicator(
                     progress = { animatedProgress },
@@ -170,6 +237,19 @@ fun ProcessingScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Captions Ready!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // ── Cancelling ───────────────────────────────────────────────
+            is ProcessingStep.Cancelling -> {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Cancelling", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Stopping AI processing...",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
             }
 
             // ── Cancelled ────────────────────────────────────────────────

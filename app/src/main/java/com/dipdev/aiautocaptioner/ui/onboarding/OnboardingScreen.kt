@@ -1,5 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.onboarding
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -40,22 +43,22 @@ import kotlinx.coroutines.launch
 import androidx.core.net.toUri
 
 data class OnboardingPage(
-    val title: String,
-    val description: String
+    @StringRes val titleRes: Int,
+    @StringRes val descriptionRes: Int
 )
 
 val pages = listOf(
     OnboardingPage(
-        title = "Lightning Fast.\n100% Private.",
-        description = "Generate accurate captions completely on your device. No servers, no waiting."
+        titleRes = R.string.onboarding_title_1,
+        descriptionRes = R.string.onboarding_desc_1
     ),
     OnboardingPage(
-        title = "Style It\nYour Way.",
-        description = "Edit text, fonts, colors, and animations to make your videos pop."
+        titleRes = R.string.onboarding_title_2,
+        descriptionRes = R.string.onboarding_desc_2
     ),
     OnboardingPage(
-        title = "Ready for\nSocials.",
-        description = "Export your auto-captioned videos in seconds, ready for TikTok, Reels, or Shorts."
+        titleRes = R.string.onboarding_title_3,
+        descriptionRes = R.string.onboarding_desc_3
     )
 )
 
@@ -88,7 +91,7 @@ fun OnboardingScreen(
                     }
                 ) {
                     Text(
-                        text = "Skip",
+                        text = stringResource(R.string.onboarding_skip),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                         fontWeight = FontWeight.Medium
                     )
@@ -115,8 +118,13 @@ fun OnboardingScreen(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
+            val legalPrefix = stringResource(R.string.onboarding_legal_prefix)
+            val termsConditions = stringResource(R.string.onboarding_terms_conditions)
+            val legalAnd = stringResource(R.string.onboarding_legal_and)
+            val privacyPolicy = stringResource(R.string.onboarding_privacy_policy)
+
             val annotatedString = buildAnnotatedString {
-                append("By clicking Get Started, you agree to our\n")
+                append(legalPrefix)
                 pushLink(LinkAnnotation.Clickable(
                     tag = "TERMS",
                     linkInteractionListener = {
@@ -128,9 +136,9 @@ fun OnboardingScreen(
                         )
                     }
                 ))
-                withStyle(linkStyle) { append("Terms & Conditions") }
+                withStyle(linkStyle) { append(termsConditions) }
                 pop()
-                append(" and ")
+                append(legalAnd)
                 pushLink(LinkAnnotation.Clickable(
                     tag = "PRIVACY",
                     linkInteractionListener = {
@@ -142,7 +150,7 @@ fun OnboardingScreen(
                         )
                     }
                 ))
-                withStyle(linkStyle) { append("Privacy Policy") }
+                withStyle(linkStyle) { append(privacyPolicy) }
                 pop()
             }
 
@@ -198,12 +206,12 @@ fun OnboardingScreen(
                         }
                     }
                 },
-                shape = RoundedCornerShape(4.dp), // Flat shape
-                elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp), // No elevation
+                shape = RoundedCornerShape(24.dp), // Pill shape for premium feel
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(
-                    text = if (pagerState.currentPage == pages.size - 1) "Get Started" else "Next",
+                    text = if (pagerState.currentPage == pages.size - 1) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_next),
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -224,7 +232,7 @@ fun PagerScreen(onBoardingPage: OnboardingPage) {
     ) {
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = onBoardingPage.title,
+            text = stringResource(onBoardingPage.titleRes),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 40.sp,
@@ -234,7 +242,7 @@ fun PagerScreen(onBoardingPage: OnboardingPage) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = onBoardingPage.description,
+            text = stringResource(onBoardingPage.descriptionRes),
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             textAlign = TextAlign.Start,

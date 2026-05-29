@@ -10,8 +10,12 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.io.File
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -145,6 +149,36 @@ class CaptionEditorViewModel @Inject constructor(
 
     fun retranscribeHandled() {
         _retranscribeRequested.value = false
+    }
+
+    fun shareSrt(projectId: String, context: Context) {
+        viewModelScope.launch {
+            val segmentsList = captionRepository.getSegmentsOnce(projectId)
+            val sb = java.lang.StringBuilder()
+            segmentsList.forEachIndexed { index, segment ->
+                sb.append(index + 1).append("\n")
+                sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
+                sb.append(segment.text).append("\n\n")
+            }
+            val srtFile = File(context.cacheDir, "captions_$projectId.srt")
+            srtFile.writeText(sb.toString())
+
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", srtFile)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-subrip"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Share SRT"))
+        }
+    }
+
+    private fun formatSrtTime(timeMs: Long): String {
+        val hours = timeMs / 3600000
+        val minutes = (timeMs % 3600000) / 60000
+        val seconds = (timeMs % 60000) / 1000
+        val millis = timeMs % 1000
+        return String.format("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
     }
 
     override fun onCleared() {

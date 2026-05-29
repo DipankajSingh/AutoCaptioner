@@ -1,6 +1,10 @@
 package com.dipdev.aiautocaptioner.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,6 +18,7 @@ import com.dipdev.aiautocaptioner.ui.home.HomeScreen
 import com.dipdev.aiautocaptioner.ui.modeldownload.ModelDownloadScreen
 import com.dipdev.aiautocaptioner.ui.onboarding.OnboardingScreen
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
+import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorScreen
 
 @Composable
@@ -79,6 +84,9 @@ fun NavGraph(
                 },
                 onNavigateToAbout = {
                     navController.navigate(Screen.About.route)
+                },
+                onNavigateToSettings = { // Pass to settings if HomeScreen supports it, or handle it via a top bar
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -88,11 +96,30 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+        
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
 
         composable(Screen.ModelManager.route) {
             com.dipdev.aiautocaptioner.ui.modelmanager.ModelManagerScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+        
+        composable(
+            route = Screen.ExportHistory.route,
+            arguments = listOf(
+                navArgument("projectId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            // Temporary stub for Export History until EditorFlowSubagent implements it
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Export History for Project: $projectId")
+            }
         }
 
         composable(
@@ -105,7 +132,7 @@ fun NavGraph(
             ProcessingScreen(
                 projectId = projectId,
                 onDone = {
-                    navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
+                    navController.navigate(Screen.CaptionEditor.createRoute(projectId)) {
                         popUpTo(Screen.Processing.route) { inclusive = true }
                     }
                 },

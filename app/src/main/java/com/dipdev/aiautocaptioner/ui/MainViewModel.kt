@@ -2,26 +2,43 @@ package com.dipdev.aiautocaptioner.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val modelRepository: ModelRepository,
-    private val captionRepository: CaptionRepository
+    private val captionRepository: CaptionRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     // null = still deciding (show spinner)
     // non-null = decision made, navigate immediately
     private val _startDestination = MutableStateFlow<String?>(null)
     val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
+
+    val appTheme: StateFlow<AppTheme> = settingsRepository.themeFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = AppTheme.EMERALD
+    )
+
+    val isGlassmorphismEnabled: StateFlow<Boolean> = settingsRepository.glassmorphismFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
 
     init {
         decideStartDestination()

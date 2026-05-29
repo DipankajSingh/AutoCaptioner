@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.modelmanager
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -81,13 +82,17 @@ private fun ModelCard(
     onSetActive: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val containerColor by animateColorAsState(
+        targetValue = if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+                      else MaterialTheme.colorScheme.surfaceVariant,
+        animationSpec = tween(300),
+        label = "color_anim"
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-                             else MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header Row

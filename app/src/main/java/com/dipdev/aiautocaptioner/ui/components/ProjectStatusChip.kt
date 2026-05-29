@@ -27,7 +27,7 @@ fun ProjectStatusChip(status: ProjectStatus) {
     }
     Surface(
         color        = color.copy(alpha = 0.15f),
-        shape        = RoundedCornerShape(4.dp), // Sharper corners
+        shape        = RoundedCornerShape(12.dp), // More rounded corners
         shadowElevation = 0.dp,
         tonalElevation = 0.dp
     ) {

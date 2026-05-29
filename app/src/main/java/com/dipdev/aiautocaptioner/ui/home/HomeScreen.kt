@@ -63,8 +63,10 @@ fun HomeScreen(
     onNavigateToEditor: (String) -> Unit,
     onNavigateToModelManager: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
+
     val projects by viewModel.projects.collectAsState()
     val activeModel by viewModel.activeModel.collectAsState()
     val importState by viewModel.importState.collectAsState()
@@ -123,7 +125,7 @@ fun HomeScreen(
                         }
                     }
                     
-                    androidx.compose.material3.IconButton(onClick = onNavigateToAbout) {
+                    androidx.compose.material3.IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.Settings,
                             contentDescription = "Settings",
@@ -137,11 +139,15 @@ fun HomeScreen(
             if(projects.isNotEmpty()){
                 ExtendedFloatingActionButton(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     onClick = { videoPicker.launch("video/*") },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Import Video") },
-                    shape = RoundedCornerShape(4.dp), // Flattened shape
-                    elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp) // Removed elevation
+                    text = { Text("Import New Video", fontWeight = FontWeight.Bold) },
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 4.dp
+                    )
                 )
             }
         }

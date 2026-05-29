@@ -27,18 +27,32 @@ private val LANGUAGES = listOf(
 /**
  * A labelled dropdown for selecting a Whisper language code.
  *
- * @param selectedLanguage  Currently selected language code (e.g. "en").
+ * @param selectedLanguage   Currently selected language code (e.g. "en").
  * @param onLanguageSelected Called with the new code when the user picks one.
- * @param modifier          Applied to the outer [Column].
+ * @param isMultilingual     When false (English-only model), only "English" is shown
+ *                           and the selection is forced to "en".
+ * @param modifier           Applied to the outer [Column].
  */
 @Composable
 fun LanguageDropdown(
     selectedLanguage: String,
     onLanguageSelected: (String) -> Unit,
+    isMultilingual: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    // When an English-only model is active, force the selection to "en"
+    LaunchedEffect(isMultilingual) {
+        if (!isMultilingual && selectedLanguage != "en") {
+            onLanguageSelected("en")
+        }
+    }
+
+    val visibleLanguages = if (isMultilingual) LANGUAGES else LANGUAGES.filter { it.first == "en" }
+
     var expanded by remember { mutableStateOf(false) }
-    val displayName = LANGUAGES.find { it.first == selectedLanguage }?.second ?: selectedLanguage
+    val displayName = visibleLanguages.find { it.first == selectedLanguage }?.second
+        ?: LANGUAGES.find { it.first == selectedLanguage }?.second
+        ?: selectedLanguage
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -49,9 +63,10 @@ fun LanguageDropdown(
         )
         Box {
             OutlinedButton(
-                onClick  = { expanded = true },
+                onClick  = { if (isMultilingual) expanded = true },
                 modifier = Modifier.fillMaxWidth(),
-                shape    = RoundedCornerShape(10.dp)
+                shape    = RoundedCornerShape(10.dp),
+                enabled  = isMultilingual
             ) {
                 Text(displayName, modifier = Modifier.weight(1f))
                 Text("▾", fontSize = 14.sp)
@@ -60,7 +75,7 @@ fun LanguageDropdown(
                 expanded          = expanded,
                 onDismissRequest  = { expanded = false }
             ) {
-                LANGUAGES.forEach { (code, name) ->
+                visibleLanguages.forEach { (code, name) ->
                     DropdownMenuItem(
                         text = { Text(name) },
                         onClick = { onLanguageSelected(code); expanded = false },
@@ -77,6 +92,16 @@ fun LanguageDropdown(
                     )
                 }
             }
+        }
+
+        // Helper text shown only for English-only models
+        if (!isMultilingual) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text     = "English-only model active",
+                fontSize = 11.sp,
+                color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
         }
     }
 }

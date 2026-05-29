@@ -15,32 +15,32 @@ val provider = GoogleFont.Provider(
     certificates = R.array.com_google_android_gms_fonts_certs_prod
 )
 
-val PlusJakartaSansFont = GoogleFont("Plus Jakarta Sans")
+val OutfitFont = GoogleFont("Outfit")
 
-val PlusJakartaSansFamily = FontFamily(
-    Font(googleFont = PlusJakartaSansFont, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = PlusJakartaSansFont, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = PlusJakartaSansFont, fontProvider = provider, weight = FontWeight.SemiBold),
-    Font(googleFont = PlusJakartaSansFont, fontProvider = provider, weight = FontWeight.Bold)
+val AppFontFamily = FontFamily(
+    Font(googleFont = OutfitFont, fontProvider = provider, weight = FontWeight.Normal),
+    Font(googleFont = OutfitFont, fontProvider = provider, weight = FontWeight.Medium),
+    Font(googleFont = OutfitFont, fontProvider = provider, weight = FontWeight.SemiBold),
+    Font(googleFont = OutfitFont, fontProvider = provider, weight = FontWeight.Bold)
 )
 
 val Typography = Typography(
     bodyLarge = TextStyle(
-        fontFamily = PlusJakartaSansFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = PlusJakartaSansFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
         letterSpacing = 0.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = PlusJakartaSansFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,

@@ -55,9 +55,8 @@ object CaptionRenderer {
         val totalH = lines.size * lineH + padY * 2f
         val startY = (videoHeight * style.positionY) - totalH / 2f
 
-        val layout = object {
-            val startY = startY
-            val lines = lines.map { words ->
+        val lineLayouts: List<Triple<List<CaptionAnimator.TimedWord>, Float, Float>> =
+            lines.map { words ->
                 val lineW = words.sumOf { w ->
                     (CaptionPaints.text.measureText(sanitize(w.text, style)) + spaceW).toDouble()
                 }.toFloat() - spaceW
@@ -66,23 +65,23 @@ object CaptionRenderer {
                     TextAlignment.START  -> videoWidth * 0.08f
                     TextAlignment.END    -> videoWidth * 0.92f - lineW
                 }
-                object { val words = words; val startX = x; val width = lineW }
+                Triple(words, x, lineW)
             }
-        }
+
 
         // Pass 1: Background pill, Outlines, Shadows
-        var lineY_P1 = layout.startY
-        for (line in layout.lines) {
-            var x = line.startX
+        var lineY_P1 = startY
+        for ((lineWords, lineStartX, lineWidth) in lineLayouts) {
+            var x = lineStartX
             val lineTop = lineY_P1 + fm.top
             val lineBot = lineY_P1 + fm.bottom
-            drawLineBackground(canvas, style, x, line.width, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
+            drawLineBackground(canvas, style, x, lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
 
-            for (w in line.words) {
+            for (w in lineWords) {
                 val txt = sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
                 val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
-                
+
                 // Draw per-word background pill
                 if (style.backgroundOpacity > 0f && style.backgroundType == BackgroundType.PER_WORD) {
                     val wr = RectF(x - padX / 2f, lineTop - padY, x + wordW + padX / 2f, lineBot + padY)
@@ -105,12 +104,12 @@ object CaptionRenderer {
         CaptionPaints.outline.clearShadowLayer()
 
         // Pass 2: Text Fills and Overlays
-        var lineY_P2 = layout.startY
-        for (line in layout.lines) {
-            var x = line.startX
+        var lineY_P2 = startY
+        for ((lineWords, lineStartX, _) in lineLayouts) {
+            var x = lineStartX
             val lineTop = lineY_P2 + fm.top
             val lineBot = lineY_P2 + fm.bottom
-            for (w in line.words) {
+            for (w in lineWords) {
                 val txt = sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
                 val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)

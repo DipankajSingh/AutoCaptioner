@@ -4,4 +4,8 @@
     <external-files-path name="exported_videos" path="Movies/" />
     <!-- Also cover internal files if needed -->
     <files-path name="internal_files" path="." />
+    <!-- SRT files are written to cacheDir before sharing -->
+    <cache-path name="srt_cache" path="." />
+    <!-- Additional fallback for cache just in case -->
+    <external-cache-path name="external_cache" path="." />
 </paths>

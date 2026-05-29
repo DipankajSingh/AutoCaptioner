@@ -80,7 +80,10 @@ data class ProjectEntity(
     // Language code used for transcription — "en", "hi", "auto", etc.
     // Null means not yet set, defaults to "en" in the processing flow.
     // Stored so re-transcription uses the same language automatically.
-    val transcriptionLanguage: String? = "en"
+    val transcriptionLanguage: String? = "en",
+
+    // Tracks which model generated the current captions
+    val transcribedWithModelId: String? = null
 )
 
 // Represents where the project is in the processing pipeline

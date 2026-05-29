@@ -153,8 +153,22 @@ class ModelRepository @Inject constructor(
         Log.i(TAG, "Starting download: ${model.displayName}")
 
         try {
-            val request = Request.Builder().url(model.downloadUrl).build()
-            val response = httpClient.newCall(request).execute()
+            val tempFile = File(outputFile.parent, "${outputFile.name}.tmp")
+            var downloadedBytes = if (tempFile.exists()) tempFile.length() else 0L
+
+            var request = Request.Builder().url(model.downloadUrl)
+            if (downloadedBytes > 0) {
+                request.header("Range", "bytes=$downloadedBytes-")
+            }
+
+            var response = httpClient.newCall(request.build()).execute()
+
+            if (response.code == 416) {
+                tempFile.delete()
+                downloadedBytes = 0L
+                request = Request.Builder().url(model.downloadUrl)
+                response = httpClient.newCall(request.build()).execute()
+            }
 
             if (!response.isSuccessful) {
                 emit(DownloadState.Error("Download failed: ${response.code}"))
@@ -166,14 +180,26 @@ class ModelRepository @Inject constructor(
                 return@flow
             }
 
-            val totalBytes = body.contentLength()
-            val tempFile = File(outputFile.parent, "${outputFile.name}.tmp")
+            val isPartial = response.code == 206
+            if (!isPartial && downloadedBytes > 0) {
+                downloadedBytes = 0L
+            }
 
-            var downloadedBytes = 0L
+            val totalBytes = if (isPartial) {
+                val contentRange = response.header("Content-Range")
+                if (contentRange != null && contentRange.contains("/")) {
+                    contentRange.substringAfterLast("/").toLongOrNull() ?: (downloadedBytes + body.contentLength())
+                } else {
+                    downloadedBytes + body.contentLength()
+                }
+            } else {
+                body.contentLength()
+            }
+
             var lastProgressEmit = 0
 
             body.byteStream().use { input ->
-                tempFile.outputStream().use { output ->
+                java.io.FileOutputStream(tempFile, isPartial).use { output ->
                     val buffer = ByteArray(8192)
                     var bytesRead: Int
                     while (input.read(buffer).also { bytesRead = it } != -1) {
@@ -195,7 +221,11 @@ class ModelRepository @Inject constructor(
                 }
             }
 
-            tempFile.renameTo(outputFile)
+            if (!tempFile.renameTo(outputFile)) {
+                emit(DownloadState.Error("Failed to rename temporary file"))
+                return@flow
+            }
+            
             setActiveModel(modelId)
 
             Log.i(TAG, "Download complete: ${outputFile.absolutePath}")
@@ -203,7 +233,6 @@ class ModelRepository @Inject constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "Download error", e)
-            File(outputFile.parent, "${outputFile.name}.tmp").delete()
             emit(DownloadState.Error(e.message ?: "Unknown error"))
         }
 // flowOn moves the entire flow execution to IO thread

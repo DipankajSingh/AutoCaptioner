@@ -15,15 +15,19 @@ import com.dipdev.aiautocaptioner.data.repository.TranscriptionSegment
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionWord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
@@ -33,9 +37,11 @@ sealed class ProcessingStep {
     data object Idle : ProcessingStep()
     data object Ready : ProcessingStep()
     data object ExtractingAudio : ProcessingStep()
+    data object LoadingModel : ProcessingStep()
     data class Transcribing(val progress: Float = 0f) : ProcessingStep()
     data object Saving : ProcessingStep()
     data object Done : ProcessingStep()
+    data object Cancelling : ProcessingStep()
     data object Cancelled : ProcessingStep()
     data class Error(val message: String) : ProcessingStep()
 }
@@ -56,7 +62,16 @@ class ProcessingViewModel @Inject constructor(
     private val _selectedLanguage = MutableStateFlow("en")
     val selectedLanguage: StateFlow<String> = _selectedLanguage.asStateFlow()
 
+    /** The currently active Whisper model — used by the UI to check isMultilingual. */
+    val activeModel: StateFlow<WhisperModel?> = modelRepository.getActiveModel()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null
+        )
+
     private var activeJob: Job? = null
+    @Volatile private var isCancelled = false
 
     /** Move to the Ready state so the screen shows a Start button */
     fun prepareForProject(projectId: String) {
@@ -78,13 +93,19 @@ class ProcessingViewModel @Inject constructor(
     }
 
     fun cancel() {
+        isCancelled = true          // Set BEFORE cancelling the job to close the race window
+        _step.value = ProcessingStep.Cancelling
         activeJob?.cancel()
         activeJob = null
-        _step.value = ProcessingStep.Cancelled
+        viewModelScope.launch {
+            whisperEngine.release()
+            _step.value = ProcessingStep.Cancelled
+        }
     }
 
     fun startProcessing(projectId: String) {
         if (activeJob?.isActive == true) return
+        isCancelled = false         // Reset flag for each fresh processing run
         _step.value = ProcessingStep.ExtractingAudio
         val language = _selectedLanguage.value
 
@@ -116,6 +137,7 @@ class ProcessingViewModel @Inject constructor(
                 )
 
                 // Step 3 — Load model if needed
+                _step.value = ProcessingStep.LoadingModel
                 val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
                     modelRepository.getModelFile(model.id)
                 }
@@ -133,41 +155,26 @@ class ProcessingViewModel @Inject constructor(
                     }
                 }
 
-                // Step 4 — Transcribe in 30-second chunks for real progress reporting
+                // Step 4 — Transcribe using full audio with JNI progress callback
                 _step.value = ProcessingStep.Transcribing(0f)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
                 val pcmSamples = readAudioAsPcm(audioFile)
 
-                // Whisper operates at 16kHz → 30 seconds = 480,000 samples
-                val chunkSizeSamples = 16_000 * 30
-                val totalChunks = (pcmSamples.size + chunkSizeSamples - 1) / chunkSizeSamples
-                val allWords = mutableListOf<WordTimestamp>()
+                val allWords = whisperEngine.transcribeWithWordTimestamps(
+                    samples = pcmSamples,
+                    language = language,
+                    onProgress = { percent ->
+                        _step.value = ProcessingStep.Transcribing(percent / 100f)
+                    }
+                )
 
-                for (chunkIndex in 0 until totalChunks) {
-                    val chunkStart = chunkIndex * chunkSizeSamples
-                    val chunkEnd = minOf(chunkStart + chunkSizeSamples, pcmSamples.size)
-                    val chunkSamples = pcmSamples.copyOfRange(chunkStart, chunkEnd)
-
-                    val timeOffsetMs = (chunkStart / 16_000L) * 1000L
-
-                    val chunkWords = whisperEngine.transcribeWithWordTimestamps(
-                        samples = chunkSamples,
-                        language = language
-                    )
-
-                    allWords.addAll(chunkWords.map { word ->
-                        word.copy(
-                            startTimeMs = word.startTimeMs + timeOffsetMs,
-                            endTimeMs = word.endTimeMs + timeOffsetMs
-                        )
-                    })
-
-                    _step.value = ProcessingStep.Transcribing((chunkIndex + 1).toFloat() / totalChunks)
-                }
+                // Guard: if cancel() fired while JNI was running, discard the result
+                if (isCancelled) return@launch
 
                 if (allWords.isEmpty()) {
                     _step.value = ProcessingStep.Error("No words transcribed")
+                    whisperEngine.release()
                     return@launch
                 }
 
@@ -182,12 +189,14 @@ class ProcessingViewModel @Inject constructor(
                 captionRepository.saveTranscription(projectId, segments)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBED)
 
+                whisperEngine.release()
                 _step.value = ProcessingStep.Done
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 android.util.Log.i("Processing", "Transcription cancelled")
             } catch (e: Exception) {
                 android.util.Log.e("Processing", "Error: ${e.message}", e)
+                whisperEngine.release()
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
             }
         }
@@ -222,31 +231,55 @@ class ProcessingViewModel @Inject constructor(
             )
 
             val muxerTrackIndex = muxer.addTrack(audioFormat!!)
-            muxer.start()
+            var muxerStarted = false
+            var samplesWritten = 0
 
-            val buffer = ByteBuffer.allocate(1024 * 1024)
-            val bufferInfo = android.media.MediaCodec.BufferInfo()
+            try {
+                muxer.start()
+                muxerStarted = true
 
-            while (true) {
-                bufferInfo.offset = 0
-                bufferInfo.size = extractor.readSampleData(buffer, 0)
-                if (bufferInfo.size < 0) break
+                val buffer = ByteBuffer.allocate(1024 * 1024)
+                val bufferInfo = android.media.MediaCodec.BufferInfo()
 
-                bufferInfo.presentationTimeUs = extractor.sampleTime
-                bufferInfo.flags = when {
-                    extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0 ->
-                        android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
-                    else -> 0
+                while (true) {
+                    bufferInfo.offset = 0
+                    bufferInfo.size = extractor.readSampleData(buffer, 0)
+                    if (bufferInfo.size < 0) break
+
+                    bufferInfo.presentationTimeUs = extractor.sampleTime
+                    bufferInfo.flags = when {
+                        extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0 ->
+                            android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
+                        else -> 0
+                    }
+                    muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
+                    samplesWritten++
+                    extractor.advance()
                 }
-                muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
-                extractor.advance()
+
+                if (samplesWritten > 0) {
+                    muxer.stop()
+                } else {
+                    // Calling stop() on a muxer with zero samples causes MPEG4Writer to crash.
+                    // Release without stop and surface a meaningful error instead.
+                    muxer.release()
+                    throw Exception("Audio track contained no samples")
+                }
+                muxer.release()
+            } catch (e: Exception) {
+                // Ensure the muxer is properly torn down on any unexpected failure.
+                if (muxerStarted && samplesWritten > 0) {
+                    try { muxer.stop() } catch (_: Exception) {}
+                }
+                muxer.release()
+                throw e
+            } finally {
+                extractor.release()
             }
 
-            muxer.stop()
-            muxer.release()
-            extractor.release()
-
-            tempFile.renameTo(outputFile)
+            if (!tempFile.renameTo(outputFile)) {
+                throw IOException("Failed to rename audio temp file")
+            }
         }
     }
 
@@ -416,5 +449,13 @@ class ProcessingViewModel @Inject constructor(
             }
         }
         return result
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        activeJob?.cancel()
+        viewModelScope.launch {
+            whisperEngine.release()
+        }
     }
 }

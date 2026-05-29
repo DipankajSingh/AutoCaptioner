@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -52,6 +53,8 @@ fun CaptionEditorScreen(
             onNavigateToProcessing(projectId)
         }
     }
+
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -92,7 +95,14 @@ fun CaptionEditorScreen(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(4.dp)
                 ) {
-                    Text("Style", maxLines = 1)
+                    Text("Style Presets", maxLines = 1)
+                }
+                Button(
+                    onClick = { viewModel.shareSrt(projectId, context) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("Export SRT", maxLines = 1)
                 }
             }
         }

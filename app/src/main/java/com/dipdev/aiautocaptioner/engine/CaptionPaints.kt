@@ -27,6 +27,14 @@ object CaptionPaints {
     /** Karaoke highlight fill (FILL_LEFT_RIGHT, BACKGROUND_HIGHLIGHT) */
     val highlight = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    // Typeface cache — avoids allocating new Typeface objects on every draw().
+    // At 60fps with a complex style this saves ~120 allocations/sec and
+    // eliminates the GC pressure that causes jank in the style editor preview.
+    private var cachedTypeface: Typeface? = null
+    private var cachedFontFamily: String = ""
+    private var cachedFontWeight: Int = -1
+    private var cachedItalic: Boolean = false
+
     /**
      * Synchronise all paints to [style].
      * Must be called once at the top of every [CaptionRenderer.draw] invocation,
@@ -81,6 +89,13 @@ object CaptionPaints {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun resolveTypeface(style: CaptionStyleEntity): Typeface {
+        // Only recompute if style fields affecting typeface have changed.
+        if (cachedTypeface != null &&
+            cachedFontFamily == style.fontFamily &&
+            cachedFontWeight == style.fontWeight &&
+            cachedItalic == style.isItalic) {
+            return cachedTypeface!!
+        }
         val base = if (style.fontFamily == "System") Typeface.DEFAULT
                    else Typeface.create(style.fontFamily, Typeface.NORMAL)
         val tsStyle = when {
@@ -89,6 +104,11 @@ object CaptionPaints {
             style.isItalic                           -> Typeface.ITALIC
             else                                     -> Typeface.NORMAL
         }
-        return Typeface.create(base, tsStyle)
+        val tf = Typeface.create(base, tsStyle)
+        cachedTypeface  = tf
+        cachedFontFamily = style.fontFamily
+        cachedFontWeight = style.fontWeight
+        cachedItalic    = style.isItalic
+        return tf
     }
 }
