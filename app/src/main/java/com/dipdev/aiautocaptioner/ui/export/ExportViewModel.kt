@@ -63,6 +63,9 @@ class ExportViewModel @Inject constructor(
     private val _outputPath = MutableStateFlow<String?>(null)
     val outputPath: StateFlow<String?> = _outputPath.asStateFlow()
 
+    private val _workingVideoPath = MutableStateFlow<String?>(null)
+    val workingVideoPath: StateFlow<String?> = _workingVideoPath.asStateFlow()
+
     private var activeTransformer: Transformer? = null
 
     /**
@@ -73,6 +76,7 @@ class ExportViewModel @Inject constructor(
     fun prepareExport(projectId: String) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
+            _workingVideoPath.value = project?.workingVideoPath
             val existingPath = project?.exportedVideoPath
             if (existingPath != null && File(existingPath).exists()) {
                 _outputPath.value = existingPath

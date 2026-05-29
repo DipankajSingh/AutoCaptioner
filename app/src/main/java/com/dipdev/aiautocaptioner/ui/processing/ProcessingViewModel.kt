@@ -62,6 +62,9 @@ class ProcessingViewModel @Inject constructor(
     private val _selectedLanguage = MutableStateFlow("en")
     val selectedLanguage: StateFlow<String> = _selectedLanguage.asStateFlow()
 
+    private val _workingVideoPath = MutableStateFlow<String?>(null)
+    val workingVideoPath: StateFlow<String?> = _workingVideoPath.asStateFlow()
+
     /** The currently active Whisper model — used by the UI to check isMultilingual. */
     val activeModel: StateFlow<WhisperModel?> = modelRepository.getActiveModel()
         .stateIn(
@@ -77,6 +80,7 @@ class ProcessingViewModel @Inject constructor(
     fun prepareForProject(projectId: String) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
+            _workingVideoPath.value = project?.workingVideoPath
             // Restore the language saved from last transcription
             _selectedLanguage.value = project?.transcriptionLanguage ?: "en"
 

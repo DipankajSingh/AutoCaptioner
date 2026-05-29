@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
+import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,6 +34,7 @@ fun ProcessingScreen(
     val step by viewModel.step.collectAsState()
     val selectedLanguage by viewModel.selectedLanguage.collectAsState()
     val activeModel by viewModel.activeModel.collectAsState()
+    val workingVideoPath by viewModel.workingVideoPath.collectAsState()
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(projectId) {
@@ -60,19 +62,31 @@ fun ProcessingScreen(
             // ── Ready: user selects language and taps Start ─────────────
             is ProcessingStep.Idle,
             is ProcessingStep.Ready -> {
+                
+                workingVideoPath?.let { path ->
+                    VideoPlayerCard(
+                        path = path,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f) // Takes up remaining space
+                            .padding(bottom = 16.dp)
+                    )
+                }
+
                 Text(
                     text = "Ready to Transcribe",
-                    fontSize = 24.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "The AI will analyse your video and generate\nword-level captions with timestamps.",
+                    text = "Verify the video above and select language.",
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
-                    lineHeight = 22.sp
+                    lineHeight = 18.sp,
+                    fontSize = 14.sp
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Language selector
                 LanguageDropdown(

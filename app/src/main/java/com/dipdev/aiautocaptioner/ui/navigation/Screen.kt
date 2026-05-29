@@ -63,21 +63,9 @@ sealed class Screen(val route: String) {
     }
 
     // Export — FFmpeg / Media3 burns captions into video
-    // Takes optional parameters to control export quality
-    data object Export : Screen("export/{projectId}?bitrate={bitrate}&fps={fps}&height={height}") {
-        fun createRoute(
-            projectId: String,
-            bitrate: Int? = null,
-            fps: Int? = null,
-            height: Int? = null
-        ): String {
-            val base = "export/$projectId"
-            val params = mutableListOf<String>()
-            if (bitrate != null) params.add("bitrate=$bitrate")
-            if (fps != null) params.add("fps=$fps")
-            if (height != null) params.add("height=$height")
-            
-            return if (params.isEmpty()) base else "$base?${params.joinToString("&")}"
+    data object Export : Screen("export/{projectId}") {
+        fun createRoute(projectId: String): String {
+            return "export/$projectId"
         }
     }
 }

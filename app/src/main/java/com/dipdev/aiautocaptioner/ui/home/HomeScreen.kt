@@ -41,6 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +58,11 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
+import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.google.firebase.Firebase
+import com.google.firebase.remoteconfig.remoteConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +78,8 @@ fun HomeScreen(
     val projects by viewModel.projects.collectAsState()
     val activeModel by viewModel.activeModel.collectAsState()
     val importState by viewModel.importState.collectAsState()
+    
+    var previewVideoPath by remember { mutableStateOf<String?>(null) }
 
     // Video picker launcher
     val videoPicker = rememberLauncherForActivityResult(
@@ -158,6 +168,29 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Temporary fetch and display of Remote Config
+                val announcement = remember {
+                    com.google.firebase.Firebase.remoteConfig.getString("home_announcement_message")
+                }
+                if (announcement.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = announcement,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+                
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (projects.isEmpty()) {
                 EmptyState(
                     onImport = { videoPicker.launch("video/*") }
@@ -188,7 +221,8 @@ fun HomeScreen(
                                 }
                             },
                             onDelete = { viewModel.deleteProject(project) },
-                            onRename = { newTitle -> viewModel.renameProject(project.id, newTitle) }
+                            onRename = { newTitle -> viewModel.renameProject(project.id, newTitle) },
+                            onPlayVideo = { path -> previewVideoPath = path }
                         )
                     }
                 }
@@ -228,9 +262,36 @@ fun HomeScreen(
                     Text("Import failed: $message")
                 }
             }
-        }
-    }
-}
+            
+            // Video Preview Dialog
+            val currentPreviewPath = previewVideoPath
+            if (currentPreviewPath != null) {
+                Dialog(
+                    onDismissRequest = { previewVideoPath = null },
+                    properties = DialogProperties(
+                        usePlatformDefaultWidth = false,
+                        dismissOnBackPress = true,
+                        dismissOnClickOutside = true
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black)
+                    ) {
+                        VideoPlayerCard(
+                            path = currentPreviewPath,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(9f/16f)
+                        )
+                    }
+                }
+            }
+        } // end of Box(modifier = Modifier.weight(1f).fillMaxWidth())
+        } // end of Column
+        } // end of outer Box (padding)
+    } // end of Scaffold content box
+} // end of HomeScreen
 
 @Composable
 private fun EmptyState(onImport: () -> Unit) {

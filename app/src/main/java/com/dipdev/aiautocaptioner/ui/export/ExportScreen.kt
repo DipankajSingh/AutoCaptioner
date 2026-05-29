@@ -38,6 +38,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,9 +67,6 @@ import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 @Composable
 fun ExportScreen(
     projectId: String,
-    targetBitrate: Int? = null,
-    targetFps: Int? = null,
-    targetHeight: Int? = null,
     onNavigateBack: () -> Unit,
     viewModel: ExportViewModel = hiltViewModel()
 ) {
@@ -72,6 +74,63 @@ fun ExportScreen(
     val exportState by viewModel.exportState.collectAsState()
     val progress by viewModel.progress.collectAsState()
     val outputPath by viewModel.outputPath.collectAsState()
+    val workingVideoPath by viewModel.workingVideoPath.collectAsState()
+
+    // Original Video Metadata
+    var originalWidth by remember { mutableIntStateOf(1080) }
+    var originalHeight by remember { mutableIntStateOf(1920) }
+    var originalBitrate by remember { mutableIntStateOf(5_000_000) }
+    var originalDurationMs by remember { mutableLongStateOf(0L) }
+    var originalFps by remember { mutableIntStateOf(30) }
+
+    // User Selections
+    var selectedHeight by remember { mutableIntStateOf(-1) } // -1 means Original
+    var selectedFps by remember { mutableIntStateOf(-1) }
+    var selectedQuality by remember { mutableIntStateOf(1) } // 0: Low, 1: Recommended, 2: High
+
+    LaunchedEffect(workingVideoPath) {
+        if (workingVideoPath != null) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(workingVideoPath)
+                    
+                    val w = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1080
+                    val h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 1920
+                    val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+                    
+                    if (rotation == 90 || rotation == 270) {
+                        originalWidth = h
+                        originalHeight = w
+                    } else {
+                        originalWidth = w
+                        originalHeight = h
+                    }
+
+                    originalBitrate = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 5_000_000
+                    originalDurationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                    originalFps = 30
+                    retriever.release()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    // Calculate effective targets
+    val computedTargetHeight = if (selectedHeight == -1) originalHeight else selectedHeight
+    val computedTargetFps = if (selectedFps == -1) originalFps else selectedFps
+    
+    val computedTargetBitrate = when (selectedQuality) {
+        0 -> (originalBitrate * 0.6).toInt() // Low Quality
+        1 -> originalBitrate                 // Recommended (Match Original)
+        else -> (originalBitrate * 1.5).toInt() // High Quality
+    }
+
+    // File Size Estimation: Bitrate (bits per second) * Duration (seconds) / 8 (bytes)
+    val estimatedSizeBytes = (computedTargetBitrate.toLong() * (originalDurationMs / 1000.0)) / 8.0
+    val estimatedSizeMB = estimatedSizeBytes / (1024 * 1024)
 
     LaunchedEffect(Unit) {
         viewModel.prepareExport(projectId)
@@ -212,27 +271,107 @@ fun ExportScreen(
                 // ── Idle / Ready ─────────────────────────────────────────
                 is ExportState.Idle,
                 is ExportState.Ready -> {
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.loading_checklist))
+                    Text("Export Settings", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    LottieAnimation(
-                        composition = composition,
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .aspectRatio(1f)
-                    )
+                    // Resolution
+                    Text("Resolution", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedHeight == -1,
+                            onClick = { selectedHeight = -1 },
+                            label = { Text("Original") }
+                        )
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedHeight == 1920,
+                            onClick = { selectedHeight = 1920 },
+                            label = { Text("1080p") }
+                        )
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedHeight == 1280,
+                            onClick = { selectedHeight = 1280 },
+                            label = { Text("720p") }
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Frame Rate
+                    Text("Frame Rate", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedFps == -1,
+                            onClick = { selectedFps = -1 },
+                            label = { Text("Original") }
+                        )
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedFps == 30,
+                            onClick = { selectedFps = 30 },
+                            label = { Text("30 fps") }
+                        )
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedFps == 60,
+                            onClick = { selectedFps = 60 },
+                            label = { Text("60 fps") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Quality
+                    Text("Quality", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedQuality == 0,
+                            onClick = { selectedQuality = 0 },
+                            label = { Text("Low") }
+                        )
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedQuality == 1,
+                            onClick = { selectedQuality = 1 },
+                            label = { Text("Recommended") }
+                        )
+                        androidx.compose.material3.FilterChip(
+                            selected = selectedQuality == 2,
+                            onClick = { selectedQuality = 2 },
+                            label = { Text("High") }
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Ready to Export", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Your captions will be burned into the video.\nThis may take a few minutes.",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 22.sp
-                    )
-                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Estimated Size
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Estimated File Size:",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = String.format("~%.1f MB", estimatedSizeMB),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+                    
                     Button(
-                        onClick = { viewModel.startExport(projectId, targetBitrate, targetFps, targetHeight) },
+                        onClick = { viewModel.startExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) {
@@ -305,7 +444,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.startExport(projectId, targetBitrate, targetFps, targetHeight) },
+                        onClick = { viewModel.startExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Try Again", maxLines = 1) }
@@ -330,7 +469,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.startExport(projectId, targetBitrate, targetFps, targetHeight) },
+                        onClick = { viewModel.startExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Retry", maxLines = 1) }

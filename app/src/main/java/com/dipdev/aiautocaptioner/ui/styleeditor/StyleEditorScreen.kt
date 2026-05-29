@@ -25,7 +25,7 @@ fun StyleEditorScreen(
     projectId: String,
     onNavigateBack: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
-    onNavigateToExport: (bitrate: Int?, fps: Int?, height: Int?) -> Unit,
+    onNavigateToExport: () -> Unit,
     onSaved: () -> Unit,
     viewModel: StyleEditorViewModel = hiltViewModel()
 ) {
@@ -34,7 +34,6 @@ fun StyleEditorScreen(
     val activeStyle by viewModel.activeStyle.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     var showExportWarning by remember { mutableStateOf(false) }
-    var showExportSettings by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<CaptionStyleEntity?>(null) }
 
@@ -85,7 +84,7 @@ fun StyleEditorScreen(
                                 showExportWarning = true
                             } else {
                                 viewModel.saveAndApply(projectId)
-                                showExportSettings = true
+                                onNavigateToExport()
                             }
                         }
                     ) {
@@ -113,7 +112,7 @@ fun StyleEditorScreen(
                     TextButton(onClick = {
                         showExportWarning = false
                         viewModel.saveAndApply(projectId)
-                        showExportSettings = true
+                        onNavigateToExport()
                     }) {
                         Text("Export Anyway")
                     }
@@ -121,16 +120,7 @@ fun StyleEditorScreen(
             )
         }
 
-        if (showExportSettings) {
-            com.dipdev.aiautocaptioner.ui.components.ExportSettingsBottomSheet(
-                videoPath = project?.workingVideoPath,
-                onDismissRequest = { showExportSettings = false },
-                onExportClicked = { bitrate, fps, height ->
-                    showExportSettings = false
-                    onNavigateToExport(bitrate, fps, height)
-                }
-            )
-        }
+
 
         if (showPresetDialog) {
             var presetName by remember { mutableStateOf("My Preset") }

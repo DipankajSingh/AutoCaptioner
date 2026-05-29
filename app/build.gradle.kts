@@ -4,6 +4,9 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
+    id("com.google.firebase.firebase-perf")
 }
 
 
@@ -58,6 +61,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // Allow FFmpeg Kit packaging
@@ -76,6 +80,7 @@ kotlin {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
     }
 }
+
 
 dependencies {
 
@@ -172,6 +177,16 @@ dependencies {
     // Accompanist — runtime permissions
     // -------------------------------------------------------
     implementation("com.google.accompanist:accompanist-permissions:0.37.3")
+
+    // -------------------------------------------------------
+    // Firebase
+    // -------------------------------------------------------
+    implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
+    implementation("com.google.firebase:firebase-crashlytics")      // Crash reporting
+    implementation("com.google.firebase:firebase-crashlytics-ndk")  // NDK/C++ crash support
+    implementation("com.google.firebase:firebase-analytics")        // Usage analytics
+    implementation("com.google.firebase:firebase-perf")             // Performance monitoring
+    implementation("com.google.firebase:firebase-config")           // Remote Config
 
     // -------------------------------------------------------
     // Testing

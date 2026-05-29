@@ -176,8 +176,8 @@ fun NavGraph(
                 onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId))
                 },
-                onNavigateToExport = { bitrate, fps, height ->
-                    navController.navigate(Screen.Export.createRoute(projectId, bitrate, fps, height))
+                onNavigateToExport = {
+                    navController.navigate(Screen.Export.createRoute(projectId))
                 },
                 onSaved = { navController.popBackStack() }
             )
@@ -186,31 +186,13 @@ fun NavGraph(
         composable(
             route = Screen.Export.route,
             arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType },
-                navArgument("bitrate") { 
-                    type = NavType.IntType
-                    defaultValue = -1 
-                },
-                navArgument("fps") { 
-                    type = NavType.IntType
-                    defaultValue = -1 
-                },
-                navArgument("height") { 
-                    type = NavType.IntType
-                    defaultValue = -1 
-                }
+                navArgument("projectId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            val bitrate = backStackEntry.arguments?.getInt("bitrate").takeIf { it != -1 }
-            val fps = backStackEntry.arguments?.getInt("fps").takeIf { it != -1 }
-            val height = backStackEntry.arguments?.getInt("height").takeIf { it != -1 }
             
             com.dipdev.aiautocaptioner.ui.export.ExportScreen(
                 projectId = projectId,
-                targetBitrate = bitrate,
-                targetFps = fps,
-                targetHeight = height,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
