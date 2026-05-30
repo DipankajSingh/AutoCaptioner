@@ -20,6 +20,8 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Singleton
 class ModelRepository @Inject constructor(
@@ -161,22 +163,30 @@ class ModelRepository @Inject constructor(
                 request.header("Range", "bytes=$downloadedBytes-")
             }
 
-            var response = httpClient.newCall(request.build()).execute()
+            var response = httpClient.newCall(request.build()).executeAsync()
 
             if (response.code == 416) {
                 tempFile.delete()
                 downloadedBytes = 0L
                 request = Request.Builder().url(model.downloadUrl)
-                response = httpClient.newCall(request.build()).execute()
+                response.close()
+                response = httpClient.newCall(request.build()).executeAsync()
             }
 
             if (!response.isSuccessful) {
-                emit(DownloadState.Error("Download failed: ${response.code}"))
+                val errorMsg = when (response.code) {
+                    404 -> "Model file not found on the server. It may have been removed."
+                    403, 401 -> "Access denied to download this model."
+                    in 500..599 -> "Server is currently experiencing issues. Please try again later."
+                    else -> "Download failed with server error code ${response.code}."
+                }
+                response.close()
+                emit(DownloadState.Error(errorMsg))
                 return@flow
             }
 
             val body = response.body ?: run {
-                emit(DownloadState.Error("Empty response body"))
+                emit(DownloadState.Error("Received empty response from server. Please try again."))
                 return@flow
             }
 
@@ -231,9 +241,22 @@ class ModelRepository @Inject constructor(
             Log.i(TAG, "Download complete: ${outputFile.absolutePath}")
             emit(DownloadState.Complete(outputFile.absolutePath))
 
+        } catch (e: java.net.UnknownHostException) {
+            Log.e(TAG, "Download error (No Internet)", e)
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            emit(DownloadState.Error("No internet connection. Please check your network and try again."))
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(TAG, "Download error (Timeout)", e)
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            emit(DownloadState.Error("Connection timed out. The server took too long to respond."))
+        } catch (e: java.io.IOException) {
+            Log.e(TAG, "Download error (Network)", e)
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            emit(DownloadState.Error("Network error occurred. Please try again."))
         } catch (e: Exception) {
             Log.e(TAG, "Download error", e)
-            emit(DownloadState.Error(e.message ?: "Unknown error"))
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            emit(DownloadState.Error(e.message ?: "Unknown error occurred."))
         }
 // flowOn moves the entire flow execution to IO thread
 // while keeping emissions safe to collect on any thread
@@ -262,8 +285,23 @@ sealed class DownloadState {
         val filePath: String        // absolute path to the model file
     ) : DownloadState()
 
-    // Something went wrong
     data class Error(
         val message: String
     ) : DownloadState()
+}
+
+suspend fun okhttp3.Call.executeAsync(): okhttp3.Response = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+    enqueue(object : okhttp3.Callback {
+        override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+            continuation.resume(response)
+        }
+        override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+            if (!continuation.isCancelled) {
+                continuation.resumeWithException(e)
+            }
+        }
+    })
+    continuation.invokeOnCancellation {
+        cancel()
+    }
 }

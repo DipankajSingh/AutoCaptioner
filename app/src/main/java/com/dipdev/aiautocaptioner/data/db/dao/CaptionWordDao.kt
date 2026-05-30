@@ -20,6 +20,9 @@ interface CaptionWordDao {
     @Query("SELECT * FROM caption_words WHERE projectId = :projectId ORDER BY startTimeMs ASC")
     suspend fun getAllWordsForProject(projectId: String): List<CaptionWordEntity>
 
+    @Query("SELECT * FROM caption_words WHERE projectId = :projectId ORDER BY startTimeMs ASC")
+    fun getAllWordsForProjectFlow(projectId: String): Flow<List<CaptionWordEntity>>
+
     // Find the specific word that should be highlighted at a given timestamp
     // Used during preview to find the active karaoke word
     // Example: at time=1250ms, find the word where 1000ms <= start <= 1250ms <= end

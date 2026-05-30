@@ -25,8 +25,8 @@ class HomeViewModel @Inject constructor(
     // SharingStarted.WhileSubscribed(5000) = keep the flow active
     // for 5 seconds after last subscriber leaves
     // (handles screen rotation without restarting the query)
-    val projects: StateFlow<List<ProjectEntity>> = projectRepository
-        .getAllProjects()
+    val projects: StateFlow<List<com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles>> = projectRepository
+        .getProjectsWithExportedFiles()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

@@ -39,7 +39,7 @@ fun ExportSettingsBottomSheet(
             withContext(Dispatchers.IO) {
                 try {
                     val retriever = MediaMetadataRetriever()
-                    retriever.setDataSource(videoPath)
+                    retriever.setDataSource(context, android.net.Uri.parse(videoPath))
                     
                     val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1080
                     val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 1920
@@ -63,6 +63,7 @@ fun ExportSettingsBottomSheet(
                     retriever.release()
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 }
             }
         }

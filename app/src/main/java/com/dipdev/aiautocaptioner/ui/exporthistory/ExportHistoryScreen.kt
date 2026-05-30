@@ -142,7 +142,7 @@ fun ExportHistoryItem(
                         text = { Text("Share SRT") },
                         onClick = { menuExpanded = false; onShareSrt() }
                     )
-                    Divider()
+                    HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
                         onClick = { menuExpanded = false; onDelete() }

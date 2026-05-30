@@ -118,6 +118,9 @@ class CaptionRepository @Inject constructor(
     suspend fun getAllWordsForProject(projectId: String): List<CaptionWordEntity> =
         wordDao.getAllWordsForProject(projectId)
 
+    fun getAllWordsForProjectFlow(projectId: String): Flow<List<CaptionWordEntity>> =
+        wordDao.getAllWordsForProjectFlow(projectId)
+
     // Find the active word at a specific playback position
     // Used in preview to highlight the correct karaoke word
     suspend fun getActiveWordAtTime(

@@ -30,14 +30,14 @@ fun VideoPreview(
     videoHeight: Int,
     segments: List<CaptionSegmentEntity>,
     wordsMap: Map<String, List<CaptionWordEntity>>,
-    currentPositionMs: Long,
     durationMs: Long,
     exoPlayer: ExoPlayer?,
-    onPositionChanged: (Long) -> Unit,
     onPositionYChange: (Float) -> Unit,
     onSeek: (Long) -> Unit
 ) {
     if (videoPath == null || exoPlayer == null) return
+
+    var currentPositionMs by remember { mutableLongStateOf(0L) }
 
     // Poll playback position on every frame when playing; slow-poll when paused
     LaunchedEffect(exoPlayer) {
@@ -45,11 +45,11 @@ fun VideoPreview(
             if (exoPlayer.isPlaying) {
                 // Sync position every display frame while playing
                 withFrameMillis {
-                    onPositionChanged(exoPlayer.currentPosition)
+                    currentPositionMs = exoPlayer.currentPosition
                 }
             } else {
                 // Paused — one update then sleep to avoid constant recomposition
-                onPositionChanged(exoPlayer.currentPosition)
+                currentPositionMs = exoPlayer.currentPosition
                 kotlinx.coroutines.delay(250)
             }
         }

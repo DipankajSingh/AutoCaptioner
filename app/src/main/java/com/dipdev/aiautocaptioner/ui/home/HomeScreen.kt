@@ -44,25 +44,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
+import com.google.firebase.Firebase
+import com.google.firebase.remoteconfig.remoteConfig
+import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
-import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import com.google.firebase.Firebase
-import com.google.firebase.remoteconfig.remoteConfig
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.layout.size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,13 +75,13 @@ fun HomeScreen(
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToEditor: (String) -> Unit,
     onNavigateToModelManager: () -> Unit,
-    onNavigateToAbout: () -> Unit,
     onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
 
     val projects by viewModel.projects.collectAsState()
     val activeModel by viewModel.activeModel.collectAsState()
+    val context = LocalContext.current
     val importState by viewModel.importState.collectAsState()
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
@@ -118,20 +123,26 @@ fun HomeScreen(
                             onClick = onNavigateToModelManager,
                             modifier = Modifier.padding(end = 8.dp),
                             shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary)
+                            colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
                         ) {
                             Text(
-                                text = model.displayName.split("—").first().trim(),
+                                text = "Model: ${model.displayName.split("—").first().trim()}",
                                 fontSize = 13.sp
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     } ?: run {
                         FilledTonalButton(
                             onClick = onNavigateToModelManager,
                             modifier = Modifier.padding(end = 8.dp),
-                            shape = RoundedCornerShape(20.dp)
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
                         ) {
-                            Text("Select Engine", fontSize = 13.sp)
+                            Text("Select Model", fontSize = 13.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }
                     
@@ -208,21 +219,29 @@ fun HomeScreen(
                 ) {
                     items(
                         items = projects,
-                        key = { it.id }
-                    ) { project ->
+                        key = { it.project.id }
+                    ) { projectWithExports ->
                         ProjectCard(
-                            project = project,
+                            projectWithExports = projectWithExports,
                             onClick = {
-                                when (project.status) {
+                                when (projectWithExports.project.status) {
                                     ProjectStatus.IMPORTED,
                                     ProjectStatus.EXTRACTING_AUDIO,
-                                    ProjectStatus.TRANSCRIBING -> onNavigateToProcessing(project.id)
-                                    else -> onNavigateToEditor(project.id)
+                                    ProjectStatus.TRANSCRIBING -> onNavigateToProcessing(projectWithExports.project.id)
+                                    else -> onNavigateToEditor(projectWithExports.project.id)
                                 }
                             },
-                            onDelete = { viewModel.deleteProject(project) },
-                            onRename = { newTitle -> viewModel.renameProject(project.id, newTitle) },
-                            onPlayVideo = { path -> previewVideoPath = path }
+                            onDelete = { viewModel.deleteProject(projectWithExports.project) },
+                            onRename = { newTitle -> viewModel.renameProject(projectWithExports.project.id, newTitle) },
+                            onPlayVideo = { path -> previewVideoPath = path },
+                            onShareVideo = { path -> 
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "video/mp4"
+                                    putExtra(android.content.Intent.EXTRA_STREAM, androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", java.io.File(path)))
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Video"))
+                            }
                         )
                     }
                 }
@@ -320,14 +339,9 @@ private fun EmptyState(onImport: () -> Unit) {
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         Spacer(modifier = Modifier.height(32.dp))
-        Button(
+        GradientPrimaryButton(
             onClick = onImport,
-            shape = RoundedCornerShape(4.dp), // Flattened shape
-            elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp) // Removed elevation
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Import Video", maxLines = 1)
-        }
+            text = "Import Video"
+        )
     }
 }

@@ -101,7 +101,7 @@ class ProcessingViewModel @Inject constructor(
         _step.value = ProcessingStep.Cancelling
         activeJob?.cancel()
         activeJob = null
-        viewModelScope.launch {
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.NonCancellable) {
             whisperEngine.release()
             _step.value = ProcessingStep.Cancelled
         }
@@ -198,8 +198,10 @@ class ProcessingViewModel @Inject constructor(
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 android.util.Log.i("Processing", "Transcription cancelled")
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("Processing", "Error: ${e.message}", e)
+                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 whisperEngine.release()
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
             }
@@ -211,7 +213,7 @@ class ProcessingViewModel @Inject constructor(
     private suspend fun extractAudio(videoPath: String, outputFile: File) {
         withContext(Dispatchers.IO) {
             val extractor = MediaExtractor()
-            extractor.setDataSource(videoPath)
+            extractor.setDataSource(context, android.net.Uri.parse(videoPath), null)
 
             var audioTrackIndex = -1
             var audioFormat: MediaFormat? = null
@@ -272,6 +274,7 @@ class ProcessingViewModel @Inject constructor(
                 muxer.release()
             } catch (e: Exception) {
                 // Ensure the muxer is properly torn down on any unexpected failure.
+                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 if (muxerStarted && samplesWritten > 0) {
                     try { muxer.stop() } catch (_: Exception) {}
                 }
@@ -294,95 +297,101 @@ class ProcessingViewModel @Inject constructor(
         return withContext(Dispatchers.IO) {
 
             val extractor = MediaExtractor()
-            extractor.setDataSource(audioFile.absolutePath)
+            var codec: android.media.MediaCodec? = null
+            try {
+                extractor.setDataSource(audioFile.absolutePath)
 
-            var audioTrackIndex = -1
-            var audioFormat: MediaFormat? = null
-            for (i in 0 until extractor.trackCount) {
-                val format = extractor.getTrackFormat(i)
-                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                if (mime.startsWith("audio/")) {
-                    audioTrackIndex = i
-                    audioFormat = format
-                    break
+                var audioTrackIndex = -1
+                var audioFormat: MediaFormat? = null
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                    if (mime.startsWith("audio/")) {
+                        audioTrackIndex = i
+                        audioFormat = format
+                        break
+                    }
                 }
-            }
-            if (audioTrackIndex == -1 || audioFormat == null) {
-                extractor.release()
-                throw Exception("No audio track found in extracted file")
-            }
+                if (audioTrackIndex == -1 || audioFormat == null) {
+                    throw Exception("No audio track found in extracted file")
+                }
 
-            extractor.selectTrack(audioTrackIndex)
-            val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
-            val codec = android.media.MediaCodec.createDecoderByType(mime)
-            codec.configure(audioFormat, null, null, 0)
-            codec.start()
+                extractor.selectTrack(audioTrackIndex)
+                val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
+                codec = android.media.MediaCodec.createDecoderByType(mime)
+                codec.configure(audioFormat, null, null, 0)
+                codec.start()
 
-            // Single-pass: collect shorts into a growing list
-            // Using ArrayList<Short> is fine here — the boxing cost is only
-            // incurred once during collection, not 60× per second like in a
-            // render loop. Avoids the expensive double-decode of the old approach.
-            val pcmShorts = ArrayList<Short>(1_000_000)
-            val bufferInfo = android.media.MediaCodec.BufferInfo()
-            var inputDone = false
-            var outputDone = false
+                val pcmChunks = ArrayList<ShortArray>()
+                val bufferInfo = android.media.MediaCodec.BufferInfo()
+                var inputDone = false
+                var outputDone = false
 
-            while (!outputDone) {
-                if (!inputDone) {
-                    val idx = codec.dequeueInputBuffer(10_000L)
-                    if (idx >= 0) {
-                        val inputBuffer = codec.getInputBuffer(idx)!!
-                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                        if (sampleSize < 0) {
-                            codec.queueInputBuffer(idx, 0, 0, 0,
-                                android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                        } else {
-                            codec.queueInputBuffer(idx, 0, sampleSize, extractor.sampleTime, 0)
-                            extractor.advance()
+                while (!outputDone) {
+                    if (!inputDone) {
+                        val idx = codec.dequeueInputBuffer(10_000L)
+                        if (idx >= 0) {
+                            val inputBuffer = codec.getInputBuffer(idx)!!
+                            val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                            if (sampleSize < 0) {
+                                codec.queueInputBuffer(idx, 0, 0, 0,
+                                    android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                inputDone = true
+                            } else {
+                                codec.queueInputBuffer(idx, 0, sampleSize, extractor.sampleTime, 0)
+                                extractor.advance()
+                            }
+                        }
+                    }
+
+                    val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
+                    if (outIdx >= 0) {
+                        val outputBuffer = codec.getOutputBuffer(outIdx)!!
+                        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
+                        val chunk = ShortArray(outputBuffer.remaining() / 2)
+                        outputBuffer.asShortBuffer().get(chunk)
+                        pcmChunks.add(chunk)
+                        codec.releaseOutputBuffer(outIdx, false)
+                        if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                            outputDone = true
                         }
                     }
                 }
 
-                val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
-                if (outIdx >= 0) {
-                    val outputBuffer = codec.getOutputBuffer(outIdx)!!
-                    outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-                    while (outputBuffer.remaining() >= 2) {
-                        pcmShorts.add(outputBuffer.short)
-                    }
-                    codec.releaseOutputBuffer(outIdx, false)
-                    if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                        outputDone = true
-                    }
+                val sampleRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                val channelCount = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+
+                // Flatten chunks
+                val totalSamples = pcmChunks.sumOf { it.size }
+                val pcmShorts = ShortArray(totalSamples)
+                var offset = 0
+                for (chunk in pcmChunks) {
+                    System.arraycopy(chunk, 0, pcmShorts, offset, chunk.size)
+                    offset += chunk.size
                 }
-            }
 
-            codec.stop()
-            codec.release()
-
-            val sampleRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-            val channelCount = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-            extractor.release()
-
-            // Mix down to mono
-            val totalSamples = pcmShorts.size
-            val monoShorts: ShortArray = if (channelCount > 1) {
-                ShortArray(totalSamples / channelCount) { i ->
-                    var sum = 0
-                    for (ch in 0 until channelCount) sum += pcmShorts[i * channelCount + ch]
-                    (sum / channelCount).toShort()
+                // Mix down to mono
+                val monoShorts: ShortArray = if (channelCount > 1) {
+                    ShortArray(totalSamples / channelCount) { i ->
+                        var sum = 0
+                        for (ch in 0 until channelCount) sum += pcmShorts[i * channelCount + ch]
+                        (sum / channelCount).toShort()
+                    }
+                } else {
+                    pcmShorts
                 }
-            } else {
-                ShortArray(totalSamples) { pcmShorts[it] }
+
+                // Resample to 16kHz using linear interpolation
+                val finalShorts = if (sampleRate != 16000) resampleTo16kLinear(monoShorts, sampleRate)
+                                  else monoShorts
+
+                // Normalise to float [-1.0, 1.0] — Whisper's expected input range
+                FloatArray(finalShorts.size) { i -> finalShorts[i] / 32768.0f }
+            } finally {
+                try { codec?.stop() } catch (_: Exception) {}
+                try { codec?.release() } catch (_: Exception) {}
+                extractor.release()
             }
-
-            // Resample to 16kHz using linear interpolation
-            val finalShorts = if (sampleRate != 16000) resampleTo16kLinear(monoShorts, sampleRate)
-                              else monoShorts
-
-            // Normalise to float [-1.0, 1.0] — Whisper's expected input range
-            FloatArray(finalShorts.size) { i -> finalShorts[i] / 32768.0f }
         }
     }
 
@@ -390,6 +399,7 @@ class ProcessingViewModel @Inject constructor(
     // nearest-neighbor produces at 3:1 ratios (e.g. 48kHz → 16kHz).
     private fun resampleTo16kLinear(input: ShortArray, fromRate: Int): ShortArray {
         if (fromRate == 16000) return input
+        if (input.size < 2) return input
         val ratio = fromRate.toDouble() / 16000.0
         val outputSize = (input.size / ratio).toInt()
         return ShortArray(outputSize) { i ->
@@ -458,7 +468,7 @@ class ProcessingViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         activeJob?.cancel()
-        viewModelScope.launch {
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.NonCancellable) {
             whisperEngine.release()
         }
     }

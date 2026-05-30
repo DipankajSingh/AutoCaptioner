@@ -39,40 +39,20 @@ class CaptionEditorViewModel @Inject constructor(
     private val _expandedSegmentId = MutableStateFlow<String?>(null)
     val expandedSegmentId: StateFlow<String?> = _expandedSegmentId.asStateFlow()
 
-    // ── Word-watcher jobs keyed by segmentId ─────────────────────────────
-    // We keep exactly ONE collector per segment. When the segment list changes
-    // we cancel collectors for removed segments and start ones for new segments.
-    private val wordJobs = mutableMapOf<String, Job>()
-
     fun loadProject(projectId: String) {
         viewModelScope.launch {
             _project.value = projectRepository.getProjectById(projectId)
             projectRepository.updateVisitedCaptionEditor(projectId, true)
 
-            captionRepository.getSegmentsForProject(projectId).collect { segs ->
-                _segments.value = segs
-
-                val newIds = segs.map { it.id }.toSet()
-
-                // Cancel watchers for segments that are no longer present
-                val removed = wordJobs.keys - newIds
-                removed.forEach { id ->
-                    wordJobs.remove(id)?.cancel()
+            launch {
+                captionRepository.getSegmentsForProject(projectId).collect { segs ->
+                    _segments.value = segs
                 }
+            }
 
-                // Start a watcher only for segments we haven't seen before
-                segs.forEach { seg ->
-                    if (!wordJobs.containsKey(seg.id)) {
-                        wordJobs[seg.id] = launch {
-                            captionRepository.getWordsForSegment(seg.id).collect { words ->
-                                // Build a new map only when actually different
-                                val current = _wordsMap.value
-                                if (current[seg.id] != words) {
-                                    _wordsMap.value = current.toMutableMap().apply { put(seg.id, words) }
-                                }
-                            }
-                        }
-                    }
+            launch {
+                captionRepository.getAllWordsForProjectFlow(projectId).collect { words ->
+                    _wordsMap.value = words.groupBy { it.segmentId }
                 }
             }
         }
@@ -108,6 +88,7 @@ class CaptionEditorViewModel @Inject constructor(
                 val timePerWord = if (newWordsList.isNotEmpty()) duration / newWordsList.size else 0L
 
                 val newEntities = newWordsList.mapIndexed { index, word ->
+                    val matchingOldWord = oldWordsList.find { it.word == word }
                     CaptionWordEntity(
                         id = java.util.UUID.randomUUID().toString(),
                         projectId = segment.projectId,
@@ -117,8 +98,8 @@ class CaptionEditorViewModel @Inject constructor(
                         startTimeMs = segment.startTimeMs + (timePerWord * index),
                         endTimeMs = segment.startTimeMs + (timePerWord * (index + 1)),
                         confidence = 1.0f,
-                        isEmphasized = false,
-                        emphasisType = EmphasisType.NONE
+                        isEmphasized = matchingOldWord?.isEmphasized ?: false,
+                        emphasisType = matchingOldWord?.emphasisType ?: EmphasisType.NONE
                     )
                 }
                 captionRepository.replaceWordsForSegment(segment.id, newEntities)
@@ -183,7 +164,5 @@ class CaptionEditorViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        wordJobs.values.forEach { it.cancel() }
-        wordJobs.clear()
     }
 }

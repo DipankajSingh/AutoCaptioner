@@ -62,7 +62,6 @@ class StyleEditorViewModel @Inject constructor(
 
     fun seekTo(ms: Long) {
         exoPlayer?.seekTo(ms)
-        _currentPositionMs.value = ms
     }
 
     override fun onCleared() {
@@ -89,8 +88,7 @@ class StyleEditorViewModel @Inject constructor(
     private val _wordsMap = MutableStateFlow<Map<String, List<com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity>>>(emptyMap())
     val wordsMap: StateFlow<Map<String, List<com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity>>> = _wordsMap.asStateFlow()
 
-    private val _currentPositionMs = MutableStateFlow(0L)
-    val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()
+
 
     private val _selectedTab = MutableStateFlow(StyleTab.TEXT)
     val selectedTab: StateFlow<StyleTab> = _selectedTab.asStateFlow()
@@ -141,9 +139,7 @@ class StyleEditorViewModel @Inject constructor(
         }
     }
 
-    fun updatePlaybackPosition(ms: Long) {
-        _currentPositionMs.value = ms
-    }
+        // The preview component handles playback position locally now
 
     fun selectPreset(style: CaptionStyleEntity) {
         // Reuse the existing Custom style ID if we already have one,

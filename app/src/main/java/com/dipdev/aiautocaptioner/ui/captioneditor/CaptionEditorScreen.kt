@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
+import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,11 +39,11 @@ fun CaptionEditorScreen(
     onNavigateToProcessing: (String) -> Unit,
     viewModel: CaptionEditorViewModel = hiltViewModel()
 ) {
-    val project by viewModel.project.collectAsState()
-    val segments by viewModel.segments.collectAsState()
-    val wordsMap by viewModel.wordsMap.collectAsState()
-    val expandedSegmentId by viewModel.expandedSegmentId.collectAsState()
-    val retranscribeRequested by viewModel.retranscribeRequested.collectAsState()
+    val project by viewModel.project.collectAsStateWithLifecycle()
+    val segments by viewModel.segments.collectAsStateWithLifecycle()
+    val wordsMap by viewModel.wordsMap.collectAsStateWithLifecycle()
+    val expandedSegmentId by viewModel.expandedSegmentId.collectAsStateWithLifecycle()
+    val retranscribeRequested by viewModel.retranscribeRequested.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
@@ -166,11 +168,9 @@ private fun SegmentCard(
     onSaveText: (String) -> Unit,          // called only on focus-lost, not every keystroke
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(4.dp), // Flattened shape
-        elevation = CardDefaults.cardElevation(0.dp), // Removed elevation
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+        shape = RoundedCornerShape(8.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
 
@@ -199,8 +199,8 @@ private fun SegmentCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (isExpanded) {
-                // Local text state — does NOT hit the DB on every keystroke
-                var text by remember(segment.id) { mutableStateOf(segment.text) }
+                // We use remember with segment.id AND segment.text to initialize it correctly if DB changes underneath us
+                var text by remember(segment.id, segment.text) { mutableStateOf(segment.text) }
 
                 BasicTextField(
                     value = text,

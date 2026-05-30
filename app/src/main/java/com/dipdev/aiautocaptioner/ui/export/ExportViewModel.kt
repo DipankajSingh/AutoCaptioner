@@ -17,10 +17,13 @@ import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
+import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
+import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.engine.CaptionOverlayEffect
+import java.util.UUID
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,7 +54,8 @@ sealed class ExportState {
 class ExportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
-    private val captionRepository: CaptionRepository
+    private val captionRepository: CaptionRepository,
+    private val exportedFileDao: ExportedFileDao
 ) : ViewModel() {
 
     private val _exportState = MutableStateFlow<ExportState>(ExportState.Idle)
@@ -77,11 +81,9 @@ class ExportViewModel @Inject constructor(
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
             _workingVideoPath.value = project?.workingVideoPath
-            val existingPath = project?.exportedVideoPath
-            if (existingPath != null && File(existingPath).exists()) {
-                _outputPath.value = existingPath
-                _exportState.value = ExportState.AlreadyExported
-            } else if (_exportState.value == ExportState.Idle) {
+            
+            // Always default to Ready so the user can re-export without navigating through a success screen
+            if (_exportState.value == ExportState.Idle) {
                 _exportState.value = ExportState.Ready
             }
         }
@@ -169,11 +171,22 @@ class ExportViewModel @Inject constructor(
                         ) {
                             _exportState.value = ExportState.Success
                             viewModelScope.launch {
+                                val timestamp = System.currentTimeMillis()
                                 projectRepository.updateProject(
                                     project.copy(
                                         status = ProjectStatus.EXPORTED,
                                         exportedVideoPath = outFile.absolutePath,
-                                        updatedAt = System.currentTimeMillis()
+                                        updatedAt = timestamp
+                                    )
+                                )
+                                exportedFileDao.insertExportedFile(
+                                    ExportedFileEntity(
+                                        id = UUID.randomUUID().toString(),
+                                        projectId = project.id,
+                                        videoFilePath = outFile.absolutePath,
+                                        srtFilePath = null,
+                                        exportedAt = timestamp,
+                                        quality = targetBitrate?.let { "$it bps" }
                                     )
                                 )
                             }
@@ -195,6 +208,7 @@ class ExportViewModel @Inject constructor(
                 trackProgress(transformer)
 
             } catch (e: Exception) {
+                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 _exportState.value = ExportState.Error(e.message ?: "Unknown error")
             }
         }
@@ -254,6 +268,7 @@ class ExportViewModel @Inject constructor(
 
                     _exportState.value = ExportState.SavedToGallery
                 } catch (e: Exception) {
+                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                     _exportState.value = ExportState.Error("Failed to save to gallery: ${e.message}")
                 }
             }
@@ -288,5 +303,11 @@ class ExportViewModel @Inject constructor(
                 kotlinx.coroutines.delay(100)
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        activeTransformer?.cancel()
+        activeTransformer = null
     }
 }

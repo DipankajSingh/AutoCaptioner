@@ -93,7 +93,7 @@ fun ExportScreen(
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val retriever = android.media.MediaMetadataRetriever()
-                    retriever.setDataSource(workingVideoPath)
+                    retriever.setDataSource(context, android.net.Uri.parse(workingVideoPath))
                     
                     val w = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1080
                     val h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 1920
@@ -113,6 +113,7 @@ fun ExportScreen(
                     retriever.release()
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 }
             }
         }

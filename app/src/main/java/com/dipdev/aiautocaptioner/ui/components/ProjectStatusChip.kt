@@ -19,14 +19,14 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 @Composable
 fun ProjectStatusChip(status: ProjectStatus) {
     val (label, color) = when (status) {
-        ProjectStatus.IMPORTED          -> "Imported"       to MaterialTheme.colorScheme.outline
+        ProjectStatus.IMPORTED          -> "Imported"       to MaterialTheme.colorScheme.onSurfaceVariant
         ProjectStatus.EXTRACTING_AUDIO  -> "Extracting…"    to MaterialTheme.colorScheme.tertiary
         ProjectStatus.TRANSCRIBING      -> "Transcribing…"  to MaterialTheme.colorScheme.tertiary
         ProjectStatus.TRANSCRIBED       -> "Ready"          to MaterialTheme.colorScheme.primary
         ProjectStatus.EXPORTED          -> "Exported"       to MaterialTheme.colorScheme.secondary
     }
     Surface(
-        color        = color.copy(alpha = 0.15f),
+        color        = color.copy(alpha = 0.25f),
         shape        = RoundedCornerShape(12.dp), // More rounded corners
         shadowElevation = 0.dp,
         tonalElevation = 0.dp
@@ -34,9 +34,9 @@ fun ProjectStatusChip(status: ProjectStatus) {
         Text(
             text       = label,
             color      = color,
-            fontSize   = 11.sp,
-            fontWeight = FontWeight.Medium,
-            modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+            fontSize   = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }

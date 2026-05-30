@@ -4,7 +4,9 @@ import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import { setupCounter } from './counter.js'
 
-document.querySelector('#app').innerHTML = `
+const app = document.querySelector('#app')
+if (app) {
+  app.innerHTML = `
 <section id="center">
   <div class="hero">
     <img src="${heroImg}" class="base" width="170" height="179">
@@ -57,4 +59,5 @@ document.querySelector('#app').innerHTML = `
 <section id="spacer"></section>
 `
 
-setupCounter(document.querySelector('#counter'))
+  setupCounter(document.querySelector('#counter'))
+}

@@ -82,20 +82,14 @@ fun NavGraph(
                 onNavigateToModelManager = {
                     navController.navigate(Screen.ModelManager.route)
                 },
-                onNavigateToAbout = {
-                    navController.navigate(Screen.About.route)
-                },
+
                 onNavigateToSettings = { // Pass to settings if HomeScreen supports it, or handle it via a top bar
                     navController.navigate(Screen.Settings.route)
                 }
             )
         }
 
-        composable(Screen.About.route) {
-            com.dipdev.aiautocaptioner.ui.about.AboutScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
+
         
         composable(Screen.Settings.route) {
             SettingsScreen(

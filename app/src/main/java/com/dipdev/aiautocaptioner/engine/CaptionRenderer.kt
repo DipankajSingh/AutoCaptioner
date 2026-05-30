@@ -17,6 +17,9 @@ import androidx.core.graphics.withTranslation
 // ─────────────────────────────────────────────────────────────────────────────
 object CaptionRenderer {
 
+    private val tempWordRect = RectF()
+    private val tempLineRect = RectF()
+
     fun draw(
         canvas: Canvas,
         currentPositionMs: Long,
@@ -84,11 +87,11 @@ object CaptionRenderer {
 
                 // Draw per-word background pill
                 if (style.backgroundOpacity > 0f && style.backgroundType == BackgroundType.PER_WORD) {
-                    val wr = RectF(x - padX / 2f, lineTop - padY, x + wordW + padX / 2f, lineBot + padY)
+                    tempWordRect.set(x - padX / 2f, lineTop - padY, x + wordW + padX / 2f, lineBot + padY)
                     canvas.save()
                     canvas.translate(xfm.translateX, xfm.translateY)
                     CaptionPaints.bg.alpha = (CaptionPaints.bg.alpha * xfm.alpha).toInt()
-                    canvas.drawRoundRect(wr, corner / 2f, corner / 2f, CaptionPaints.bg)
+                    canvas.drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
                     CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
                     canvas.restore()
                 }
@@ -207,11 +210,11 @@ object CaptionRenderer {
                     CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
                 }
                 KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> {
-                    val wr = RectF(x - padX / 2f, lineTop - padY / 2f, x + wordW + padX / 2f, lineBot + padY / 2f)
+                    tempWordRect.set(x - padX / 2f, lineTop - padY / 2f, x + wordW + padX / 2f, lineBot + padY / 2f)
                     val saved = CaptionPaints.bg.color
                     CaptionPaints.bg.color = style.highlightColor.toInt()
                     CaptionPaints.bg.alpha = 80
-                    canvas.drawRoundRect(wr, corner / 2f, corner / 2f, CaptionPaints.bg)
+                    canvas.drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
                     CaptionPaints.bg.color = saved
                     CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
                 }
@@ -228,11 +231,11 @@ object CaptionRenderer {
         padX: Float, padY: Float, corner: Float, vw: Float
     ) {
         if (style.backgroundOpacity <= 0f) return
-        val lr = RectF(x - padX, lineTop - padY, x + lineW + padX, lineBot + padY)
+        tempLineRect.set(x - padX, lineTop - padY, x + lineW + padX, lineBot + padY)
         when (style.backgroundType) {
-            BackgroundType.BOX       -> canvas.drawRoundRect(lr, corner, corner, CaptionPaints.bg)
-            BackgroundType.PILL      -> canvas.drawRoundRect(lr, lr.height() / 2f, lr.height() / 2f, CaptionPaints.bg)
-            BackgroundType.FULL_LINE -> canvas.drawRect(0f, lr.top, vw, lr.bottom, CaptionPaints.bg)
+            BackgroundType.BOX       -> canvas.drawRoundRect(tempLineRect, corner, corner, CaptionPaints.bg)
+            BackgroundType.PILL      -> canvas.drawRoundRect(tempLineRect, tempLineRect.height() / 2f, tempLineRect.height() / 2f, CaptionPaints.bg)
+            BackgroundType.FULL_LINE -> canvas.drawRect(0f, tempLineRect.top, vw, tempLineRect.bottom, CaptionPaints.bg)
             BackgroundType.PER_WORD,
             BackgroundType.NONE      -> {}
         }

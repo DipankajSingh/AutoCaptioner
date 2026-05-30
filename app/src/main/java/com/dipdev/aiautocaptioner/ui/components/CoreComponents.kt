@@ -27,15 +27,18 @@ import com.dipdev.aiautocaptioner.ui.theme.LocalGlassmorphismEnabled
 fun GlassmorphicCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(16.dp),
+    color: Color = Color.Unspecified,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val isGlassEnabled = LocalGlassmorphismEnabled.current
 
+    val baseBgColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.surface
+    
     val bgColor = if (isGlassEnabled) {
-        MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+        baseBgColor.copy(alpha = 0.5f)
     } else {
-        MaterialTheme.colorScheme.surface
+        baseBgColor
     }
 
     val borderColor = if (isGlassEnabled) {

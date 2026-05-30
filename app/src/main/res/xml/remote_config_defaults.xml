@@ -1,49 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Remote Config in-app defaults.
-    These values are used before the first successful fetch from Firebase,
-    or when the device is offline. Keep them conservative / safe.
--->
 <defaultsMap>
-
-    <!-- ── Model Configuration ────────────────────────────────────────── -->
-    <!-- The recommended model to highlight in the model manager -->
     <entry>
-        <key>recommended_model_id</key>
-        <value>ggml-base.en</value>
+        <key>privacy_policy_url</key>
+        <value>https://dipdevlabs.example.com/privacy</value>
     </entry>
-
-    <!-- Minimum app version code required to use cloud features -->
     <entry>
-        <key>min_supported_version_code</key>
-        <value>1</value>
+        <key>terms_of_service_url</key>
+        <value>https://dipdevlabs.example.com/terms</value>
     </entry>
-
-    <!-- ── Feature Flags ──────────────────────────────────────────────── -->
-    <!-- Enable / disable Glassmorphism UI globally for low-end device rollout -->
     <entry>
-        <key>feature_glassmorphism_enabled</key>
-        <value>true</value>
+        <key>developer_website_url</key>
+        <value>https://dipdevlabs.example.com</value>
     </entry>
-
-    <!-- Enable the Export History screen -->
-    <entry>
-        <key>feature_export_history_enabled</key>
-        <value>true</value>
-    </entry>
-
-    <!-- ── Announcements ──────────────────────────────────────────────── -->
-    <!-- Set to non-empty string to show a banner on the home screen -->
-    <entry>
-        <key>home_announcement_message</key>
-        <value></value>
-    </entry>
-
-    <!-- ── Processing Defaults ────────────────────────────────────────── -->
-    <!-- Max number of threads Whisper uses during transcription (0 = auto) -->
-    <entry>
-        <key>whisper_thread_count</key>
-        <value>0</value>
-    </entry>
-
 </defaultsMap>

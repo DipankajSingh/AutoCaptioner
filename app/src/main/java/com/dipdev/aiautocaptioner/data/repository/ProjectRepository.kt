@@ -36,6 +36,10 @@ class ProjectRepository @Inject constructor(
     fun getAllProjects(): Flow<List<ProjectEntity>> =
         projectDao.getAllProjects()
 
+    // Returns projects bundled with their exported files
+    fun getProjectsWithExportedFiles(): Flow<List<com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles>> =
+        projectDao.getProjectsWithExportedFiles()
+
     // ---- Get single project ----
     suspend fun getProjectById(projectId: String): ProjectEntity? =
         projectDao.getProjectById(projectId)
@@ -96,15 +100,19 @@ class ProjectRepository @Inject constructor(
 
                 Log.i(TAG, "Created project directory: ${projectDir.absolutePath}")
 
-                // Step 3 — Copy video to internal storage
-                val videoFile = File(projectDir, "original.mp4")
-                context.contentResolver.openInputStream(videoUri)?.use { input ->
-                    videoFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                } ?: throw Exception("Could not open video file")
-
-                Log.i(TAG, "Video copied to: ${videoFile.absolutePath}")
+                // Step 3 — Take persistable URI permission instead of copying
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        videoUri,
+                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    // Photo Picker URIs don't support persistable permissions. 
+                    // We'll rely on temporary access (which might expire if app restarts before processing).
+                    Log.w(TAG, "Could not take persistable permission for $videoUri", e)
+                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+                }
+                val videoFileString = videoUri.toString()
 
                 // Step 4 — Extract thumbnail (first frame of video)
                 val thumbnailFile = File(projectDir, "thumbnail.jpg")
@@ -118,7 +126,7 @@ class ProjectRepository @Inject constructor(
                         .removeSuffix(".mov")
                         .removeSuffix(".mkv"),
                     originalVideoUri = videoUri.toString(),
-                    workingVideoPath = videoFile.absolutePath,
+                    workingVideoPath = videoFileString,
                     thumbnailPath = if (thumbnailFile.exists())
                         thumbnailFile.absolutePath else null,
                     videoDurationMs = durationMs,
@@ -139,6 +147,7 @@ class ProjectRepository @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to import video", e)
+                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 Result.failure(e)
             }
         }
@@ -218,6 +227,7 @@ class ProjectRepository @Inject constructor(
         } catch (e: Exception) {
             // Thumbnail failure is non-fatal — app works without it
             Log.w(TAG, "Failed to extract thumbnail: ${e.message}")
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
 

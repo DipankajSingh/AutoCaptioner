@@ -35,8 +35,7 @@ sealed class Screen(val route: String) {
     // Home screen — shows recent projects + import button
     data object Home : Screen("home")
 
-    // About screen — displays T&C, Privacy Policy, Brand info
-    data object About : Screen("about")
+
     
     // Settings screen — app appearance
     data object Settings : Screen("settings")

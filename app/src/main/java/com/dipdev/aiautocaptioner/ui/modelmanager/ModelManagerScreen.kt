@@ -89,10 +89,10 @@ private fun ModelCard(
         label = "color_anim"
     )
 
-    Card(
+    com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
+        color = containerColor
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header Row
@@ -248,7 +248,11 @@ private fun ModelCard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Download Failed", color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text("Download Failed", color = MaterialTheme.colorScheme.error, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(downloadState.message, color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f), fontSize = 12.sp, lineHeight = 16.sp)
+                        }
                         Button(onClick = onDownload) {
                             Text("Retry")
                         }

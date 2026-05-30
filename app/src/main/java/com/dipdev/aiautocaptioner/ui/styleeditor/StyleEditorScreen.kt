@@ -18,6 +18,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,10 +30,10 @@ fun StyleEditorScreen(
     onSaved: () -> Unit,
     viewModel: StyleEditorViewModel = hiltViewModel()
 ) {
-    val project by viewModel.project.collectAsState()
-    val styles by viewModel.styles.collectAsState()
-    val activeStyle by viewModel.activeStyle.collectAsState()
-    val selectedTab by viewModel.selectedTab.collectAsState()
+    val project by viewModel.project.collectAsStateWithLifecycle()
+    val styles by viewModel.styles.collectAsStateWithLifecycle()
+    val activeStyle by viewModel.activeStyle.collectAsStateWithLifecycle()
+    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     var showExportWarning by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<CaptionStyleEntity?>(null) }
@@ -42,10 +43,9 @@ fun StyleEditorScreen(
         onNavigateBack()
     }
 
-    val segments by viewModel.segments.collectAsState()
-    val wordsMap by viewModel.wordsMap.collectAsState()
-    val currentPositionMs by viewModel.currentPositionMs.collectAsState()
-    val videoDurationMs by viewModel.videoDurationMs.collectAsState()
+    val segments by viewModel.segments.collectAsStateWithLifecycle()
+    val wordsMap by viewModel.wordsMap.collectAsStateWithLifecycle()
+    val videoDurationMs by viewModel.videoDurationMs.collectAsStateWithLifecycle()
 
     // Init player once we have the video path — idempotent inside ViewModel
     LaunchedEffect(project?.workingVideoPath) {
@@ -194,10 +194,8 @@ fun StyleEditorScreen(
                         videoHeight = outHeight,
                         segments = segments,
                         wordsMap = wordsMap,
-                        currentPositionMs = currentPositionMs,
                         durationMs = videoDurationMs,
                         exoPlayer = viewModel.exoPlayer,
-                        onPositionChanged = { ms -> viewModel.updatePlaybackPosition(ms) },
                         onPositionYChange = viewModel::updatePositionY,
                         onSeek = viewModel::seekTo
                     )

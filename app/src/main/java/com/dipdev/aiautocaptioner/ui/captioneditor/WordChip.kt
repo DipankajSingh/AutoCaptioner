@@ -22,25 +22,14 @@ fun WordChips(
     words: List<CaptionWordEntity>,
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
-    // Flow layout using wrapping rows
-    val rows = mutableListOf<MutableList<CaptionWordEntity>>()
-    var currentRow = mutableListOf<CaptionWordEntity>()
-    words.forEach { word ->
-        currentRow.add(word)
-        if (currentRow.size >= 5) {
-            rows.add(currentRow)
-            currentRow = mutableListOf()
-        }
-    }
-    if (currentRow.isNotEmpty()) rows.add(currentRow)
-
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                row.forEach { word ->
-                    WordChip(word = word, onLongPress = { onWordLongPress(word) })
-                }
-            }
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        words.forEach { word ->
+            WordChip(word = word, onLongPress = { onWordLongPress(word) })
         }
     }
 }

@@ -95,3 +95,14 @@ enum class ProjectStatus {
     TRANSCRIBED,        // captions are ready — user can edit, preview, export
     EXPORTED            // final video with burned-in captions has been saved
 }
+
+data class ProjectWithExportedFiles(
+    @androidx.room.Embedded
+    val project: ProjectEntity,
+    
+    @androidx.room.Relation(
+        parentColumn = "id",
+        entityColumn = "projectId"
+    )
+    val exportedFiles: List<ExportedFileEntity>
+)

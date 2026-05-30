@@ -19,6 +19,10 @@ interface ProjectDao {
     @Query("SELECT * FROM projects ORDER BY updatedAt DESC")
     fun getAllProjects(): Flow<List<ProjectEntity>>
 
+    @Transaction
+    @Query("SELECT * FROM projects ORDER BY updatedAt DESC")
+    fun getProjectsWithExportedFiles(): Flow<List<com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles>>
+
     // Suspend = runs on a coroutine (background thread)
     // Never run database queries on the main thread — it blocks the UI
     // Returns null if no project with that id exists
