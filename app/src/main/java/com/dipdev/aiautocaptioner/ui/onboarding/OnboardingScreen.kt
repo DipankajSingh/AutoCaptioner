@@ -71,151 +71,160 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Skip Button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.End
+        // Particle wave background animation
+        ParticleWave(
+            currentPage = pagerState.currentPage
+        )
+
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            if (pagerState.currentPage < pages.size - 1) {
-                TextButton(
-                    onClick = {
-                        viewModel.completeOnboarding()
-                        onFinish()
-                    }
-                ) {
-                    Text(
-                        text = stringResource(R.string.onboarding_skip),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.height(48.dp)) // Maintain height
-            }
-        }
-
-        // Pager
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) { position ->
-            PagerScreen(onBoardingPage = pages[position])
-        }
-
-        // Legal Text on last page
-        if (pagerState.currentPage == pages.size - 1) {
-            val context = LocalContext.current
-            val linkStyle = SpanStyle(
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-            val legalPrefix = stringResource(R.string.onboarding_legal_prefix)
-            val termsConditions = stringResource(R.string.onboarding_terms_conditions)
-            val legalAnd = stringResource(R.string.onboarding_legal_and)
-            val privacyPolicy = stringResource(R.string.onboarding_privacy_policy)
-
-            val annotatedString = buildAnnotatedString {
-                append(legalPrefix)
-                pushLink(LinkAnnotation.Clickable(
-                    tag = "TERMS",
-                    linkInteractionListener = {
-                        context.startActivity(
-                            android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                com.dipdev.aiautocaptioner.AppLinks.TERMS_OF_SERVICE.toUri()
-                            )
-                        )
-                    }
-                ))
-                withStyle(linkStyle) { append(termsConditions) }
-                pop()
-                append(legalAnd)
-                pushLink(LinkAnnotation.Clickable(
-                    tag = "PRIVACY",
-                    linkInteractionListener = {
-                        context.startActivity(
-                            android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                com.dipdev.aiautocaptioner.AppLinks.PRIVACY_POLICY.toUri()
-                            )
-                        )
-                    }
-                ))
-                withStyle(linkStyle) { append(privacyPolicy) }
-                pop()
-            }
-
-            Text(
-                text = annotatedString,
-                style = androidx.compose.ui.text.TextStyle(
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center
-                ),
+            // Skip Button
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 16.dp)
-            )
-        }
-
-        // Bottom Section
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Indicators
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End
             ) {
-                repeat(pages.size) { iteration ->
-                    val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                    val width = if (pagerState.currentPage == iteration) 24.dp else 8.dp
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(color)
-                            .height(8.dp)
-                            .width(width)
-                    )
+                if (pagerState.currentPage < pages.size - 1) {
+                    TextButton(
+                        onClick = {
+                            viewModel.completeOnboarding()
+                            onFinish()
+                        }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.onboarding_skip),
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(48.dp)) // Maintain height
                 }
             }
 
-            // Next / Get Started Button
-            Button(
-                onClick = {
-                    if (pagerState.currentPage == pages.size - 1) {
-                        viewModel.completeOnboarding()
-                        onFinish()
-                    } else {
-                        scope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(24.dp), // Pill shape for premium feel
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text(
-                    text = if (pagerState.currentPage == pages.size - 1) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_next),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            // Pager
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) { position ->
+                PagerScreen(onBoardingPage = pages[position])
+            }
+
+            // Legal Text on last page
+            if (pagerState.currentPage == pages.size - 1) {
+                val context = LocalContext.current
+                val linkStyle = SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
                 )
+                val legalPrefix = stringResource(R.string.onboarding_legal_prefix)
+                val termsConditions = stringResource(R.string.onboarding_terms_conditions)
+                val legalAnd = stringResource(R.string.onboarding_legal_and)
+                val privacyPolicy = stringResource(R.string.onboarding_privacy_policy)
+
+                val annotatedString = buildAnnotatedString {
+                    append(legalPrefix)
+                    pushLink(LinkAnnotation.Clickable(
+                        tag = "TERMS",
+                        linkInteractionListener = {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    com.dipdev.aiautocaptioner.AppLinks.TERMS_OF_SERVICE.toUri()
+                                )
+                            )
+                        }
+                    ))
+                    withStyle(linkStyle) { append(termsConditions) }
+                    pop()
+                    append(legalAnd)
+                    pushLink(LinkAnnotation.Clickable(
+                        tag = "PRIVACY",
+                        linkInteractionListener = {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    com.dipdev.aiautocaptioner.AppLinks.PRIVACY_POLICY.toUri()
+                                )
+                            )
+                        }
+                    ))
+                    withStyle(linkStyle) { append(privacyPolicy) }
+                    pop()
+                }
+
+                Text(
+                    text = annotatedString,
+                    style = androidx.compose.ui.text.TextStyle(
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 16.dp)
+                )
+            }
+
+            // Bottom Section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Indicators
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(pages.size) { iteration ->
+                        val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        val width = if (pagerState.currentPage == iteration) 24.dp else 8.dp
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(color)
+                                .height(8.dp)
+                                .width(width)
+                        )
+                    }
+                }
+
+                // Next / Get Started Button
+                Button(
+                    onClick = {
+                        if (pagerState.currentPage == pages.size - 1) {
+                            viewModel.completeOnboarding()
+                            onFinish()
+                        } else {
+                            scope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(24.dp), // Pill shape for premium feel
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(
+                        text = if (pagerState.currentPage == pages.size - 1) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_next),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
         }
     }
