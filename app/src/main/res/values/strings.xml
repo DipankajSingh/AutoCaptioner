@@ -13,4 +13,14 @@
     <string name="onboarding_privacy_policy">Privacy Policy</string>
     <string name="onboarding_get_started">Get Started</string>
     <string name="onboarding_next">Next</string>
+    <string name="export_settings">Export Settings</string>
+    <string name="export_resolution">Resolution</string>
+    <string name="export_original">Original</string>
+    <string name="export_frame_rate">Frame Rate</string>
+    <string name="export_quality">Quality</string>
+    <string name="export_quality_low">Low</string>
+    <string name="export_quality_recommended">Recommended</string>
+    <string name="export_quality_high">High</string>
+    <string name="export_estimated_size">Estimated File Size:</string>
+    <string name="export_button">Export</string>
 </resources>

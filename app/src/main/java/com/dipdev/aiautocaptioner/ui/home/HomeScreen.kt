@@ -39,7 +39,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +61,9 @@ import com.google.firebase.Firebase
 import com.google.firebase.remoteconfig.remoteConfig
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
+import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -79,10 +81,10 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
 
-    val projects by viewModel.projects.collectAsState()
-    val activeModel by viewModel.activeModel.collectAsState()
+    val projects by viewModel.projects.collectAsStateWithLifecycle()
+    val activeModel by viewModel.activeModel.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val importState by viewModel.importState.collectAsState()
+    val importState by viewModel.importState.collectAsStateWithLifecycle()
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
 

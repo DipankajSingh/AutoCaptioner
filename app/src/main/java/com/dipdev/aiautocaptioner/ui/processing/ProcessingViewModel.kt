@@ -14,6 +14,7 @@ import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionSegment
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionWord
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +53,8 @@ class ProcessingViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val captionRepository: CaptionRepository,
     private val modelRepository: ModelRepository,
-    private val whisperEngine: WhisperEngine
+    private val whisperEngine: WhisperEngine,
+    private val crashReporter: CrashReporter
 ) : ViewModel() {
 
     private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
@@ -201,7 +203,7 @@ class ProcessingViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("Processing", "Error: ${e.message}", e)
-                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+                crashReporter.recordException(e)
                 whisperEngine.release()
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
             }
@@ -274,7 +276,7 @@ class ProcessingViewModel @Inject constructor(
                 muxer.release()
             } catch (e: Exception) {
                 // Ensure the muxer is properly torn down on any unexpected failure.
-                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+                crashReporter.recordException(e)
                 if (muxerStarted && samplesWritten > 0) {
                     try { muxer.stop() } catch (_: Exception) {}
                 }

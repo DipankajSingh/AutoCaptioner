@@ -8,8 +8,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -30,7 +32,8 @@ class ModelRepository @Inject constructor(
     // We use it to remember which model the user downloaded
     private val dataStore: DataStore<Preferences>,
     // The full list of available models from WhisperModule
-    private val availableModels: List<WhisperModel>
+    private val availableModels: List<WhisperModel>,
+    private val crashReporter: CrashReporter
 ) {
 
     companion object {
@@ -62,7 +65,7 @@ class ModelRepository @Inject constructor(
     fun isOnboardingComplete(): Flow<Boolean> =
         dataStore.data.map { prefs ->
             prefs[ONBOARDING_DONE_KEY] == "true"
-        }
+        }.distinctUntilChanged()
 
     // Mark onboarding as done — called when user taps "Get Started"
     suspend fun setOnboardingComplete() {
@@ -97,7 +100,7 @@ class ModelRepository @Inject constructor(
         dataStore.data.map { prefs ->
             val activeId = prefs[ACTIVE_MODEL_KEY]
             activeId?.let { getModelById(it) }
-        }
+        }.distinctUntilChanged()
 
     // Save which model the user selected as active
     suspend fun setActiveModel(modelId: String) {
@@ -243,19 +246,19 @@ class ModelRepository @Inject constructor(
 
         } catch (e: java.net.UnknownHostException) {
             Log.e(TAG, "Download error (No Internet)", e)
-            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
             emit(DownloadState.Error("No internet connection. Please check your network and try again."))
         } catch (e: java.net.SocketTimeoutException) {
             Log.e(TAG, "Download error (Timeout)", e)
-            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
             emit(DownloadState.Error("Connection timed out. The server took too long to respond."))
         } catch (e: java.io.IOException) {
             Log.e(TAG, "Download error (Network)", e)
-            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
             emit(DownloadState.Error("Network error occurred. Please try again."))
         } catch (e: Exception) {
             Log.e(TAG, "Download error", e)
-            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
             emit(DownloadState.Error(e.message ?: "Unknown error occurred."))
         }
 // flowOn moves the entire flow execution to IO thread

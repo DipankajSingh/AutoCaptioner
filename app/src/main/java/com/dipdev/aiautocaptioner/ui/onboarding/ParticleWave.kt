@@ -43,7 +43,7 @@ private const val WAVE_AMPLITUDE = 0.10f
 /** Spine wave frequency multiplier (PI * this = bends). 1.0 = 1 bend */
 private const val WAVE_FREQUENCY = 0f
 /** Twist frequency multiplier (PI * this). 1.0 = 1 front-facing band */
-private const val TWIST_FREQUENCY = 1.0f
+private const val TWIST_FREQUENCY = 1f
 /** How fast the twist rotates (time multiplier) */
 private const val TWIST_SPEED = 1f
 

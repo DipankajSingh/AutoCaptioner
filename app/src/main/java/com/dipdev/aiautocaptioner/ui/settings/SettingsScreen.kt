@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,8 +33,8 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val currentTheme by viewModel.themeFlow.collectAsState()
-    val isGlassmorphism by viewModel.glassmorphismFlow.collectAsState()
+    val currentTheme by viewModel.themeFlow.collectAsStateWithLifecycle()
+    val isGlassmorphism by viewModel.glassmorphismFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Scaffold(

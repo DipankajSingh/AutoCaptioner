@@ -90,8 +90,21 @@ class StyleEditorViewModel @Inject constructor(
 
 
 
-    private val _selectedTab = MutableStateFlow(StyleTab.TEXT)
+    private val _selectedTab = MutableStateFlow(StyleTab.PRESETS)
     val selectedTab: StateFlow<StyleTab> = _selectedTab.asStateFlow()
+
+    private val _isCustomizing = MutableStateFlow(false)
+    val isCustomizing: StateFlow<Boolean> = _isCustomizing.asStateFlow()
+
+    fun setCustomizing(customizing: Boolean) {
+        _isCustomizing.value = customizing
+        if (customizing) {
+            // Default to Text tab when entering customization
+            _selectedTab.value = StyleTab.TEXT
+        } else {
+            _selectedTab.value = StyleTab.PRESETS
+        }
+    }
 
     fun loadStyles(projectId: String) {
         viewModelScope.launch {

@@ -78,7 +78,7 @@ object CaptionAnimator {
         val xt = if (isExiting) applyAnim(style.wordExitAnimation, 1f - exit, entering = false) else RawTransform()
 
         var alpha  = et.alpha * (if (isExiting) {
-            if (style.wordExitAnimation == AnimationType.NONE) (1f - easeInCubic(exit)).coerceIn(0f, 1f) else xt.alpha
+            if (style.wordExitAnimation == AnimationType.NONE) (1f - AnimationUtils.easeInCubic(exit)).coerceIn(0f, 1f) else xt.alpha
         } else 1f)
         var scaleX = et.scaleX * (if (isExiting) xt.scaleX else 1f)
         var scaleY = et.scaleY * (if (isExiting) xt.scaleY else 1f)
@@ -100,7 +100,7 @@ object CaptionAnimator {
                 EmphasisType.BOUNCE    -> ty -= sin(phase) * 12f
                 EmphasisType.SCALE     -> { val s = 1f + 0.12f * sin(phase); scaleX *= s; scaleY *= s }
                 EmphasisType.SHAKE     -> tx += sin(phase * 3f) * 8f
-                EmphasisType.COLOR_POP -> colorOverride = blendColor(
+                EmphasisType.COLOR_POP -> colorOverride = AnimationUtils.blendColor(
                     style.textColor.toInt(), style.highlightColor.toInt(),
                     (sin(phase) + 1f) / 2f
                 )
@@ -131,7 +131,7 @@ object CaptionAnimator {
     )
 
     private fun applyAnim(type: AnimationType, p: Float, entering: Boolean): RawTransform {
-        val e = easeOutCubic(p)
+        val e = AnimationUtils.easeOutCubic(p)
         val dir = if (entering) 1f else -1f
         return when (type) {
             AnimationType.NONE       -> RawTransform()
@@ -140,11 +140,11 @@ object CaptionAnimator {
             AnimationType.SLIDE_DOWN -> RawTransform(alpha = e, translateY = -(1f - e) * 40f * dir)
             AnimationType.SCALE_POP  -> RawTransform(alpha = e, scaleX = e.coerceAtLeast(0.01f), scaleY = e.coerceAtLeast(0.01f))
             AnimationType.BOUNCE     -> {
-                val s = bounceOut(p).coerceAtLeast(0.01f)
+                val s = AnimationUtils.bounceOut(p).coerceAtLeast(0.01f)
                 RawTransform(alpha = if (p > 0.05f) 1f else p * 20f, scaleX = s, scaleY = s)
             }
             AnimationType.ELASTIC    -> {
-                val s = elasticOut(p).coerceAtLeast(0.01f)
+                val s = AnimationUtils.elasticOut(p).coerceAtLeast(0.01f)
                 RawTransform(alpha = if (p > 0.05f) 1f else p * 20f, scaleX = s, scaleY = s)
             }
             AnimationType.TYPEWRITER -> RawTransform(clipFraction = p)
@@ -154,42 +154,6 @@ object CaptionAnimator {
                 RawTransform(alpha = if (p > 0.5f) 1f else p * 2f, scaleX = sx)
             }
         }
-    }
-
-    // ── Easing functions ──────────────────────────────────────────────────────
-
-    fun easeOutCubic(t: Float): Float { val c = 1f - t; return 1f - c * c * c }
-    fun easeInCubic(t: Float): Float  = t * t * t
-
-    private fun bounceOut(t: Float): Float {
-        val n = 7.5625f; val d = 2.75f
-        return when {
-            t < 1f / d   -> n * t * t
-            t < 2f / d   -> { val u = t - 1.5f / d;   n * u * u + 0.75f    }
-            t < 2.5f / d -> { val u = t - 2.25f / d;  n * u * u + 0.9375f  }
-            else         -> { val u = t - 2.625f / d;  n * u * u + 0.984375f }
-        }
-    }
-
-    private fun elasticOut(t: Float): Float {
-        if (t == 0f || t == 1f) return t
-        val p = 0.3f
-        return 2f.pow(-10f * t) * sin((t - p / 4f) * (2f * PI.toFloat()) / p) + 1f
-    }
-
-    // ── Colour helpers ────────────────────────────────────────────────────────
-
-    /**
-     * Linearly interpolate between two ARGB colours.
-     * @param t 0f = c1, 1f = c2
-     */
-    fun blendColor(c1: Int, c2: Int, t: Float): Int {
-        fun ch(c: Int, shift: Int) = (c shr shift) and 0xFF
-        fun lerp(a: Int, b: Int)   = (a + (b - a) * t).toInt().coerceIn(0, 255)
-        return (lerp(ch(c1, 24), ch(c2, 24)) shl 24) or
-               (lerp(ch(c1, 16), ch(c2, 16)) shl 16) or
-               (lerp(ch(c1,  8), ch(c2,  8)) shl  8) or
-                lerp(ch(c1,  0), ch(c2,  0))
     }
 
     // ── Visibility filter ─────────────────────────────────────────────────────

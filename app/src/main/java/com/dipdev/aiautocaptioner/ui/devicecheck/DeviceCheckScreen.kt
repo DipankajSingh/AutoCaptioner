@@ -14,16 +14,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
+import com.dipdev.aiautocaptioner.ui.components.ModelStat
 
 @Composable
 fun DeviceCheckScreen(
     onModelSelected: (String) -> Unit,
     viewModel: DeviceCheckViewModel = hiltViewModel()
 ) {
-    val deviceInfo by viewModel.deviceInfo.collectAsState()
-    val models by viewModel.models.collectAsState()
-    val recommendedModelId by viewModel.recommendedModelId.collectAsState()
+    val deviceInfo by viewModel.deviceInfo.collectAsStateWithLifecycle()
+    val models by viewModel.models.collectAsStateWithLifecycle()
+    val recommendedModelId by viewModel.recommendedModelId.collectAsStateWithLifecycle()
     var selectedModelId by remember { mutableStateOf<String?>(null) }
 
     // Auto-select recommended model once it's known
@@ -252,19 +254,3 @@ private fun ModelCard(
     }
 }
 
-@Composable
-private fun ModelStat(label: String, value: String) {
-    Column {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
-        Text(
-            text = value,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}

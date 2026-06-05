@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class WhisperEngine(private val context: Context) {
+class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
 
     companion object {
         private const val TAG = "WhisperEngine"
@@ -51,7 +51,7 @@ class WhisperEngine(private val context: Context) {
         listener: ProgressListener? = null
     ): Array<String>?
 
-    interface ProgressListener {
+    fun interface ProgressListener {
         fun onProgress(progress: Int)
     }
 
@@ -80,13 +80,11 @@ class WhisperEngine(private val context: Context) {
                 if (nativeHandle != 0L) {
                     freeModel(nativeHandle)
                     nativeHandle = 0L
-                    Log.i(TAG, "Previous model released before loading new one")
                 }
 
                 val handle = loadModel(modelFile.absolutePath)
                 return@withContext if (handle != 0L) {
                     nativeHandle = handle
-                    Log.i(TAG, "Model initialised successfully (threads=$THREAD_COUNT)")
                     true
                 } else {
                     Log.e(TAG, "Failed to initialise model")
@@ -112,14 +110,8 @@ class WhisperEngine(private val context: Context) {
                     Log.e(TAG, "Cannot transcribe — model not loaded")
                     return@withContext ""
                 }
-                Log.i(TAG, "Transcribing ${samples.size} samples (lang=$language, threads=$THREAD_COUNT)...")
-                val listener = if (onProgress != null) {
-                    object : ProgressListener {
-                        override fun onProgress(progress: Int) = onProgress(progress)
-                    }
-                } else null
+                val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val result = transcribe(handle, samples, language, THREAD_COUNT, listener)
-                Log.i(TAG, "Transcription complete (${result.length} chars)")
                 result
             }
         }
@@ -137,11 +129,7 @@ class WhisperEngine(private val context: Context) {
             engineMutex.withLock {
                 val handle = nativeHandle
                 if (handle == 0L) return@withContext emptyList()
-                val listener = if (onProgress != null) {
-                    object : ProgressListener {
-                        override fun onProgress(progress: Int) = onProgress(progress)
-                    }
-                } else null
+                val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val raw = transcribeWithTimestamps(handle, samples, language, THREAD_COUNT, listener)
                     ?: return@withContext emptyList()
                 raw.mapNotNull { entry ->
@@ -185,31 +173,10 @@ class WhisperEngine(private val context: Context) {
                     // isReady() check sees "not loaded" immediately.
                     nativeHandle = 0L
                     freeModel(handle)
-                    Log.i(TAG, "WhisperEngine released")
                 }
             }
         }
     }
 
-    /**
-     * Copies a model from the assets folder to internal storage.
-     * Call only during first launch / model download fallback.
-     */
-    suspend fun copyModelFromAssets(assetFileName: String): File {
-        return withContext(Dispatchers.IO) {
-            val outputFile = File(context.filesDir, assetFileName)
-            if (!outputFile.exists()) {
-                Log.i(TAG, "Copying model from assets to internal storage...")
-                context.assets.open(assetFileName).use { input ->
-                    outputFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                Log.i(TAG, "Model copied to: ${outputFile.absolutePath}")
-            } else {
-                Log.i(TAG, "Model already exists at: ${outputFile.absolutePath}")
-            }
-            outputFile
-        }
-    }
+
 }

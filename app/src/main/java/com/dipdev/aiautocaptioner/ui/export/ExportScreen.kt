@@ -36,7 +36,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -71,10 +71,11 @@ fun ExportScreen(
     viewModel: ExportViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val exportState by viewModel.exportState.collectAsState()
-    val progress by viewModel.progress.collectAsState()
-    val outputPath by viewModel.outputPath.collectAsState()
-    val workingVideoPath by viewModel.workingVideoPath.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val exportState = uiState.exportState
+    val progress = uiState.progress
+    val outputPath = uiState.outputPath
+    val workingVideoPath = uiState.workingVideoPath
 
     // Original Video Metadata
     var originalWidth by remember { mutableIntStateOf(1080) }
@@ -113,7 +114,6 @@ fun ExportScreen(
                     retriever.release()
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 }
             }
         }
@@ -134,7 +134,7 @@ fun ExportScreen(
     val estimatedSizeMB = estimatedSizeBytes / (1024 * 1024)
 
     LaunchedEffect(Unit) {
-        viewModel.prepareExport(projectId)
+        viewModel.setEvent(ExportUiEvent.PrepareExport(projectId))
     }
 
     Scaffold(
@@ -209,7 +209,7 @@ fun ExportScreen(
                         // Save to Gallery
                         Button(
                             onClick = {
-                                if (path != null) viewModel.saveToGallery(path)
+                                if (path != null) viewModel.setEvent(ExportUiEvent.SaveToGallery(path))
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(4.dp),
@@ -251,7 +251,7 @@ fun ExportScreen(
                     ){
                         // Re-export
                         OutlinedButton(
-                            onClick = { viewModel.resetForReExport() },
+                            onClick = { viewModel.setEvent(ExportUiEvent.ResetForReExport) },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(4.dp)
                         ) {
@@ -372,7 +372,7 @@ fun ExportScreen(
                     Spacer(modifier = Modifier.weight(1f))
                     
                     Button(
-                        onClick = { viewModel.startExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight) },
+                        onClick = { viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight)) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) {
@@ -421,7 +421,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     OutlinedButton(
-                        onClick = { viewModel.cancelExport() },
+                        onClick = { viewModel.setEvent(ExportUiEvent.CancelExport) },
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Cancel", maxLines = 1) }
                 }
@@ -445,7 +445,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.startExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight) },
+                        onClick = { viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight)) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Try Again", maxLines = 1) }
@@ -470,7 +470,7 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.startExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight) },
+                        onClick = { viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight)) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Retry", maxLines = 1) }

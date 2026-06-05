@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -63,7 +64,6 @@ fun ExportSettingsBottomSheet(
                     retriever.release()
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
                 }
             }
         }
@@ -94,7 +94,7 @@ fun ExportSettingsBottomSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Export Settings",
+                text = stringResource(com.dipdev.aiautocaptioner.R.string.export_settings),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -103,7 +103,7 @@ fun ExportSettingsBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Resolution
-            Text("Resolution", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_resolution), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -111,7 +111,7 @@ fun ExportSettingsBottomSheet(
                 FilterChip(
                     selected = selectedHeight == -1,
                     onClick = { selectedHeight = -1 },
-                    label = { Text("Original") }
+                    label = { Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_original)) }
                 )
                 FilterChip(
                     selected = selectedHeight == 1920, // 1080p height usually 1920
@@ -128,7 +128,7 @@ fun ExportSettingsBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Frame Rate
-            Text("Frame Rate", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_frame_rate), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -136,7 +136,7 @@ fun ExportSettingsBottomSheet(
                 FilterChip(
                     selected = selectedFps == -1,
                     onClick = { selectedFps = -1 },
-                    label = { Text("Original") }
+                    label = { Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_original)) }
                 )
                 FilterChip(
                     selected = selectedFps == 30,
@@ -153,7 +153,7 @@ fun ExportSettingsBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Quality
-            Text("Quality", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_quality), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -161,17 +161,17 @@ fun ExportSettingsBottomSheet(
                 FilterChip(
                     selected = selectedQuality == 0,
                     onClick = { selectedQuality = 0 },
-                    label = { Text("Low") }
+                    label = { Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_quality_low)) }
                 )
                 FilterChip(
                     selected = selectedQuality == 1,
                     onClick = { selectedQuality = 1 },
-                    label = { Text("Recommended") }
+                    label = { Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_quality_recommended)) }
                 )
                 FilterChip(
                     selected = selectedQuality == 2,
                     onClick = { selectedQuality = 2 },
-                    label = { Text("High") }
+                    label = { Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_quality_high)) }
                 )
             }
 
@@ -184,7 +184,7 @@ fun ExportSettingsBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Estimated File Size:",
+                    text = stringResource(com.dipdev.aiautocaptioner.R.string.export_estimated_size),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -209,7 +209,7 @@ fun ExportSettingsBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
             ) {
-                Text("Export", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+                Text(stringResource(com.dipdev.aiautocaptioner.R.string.export_button), fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
             }
         }
     }

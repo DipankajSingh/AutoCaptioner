@@ -1,6 +1,8 @@
 package com.dipdev.aiautocaptioner.data.repository
 
 import android.util.Log
+import androidx.room.withTransaction
+import com.dipdev.aiautocaptioner.data.db.AppDatabase
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionSegmentDao
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionStyleDao
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionWordDao
@@ -15,6 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class CaptionRepository @Inject constructor(
+    private val db: AppDatabase,
     private val segmentDao: CaptionSegmentDao,
     private val wordDao: CaptionWordDao,
     private val styleDao: CaptionStyleDao
@@ -47,11 +50,6 @@ class CaptionRepository @Inject constructor(
         // Format: List<Pair<segmentTimes, List<wordData>>>
         segments: List<TranscriptionSegment>
     ) {
-        // First delete any existing transcription for this project
-        // (in case user is re-transcribing)
-        segmentDao.deleteSegmentsForProject(projectId)
-        wordDao.deleteWordsForProject(projectId)
-
         // Build the entity lists to insert
         val segmentEntities = mutableListOf<CaptionSegmentEntity>()
         val wordEntities = mutableListOf<CaptionWordEntity>()
@@ -90,10 +88,17 @@ class CaptionRepository @Inject constructor(
             }
         }
 
-        // Batch insert — much faster than inserting one by one
-        // Room wraps this in a single database transaction
-        segmentDao.insertAll(segmentEntities)
-        wordDao.insertAll(wordEntities)
+        // Run all operations inside a single transaction to ensure atomicity and improve performance
+        db.withTransaction {
+            // First delete any existing transcription for this project
+            // (in case user is re-transcribing)
+            segmentDao.deleteSegmentsForProject(projectId)
+            wordDao.deleteWordsForProject(projectId)
+
+            // Batch insert — much faster than inserting one by one
+            segmentDao.insertAll(segmentEntities)
+            wordDao.insertAll(wordEntities)
+        }
 
         Log.i(TAG, "Saved ${segmentEntities.size} segments, ${wordEntities.size} words")
     }
@@ -139,8 +144,10 @@ class CaptionRepository @Inject constructor(
     }
 
     suspend fun replaceWordsForSegment(segmentId: String, newWords: List<CaptionWordEntity>) {
-        wordDao.deleteWordsForSegment(segmentId)
-        wordDao.insertAll(newWords)
+        db.withTransaction {
+            wordDao.deleteWordsForSegment(segmentId)
+            wordDao.insertAll(newWords)
+        }
     }
 
     // Update a list of existing words in-place (called from CaptionEditorViewModel

@@ -7,6 +7,7 @@ import android.util.Log
 import com.dipdev.aiautocaptioner.data.db.dao.ProjectDao
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +24,8 @@ import javax.inject.Singleton
 class ProjectRepository @Inject constructor(
     // Hilt injects these automatically from DatabaseModule + AppModule
     private val projectDao: ProjectDao,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val crashReporter: CrashReporter
 ) {
 
     companion object {
@@ -110,7 +112,7 @@ class ProjectRepository @Inject constructor(
                     // Photo Picker URIs don't support persistable permissions. 
                     // We'll rely on temporary access (which might expire if app restarts before processing).
                     Log.w(TAG, "Could not take persistable permission for $videoUri", e)
-                    com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+                    crashReporter.recordException(e)
                 }
                 val videoFileString = videoUri.toString()
 
@@ -147,7 +149,7 @@ class ProjectRepository @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to import video", e)
-                com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+                crashReporter.recordException(e)
                 Result.failure(e)
             }
         }
@@ -227,7 +229,7 @@ class ProjectRepository @Inject constructor(
         } catch (e: Exception) {
             // Thumbnail failure is non-fatal — app works without it
             Log.w(TAG, "Failed to extract thumbnail: ${e.message}")
-            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
         }
     }
 

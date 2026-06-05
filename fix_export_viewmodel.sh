@@ -1,3 +1,5 @@
+#!/bin/bash
+cat << 'INNEREOF' > app/src/main/java/com/dipdev/aiautocaptioner/ui/export/ExportViewModel.kt
 package com.dipdev.aiautocaptioner.ui.export
 
 import android.content.ContentValues
@@ -313,3 +315,4 @@ class ExportViewModel @Inject constructor(
         activeTransformer = null
     }
 }
+INNEREOF

@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
+import com.dipdev.aiautocaptioner.core.logging.FirebaseCrashReporter
 import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,17 +20,25 @@ private val Context.dataStore: DataStore<Preferences>
 
 @Module
 @InstallIn(SingletonComponent::class)
-object AppModule {
+abstract class AppModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideDataStore(
-        @ApplicationContext context: Context
-    ): DataStore<Preferences> = context.dataStore
+    abstract fun bindCrashReporter(
+        reporter: FirebaseCrashReporter
+    ): CrashReporter
 
-    @Provides
-    @Singleton
-    fun provideWhisperEngine(
-        @ApplicationContext context: Context
-    ): WhisperEngine = WhisperEngine(context)
+    companion object {
+        @Provides
+        @Singleton
+        fun provideDataStore(
+            @ApplicationContext context: Context
+        ): DataStore<Preferences> = context.dataStore
+
+        @Provides
+        @Singleton
+        fun provideWhisperEngine(
+            @ApplicationContext context: Context
+        ): WhisperEngine = WhisperEngine(context)
+    }
 }

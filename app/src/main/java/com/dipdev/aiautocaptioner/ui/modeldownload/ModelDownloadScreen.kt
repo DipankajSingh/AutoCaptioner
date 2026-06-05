@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,8 +30,8 @@ fun ModelDownloadScreen(
     onNavigateBack: (() -> Unit)? = null,
     viewModel: ModelDownloadViewModel = hiltViewModel()
 ) {
-    val downloadState by viewModel.downloadState.collectAsState()
-    val modelName by viewModel.modelName.collectAsState()
+    val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
+    val modelName by viewModel.modelName.collectAsStateWithLifecycle()
 
     // Start download when screen first appears
     LaunchedEffect(modelId) {

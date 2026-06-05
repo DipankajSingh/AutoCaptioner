@@ -1,4 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.components
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,6 +11,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +96,64 @@ fun GradientPrimaryButton(
             text = text,
             color = if (enabled) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+        )
+    }
+}
+
+@Composable
+fun EmptyState(
+    title: String = "No Projects Yet",
+    subtitle: String = "Import a video to add karaoke captions",
+    buttonText: String = "Import Video",
+    onAction: () -> Unit
+) {
+    val composition by com.airbnb.lottie.compose.rememberLottieComposition(
+        com.airbnb.lottie.compose.LottieCompositionSpec.RawRes(com.dipdev.aiautocaptioner.R.raw.nothing)
+    )
+
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Top
+    ) {
+        com.airbnb.lottie.compose.LottieAnimation(
+            composition = composition,
+            iterations = com.airbnb.lottie.compose.LottieConstants.IterateForever,
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .aspectRatio(1f)
+        )
+        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
+        androidx.compose.material3.Text(title, fontSize = 22.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
+        androidx.compose.material3.Text(
+            text = subtitle,
+            fontSize = 14.sp,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+        )
+        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(32.dp))
+        GradientPrimaryButton(
+            onClick = onAction,
+            text = buttonText
+        )
+    }
+}
+
+@Composable
+fun ModelStat(label: String, value: String) {
+    androidx.compose.foundation.layout.Column {
+        androidx.compose.material3.Text(
+            text = label,
+            fontSize = 11.sp,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        )
+        androidx.compose.material3.Text(
+            text = value,
+            fontSize = 12.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+            color = androidx.compose.material3.MaterialTheme.colorScheme.primary
         )
     }
 }

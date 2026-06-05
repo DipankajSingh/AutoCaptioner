@@ -10,11 +10,11 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import android.content.Context
-import android.content.Intent
-import androidx.core.content.FileProvider
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
 import java.io.File
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -121,6 +121,9 @@ class CaptionEditorViewModel @Inject constructor(
     private val _retranscribeRequested = MutableStateFlow(false)
     val retranscribeRequested: StateFlow<Boolean> = _retranscribeRequested.asStateFlow()
 
+    private val _srtContentToShare = MutableSharedFlow<String>()
+    val srtContentToShare: SharedFlow<String> = _srtContentToShare.asSharedFlow()
+
     fun retranscribe(projectId: String) {
         viewModelScope.launch {
             projectRepository.updateStatus(projectId, ProjectStatus.IMPORTED)
@@ -132,7 +135,7 @@ class CaptionEditorViewModel @Inject constructor(
         _retranscribeRequested.value = false
     }
 
-    fun shareSrt(projectId: String, context: Context) {
+    fun shareSrt(projectId: String) {
         viewModelScope.launch {
             val segmentsList = captionRepository.getSegmentsOnce(projectId)
             val sb = java.lang.StringBuilder()
@@ -141,16 +144,7 @@ class CaptionEditorViewModel @Inject constructor(
                 sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
                 sb.append(segment.text).append("\n\n")
             }
-            val srtFile = File(context.cacheDir, "captions_$projectId.srt")
-            srtFile.writeText(sb.toString())
-
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", srtFile)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/x-subrip"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(intent, "Share SRT"))
+            _srtContentToShare.emit(sb.toString())
         }
     }
 

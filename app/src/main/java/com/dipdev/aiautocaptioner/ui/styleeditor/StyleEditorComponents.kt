@@ -63,23 +63,28 @@ fun PresetChip(
     onLongClick: (() -> Unit)? = null
 ) {
     Surface(
-        shape = RoundedCornerShape(4.dp), // Flattened shape
-        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        shadowElevation = if (isSelected) 4.dp else 1.dp,
         modifier = Modifier.combinedClickable(
             onClick = onClick,
             onLongClick = onLongClick
         )
     ) {
-        Text(
-            text = style.name,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        Column(
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = style.name,
+                fontSize = 16.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+            )
+        }
     }
 }
-
-
 
 @Composable
 fun BottomTabItem(name: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
@@ -107,20 +112,23 @@ fun BottomTabItem(name: String, icon: ImageVector, selected: Boolean, onClick: (
 @Composable
 fun StyleEditorBottomBar(
     selectedTab: StyleTab,
-    onTabSelected: (StyleTab) -> Unit
+    onTabSelected: (StyleTab) -> Unit,
+    isCustomizing: Boolean = false
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .background(MaterialTheme.colorScheme.surface),
+            .background(Color.Transparent),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
         BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT) { onTabSelected(StyleTab.TEXT) }
         BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR) { onTabSelected(StyleTab.COLOR) }
         BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION) { onTabSelected(StyleTab.ANIMATION) }
-        BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS) { onTabSelected(StyleTab.PRESETS) }
+        if (!isCustomizing) {
+            BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS) { onTabSelected(StyleTab.PRESETS) }
+        }
     }
 }
 

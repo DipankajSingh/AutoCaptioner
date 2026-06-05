@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,7 +30,7 @@ fun ExportHistoryScreen(
     onNavigateBack: () -> Unit,
     viewModel: ExportHistoryViewModel = hiltViewModel()
 ) {
-    val exports by viewModel.exports.collectAsState()
+    val exports by viewModel.exports.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId) {
         viewModel.loadExports(projectId)

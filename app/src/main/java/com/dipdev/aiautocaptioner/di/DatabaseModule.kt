@@ -43,17 +43,22 @@ object DatabaseModule {
     ).build()
 
     @Provides
+    @Singleton
     fun provideProjectDao(db: AppDatabase): ProjectDao = db.projectDao()
 
     @Provides
+    @Singleton
     fun provideCaptionSegmentDao(db: AppDatabase): CaptionSegmentDao = db.captionSegmentDao()
 
     @Provides
+    @Singleton
     fun provideCaptionWordDao(db: AppDatabase): CaptionWordDao = db.captionWordDao()
 
     @Provides
+    @Singleton
     fun provideCaptionStyleDao(db: AppDatabase): CaptionStyleDao = db.captionStyleDao()
 
     @Provides
+    @Singleton
     fun provideExportedFileDao(db: AppDatabase): ExportedFileDao = db.exportedFileDao()
 }

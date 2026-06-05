@@ -18,6 +18,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.*
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Palette
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,6 +36,7 @@ fun StyleEditorScreen(
     val styles by viewModel.styles.collectAsStateWithLifecycle()
     val activeStyle by viewModel.activeStyle.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val isCustomizing by viewModel.isCustomizing.collectAsStateWithLifecycle()
     var showExportWarning by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<CaptionStyleEntity?>(null) }
@@ -206,61 +209,104 @@ fun StyleEditorScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(100.dp)
+                    .wrapContentHeight()
             ) {
                 activeStyle?.let { style ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (selectedTab) {
-                            StyleTab.TEXT -> TextTab(
-                                style = style,
-                                onFontSizeChange = viewModel::updateFontSize,
-                                onFontWeightChange = viewModel::updateFontWeight,
-                                onMaxWordsChange = viewModel::updateMaxWordsPerLine,
-                                onMaxLinesChange = viewModel::updateMaxLines,
-                                onRemovePunctuationChange = viewModel::updateRemovePunctuation,
-                                onAlignmentChange = viewModel::updateAlignment,
-                                onLetterSpacingChange = viewModel::updateLetterSpacing,
-                                onIsItalicChange = viewModel::updateIsItalic
-                            )
-                            StyleTab.COLOR -> ColorTab(
-                                style = style,
-                                onTextColorChange = viewModel::updateTextColor,
-                                onHighlightColorChange = viewModel::updateHighlightColor,
-                                onOutlineColorChange = viewModel::updateOutlineColor,
-                                onOutlineWidthChange = viewModel::updateOutlineWidth,
-                                onBackgroundTypeChange = viewModel::updateBackgroundType,
-                                onBackgroundColorChange = viewModel::updateBackgroundColor,
-                                onBackgroundOpacityChange = viewModel::updateBackgroundOpacity,
-                                onBackgroundPaddingHChange = viewModel::updateBackgroundPaddingH,
-                                onBackgroundPaddingVChange = viewModel::updateBackgroundPaddingV,
-                                onBackgroundCornerRadiusChange = viewModel::updateBackgroundCornerRadius,
-                                onShadowRadiusChange = viewModel::updateShadowRadius,
-                                onShadowColorChange = viewModel::updateShadowColor
-                            )
-                            StyleTab.ANIMATION -> AnimationTab(
-                                style = style,
-                                onDisplayModeChange = viewModel::updateDisplayMode,
-                                onWordEnterChange = viewModel::updateWordEnterAnimation,
-                                onWordExitChange = viewModel::updateWordExitAnimation,
-                                onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode,
-                                onAnimationDurationChange = viewModel::updateAnimationDurationMs
-                            )
-                            StyleTab.PRESETS -> PresetsTab(
+                    if (!isCustomizing) {
+                        // STATE A: Presets First
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            PresetsTab(
                                 styles = styles,
                                 activeStyle = activeStyle,
                                 onPresetSelected = { viewModel.selectPreset(it) },
                                 onPresetLongClicked = { if (!it.isDefault) presetToDelete = it }
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { viewModel.setCustomizing(true) },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            ) {
+                                Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Customize Style", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        // STATE B: Detailed Customization
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // The editor controls
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(110.dp)
+                            ) {
+                                when (selectedTab) {
+                                    StyleTab.TEXT -> TextTab(
+                                        style = style,
+                                        onFontSizeChange = viewModel::updateFontSize,
+                                        onFontWeightChange = viewModel::updateFontWeight,
+                                        onMaxWordsChange = viewModel::updateMaxWordsPerLine,
+                                        onMaxLinesChange = viewModel::updateMaxLines,
+                                        onRemovePunctuationChange = viewModel::updateRemovePunctuation,
+                                        onAlignmentChange = viewModel::updateAlignment,
+                                        onLetterSpacingChange = viewModel::updateLetterSpacing,
+                                        onIsItalicChange = viewModel::updateIsItalic
+                                    )
+                                    StyleTab.COLOR -> ColorTab(
+                                        style = style,
+                                        onTextColorChange = viewModel::updateTextColor,
+                                        onHighlightColorChange = viewModel::updateHighlightColor,
+                                        onOutlineColorChange = viewModel::updateOutlineColor,
+                                        onOutlineWidthChange = viewModel::updateOutlineWidth,
+                                        onBackgroundTypeChange = viewModel::updateBackgroundType,
+                                        onBackgroundColorChange = viewModel::updateBackgroundColor,
+                                        onBackgroundOpacityChange = viewModel::updateBackgroundOpacity,
+                                        onBackgroundPaddingHChange = viewModel::updateBackgroundPaddingH,
+                                        onBackgroundPaddingVChange = viewModel::updateBackgroundPaddingV,
+                                        onBackgroundCornerRadiusChange = viewModel::updateBackgroundCornerRadius,
+                                        onShadowRadiusChange = viewModel::updateShadowRadius,
+                                        onShadowColorChange = viewModel::updateShadowColor
+                                    )
+                                    StyleTab.ANIMATION -> AnimationTab(
+                                        style = style,
+                                        onDisplayModeChange = viewModel::updateDisplayMode,
+                                        onWordEnterChange = viewModel::updateWordEnterAnimation,
+                                        onWordExitChange = viewModel::updateWordExitAnimation,
+                                        onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode,
+                                        onAnimationDurationChange = viewModel::updateAnimationDurationMs
+                                    )
+                                    StyleTab.PRESETS -> { /* Hidden when customizing */ }
+                                }
+                            }
+                            
+                            // Bottom navigation for customization + Done button
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    StyleEditorBottomBar(
+                                        selectedTab = selectedTab,
+                                        onTabSelected = { viewModel.selectTab(it) },
+                                        isCustomizing = true
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { viewModel.setCustomizing(false) },
+                                    modifier = Modifier.padding(end = 16.dp)
+                                ) {
+                                    Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            // Icon-based bottom bar
-            StyleEditorBottomBar(
-                selectedTab = selectedTab,
-                onTabSelected = { viewModel.selectTab(it) }
-            )
         }
     }
 }

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,11 +32,11 @@ class SettingsRepository @Inject constructor(
         } catch (e: Exception) {
             AppTheme.EMERALD
         }
-    }
+    }.distinctUntilChanged()
 
     val glassmorphismFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[GLASSMORPHISM_KEY] ?: true
-    }
+    }.distinctUntilChanged()
 
     suspend fun setTheme(theme: AppTheme) {
         dataStore.edit { prefs ->

@@ -58,6 +58,20 @@ fun CaptionEditorScreen(
 
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        viewModel.srtContentToShare.collect { content ->
+            val srtFile = java.io.File(context.cacheDir, "captions_$projectId.srt")
+            srtFile.writeText(content)
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", srtFile)
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "application/x-subrip"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(android.content.Intent.createChooser(intent, "Share SRT"))
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -100,7 +114,7 @@ fun CaptionEditorScreen(
                     Text("Style Presets", maxLines = 1)
                 }
                 Button(
-                    onClick = { viewModel.shareSrt(projectId, context) },
+                    onClick = { viewModel.shareSrt(projectId) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(4.dp)
                 ) {

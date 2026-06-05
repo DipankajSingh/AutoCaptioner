@@ -38,7 +38,7 @@ object CaptionRenderer {
         CaptionPaints.configure(style, baseScale)
 
         // ── Build TimedWord list ──────────────────────────────────────────────
-        val allWords: List<TimedWord> = buildTimedWords(seg, rawWords, currentPositionMs)
+        val allWords: List<TimedWord> = CaptionUtils.buildTimedWords(seg, rawWords, currentPositionMs)
         if (allWords.isEmpty()) return
 
         // ── Metrics & constants ───────────────────────────────────────────────
@@ -61,7 +61,7 @@ object CaptionRenderer {
         val lineLayouts: List<Triple<List<CaptionAnimator.TimedWord>, Float, Float>> =
             lines.map { words ->
                 val lineW = words.sumOf { w ->
-                    (CaptionPaints.text.measureText(sanitize(w.text, style)) + spaceW).toDouble()
+                    (CaptionPaints.text.measureText(CaptionUtils.sanitize(w.text, style)) + spaceW).toDouble()
                 }.toFloat() - spaceW
                 val x = when (style.alignment) {
                     TextAlignment.CENTER -> (videoWidth - lineW) / 2f
@@ -81,7 +81,7 @@ object CaptionRenderer {
             drawLineBackground(canvas, style, x, lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
 
             for (w in lineWords) {
-                val txt = sanitize(w.text, style)
+                val txt = CaptionUtils.sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
                 val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
 
@@ -113,7 +113,7 @@ object CaptionRenderer {
             val lineTop = lineY_P2 + fm.top
             val lineBot = lineY_P2 + fm.bottom
             for (w in lineWords) {
-                val txt = sanitize(w.text, style)
+                val txt = CaptionUtils.sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
                 val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
                 drawWord(canvas, txt, x, lineY_P2, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = false)
@@ -241,41 +241,6 @@ object CaptionRenderer {
         }
     }
 
-    // ── TimedWord builder ─────────────────────────────────────────────────────
-
-    private fun buildTimedWords(
-        seg: CaptionSegmentEntity,
-        rawWords: List<CaptionWordEntity>?,
-        posMs: Long
-    ): List<TimedWord> {
-        if (!rawWords.isNullOrEmpty()) {
-            return rawWords.map { w ->
-                TimedWord(
-                    text         = w.word,
-                    startTimeMs  = w.startTimeMs,
-                    endTimeMs    = w.endTimeMs,
-                    isActive     = posMs in w.startTimeMs..w.endTimeMs,
-                    isPast       = posMs > w.endTimeMs,
-                    isEmphasized = w.isEmphasized,
-                    emphasisType = w.emphasisType
-                )
-            }
-        }
-        // Fallback: no word timestamps — distribute segment time equally
-        val words = seg.text.split(" ").filter { it.isNotBlank() }
-        val tpw = if (words.isNotEmpty()) (seg.endTimeMs - seg.startTimeMs) / words.size else 0L
-        return words.mapIndexed { i, w ->
-            val s = seg.startTimeMs + i * tpw
-            val e = s + tpw
-            TimedWord(w, s, e, posMs in s..e, posMs > e, false, EmphasisType.NONE)
-        }
-    }
-
-    // ── Utility ───────────────────────────────────────────────────────────────
-
-    private fun sanitize(text: String, style: CaptionStyleEntity): String =
-        if (style.removePunctuation) text.replace(Regex("[,.!?;:]"), "").trimEnd()
-        else text
 }
 
 // Kept for any external code that may reference it
