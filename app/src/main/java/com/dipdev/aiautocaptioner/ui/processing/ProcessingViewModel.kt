@@ -450,22 +450,17 @@ class ProcessingViewModel @Inject constructor(
     /**
      * Merges split contractions: "it" + "'s" → "it's"
      */
-    private fun mergeContractions(
-        words: List<WordTimestamp>
-    ): List<WordTimestamp> {
-        if (words.isEmpty()) return words
-        val result = mutableListOf<WordTimestamp>()
-        for (word in words) {
+    private fun mergeContractions(words: List<WordTimestamp>): List<WordTimestamp> =
+        words.fold(mutableListOf()) { acc, word ->
             val trimmed = word.word.trim()
-            if (trimmed.startsWith("'") && result.isNotEmpty()) {
-                val prev = result.removeAt(result.lastIndex)
-                result.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
+            if (trimmed.startsWith("'") && acc.isNotEmpty()) {
+                val prev = acc.removeLast()
+                acc.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
             } else {
-                result.add(word)
+                acc.add(word)
             }
+            acc
         }
-        return result
-    }
 
     override fun onCleared() {
         super.onCleared()

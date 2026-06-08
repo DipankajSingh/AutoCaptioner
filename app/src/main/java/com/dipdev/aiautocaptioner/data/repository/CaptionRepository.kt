@@ -50,52 +50,43 @@ class CaptionRepository @Inject constructor(
         // Format: List<Pair<segmentTimes, List<wordData>>>
         segments: List<TranscriptionSegment>
     ) {
-        // Build the entity lists to insert
-        val segmentEntities = mutableListOf<CaptionSegmentEntity>()
-        val wordEntities = mutableListOf<CaptionWordEntity>()
+        // Map segments to entities with a pre-generated ID so words can reference them
+        val segmentsWithIds = segments.mapIndexed { segmentIndex, segment ->
+            UUID.randomUUID().toString() to Pair(segmentIndex, segment)
+        }
 
-        segments.forEachIndexed { segmentIndex, segment ->
-            val segmentId = UUID.randomUUID().toString()
-
-            // Create the segment entity
-            segmentEntities.add(
-                CaptionSegmentEntity(
-                    id = segmentId,
-                    projectId = projectId,
-                    index = segmentIndex,
-                    startTimeMs = segment.startTimeMs,
-                    endTimeMs = segment.endTimeMs,
-                    // Join all word texts to form the full segment text
-                    // "Hello" + " " + "world" = "Hello world"
-                    text = segment.words.joinToString(" ") { it.word }
-                )
+        val segmentEntities = segmentsWithIds.map { (id, indexedSegment) ->
+            val (segmentIndex, segment) = indexedSegment
+            CaptionSegmentEntity(
+                id = id,
+                projectId = projectId,
+                index = segmentIndex,
+                startTimeMs = segment.startTimeMs,
+                endTimeMs = segment.endTimeMs,
+                text = segment.words.joinToString(" ") { it.word }
             )
+        }
 
-            // Create a word entity for each word in this segment
-            segment.words.forEachIndexed { wordIndex, word ->
-                wordEntities.add(
-                    CaptionWordEntity(
-                        id = UUID.randomUUID().toString(),
-                        segmentId = segmentId,
-                        projectId = projectId,
-                        index = wordIndex,
-                        word = word.word,
-                        startTimeMs = word.startTimeMs,
-                        endTimeMs = word.endTimeMs,
-                        confidence = word.confidence
-                    )
+        val wordEntities = segmentsWithIds.flatMap { (id, indexedSegment) ->
+            val (_, segment) = indexedSegment
+            segment.words.mapIndexed { wordIndex, word ->
+                CaptionWordEntity(
+                    id = UUID.randomUUID().toString(),
+                    segmentId = id,
+                    projectId = projectId,
+                    index = wordIndex,
+                    word = word.word,
+                    startTimeMs = word.startTimeMs,
+                    endTimeMs = word.endTimeMs,
+                    confidence = word.confidence
                 )
             }
         }
 
-        // Run all operations inside a single transaction to ensure atomicity and improve performance
+        // Run all operations inside a single transaction to ensure atomicity
         db.withTransaction {
-            // First delete any existing transcription for this project
-            // (in case user is re-transcribing)
+            // Delete segments — words are cleaned up automatically via ON DELETE CASCADE
             segmentDao.deleteSegmentsForProject(projectId)
-            wordDao.deleteWordsForProject(projectId)
-
-            // Batch insert — much faster than inserting one by one
             segmentDao.insertAll(segmentEntities)
             wordDao.insertAll(wordEntities)
         }

@@ -3,6 +3,7 @@ package com.dipdev.aiautocaptioner.ui.export
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -31,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
 import javax.inject.Inject
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
@@ -246,7 +246,7 @@ class ExportViewModel @Inject constructor(
                             ?: return@withContext
 
                         resolver.openOutputStream(uri)?.use { out ->
-                            FileInputStream(sourceFile).use { it.copyTo(out) }
+                            sourceFile.inputStream().use { it.copyTo(out) }
                         }
                         values.clear()
                         values.put(MediaStore.Video.Media.IS_PENDING, 0)
@@ -259,13 +259,13 @@ class ExportViewModel @Inject constructor(
                             ), "AutoCaptioner"
                         )
                         destDir.mkdirs()
-                        sourceFile.copyTo(File(destDir, fileName), overwrite = true)
-                        @Suppress("DEPRECATION")
-                        context.sendBroadcast(
-                            @Suppress("DEPRECATION")
-                            Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
-                                data = android.net.Uri.fromFile(File(destDir, fileName))
-                            }
+                        val destFile = File(destDir, fileName)
+                        sourceFile.copyTo(destFile, overwrite = true)
+                        MediaScannerConnection.scanFile(
+                            context,
+                            arrayOf(destFile.absolutePath),
+                            arrayOf("video/mp4"),
+                            null
                         )
                     }
 

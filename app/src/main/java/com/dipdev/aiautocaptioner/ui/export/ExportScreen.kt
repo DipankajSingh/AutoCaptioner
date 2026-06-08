@@ -276,77 +276,30 @@ fun ExportScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Resolution
-                    Text("Resolution", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedHeight == -1,
-                            onClick = { selectedHeight = -1 },
-                            label = { Text("Original") }
-                        )
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedHeight == 1920,
-                            onClick = { selectedHeight = 1920 },
-                            label = { Text("1080p") }
-                        )
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedHeight == 1280,
-                            onClick = { selectedHeight = 1280 },
-                            label = { Text("720p") }
-                        )
-                    }
-                    
+                    SegmentedSelector(
+                        title = "Resolution",
+                        options = listOf(-1 to "Original", 1920 to "1080p", 1280 to "720p"),
+                        selected = selectedHeight,
+                        onSelect = { selectedHeight = it }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Frame Rate
-                    Text("Frame Rate", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedFps == -1,
-                            onClick = { selectedFps = -1 },
-                            label = { Text("Original") }
-                        )
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedFps == 30,
-                            onClick = { selectedFps = 30 },
-                            label = { Text("30 fps") }
-                        )
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedFps == 60,
-                            onClick = { selectedFps = 60 },
-                            label = { Text("60 fps") }
-                        )
-                    }
-
+                    SegmentedSelector(
+                        title = "Frame Rate",
+                        options = listOf(-1 to "Original", 30 to "30 fps", 60 to "60 fps"),
+                        selected = selectedFps,
+                        onSelect = { selectedFps = it }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Quality
-                    Text("Quality", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedQuality == 0,
-                            onClick = { selectedQuality = 0 },
-                            label = { Text("Low") }
-                        )
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedQuality == 1,
-                            onClick = { selectedQuality = 1 },
-                            label = { Text("Recommended") }
-                        )
-                        androidx.compose.material3.FilterChip(
-                            selected = selectedQuality == 2,
-                            onClick = { selectedQuality = 2 },
-                            label = { Text("High") }
-                        )
-                    }
+                    SegmentedSelector(
+                        title = "Quality",
+                        options = listOf(0 to "Low", 1 to "Recommended", 2 to "High"),
+                        selected = selectedQuality,
+                        onSelect = { selectedQuality = it }
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -482,6 +435,34 @@ fun ExportScreen(
                     ) { Text("Go Back", maxLines = 1) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun <T> SegmentedSelector(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit
+) {
+    Text(
+        title,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Start
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { (value, label) ->
+            androidx.compose.material3.FilterChip(
+                selected = selected == value,
+                onClick = { onSelect(value) },
+                label = { Text(label) }
+            )
         }
     }
 }

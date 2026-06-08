@@ -35,7 +35,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +43,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +61,6 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
-import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -119,33 +116,23 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    // Show active model name as a chip
-                    activeModel?.let { model ->
-                        FilledTonalButton(
-                            onClick = onNavigateToModelManager,
-                            modifier = Modifier.padding(end = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                        ) {
-                            Text(
-                                text = "Model: ${model.displayName.split("—").first().trim()}",
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                    } ?: run {
-                        FilledTonalButton(
-                            onClick = onNavigateToModelManager,
-                            modifier = Modifier.padding(end = 8.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                        ) {
-                            Text("Select Model", fontSize = 13.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
+                    val modelText = activeModel?.displayName?.split("—")?.first()?.trim()
+                        ?.let { "Model: $it" } ?: "Select Model"
+                    val buttonColor = if (activeModel != null)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.secondaryContainer
+
+                    FilledTonalButton(
+                        onClick = onNavigateToModelManager,
+                        modifier = Modifier.padding(end = 8.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = buttonColor),
+                        contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                    ) {
+                        Text(modelText, fontSize = 13.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     
                     androidx.compose.material3.IconButton(onClick = onNavigateToSettings) {
@@ -206,7 +193,7 @@ fun HomeScreen(
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (projects.isEmpty()) {
                 EmptyState(
-                    onImport = { videoPicker.launch("video/*") }
+                    onAction = { videoPicker.launch("video/*") }
                 )
             } else {
                 LazyColumn(
@@ -314,36 +301,3 @@ fun HomeScreen(
     } // end of Scaffold content box
 } // end of HomeScreen
 
-@Composable
-private fun EmptyState(onImport: () -> Unit) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.nothing))
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .aspectRatio(1f)
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Text("No Projects Yet", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Import a video to add karaoke captions",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        GradientPrimaryButton(
-            onClick = onImport,
-            text = "Import Video"
-        )
-    }
-}
