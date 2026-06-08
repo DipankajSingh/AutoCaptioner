@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.core.whisper
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.Keep
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -51,7 +52,9 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
         listener: ProgressListener? = null
     ): Array<String>?
 
+    @Keep
     fun interface ProgressListener {
+        @Keep
         fun onProgress(progress: Int)
     }
 

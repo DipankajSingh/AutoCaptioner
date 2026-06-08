@@ -102,7 +102,8 @@ class ProjectRepository @Inject constructor(
 
                 Log.i(TAG, "Created project directory: ${projectDir.absolutePath}")
 
-                // Step 3 — Take persistable URI permission instead of copying
+                // Step 3 — Take persistable URI permission or securely copy video
+                var finalVideoPath = videoUri.toString()
                 try {
                     context.contentResolver.takePersistableUriPermission(
                         videoUri,
@@ -110,11 +111,16 @@ class ProjectRepository @Inject constructor(
                     )
                 } catch (e: SecurityException) {
                     // Photo Picker URIs don't support persistable permissions. 
-                    // We'll rely on temporary access (which might expire if app restarts before processing).
-                    Log.w(TAG, "Could not take persistable permission for $videoUri", e)
-                    crashReporter.recordException(e)
+                    // Copy to internal storage so we don't lose the video reference on app restart.
+                    Log.w(TAG, "Could not take persistable permission for $videoUri, copying file.", e)
+                    val videoFile = File(projectDir, "original_video.mp4")
+                    context.contentResolver.openInputStream(videoUri)?.use { input ->
+                        videoFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    finalVideoPath = videoFile.absolutePath
                 }
-                val videoFileString = videoUri.toString()
 
                 // Step 4 — Extract thumbnail (first frame of video)
                 val thumbnailFile = File(projectDir, "thumbnail.jpg")
@@ -127,8 +133,8 @@ class ProjectRepository @Inject constructor(
                     title = fileName.removeSuffix(".mp4")
                         .removeSuffix(".mov")
                         .removeSuffix(".mkv"),
-                    originalVideoUri = videoUri.toString(),
-                    workingVideoPath = videoFileString,
+                    originalVideoUri = finalVideoPath,
+                    workingVideoPath = finalVideoPath,
                     thumbnailPath = if (thumbnailFile.exists())
                         thumbnailFile.absolutePath else null,
                     videoDurationMs = durationMs,
