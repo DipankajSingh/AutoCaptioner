@@ -12,21 +12,21 @@ object AppLinks {
     // ── Legal ────────────────────────────────────────────────────────────────
     val PRIVACY_POLICY: String
         get() = Firebase.remoteConfig.getString("privacy_policy_url")
-            .takeIf { it.isNotBlank() } ?: "https://dipdevlabs.example.com/privacy"
+            .takeIf { it.isNotBlank() } ?: "https://autocaptioner-app.vercel.app/privacy.html"
 
     val TERMS_OF_SERVICE: String
         get() = Firebase.remoteConfig.getString("terms_of_service_url")
-            .takeIf { it.isNotBlank() } ?: "https://dipdevlabs.example.com/terms"
+            .takeIf { it.isNotBlank() } ?: "https://autocaptioner-app.vercel.app/terms.html"
 
     // ── Developer / Store ────────────────────────────────────────────────────
     val DEVELOPER_WEBSITE: String
         get() = Firebase.remoteConfig.getString("developer_website_url")
-            .takeIf { it.isNotBlank() } ?: "https://dipdevlabs.example.com"
+            .takeIf { it.isNotBlank() } ?: "https://autocaptioner-app.vercel.app"
 
     const val PLAY_STORE = "https://play.google.com/store/apps/details?id=com.dipdev.aiautocaptioner"
     const val GITHUB = "https://github.com/dipdevlabs/autocaptioner"
 
     // ── Support ──────────────────────────────────────────────────────────────
-    const val SUPPORT_EMAIL = "support@dipdevlabs.example.com"
+    const val SUPPORT_EMAIL = "support@autocaptioner.com"
     const val BUG_REPORT = "https://github.com/dipdevlabs/autocaptioner/issues"
 }

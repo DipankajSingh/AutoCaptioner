@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,17 +29,9 @@ class MainViewModel @Inject constructor(
     private val _startDestination = MutableStateFlow<String?>(null)
     val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
 
-    val appTheme: StateFlow<AppTheme> = settingsRepository.themeFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = AppTheme.EMERALD
-    )
+    val appTheme: StateFlow<AppTheme> = settingsRepository.themeFlow.stateInDefault(scope = viewModelScope, initialValue = AppTheme.EMERALD)
 
-    val isGlassmorphismEnabled: StateFlow<Boolean> = settingsRepository.glassmorphismFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = true
-    )
+    val isGlassmorphismEnabled: StateFlow<Boolean> = settingsRepository.glassmorphismFlow.stateInDefault(scope = viewModelScope, initialValue = true)
 
     init {
         decideStartDestination()
@@ -55,9 +48,8 @@ class MainViewModel @Inject constructor(
             val onboardingDone = modelRepository.isOnboardingComplete().first()
 
             _startDestination.value = when {
-                !onboardingDone                      -> "onboarding"
-                !modelRepository.hasDownloadedModel() -> "device_check"
-                else                                  -> "home"
+                !onboardingDone -> "onboarding"
+                else            -> "home"
             }
         }
     }

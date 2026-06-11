@@ -26,6 +26,7 @@ fun DeviceCheckScreen(
     val deviceInfo by viewModel.deviceInfo.collectAsStateWithLifecycle()
     val models by viewModel.models.collectAsStateWithLifecycle()
     val recommendedModelId by viewModel.recommendedModelId.collectAsStateWithLifecycle()
+    val safetyState by viewModel.safetyState.collectAsStateWithLifecycle()
     var selectedModelId by remember { mutableStateOf<String?>(null) }
 
     // Auto-select recommended model once it's known
@@ -111,7 +112,12 @@ fun DeviceCheckScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { selectedModelId?.let { onModelSelected(it) } },
+            onClick = {
+                val model = models.find { it.id == selectedModelId }
+                if (model != null) {
+                    viewModel.checkSafety(model.sizeMb.toLong())
+                }
+            },
             enabled = selectedModelId != null,
             modifier = Modifier
                 .fillMaxWidth()
@@ -127,6 +133,48 @@ fun DeviceCheckScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    when (val state = safetyState) {
+        is SafetyCheckState.StorageError -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.resetSafetyState() },
+                title = { Text("Not enough storage") },
+                text = { Text("Not enough storage. Please free up space and try again.") },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.resetSafetyState() }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
+        is SafetyCheckState.CellularWarning -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.resetSafetyState() },
+                title = { Text("Cellular Data Warning") },
+                text = { Text("You are on mobile data. This download is around ${state.sizeMb} MB. Continue on mobile data?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        selectedModelId?.let { onModelSelected(it) }
+                        viewModel.resetSafetyState()
+                    }) {
+                        Text("Continue Anyway")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.resetSafetyState() }) {
+                        Text("Wait for Wi-Fi")
+                    }
+                }
+            )
+        }
+        is SafetyCheckState.Passed -> {
+            LaunchedEffect(Unit) {
+                selectedModelId?.let { onModelSelected(it) }
+                viewModel.resetSafetyState()
+            }
+        }
+        SafetyCheckState.Idle -> {}
     }
 }
 

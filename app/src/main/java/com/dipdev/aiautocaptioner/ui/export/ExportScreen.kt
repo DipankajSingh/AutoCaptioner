@@ -68,6 +68,7 @@ import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 fun ExportScreen(
     projectId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToHome: () -> Unit,
     viewModel: ExportViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -85,9 +86,9 @@ fun ExportScreen(
     var originalFps by remember { mutableIntStateOf(30) }
 
     // User Selections
-    var selectedHeight by remember { mutableIntStateOf(-1) } // -1 means Original
-    var selectedFps by remember { mutableIntStateOf(-1) }
-    var selectedQuality by remember { mutableIntStateOf(1) } // 0: Low, 1: Recommended, 2: High
+    var selectedHeight by remember(uiState.savedResolution) { mutableIntStateOf(uiState.savedResolution) } // -1 means Original
+    var selectedFps by remember(uiState.savedFps) { mutableIntStateOf(uiState.savedFps) }
+    var selectedQuality by remember(uiState.savedQuality) { mutableIntStateOf(uiState.savedQuality) } // 0: Low, 1: Recommended, 2: High
 
     LaunchedEffect(workingVideoPath) {
         if (workingVideoPath != null) {
@@ -154,11 +155,26 @@ fun ExportScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
         ) {
-            when (val state = exportState) {
+            com.dipdev.aiautocaptioner.ui.components.PipelineProgressBar(
+                currentStage = com.dipdev.aiautocaptioner.ui.components.PipelineStage.EXPORT,
+                onNavigateToStage = { stage ->
+                    when (stage) {
+                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.STYLE -> onNavigateBack()
+                        else -> {}
+                    }
+                }
+            )
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                when (val state = exportState) {
 
                 // ── Success / Already Exported ────────────────────────────
                 is ExportState.AlreadyExported,
@@ -261,7 +277,7 @@ fun ExportScreen(
                             Text("Re-export", fontSize = 13.sp, softWrap = false )
                         }
 
-                        TextButton(onClick = onNavigateBack, modifier = Modifier.weight(1f)) {
+                        TextButton(onClick = onNavigateToHome, modifier = Modifier.weight(1f)) {
                             Text("Done")
                         }
                     }
@@ -325,7 +341,10 @@ fun ExportScreen(
                     Spacer(modifier = Modifier.weight(1f))
                     
                     Button(
-                        onClick = { viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight)) },
+                        onClick = {
+                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) {
@@ -398,7 +417,10 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight)) },
+                        onClick = {
+                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Try Again", maxLines = 1) }
@@ -423,7 +445,10 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight)) },
+                        onClick = {
+                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(4.dp)
                     ) { Text("Retry", maxLines = 1) }
@@ -437,6 +462,7 @@ fun ExportScreen(
             }
         }
     }
+}
 }
 
 @Composable

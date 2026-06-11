@@ -13,6 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
@@ -37,6 +39,8 @@ fun StyleEditorScreen(
     val activeStyle by viewModel.activeStyle.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val isCustomizing by viewModel.isCustomizing.collectAsStateWithLifecycle()
+    val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
+    val canRedo by viewModel.canRedo.collectAsStateWithLifecycle()
     var showExportWarning by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<CaptionStyleEntity?>(null) }
@@ -75,6 +79,18 @@ fun StyleEditorScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { viewModel.undo() },
+                        enabled = canUndo
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, "Undo")
+                    }
+                    IconButton(
+                        onClick = { viewModel.redo() },
+                        enabled = canRedo
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Redo, "Redo")
+                    }
                     IconButton(onClick = { showPresetDialog = true }) {
                         Icon(Icons.Default.Save, "Save Preset")
                     }
@@ -178,6 +194,23 @@ fun StyleEditorScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            com.dipdev.aiautocaptioner.ui.components.PipelineProgressBar(
+                currentStage = com.dipdev.aiautocaptioner.ui.components.PipelineStage.STYLE,
+                onNavigateToStage = { stage ->
+                    when (stage) {
+                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.REVIEW -> {
+                            viewModel.saveAndApply(projectId)
+                            onNavigateToCaptionEditor()
+                        }
+                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.IMPORT,
+                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.AI_CAPTIONS -> {
+                            viewModel.saveAndApply(projectId)
+                            onNavigateBack() // Or a more specific route, but BackHandler does this too
+                        }
+                        else -> {}
+                    }
+                }
+            )
 
             // Caption live preview taking available space
             Box(

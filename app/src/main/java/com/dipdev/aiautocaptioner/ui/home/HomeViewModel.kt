@@ -15,33 +15,39 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.google.firebase.Firebase
+import com.google.firebase.remoteconfig.remoteConfig
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val modelRepository: ModelRepository
 ) : ViewModel() {
 
-    // stateIn converts a Flow into a StateFlow
-    // SharingStarted.WhileSubscribed(5000) = keep the flow active
-    // for 5 seconds after last subscriber leaves
-    // (handles screen rotation without restarting the query)
     val projects: StateFlow<List<com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles>> = projectRepository
         .getProjectsWithExportedFiles()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+        .stateInDefault(scope = viewModelScope, initialValue = emptyList())
 
     val activeModel = modelRepository.getActiveModel()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+        .stateInDefault(scope = viewModelScope, initialValue = null)
 
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
+
+    private val _announcementMessage = MutableStateFlow("")
+    val announcementMessage: StateFlow<String> = _announcementMessage.asStateFlow()
+
+    init {
+        fetchAnnouncement()
+    }
+
+    private fun fetchAnnouncement() {
+        val config = Firebase.remoteConfig
+        config.fetchAndActivate().addOnCompleteListener { 
+            _announcementMessage.value = config.getString("home_announcement_message")
+        }
+    }
 
     fun importVideo(uri: Uri) {
         viewModelScope.launch {
@@ -63,6 +69,12 @@ class HomeViewModel @Inject constructor(
     fun renameProject(projectId: String, newTitle: String) {
         viewModelScope.launch {
             projectRepository.renameProject(projectId, newTitle)
+        }
+    }
+
+    fun duplicateProject(projectId: String) {
+        viewModelScope.launch {
+            projectRepository.duplicateProject(projectId)
         }
     }
 

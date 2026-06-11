@@ -291,6 +291,28 @@ class CaptionRepository @Inject constructor(
         styleDao.insertDefaultStyles(defaults)
         Log.i(TAG, "Initialized ${defaults.size} default styles")
     }
+
+    suspend fun buildSrtContent(projectId: String): String {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val segmentsList = getSegmentsOnce(projectId)
+            val sb = java.lang.StringBuilder()
+            segmentsList.forEachIndexed { index, segment ->
+                sb.append(index + 1).append("\n")
+                sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
+                val text = segment.text.ifBlank { " " }
+                sb.append(text).append("\n\n")
+            }
+            sb.toString()
+        }
+    }
+
+    private fun formatSrtTime(timeMs: Long): String {
+        val hours = timeMs / 3600000
+        val minutes = (timeMs % 3600000) / 60000
+        val seconds = (timeMs % 60000) / 1000
+        val millis = timeMs % 1000
+        return String.format("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
+    }
 }
 
 // ================================================================
@@ -312,4 +334,5 @@ data class TranscriptionWord(
     val startTimeMs: Long,
     val endTimeMs: Long,
     val confidence: Float = 1.0f
+
 )

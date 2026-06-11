@@ -96,6 +96,61 @@ class StyleEditorViewModel @Inject constructor(
     private val _isCustomizing = MutableStateFlow(false)
     val isCustomizing: StateFlow<Boolean> = _isCustomizing.asStateFlow()
 
+    private val undoStack = mutableListOf<CaptionStyleEntity>()
+    private val redoStack = mutableListOf<CaptionStyleEntity>()
+
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo: StateFlow<Boolean> = _canUndo.asStateFlow()
+
+    private val _canRedo = MutableStateFlow(false)
+    val canRedo: StateFlow<Boolean> = _canRedo.asStateFlow()
+
+    private var lastPushTime = 0L
+    private var lastPushProperty = ""
+
+    private fun pushState(propertyName: String) {
+        val current = _activeStyle.value ?: return
+        val now = System.currentTimeMillis()
+        
+        if (propertyName == lastPushProperty && now - lastPushTime < 500) {
+            lastPushTime = now
+            return
+        }
+
+        lastPushProperty = propertyName
+        lastPushTime = now
+        
+        undoStack.add(current)
+        if (undoStack.size > 30) {
+            undoStack.removeAt(0)
+        }
+        redoStack.clear()
+        updateUndoRedoState()
+    }
+
+    private fun updateUndoRedoState() {
+        _canUndo.value = undoStack.isNotEmpty()
+        _canRedo.value = redoStack.isNotEmpty()
+    }
+
+    fun undo() {
+        if (undoStack.isEmpty()) return
+        val current = _activeStyle.value ?: return
+        redoStack.add(current)
+        _activeStyle.value = undoStack.removeLast()
+        updateUndoRedoState()
+        lastPushProperty = ""
+    }
+
+    fun redo() {
+        if (redoStack.isEmpty()) return
+        val current = _activeStyle.value ?: return
+        undoStack.add(current)
+        _activeStyle.value = redoStack.removeLast()
+        updateUndoRedoState()
+        lastPushProperty = ""
+    }
+
     fun setCustomizing(customizing: Boolean) {
         _isCustomizing.value = customizing
         if (customizing) {
@@ -155,6 +210,7 @@ class StyleEditorViewModel @Inject constructor(
         // The preview component handles playback position locally now
 
     fun selectPreset(style: CaptionStyleEntity) {
+        pushState("preset")
         // Reuse the existing Custom style ID if we already have one,
         // so we don't accumulate orphaned Custom rows in the DB.
         val existingCustomId = _activeStyle.value
@@ -172,42 +228,52 @@ class StyleEditorViewModel @Inject constructor(
     }
 
     fun updateFontSize(size: Float) {
+        pushState("fontSize")
         _activeStyle.value = _activeStyle.value?.copy(fontSize = size)
     }
 
     fun updateFontWeight(weight: Int) {
+        pushState("fontWeight")
         _activeStyle.value = _activeStyle.value?.copy(fontWeight = weight)
     }
 
     fun updateTextColor(color: Long) {
+        pushState("textColor")
         _activeStyle.value = _activeStyle.value?.copy(textColor = color)
     }
 
     fun updateHighlightColor(color: Long) {
+        pushState("highlightColor")
         _activeStyle.value = _activeStyle.value?.copy(highlightColor = color)
     }
 
     fun updateOutlineWidth(width: Float) {
+        pushState("outlineWidth")
         _activeStyle.value = _activeStyle.value?.copy(outlineWidth = width)
     }
 
     fun updateOutlineColor(color: Long) {
+        pushState("outlineColor")
         _activeStyle.value = _activeStyle.value?.copy(outlineColor = color)
     }
 
     fun updateBackgroundType(type: BackgroundType) {
+        pushState("backgroundType")
         _activeStyle.value = _activeStyle.value?.copy(backgroundType = type)
     }
 
     fun updateBackgroundColor(color: Long) {
+        pushState("backgroundColor")
         _activeStyle.value = _activeStyle.value?.copy(backgroundColor = color)
     }
 
     fun updateBackgroundOpacity(opacity: Float) {
+        pushState("backgroundOpacity")
         _activeStyle.value = _activeStyle.value?.copy(backgroundOpacity = opacity)
     }
 
     fun updateDisplayMode(mode: DisplayMode) {
+        pushState("displayMode")
         var style = _activeStyle.value?.copy(displayMode = mode) ?: return
         if (mode == DisplayMode.KARAOKE_FILL || mode == DisplayMode.PHRASE) {
             style = style.copy(
@@ -222,45 +288,53 @@ class StyleEditorViewModel @Inject constructor(
     }
 
     fun updateWordEnterAnimation(anim: AnimationType) {
+        pushState("wordEnterAnimation")
         _activeStyle.value = _activeStyle.value?.copy(wordEnterAnimation = anim)
     }
 
     fun updateWordExitAnimation(anim: AnimationType) {
+        pushState("wordExitAnimation")
         _activeStyle.value = _activeStyle.value?.copy(wordExitAnimation = anim)
     }
 
     fun updateKaraokeHighlightMode(mode: KaraokeHighlightMode) {
+        pushState("karaokeHighlightMode")
         _activeStyle.value = _activeStyle.value?.copy(karaokeHighlightMode = mode)
     }
 
     fun updatePositionY(y: Float) {
+        pushState("positionY")
         _activeStyle.value = _activeStyle.value?.copy(positionY = y)
     }
 
     fun updateAlignment(alignment: TextAlignment) {
+        pushState("alignment")
         _activeStyle.value = _activeStyle.value?.copy(alignment = alignment)
     }
 
     fun updateMaxWordsPerLine(count: Int) {
+        pushState("maxWordsPerLine")
         _activeStyle.value = _activeStyle.value?.copy(maxWordsPerLine = count)
     }
 
     fun updateMaxLines(count: Int) {
+        pushState("maxLines")
         _activeStyle.value = _activeStyle.value?.copy(maxLines = count)
     }
 
     fun updateRemovePunctuation(remove: Boolean) {
+        pushState("removePunctuation")
         _activeStyle.value = _activeStyle.value?.copy(removePunctuation = remove)
     }
 
-    fun updateBackgroundPaddingH(v: Float) { _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingH = v) }
-    fun updateBackgroundPaddingV(v: Float) { _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingV = v) }
-    fun updateBackgroundCornerRadius(v: Float) { _activeStyle.value = _activeStyle.value?.copy(backgroundCornerRadius = v) }
-    fun updateShadowRadius(v: Float)  { _activeStyle.value = _activeStyle.value?.copy(shadowRadius = v) }
-    fun updateShadowColor(v: Long)    { _activeStyle.value = _activeStyle.value?.copy(shadowColor = v) }
-    fun updateAnimationDurationMs(v: Int) { _activeStyle.value = _activeStyle.value?.copy(animationDurationMs = v) }
-    fun updateLetterSpacing(v: Float) { _activeStyle.value = _activeStyle.value?.copy(letterSpacing = v) }
-    fun updateIsItalic(v: Boolean)    { _activeStyle.value = _activeStyle.value?.copy(isItalic = v) }
+    fun updateBackgroundPaddingH(v: Float) { pushState("backgroundPaddingH"); _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingH = v) }
+    fun updateBackgroundPaddingV(v: Float) { pushState("backgroundPaddingV"); _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingV = v) }
+    fun updateBackgroundCornerRadius(v: Float) { pushState("backgroundCornerRadius"); _activeStyle.value = _activeStyle.value?.copy(backgroundCornerRadius = v) }
+    fun updateShadowRadius(v: Float)  { pushState("shadowRadius"); _activeStyle.value = _activeStyle.value?.copy(shadowRadius = v) }
+    fun updateShadowColor(v: Long)    { pushState("shadowColor"); _activeStyle.value = _activeStyle.value?.copy(shadowColor = v) }
+    fun updateAnimationDurationMs(v: Int) { pushState("animationDurationMs"); _activeStyle.value = _activeStyle.value?.copy(animationDurationMs = v) }
+    fun updateLetterSpacing(v: Float) { pushState("letterSpacing"); _activeStyle.value = _activeStyle.value?.copy(letterSpacing = v) }
+    fun updateIsItalic(v: Boolean)    { pushState("isItalic"); _activeStyle.value = _activeStyle.value?.copy(isItalic = v) }
 
     fun saveAndApply(projectId: String) {
         viewModelScope.launch {

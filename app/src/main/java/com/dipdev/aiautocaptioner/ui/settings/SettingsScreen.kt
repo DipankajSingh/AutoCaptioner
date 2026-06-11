@@ -35,6 +35,7 @@ fun SettingsScreen(
 ) {
     val currentTheme by viewModel.themeFlow.collectAsStateWithLifecycle()
     val isGlassmorphism by viewModel.glassmorphismFlow.collectAsStateWithLifecycle()
+    val showTimelineThumbnails by viewModel.showTimelineThumbnailsFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Scaffold(
@@ -85,6 +86,31 @@ fun SettingsScreen(
                 Switch(
                     checked = isGlassmorphism,
                     onCheckedChange = { viewModel.setGlassmorphismEnabled(it) }
+                )
+            }
+
+            // Timeline Thumbnails Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = "High-Quality Timeline",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "Show extracted video frames in timeline instead of a lightweight placeholder",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = showTimelineThumbnails,
+                    onCheckedChange = { viewModel.setShowTimelineThumbnails(it) }
                 )
             }
 

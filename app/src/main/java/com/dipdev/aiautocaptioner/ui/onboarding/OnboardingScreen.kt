@@ -1,9 +1,16 @@
 package com.dipdev.aiautocaptioner.ui.onboarding
 
+import androidx.annotation.RawRes
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.getValue
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,21 +51,25 @@ import androidx.core.net.toUri
 
 data class OnboardingPage(
     @StringRes val titleRes: Int,
-    @StringRes val descriptionRes: Int
+    @StringRes val descriptionRes: Int,
+    @RawRes val animationRes: Int
 )
 
 val pages = listOf(
     OnboardingPage(
         titleRes = R.string.onboarding_title_1,
-        descriptionRes = R.string.onboarding_desc_1
+        descriptionRes = R.string.onboarding_desc_1,
+        animationRes = R.raw.onboarding_1
     ),
     OnboardingPage(
         titleRes = R.string.onboarding_title_2,
-        descriptionRes = R.string.onboarding_desc_2
+        descriptionRes = R.string.onboarding_desc_2,
+        animationRes = R.raw.onboarding_2
     ),
     OnboardingPage(
         titleRes = R.string.onboarding_title_3,
-        descriptionRes = R.string.onboarding_desc_3
+        descriptionRes = R.string.onboarding_desc_3,
+        animationRes = R.raw.onboarding_3
     )
 )
 
@@ -232,6 +243,12 @@ fun OnboardingScreen(
 
 @Composable
 fun PagerScreen(onBoardingPage: OnboardingPage) {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(onBoardingPage.animationRes))
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = LottieConstants.IterateForever
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -239,6 +256,14 @@ fun PagerScreen(onBoardingPage: OnboardingPage) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+                .padding(bottom = 32.dp)
+        )
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = stringResource(onBoardingPage.titleRes),

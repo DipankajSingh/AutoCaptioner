@@ -1,10 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -38,7 +34,7 @@ fun NavGraph(
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onFinish = {
-                    navController.navigate(Screen.DeviceCheck.route) {
+                    navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
                 }
@@ -63,9 +59,11 @@ fun NavGraph(
             ModelDownloadScreen(
                 modelId = modelId,
                 onDownloadComplete = {
-                    navController.navigate(Screen.Home.route) {
-                        // Clear entire back stack — user shouldn't go back to download flow
-                        popUpTo(0) { inclusive = true }
+                    val poppedToProcessing = navController.popBackStack(Screen.Processing.route, inclusive = false)
+                    if (!poppedToProcessing) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -74,7 +72,7 @@ fun NavGraph(
         composable(Screen.Home.route) {
             HomeScreen(
                 onNavigateToProcessing = { projectId ->
-                    navController.navigate(Screen.Processing.createRoute(projectId))
+                    navController.navigate(Screen.VideoEditor.createRoute(projectId))
                 },
                 onNavigateToEditor = { projectId ->
                     navController.navigate(Screen.StyleEditor.createRoute(projectId))
@@ -85,6 +83,9 @@ fun NavGraph(
 
                 onNavigateToSettings = { // Pass to settings if HomeScreen supports it, or handle it via a top bar
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToHistory = { projectId ->
+                    navController.navigate(Screen.ExportHistory.createRoute(projectId))
                 }
             )
         }
@@ -110,10 +111,10 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            // Temporary stub for Export History until EditorFlowSubagent implements it
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Export History for Project: $projectId")
-            }
+            com.dipdev.aiautocaptioner.ui.exporthistory.ExportHistoryScreen(
+                projectId = projectId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(
@@ -125,10 +126,21 @@ fun NavGraph(
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
             ProcessingScreen(
                 projectId = projectId,
-                onDone = {
+                onNavigateToStyleEditor = {
+                    navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
+                        popUpTo(Screen.Processing.route) { inclusive = true }
+                    }
+                },
+                onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId)) {
                         popUpTo(Screen.Processing.route) { inclusive = true }
                     }
+                },
+                onNavigateToVideoEditor = {
+                    navController.navigate(Screen.VideoEditor.createRoute(projectId))
+                },
+                onNavigateToDeviceCheck = {
+                    navController.navigate(Screen.DeviceCheck.route)
                 },
                 onCancel = { navController.popBackStack() }
             )
@@ -187,6 +199,29 @@ fun NavGraph(
             
             com.dipdev.aiautocaptioner.ui.export.ExportScreen(
                 projectId = projectId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.VideoEditor.route,
+            arguments = listOf(
+                navArgument("projectId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            com.dipdev.aiautocaptioner.ui.videoeditor.VideoEditorScreen(
+                projectId = projectId,
+                onNavigateToProcessing = {
+                    navController.navigate(Screen.Processing.createRoute(projectId)) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

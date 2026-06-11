@@ -7,6 +7,7 @@ import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -15,17 +16,11 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    val themeFlow = settingsRepository.themeFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = AppTheme.EMERALD
-    )
+    val themeFlow = settingsRepository.themeFlow.stateInDefault(scope = viewModelScope, initialValue = AppTheme.EMERALD)
 
-    val glassmorphismFlow = settingsRepository.glassmorphismFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = true
-    )
+    val glassmorphismFlow = settingsRepository.glassmorphismFlow.stateInDefault(scope = viewModelScope, initialValue = true)
+
+    val showTimelineThumbnailsFlow = settingsRepository.showTimelineThumbnailsFlow.stateInDefault(scope = viewModelScope, initialValue = false)
 
     fun setTheme(theme: AppTheme) {
         viewModelScope.launch {
@@ -36,6 +31,12 @@ class SettingsViewModel @Inject constructor(
     fun setGlassmorphismEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setGlassmorphismEnabled(enabled)
+        }
+    }
+
+    fun setShowTimelineThumbnails(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowTimelineThumbnails(enabled)
         }
     }
 }

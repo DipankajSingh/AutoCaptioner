@@ -22,6 +22,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.engine.CaptionOverlayEffect
 import java.util.UUID
 import com.google.common.collect.ImmutableList
@@ -53,7 +54,10 @@ data class ExportUiState(
     val exportState: ExportState = ExportState.Idle,
     val progress: Float = 0f,
     val outputPath: String? = null,
-    val workingVideoPath: String? = null
+    val workingVideoPath: String? = null,
+    val savedResolution: Int = -1,
+    val savedFps: Int = -1,
+    val savedQuality: Int = 1
 ) : UiState
 
 sealed class ExportUiEvent : UiEvent {
@@ -78,10 +82,29 @@ class ExportViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val captionRepository: CaptionRepository,
     private val exportedFileDao: ExportedFileDao,
-    private val crashReporter: CrashReporter
+    private val crashReporter: CrashReporter,
+    private val settingsRepository: SettingsRepository
 ) : BaseViewModel<ExportUiState, ExportUiEvent, ExportUiEffect>(ExportUiState()) {
 
     private var activeTransformer: Transformer? = null
+
+    init {
+        viewModelScope.launch {
+            settingsRepository.exportResolutionFlow.collect { res ->
+                setState { copy(savedResolution = res) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.exportFpsFlow.collect { fps ->
+                setState { copy(savedFps = fps) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.exportQualityFlow.collect { qual ->
+                setState { copy(savedQuality = qual) }
+            }
+        }
+    }
 
     override fun handleEvent(event: ExportUiEvent) {
         when (event) {
@@ -275,6 +298,12 @@ class ExportViewModel @Inject constructor(
                     setState { copy(exportState = ExportState.Error("Failed to save to gallery: ${e.message}")) }
                 }
             }
+        }
+    }
+
+    fun saveSettings(resolution: Int, fps: Int, quality: Int) {
+        viewModelScope.launch {
+            settingsRepository.saveExportSettings(resolution, fps, quality)
         }
     }
 

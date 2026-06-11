@@ -18,6 +18,10 @@ import kotlinx.coroutines.Job
 import java.io.File
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,6 +36,17 @@ class CaptionEditorViewModel @Inject constructor(
 
     private val _segments = MutableStateFlow<List<CaptionSegmentEntity>>(emptyList())
     val segments: StateFlow<List<CaptionSegmentEntity>> = _segments.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val filteredSegments: StateFlow<List<CaptionSegmentEntity>> = combine(_segments, _searchQuery) { segs, query ->
+        if (query.isBlank()) {
+            segs
+        } else {
+            segs.filter { it.text.contains(query, ignoreCase = true) }
+        }
+    }.stateInDefault(viewModelScope, emptyList())
 
     private val _wordsMap = MutableStateFlow<Map<String, List<CaptionWordEntity>>>(emptyMap())
     val wordsMap: StateFlow<Map<String, List<CaptionWordEntity>>> = _wordsMap.asStateFlow()
@@ -62,6 +77,10 @@ class CaptionEditorViewModel @Inject constructor(
         _expandedSegmentId.value = if (_expandedSegmentId.value == segmentId) null else segmentId
     }
 
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     /**
      * Called when the user finishes editing a segment (focus lost / done).
      * NOT called on every keystroke — the text field handles its own local state.
@@ -73,7 +92,7 @@ class CaptionEditorViewModel @Inject constructor(
         viewModelScope.launch {
             captionRepository.updateSegment(segment.copy(text = trimmed))
 
-            val newWordsList = trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }
+            val newWordsList = if (trimmed.isEmpty()) listOf(" ") else trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }
             val oldWordsList = _wordsMap.value[segment.id] ?: emptyList()
 
             if (newWordsList.size == oldWordsList.size) {
@@ -137,23 +156,9 @@ class CaptionEditorViewModel @Inject constructor(
 
     fun shareSrt(projectId: String) {
         viewModelScope.launch {
-            val segmentsList = captionRepository.getSegmentsOnce(projectId)
-            val sb = java.lang.StringBuilder()
-            segmentsList.forEachIndexed { index, segment ->
-                sb.append(index + 1).append("\n")
-                sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
-                sb.append(segment.text).append("\n\n")
-            }
-            _srtContentToShare.emit(sb.toString())
+            val content = captionRepository.buildSrtContent(projectId)
+            _srtContentToShare.emit(content)
         }
-    }
-
-    private fun formatSrtTime(timeMs: Long): String {
-        val hours = timeMs / 3600000
-        val minutes = (timeMs % 3600000) / 60000
-        val seconds = (timeMs % 60000) / 1000
-        val millis = timeMs % 1000
-        return String.format("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
     }
 
     override fun onCleared() {

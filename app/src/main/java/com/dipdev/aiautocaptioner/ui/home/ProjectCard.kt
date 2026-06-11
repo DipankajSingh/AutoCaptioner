@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,8 +39,10 @@ fun ProjectCard(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onRename: (String) -> Unit,
+    onDuplicate: () -> Unit,
     onPlayVideo: (String) -> Unit,
-    onShareVideo: (String) -> Unit
+    onShareVideo: (String) -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     val project = projectWithExports.project
     val exports = projectWithExports.exportedFiles
@@ -64,13 +68,60 @@ fun ProjectCard(
             modifier = Modifier.padding(16.dp)
         ) {
             // Title at the very top
-            Text(
-                text = project.title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = project.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = android.text.format.DateUtils.getRelativeTimeSpanString(project.updatedAt).toString(),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+                
+                var showMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Rename") },
+                            onClick = { showMenu = false; showRenameDialog = true },
+                            leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Duplicate") },
+                            onClick = { showMenu = false; onDuplicate() },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = { 
+                                showMenu = false
+                                val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
+                                onShareVideo(videoToShare)
+                            },
+                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            onClick = { showMenu = false; showDeleteConfirm = true },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
             // Main imported video
@@ -131,13 +182,25 @@ fun ProjectCard(
             // Exported Videos Gallery
             if (exports.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Exported Videos",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Exported Videos",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "See All",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { onNavigateToHistory() }.padding(4.dp)
+                    )
+                }
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -189,59 +252,29 @@ fun ProjectCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-            
-            // Action Row
+            // Delete Confirmation Dialog
             if (showDeleteConfirm) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Delete project?", color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
-                    Row {
-                        TextButton(onClick = { showDeleteConfirm = false }) {
-                            Text("Cancel")
-                        }
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirm = false },
+                    title = { Text("Delete project?") },
+                    text = { Text("This action cannot be undone.") },
+                    confirmButton = {
                         TextButton(
-                            onClick = { 
+                            onClick = {
                                 showDeleteConfirm = false
-                                onDelete() 
+                                onDelete()
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
                             Text("Confirm")
                         }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirm = false }) {
+                            Text("Cancel")
+                        }
                     }
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    TextButton(onClick = { showRenameDialog = true }) {
-                        Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Rename")
-                    }
-                    TextButton(onClick = { 
-                        val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
-                        onShareVideo(videoToShare)
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Share")
-                    }
-                    TextButton(
-                        onClick = { showDeleteConfirm = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Delete")
-                    }
-                }
+                )
             }
         }
     }

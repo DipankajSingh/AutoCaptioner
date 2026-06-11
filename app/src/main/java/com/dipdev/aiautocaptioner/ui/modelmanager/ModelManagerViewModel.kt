@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.modelmanager
 
 import androidx.lifecycle.ViewModel
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
@@ -21,11 +22,7 @@ class ModelManagerViewModel @Inject constructor(
 
     // Emits the currently active selected model
     val activeModel: StateFlow<WhisperModel?> = modelRepository.getActiveModel()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+        .stateInDefault(scope = viewModelScope, initialValue = null)
 
     // Tracks downloading instances for any models triggered off cards
     private val _downloadStates = MutableStateFlow<Map<String, DownloadState>>(emptyMap())

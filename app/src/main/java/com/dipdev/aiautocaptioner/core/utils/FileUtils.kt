@@ -30,4 +30,8 @@ object FileUtils {
             outputFile
         }
     }
+
+    fun createTempVideoFile(context: Context): File {
+        return File(context.cacheDir, "edited_video_${System.currentTimeMillis()}.mp4")
+    }
 }

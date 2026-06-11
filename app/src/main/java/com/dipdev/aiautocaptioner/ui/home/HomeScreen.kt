@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.home
 
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,26 +11,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -38,11 +39,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,19 +54,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
-import com.google.firebase.Firebase
-import com.google.firebase.remoteconfig.remoteConfig
-import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.components.EmptyState
-import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.foundation.layout.size
+import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
+import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +67,7 @@ fun HomeScreen(
     onNavigateToEditor: (String) -> Unit,
     onNavigateToModelManager: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToHistory: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
 
@@ -170,9 +163,8 @@ fun HomeScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Temporary fetch and display of Remote Config
-                val announcement = remember {
-                    com.google.firebase.Firebase.remoteConfig.getString("home_announcement_message")
-                }
+                val announcement by viewModel.announcementMessage.collectAsStateWithLifecycle()
+
                 if (announcement.isNotBlank()) {
                     Box(
                         modifier = Modifier
@@ -222,6 +214,7 @@ fun HomeScreen(
                             },
                             onDelete = { viewModel.deleteProject(projectWithExports.project) },
                             onRename = { newTitle -> viewModel.renameProject(projectWithExports.project.id, newTitle) },
+                            onDuplicate = { viewModel.duplicateProject(projectWithExports.project.id) },
                             onPlayVideo = { path -> previewVideoPath = path },
                             onShareVideo = { path -> 
                                 val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -229,8 +222,13 @@ fun HomeScreen(
                                     putExtra(android.content.Intent.EXTRA_STREAM, androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", java.io.File(path)))
                                     addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Video"))
-                            }
+                                try {
+                                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Video"))
+                                } catch (e: android.content.ActivityNotFoundException) {
+                                    // Handle missing activity gracefully
+                                }
+                            },
+                            onNavigateToHistory = { onNavigateToHistory(projectWithExports.project.id) }
                         )
                     }
                 }
@@ -245,10 +243,8 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(0.6f).height(10.dp).clip(RoundedCornerShape(5.dp)),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        RoundedProgressBar(
+                            modifier = Modifier.fillMaxWidth(0.6f)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Importing video...")

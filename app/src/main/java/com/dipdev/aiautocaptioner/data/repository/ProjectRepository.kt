@@ -16,6 +16,8 @@ import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.room.withTransaction
+import com.dipdev.aiautocaptioner.data.db.AppDatabase
 
 // @Singleton means only one instance exists for the whole app
 // @Inject constructor tells Hilt: "create this automatically,
@@ -24,6 +26,7 @@ import javax.inject.Singleton
 class ProjectRepository @Inject constructor(
     // Hilt injects these automatically from DatabaseModule + AppModule
     private val projectDao: ProjectDao,
+    private val db: AppDatabase,
     @ApplicationContext private val context: Context,
     private val crashReporter: CrashReporter
 ) {
@@ -173,6 +176,12 @@ class ProjectRepository @Inject constructor(
         projectDao.updateAudioPath(projectId, audioPath)
     }
 
+    // ---- Update working video path ----
+    suspend fun updateWorkingVideoPath(projectId: String, videoPath: String) {
+        val project = projectDao.getProjectById(projectId) ?: return
+        projectDao.updateProject(project.copy(workingVideoPath = videoPath, updatedAt = System.currentTimeMillis()))
+    }
+
     // ---- Update visited caption editor flag ----
     suspend fun updateVisitedCaptionEditor(projectId: String, hasVisited: Boolean = true) {
         projectDao.updateVisitedCaptionEditor(projectId, hasVisited)
@@ -211,6 +220,86 @@ class ProjectRepository @Inject constructor(
             // Room's CASCADE will automatically delete all segments + words
             projectDao.deleteProject(project)
             Log.i(TAG, "Deleted project from DB: $projectId")
+        }
+    }
+
+    // ---- Duplicate project ----
+    suspend fun duplicateProject(projectId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Get original project
+                val originalProject = projectDao.getProjectById(projectId)
+                    ?: return@withContext Result.failure(Exception("Project not found"))
+
+                // 2. Generate new ID
+                val newProjectId = UUID.randomUUID().toString()
+
+                // 3. Duplicate files on disk
+                val originalProjectDir = File(context.filesDir, "projects/$projectId")
+                val newProjectDir = File(context.filesDir, "projects/$newProjectId")
+                
+                if (originalProjectDir.exists()) {
+                    originalProjectDir.copyRecursively(newProjectDir, overwrite = true)
+                }
+
+                // 4. Update file paths by swapping the projectId in the path
+                val newOriginalVideoUri = originalProject.originalVideoUri.replace(projectId, newProjectId)
+                val newWorkingVideoPath = originalProject.workingVideoPath.replace(projectId, newProjectId)
+                val newAudioPath = originalProject.audioPath?.replace(projectId, newProjectId)
+                val newThumbnailPath = originalProject.thumbnailPath?.replace(projectId, newProjectId)
+                val newExportedVideoPath = originalProject.exportedVideoPath?.replace(projectId, newProjectId)
+
+                // 5. Create new project entity
+                val now = System.currentTimeMillis()
+                val newProject = originalProject.copy(
+                    id = newProjectId,
+                    title = "Copy of ${originalProject.title}",
+                    createdAt = now,
+                    updatedAt = now,
+                    originalVideoUri = newOriginalVideoUri,
+                    workingVideoPath = newWorkingVideoPath,
+                    audioPath = newAudioPath,
+                    thumbnailPath = newThumbnailPath,
+                    exportedVideoPath = newExportedVideoPath
+                )
+
+                // 6. Duplicate entities in database transaction
+                db.withTransaction {
+                    // Insert new project
+                    projectDao.insertProject(newProject)
+
+                    // Get and duplicate segments
+                    val segments = db.captionSegmentDao().getSegmentsForProjectOnce(projectId)
+                    val oldToNewSegmentId = mutableMapOf<String, String>()
+                    val newSegments = segments.map { segment ->
+                        val newSegmentId = UUID.randomUUID().toString()
+                        oldToNewSegmentId[segment.id] = newSegmentId
+                        segment.copy(id = newSegmentId, projectId = newProjectId)
+                    }
+                    if (newSegments.isNotEmpty()) {
+                        db.captionSegmentDao().insertAll(newSegments)
+                    }
+
+                    // Get and duplicate words
+                    val words = db.captionWordDao().getAllWordsForProject(projectId)
+                    val newWords = words.map { word ->
+                        val newWordId = UUID.randomUUID().toString()
+                        val newSegmentId = oldToNewSegmentId[word.segmentId] ?: word.segmentId
+                        word.copy(id = newWordId, projectId = newProjectId, segmentId = newSegmentId)
+                    }
+                    if (newWords.isNotEmpty()) {
+                        db.captionWordDao().insertAll(newWords)
+                    }
+                }
+
+                Log.i(TAG, "Project duplicated: $projectId -> $newProjectId")
+                Result.success(newProjectId)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to duplicate project", e)
+                crashReporter.recordException(e)
+                Result.failure(e)
+            }
         }
     }
 

@@ -1,9 +1,11 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
 import android.content.Context
+import android.content.Intent
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
@@ -13,6 +15,7 @@ import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionSegment
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionWord
+import com.dipdev.aiautocaptioner.service.TranscriptionService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -39,7 +43,7 @@ sealed class ProcessingStep {
     data object Ready : ProcessingStep()
     data object ExtractingAudio : ProcessingStep()
     data object LoadingModel : ProcessingStep()
-    data class Transcribing(val progress: Float = 0f) : ProcessingStep()
+    data class Transcribing(val progress: Float = 0f, val estimatedSecondsRemaining: Int? = null) : ProcessingStep()
     data object Saving : ProcessingStep()
     data object Done : ProcessingStep()
     data object Cancelling : ProcessingStep()
@@ -54,7 +58,8 @@ class ProcessingViewModel @Inject constructor(
     private val captionRepository: CaptionRepository,
     private val modelRepository: ModelRepository,
     private val whisperEngine: WhisperEngine,
-    private val crashReporter: CrashReporter
+    private val crashReporter: CrashReporter,
+    private val audioExtractionUseCase: com.dipdev.aiautocaptioner.core.audio.AudioExtractionUseCase
 ) : ViewModel() {
 
     private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
@@ -77,6 +82,7 @@ class ProcessingViewModel @Inject constructor(
 
     private var activeJob: Job? = null
     @Volatile private var isCancelled = false
+    private var transcriptionStartTimeMs: Long = 0L
 
     /** Move to the Ready state so the screen shows a Start button */
     fun prepareForProject(projectId: String) {
@@ -103,8 +109,9 @@ class ProcessingViewModel @Inject constructor(
         _step.value = ProcessingStep.Cancelling
         activeJob?.cancel()
         activeJob = null
-        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.NonCancellable) {
+        viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
             whisperEngine.release()
+            context.stopService(Intent(context, TranscriptionService::class.java))
             _step.value = ProcessingStep.Cancelled
         }
     }
@@ -130,12 +137,11 @@ class ProcessingViewModel @Inject constructor(
 
                 // Step 1 — Extract compressed audio track to a proper .m4a file
                 _step.value = ProcessingStep.ExtractingAudio
+                TranscriptionService.updateProgress("Extracting audio...")
+                ContextCompat.startForegroundService(context, Intent(context, TranscriptionService::class.java))
                 projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
 
-                // Named .m4a because MediaMuxer writes MPEG-4 container (not raw WAV)
-                val audioFile = File(context.filesDir, "projects/$projectId/audio.m4a")
-                extractAudio(project.workingVideoPath, audioFile)
-                projectRepository.updateAudioPath(projectId, audioFile.absolutePath)
+                // Step 1 - Now handled directly in memory
 
                 // Step 2 — Persist selected language before transcription
                 projectRepository.updateProject(
@@ -144,12 +150,14 @@ class ProcessingViewModel @Inject constructor(
 
                 // Step 3 — Load model if needed
                 _step.value = ProcessingStep.LoadingModel
+                TranscriptionService.updateProgress("Loading AI model...")
                 val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
                     modelRepository.getModelFile(model.id)
                 }
 
                 if (activeModelFile == null || !activeModelFile.exists()) {
                     _step.value = ProcessingStep.Error("No model downloaded")
+                    context.stopService(Intent(context, TranscriptionService::class.java))
                     return@launch
                 }
 
@@ -157,21 +165,31 @@ class ProcessingViewModel @Inject constructor(
                     val success = whisperEngine.initialize(activeModelFile)
                     if (!success) {
                         _step.value = ProcessingStep.Error("Failed to load model")
+                        context.stopService(Intent(context, TranscriptionService::class.java))
                         return@launch
                     }
                 }
 
                 // Step 4 — Transcribe using full audio with JNI progress callback
+                transcriptionStartTimeMs = System.currentTimeMillis()
                 _step.value = ProcessingStep.Transcribing(0f)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
-                val pcmSamples = readAudioAsPcm(audioFile)
+                val pcmSamples = audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
 
                 val allWords = whisperEngine.transcribeWithWordTimestamps(
                     samples = pcmSamples,
                     language = language,
                     onProgress = { percent ->
-                        _step.value = ProcessingStep.Transcribing(percent / 100f)
+                        val progressFraction = percent / 100f
+                        val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs
+                        val etaSecs: Int? = if (progressFraction > 0.05f) {
+                            val estimatedTotalMs = elapsedMs / progressFraction
+                            val remainingMs = estimatedTotalMs - elapsedMs
+                            (remainingMs / 1000).toInt().coerceAtLeast(1)
+                        } else null
+                        _step.value = ProcessingStep.Transcribing(progressFraction, etaSecs)
+                        TranscriptionService.updateProgress("Transcribing video... ${percent}%")
                     }
                 )
 
@@ -181,21 +199,47 @@ class ProcessingViewModel @Inject constructor(
                 if (allWords.isEmpty()) {
                     _step.value = ProcessingStep.Error("No words transcribed")
                     whisperEngine.release()
+                    context.stopService(Intent(context, TranscriptionService::class.java))
                     return@launch
                 }
 
                 // Step 5 — Clean and group words into segments
                 _step.value = ProcessingStep.Saving
+                TranscriptionService.updateProgress("Saving transcription...")
                 val mergedTimestamps = mergeContractions(allWords)
-                val cleanedTimestamps = mergedTimestamps.map { w ->
-                    w.copy(word = w.word.trim().trimEnd(',', '.', '!', '?', ';', ':'))
+                
+                // Keep punctuation for the smart grouping pass
+                val rawTimestamps = mergedTimestamps.map { w ->
+                    w.copy(word = w.word.trim())
                 }.filter { it.word.isNotBlank() }
-                val segments = groupWordsIntoSegments(cleanedTimestamps)
+                
+                val initialSegments = groupWordsIntoSegments(rawTimestamps)
+                
+                // Apply smart merge and split
+                val smartlyGrouped = mergeAndSplitSegments(initialSegments)
+                
+                // Now strip the punctuation as originally intended
+                val finalSegments = smartlyGrouped.mapNotNull { seg ->
+                    val cleanedWords = seg.words.map { w ->
+                        w.copy(word = w.word.trimEnd(',', '.', '!', '?', ';', ':'))
+                    }.filter { it.word.isNotBlank() }
+                    
+                    if (cleanedWords.isNotEmpty()) {
+                        seg.copy(
+                            startTimeMs = cleanedWords.first().startTimeMs,
+                            endTimeMs = cleanedWords.last().endTimeMs,
+                            words = cleanedWords
+                        )
+                    } else {
+                        null
+                    }
+                }
 
-                captionRepository.saveTranscription(projectId, segments)
+                captionRepository.saveTranscription(projectId, finalSegments)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBED)
 
                 whisperEngine.release()
+                context.stopService(Intent(context, TranscriptionService::class.java))
                 _step.value = ProcessingStep.Done
 
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -205,212 +249,9 @@ class ProcessingViewModel @Inject constructor(
                 android.util.Log.e("Processing", "Error: ${e.message}", e)
                 crashReporter.recordException(e)
                 whisperEngine.release()
+                context.stopService(Intent(context, TranscriptionService::class.java))
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
             }
-        }
-    }
-
-    // Extract the compressed audio track from the video to a standalone M4A file.
-    // The output is still compressed (AAC); we decode it to PCM in readAudioAsPcm().
-    private suspend fun extractAudio(videoPath: String, outputFile: File) {
-        withContext(Dispatchers.IO) {
-            val extractor = MediaExtractor()
-            extractor.setDataSource(context, android.net.Uri.parse(videoPath), null)
-
-            var audioTrackIndex = -1
-            var audioFormat: MediaFormat? = null
-            for (i in 0 until extractor.trackCount) {
-                val format = extractor.getTrackFormat(i)
-                if (format.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
-                    audioTrackIndex = i
-                    audioFormat = format
-                    break
-                }
-            }
-
-            if (audioTrackIndex == -1) throw Exception("No audio track found in video")
-
-            extractor.selectTrack(audioTrackIndex)
-
-            val tempFile = File(outputFile.parent, "${outputFile.name}.tmp")
-            val muxer = MediaMuxer(
-                tempFile.absolutePath,
-                MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4
-            )
-
-            val muxerTrackIndex = muxer.addTrack(audioFormat!!)
-            var muxerStarted = false
-            var samplesWritten = 0
-
-            try {
-                muxer.start()
-                muxerStarted = true
-
-                val buffer = ByteBuffer.allocate(1024 * 1024)
-                val bufferInfo = android.media.MediaCodec.BufferInfo()
-
-                while (true) {
-                    bufferInfo.offset = 0
-                    bufferInfo.size = extractor.readSampleData(buffer, 0)
-                    if (bufferInfo.size < 0) break
-
-                    bufferInfo.presentationTimeUs = extractor.sampleTime
-                    bufferInfo.flags = when {
-                        extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0 ->
-                            android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME
-                        else -> 0
-                    }
-                    muxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo)
-                    samplesWritten++
-                    extractor.advance()
-                }
-
-                if (samplesWritten > 0) {
-                    muxer.stop()
-                } else {
-                    // Calling stop() on a muxer with zero samples causes MPEG4Writer to crash.
-                    // Release without stop and surface a meaningful error instead.
-                    muxer.release()
-                    throw Exception("Audio track contained no samples")
-                }
-                muxer.release()
-            } catch (e: Exception) {
-                // Ensure the muxer is properly torn down on any unexpected failure.
-                crashReporter.recordException(e)
-                if (muxerStarted && samplesWritten > 0) {
-                    try { muxer.stop() } catch (_: Exception) {}
-                }
-                muxer.release()
-                throw e
-            } finally {
-                extractor.release()
-            }
-
-            if (!tempFile.renameTo(outputFile)) {
-                throw IOException("Failed to rename audio temp file")
-            }
-        }
-    }
-
-    // Decode the compressed audio file to float32 PCM samples at 16kHz mono.
-    // Single-pass implementation: accumulates decoded shorts into a dynamic buffer,
-    // then converts to FloatArray — no wasted double-decode.
-    private suspend fun readAudioAsPcm(audioFile: File): FloatArray {
-        return withContext(Dispatchers.IO) {
-
-            val extractor = MediaExtractor()
-            var codec: android.media.MediaCodec? = null
-            try {
-                extractor.setDataSource(audioFile.absolutePath)
-
-                var audioTrackIndex = -1
-                var audioFormat: MediaFormat? = null
-                for (i in 0 until extractor.trackCount) {
-                    val format = extractor.getTrackFormat(i)
-                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                    if (mime.startsWith("audio/")) {
-                        audioTrackIndex = i
-                        audioFormat = format
-                        break
-                    }
-                }
-                if (audioTrackIndex == -1 || audioFormat == null) {
-                    throw Exception("No audio track found in extracted file")
-                }
-
-                extractor.selectTrack(audioTrackIndex)
-                val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
-                codec = android.media.MediaCodec.createDecoderByType(mime)
-                codec.configure(audioFormat, null, null, 0)
-                codec.start()
-
-                val pcmChunks = ArrayList<ShortArray>()
-                val bufferInfo = android.media.MediaCodec.BufferInfo()
-                var inputDone = false
-                var outputDone = false
-
-                while (!outputDone) {
-                    if (!inputDone) {
-                        val idx = codec.dequeueInputBuffer(10_000L)
-                        if (idx >= 0) {
-                            val inputBuffer = codec.getInputBuffer(idx)!!
-                            val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                            if (sampleSize < 0) {
-                                codec.queueInputBuffer(idx, 0, 0, 0,
-                                    android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                inputDone = true
-                            } else {
-                                codec.queueInputBuffer(idx, 0, sampleSize, extractor.sampleTime, 0)
-                                extractor.advance()
-                            }
-                        }
-                    }
-
-                    val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
-                    if (outIdx >= 0) {
-                        val outputBuffer = codec.getOutputBuffer(outIdx)!!
-                        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-                        val chunk = ShortArray(outputBuffer.remaining() / 2)
-                        outputBuffer.asShortBuffer().get(chunk)
-                        pcmChunks.add(chunk)
-                        codec.releaseOutputBuffer(outIdx, false)
-                        if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                            outputDone = true
-                        }
-                    }
-                }
-
-                val sampleRate = audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                val channelCount = audioFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-
-                // Flatten chunks
-                val totalSamples = pcmChunks.sumOf { it.size }
-                val pcmShorts = ShortArray(totalSamples)
-                var offset = 0
-                for (chunk in pcmChunks) {
-                    System.arraycopy(chunk, 0, pcmShorts, offset, chunk.size)
-                    offset += chunk.size
-                }
-
-                // Mix down to mono
-                val monoShorts: ShortArray = if (channelCount > 1) {
-                    ShortArray(totalSamples / channelCount) { i ->
-                        var sum = 0
-                        for (ch in 0 until channelCount) sum += pcmShorts[i * channelCount + ch]
-                        (sum / channelCount).toShort()
-                    }
-                } else {
-                    pcmShorts
-                }
-
-                // Resample to 16kHz using linear interpolation
-                val finalShorts = if (sampleRate != 16000) resampleTo16kLinear(monoShorts, sampleRate)
-                                  else monoShorts
-
-                // Normalise to float [-1.0, 1.0] — Whisper's expected input range
-                FloatArray(finalShorts.size) { i -> finalShorts[i] / 32768.0f }
-            } finally {
-                try { codec?.stop() } catch (_: Exception) {}
-                try { codec?.release() } catch (_: Exception) {}
-                extractor.release()
-            }
-        }
-    }
-
-    // Linear interpolation resampler — avoids aliasing artifacts that
-    // nearest-neighbor produces at 3:1 ratios (e.g. 48kHz → 16kHz).
-    private fun resampleTo16kLinear(input: ShortArray, fromRate: Int): ShortArray {
-        if (fromRate == 16000) return input
-        if (input.size < 2) return input
-        val ratio = fromRate.toDouble() / 16000.0
-        val outputSize = (input.size / ratio).toInt()
-        return ShortArray(outputSize) { i ->
-            val srcPos = i * ratio
-            val srcIndex = srcPos.toInt().coerceIn(0, input.size - 2)
-            val fraction = (srcPos - srcIndex).toFloat()
-            val s0 = input[srcIndex].toFloat()
-            val s1 = input[srcIndex + 1].toFloat()
-            (s0 + (s1 - s0) * fraction).toInt().toShort()
         }
     }
 
@@ -454,7 +295,7 @@ class ProcessingViewModel @Inject constructor(
         words.fold(mutableListOf()) { acc, word ->
             val trimmed = word.word.trim()
             if (trimmed.startsWith("'") && acc.isNotEmpty()) {
-                val prev = acc.removeLast()
+                val prev = acc.removeAt(acc.lastIndex)
                 acc.add(prev.copy(word = prev.word.trimEnd() + trimmed, endTimeMs = word.endTimeMs))
             } else {
                 acc.add(word)
@@ -462,10 +303,100 @@ class ProcessingViewModel @Inject constructor(
             acc
         }
 
+    private fun mergeAndSplitSegments(rawSegments: List<TranscriptionSegment>): List<TranscriptionSegment> {
+        if (rawSegments.isEmpty()) return emptyList()
+
+        // 1. Merge segments < 3 words
+        val merged = mutableListOf<TranscriptionSegment>()
+        var i = 0
+        while (i < rawSegments.size) {
+            var current = rawSegments[i]
+            // Merge forward if < 3 words and not the last one
+            while (current.words.size < 3 && i < rawSegments.size - 1) {
+                i++
+                val next = rawSegments[i]
+                current = TranscriptionSegment(
+                    startTimeMs = minOf(current.startTimeMs, next.startTimeMs),
+                    endTimeMs = maxOf(current.endTimeMs, next.endTimeMs),
+                    words = current.words + next.words
+                )
+            }
+            merged.add(current)
+            i++
+        }
+
+        // If the very last segment ended up with < 3 words, try merging it backwards
+        if (merged.size > 1 && merged.last().words.size < 3) {
+            val last = merged.removeLast()
+            val prev = merged.removeLast()
+            val combined = TranscriptionSegment(
+                startTimeMs = minOf(prev.startTimeMs, last.startTimeMs),
+                endTimeMs = maxOf(prev.endTimeMs, last.endTimeMs),
+                words = prev.words + last.words
+            )
+            merged.add(combined)
+        }
+
+        // 2. Split segments > 10 words
+        val finalSegments = mutableListOf<TranscriptionSegment>()
+        for (seg in merged) {
+            var remainingSeg = seg
+            while (remainingSeg.words.size > 10) {
+                val words = remainingSeg.words
+                val mid = words.size / 2
+                var splitIndex = -1
+                var minDistance = Int.MAX_VALUE
+
+                // Try to find a sentence boundary near the middle
+                for (j in 0 until words.size - 1) {
+                    val wordText = words[j].word
+                    if (wordText.endsWith(".") || wordText.endsWith("!") || wordText.endsWith("?")) {
+                        val distance = kotlin.math.abs(j - mid)
+                        if (distance < minDistance) {
+                            minDistance = distance
+                            splitIndex = j + 1 // split AFTER this word
+                        }
+                    }
+                }
+
+                // If no punctuation found, or it's too far from the middle, split at exact midpoint
+                if (splitIndex == -1 || minDistance > words.size / 3) {
+                    splitIndex = mid
+                }
+
+                // Safety bounds
+                if (splitIndex <= 0 || splitIndex >= words.size) {
+                    splitIndex = mid
+                }
+
+                val leftWords = words.subList(0, splitIndex)
+                val rightWords = words.subList(splitIndex, words.size)
+
+                finalSegments.add(
+                    TranscriptionSegment(
+                        startTimeMs = leftWords.first().startTimeMs,
+                        endTimeMs = leftWords.last().endTimeMs,
+                        words = leftWords
+                    )
+                )
+
+                remainingSeg = TranscriptionSegment(
+                    startTimeMs = rightWords.first().startTimeMs,
+                    endTimeMs = rightWords.last().endTimeMs,
+                    words = rightWords
+                )
+            }
+            finalSegments.add(remainingSeg)
+        }
+
+        return finalSegments
+    }
+
     override fun onCleared() {
         super.onCleared()
         activeJob?.cancel()
-        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.NonCancellable) {
+        // whisperEngine.release() is a suspend function, and viewModelScope is cancelled here.
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             whisperEngine.release()
         }
     }

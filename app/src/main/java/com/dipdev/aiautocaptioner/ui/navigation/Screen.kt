@@ -45,6 +45,11 @@ sealed class Screen(val route: String) {
         fun createRoute(projectId: String) = "export_history/$projectId"
     }
 
+    // Video Editor — Trim and middle cuts before processing
+    data object VideoEditor : Screen("video_editor/{projectId}") {
+        fun createRoute(projectId: String) = "video_editor/$projectId"
+    }
+
     // Processing screen — extract audio + transcribe
     // Takes projectId as argument so it knows which project to process
     data object Processing : Screen("processing/{projectId}") {
