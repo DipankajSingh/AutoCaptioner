@@ -28,12 +28,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
+import android.graphics.Bitmap
 import com.dipdev.aiautocaptioner.data.model.Clip
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoTimelineView(
     clips: List<Clip>,
+    clipThumbnails: Map<String, List<Bitmap>>,
     selectedClipId: String?,
     onClipSelected: (String) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
@@ -105,12 +111,28 @@ fun VideoTimelineView(
                         )
                     }
             ) {
-                Text(
-                    text = "Clip ${index + 1}",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                val thumbnails = clipThumbnails[clip.id]
+                if (!thumbnails.isNullOrEmpty()) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        thumbnails.forEach { bitmap ->
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Thumbnail",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxSize()
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "Clip ${index + 1}",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
         }
     }

@@ -66,6 +66,7 @@ fun VideoEditorScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clips by viewModel.clips.collectAsStateWithLifecycle()
+    val clipThumbnails by viewModel.clipThumbnails.collectAsStateWithLifecycle()
     val hasEdits by viewModel.hasEdits.collectAsStateWithLifecycle()
 
     var showBackDialog by remember { mutableStateOf(false) }
@@ -190,6 +191,7 @@ fun VideoEditorScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(80.dp)) {
                             VideoTimelineView(
                                 clips = clips,
+                                clipThumbnails = clipThumbnails,
                                 selectedClipId = selectedClipId,
                                 onClipSelected = { selectedClipId = it },
                                 onMoveClip = { from, to -> viewModel.moveClip(from, to) },

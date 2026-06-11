@@ -20,8 +20,10 @@ import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import kotlinx.coroutines.launch
 import android.media.MediaMetadataRetriever
+import android.graphics.Bitmap
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import com.dipdev.aiautocaptioner.core.video.ThumbnailExtractor
 import javax.inject.Inject
 
 sealed class VideoEditorUiState {
@@ -58,7 +60,44 @@ class VideoEditorViewModel @Inject constructor(
     private val _hasEdits = MutableStateFlow(false)
     val hasEdits = _hasEdits.asStateFlow()
 
+    // Thumbnails for the timeline
+    private val _clipThumbnails = MutableStateFlow<Map<String, List<Bitmap>>>(emptyMap())
+    val clipThumbnails = _clipThumbnails.asStateFlow()
+
     val showTimelineThumbnails = settingsRepository.showTimelineThumbnailsFlow.stateInDefault(viewModelScope, false)
+
+    init {
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(clips, showTimelineThumbnails) { currentClips, showThumbs ->
+                Pair(currentClips, showThumbs)
+            }.collect { (currentClips, showThumbs) ->
+                if (showThumbs && originalVideoPath.isNotEmpty()) {
+                    val newMap = _clipThumbnails.value.toMutableMap()
+                    
+                    // We generate a few thumbnails per clip (e.g. 5)
+                    for (clip in currentClips) {
+                        if (!newMap.containsKey(clip.id)) {
+                            val bitmaps = ThumbnailExtractor.extractThumbnails(
+                                videoPath = originalVideoPath,
+                                startMs = clip.startTrimMs,
+                                endMs = clip.endTrimMs,
+                                count = 5
+                            )
+                            newMap[clip.id] = bitmaps
+                        }
+                    }
+                    
+                    // Cleanup old clips
+                    val currentIds = currentClips.map { it.id }.toSet()
+                    newMap.keys.retainAll(currentIds)
+                    
+                    _clipThumbnails.value = newMap
+                } else {
+                    _clipThumbnails.value = emptyMap()
+                }
+            }
+        }
+    }
 
     fun loadProject(projectId: String) {
         viewModelScope.launch {
