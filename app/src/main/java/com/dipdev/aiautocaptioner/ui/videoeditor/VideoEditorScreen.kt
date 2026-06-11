@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor
 
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,8 +32,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
-import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Undo
+import androidx.compose.material.icons.outlined.Redo
+import androidx.compose.material3.Divider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,12 +49,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.isActive
+import androidx.compose.foundation.background
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.DisposableEffect
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
@@ -68,10 +81,25 @@ fun VideoEditorScreen(
     val clips by viewModel.clips.collectAsStateWithLifecycle()
     val clipThumbnails by viewModel.clipThumbnails.collectAsStateWithLifecycle()
     val hasEdits by viewModel.hasEdits.collectAsStateWithLifecycle()
+    val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
+    val canRedo by viewModel.canRedo.collectAsStateWithLifecycle()
 
     var showBackDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedClipId by remember { mutableStateOf<String?>(null) }
+    var zoomLevel by remember { mutableStateOf(1f) }
+    
+    val context = LocalContext.current
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ALL
+            playWhenReady = false
+        }
+    }
+
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
 
     LaunchedEffect(projectId) {
         viewModel.loadProject(projectId)
@@ -80,6 +108,76 @@ fun VideoEditorScreen(
     LaunchedEffect(uiState) {
         if (uiState is VideoEditorUiState.Success) {
             onNavigateToProcessing()
+        }
+    }
+
+    // Keep track of dragging state to prevent video stutter during drag
+    var isDragging by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    // Sync ExoPlayer playlist with clips
+    LaunchedEffect(clips, uiState, isDragging) {
+        if (!isDragging && uiState is VideoEditorUiState.Ready && clips.isNotEmpty()) {
+            val stateReady = uiState as VideoEditorUiState.Ready
+            
+            // Merge contiguous clips to prevent ExoPlayer decode lag
+            val mergedClips = mutableListOf<com.dipdev.aiautocaptioner.data.model.Clip>()
+            var currentMergedClip: com.dipdev.aiautocaptioner.data.model.Clip? = null
+            for (clip in clips) {
+                if (currentMergedClip == null) {
+                    currentMergedClip = clip
+                } else {
+                    if (currentMergedClip.endTrimMs == clip.startTrimMs) {
+                        currentMergedClip = currentMergedClip.copy(endTrimMs = clip.endTrimMs)
+                    } else {
+                        mergedClips.add(currentMergedClip)
+                        currentMergedClip = clip
+                    }
+                }
+            }
+            if (currentMergedClip != null) {
+                mergedClips.add(currentMergedClip)
+            }
+
+            val mediaItems = mergedClips.map { clip ->
+                MediaItem.Builder()
+                    .setUri(stateReady.originalPath)
+                    .setClippingConfiguration(
+                        MediaItem.ClippingConfiguration.Builder()
+                            .setStartPositionMs(clip.startTrimMs)
+                            .setEndPositionMs(clip.endTrimMs)
+                            .build()
+                    )
+                    .build()
+            }
+            
+            // Try to preserve timeline position across playlist updates
+            val oldWindowIndex = player.currentMediaItemIndex
+            val oldPos = player.currentPosition
+            var absoluteTimelineMs = 0L
+            // We can't perfectly recover absolute time here without storing the OLD mergedClips, 
+            // but for simplicity we rely on dragging dropping to handle seeking.
+            // If the playlist size didn't change drastically, we just seek to 0, or attempt best effort:
+            
+            val wasPlaying = player.playWhenReady
+            player.setMediaItems(mediaItems)
+            player.prepare()
+            
+            if (mediaItems.isNotEmpty()) {
+                player.seekTo(oldWindowIndex.coerceIn(0, mediaItems.size - 1), oldPos)
+            }
+            player.playWhenReady = wasPlaying
+            
+            // Listen for duration changes
+            player.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) {
+                        val duration = player.duration
+                        if (duration > 0 && duration != androidx.media3.common.C.TIME_UNSET) {
+                            viewModel.updateDurationFromPlayer(duration)
+                        }
+                    }
+                }
+            })
         }
     }
 
@@ -166,63 +264,161 @@ fun VideoEditorScreen(
                     // Handled by LaunchedEffect
                 }
                 is VideoEditorUiState.Ready -> {
+                    val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
+                    var currentTimelineMs by remember { mutableStateOf(0L) }
+
+                    // Recompute mergedClips locally for the timer
+                    val mergedClips = remember(clips) {
+                        val list = mutableListOf<com.dipdev.aiautocaptioner.data.model.Clip>()
+                        var current: com.dipdev.aiautocaptioner.data.model.Clip? = null
+                        for (c in clips) {
+                            if (current == null) {
+                                current = c
+                            } else {
+                                if (current.endTrimMs == c.startTrimMs) {
+                                    current = current.copy(endTrimMs = c.endTrimMs)
+                                } else {
+                                    list.add(current)
+                                    current = c
+                                }
+                            }
+                        }
+                        if (current != null) list.add(current)
+                        list
+                    }
+
+                    // Sync timeline timer
+                    LaunchedEffect(player, mergedClips) {
+                        while (isActive) {
+                            val windowIndex = player.currentMediaItemIndex
+                            val posInWindow = player.currentPosition
+                            var accumulated = 0L
+                            for (i in 0 until windowIndex.coerceAtMost(mergedClips.size)) {
+                                accumulated += (mergedClips[i].endTrimMs - mergedClips[i].startTrimMs)
+                            }
+                            currentTimelineMs = accumulated + posInWindow
+                            kotlinx.coroutines.delay(16)
+                        }
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
+                            // Removed horizontal padding so video can be full width
+                            .padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Video Player
-                        VideoPlayerCard(
-                            path = state.originalPath,
+                        // Video Player container
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp)),
-                            showControls = true
-                        )
+                        ) {
+                            VideoPlayerCard(
+                                player = player,
+                                modifier = Modifier
+                                    .fillMaxSize(),
+                                showControls = false
+                            )
+                        }
                         
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Timeline
-                        Text("Timeline", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.align(Alignment.Start))
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        Box(modifier = Modifier.fillMaxWidth().height(80.dp)) {
+                        // Timer Pill & Divider
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), 
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${formatTime(currentTimelineMs)} / ${formatTime(totalEditedMs)}",
+                                color = Color.LightGray,
+                                fontSize = 12.sp
+                            )
+                        }
+                        
+                        // Horizontal Separator
+                        Divider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            color = Color.DarkGray,
+                            thickness = 1.dp
+                        )
+                        
+                        Box(modifier = Modifier.fillMaxWidth().height(100.dp)) {
                             VideoTimelineView(
                                 clips = clips,
+                                mergedClips = mergedClips,
                                 clipThumbnails = clipThumbnails,
                                 selectedClipId = selectedClipId,
                                 onClipSelected = { selectedClipId = it },
                                 onMoveClip = { from, to -> viewModel.moveClip(from, to) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            
-                            // Playhead Marker
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .width(2.dp)
-                                    .fillMaxSize()
-                                    .background(Color.Red)
+                                onDragStateChange = { isDragging = it },
+                                zoomLevel = zoomLevel,
+                                player = player,
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
 
-                        // Conditional Action Buttons
-                        if (selectedClipId != null) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                AppOutlinedButton(onClick = {
-                                    viewModel.splitClip(selectedClipId!!, (clips.find { it.id == selectedClipId }?.startTrimMs ?: 0L) + 1000L) // Dummy 1s split for now
-                                }) { Text("Split") }
-                                AppOutlinedButton(onClick = { viewModel.duplicateClip(selectedClipId!!) }) { Text("Duplicate") }
-                                AppOutlinedButton(onClick = { 
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Action Buttons Row (Horizontally Scrollable)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Zoom controls
+                            IconButton(onClick = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) }) {
+                                Icon(Icons.Outlined.Remove, contentDescription = "Zoom Out")
+                            }
+                            IconButton(onClick = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) }) {
+                                Icon(Icons.Outlined.Add, contentDescription = "Zoom In")
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            // Vertical Separator
+                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray))
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            // Undo / Redo
+                            IconButton(onClick = { viewModel.undo() }, enabled = canUndo) {
+                                Icon(Icons.Outlined.Undo, contentDescription = "Undo")
+                            }
+                            IconButton(onClick = { viewModel.redo() }, enabled = canRedo) {
+                                Icon(Icons.Outlined.Redo, contentDescription = "Redo")
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            // Vertical Separator
+                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray))
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            // Split based on absolute timeline ms
+                            IconButton(onClick = {
+                                viewModel.splitClipAtAbsoluteTime(currentTimelineMs)
+                            }) {
+                                Icon(Icons.Outlined.ContentCut, contentDescription = "Split")
+                            }
+
+                            // Contextual Action Buttons
+                            if (selectedClipId != null) {
+                                IconButton(onClick = { viewModel.duplicateClip(selectedClipId!!) }) {
+                                    Icon(Icons.Outlined.ContentCopy, contentDescription = "Duplicate")
+                                }
+                                IconButton(onClick = { 
                                     viewModel.deleteClip(selectedClipId!!)
                                     selectedClipId = null 
-                                }) { Text("Delete") }
+                                }) {
+                                    Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }

@@ -60,6 +60,16 @@ class VideoEditorViewModel @Inject constructor(
     private val _hasEdits = MutableStateFlow(false)
     val hasEdits = _hasEdits.asStateFlow()
 
+    // Undo / Redo History
+    private val history = mutableListOf<List<Clip>>()
+    private var historyIndex = -1
+
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo = _canUndo.asStateFlow()
+
+    private val _canRedo = MutableStateFlow(false)
+    val canRedo = _canRedo.asStateFlow()
+
     // Thumbnails for the timeline
     private val _clipThumbnails = MutableStateFlow<Map<String, List<Bitmap>>>(emptyMap())
     val clipThumbnails = _clipThumbnails.asStateFlow()
@@ -128,20 +138,98 @@ class VideoEditorViewModel @Inject constructor(
         }
     }
 
-    fun splitClip(clipId: String, splitTimeMs: Long) {
+    private fun saveState() {
+        // Remove any future history if we are branching
+        if (historyIndex < history.size - 1) {
+            history.subList(historyIndex + 1, history.size).clear()
+        }
+        history.add(ArrayList(_clips.value)) // deep copy not strictly needed since Clip is a data class, but ArrayList clone is safe
+        historyIndex++
+        
+        // Cap history at 50 steps
+        if (history.size > 50) {
+            history.removeAt(0)
+            historyIndex--
+        }
+        
+        updateUndoRedoStates()
+        _hasEdits.value = true
+    }
+
+    private fun updateUndoRedoStates() {
+        _canUndo.value = historyIndex >= 0
+        _canRedo.value = historyIndex < history.size - 1
+    }
+
+    fun undo() {
+        if (_canUndo.value) {
+            if (historyIndex == history.size - 1 && history.lastOrNull() != _clips.value) {
+                // If the current state isn't in history yet (e.g., first undo), save it
+                saveState()
+                historyIndex-- // step back from the newly saved state
+            }
+            historyIndex--
+            _clips.value = if (historyIndex >= 0) history[historyIndex] else emptyList() // or original state?
+            
+            // If we undo past the first edit, restore original clip
+            if (historyIndex < 0) {
+                _clips.value = listOf(Clip(startTrimMs = 0L, endTrimMs = originalDurationMs))
+                _hasEdits.value = false
+            }
+            updateUndoRedoStates()
+        }
+    }
+
+    fun redo() {
+        if (_canRedo.value) {
+            historyIndex++
+            _clips.value = history[historyIndex]
+            _hasEdits.value = true
+            updateUndoRedoStates()
+        }
+    }
+
+    fun updateDurationFromPlayer(actualDurationMs: Long) {
+        if (actualDurationMs > 0 && actualDurationMs != originalDurationMs) {
+            val ratio = actualDurationMs.toFloat() / originalDurationMs.toFloat()
+            originalDurationMs = actualDurationMs
+            // Only update clips if no edits have been made yet, or simply scale them?
+            // Usually, if we just loaded, we should replace the single clip.
+            if (!_hasEdits.value && _clips.value.size == 1) {
+                _clips.value = listOf(Clip(startTrimMs = 0L, endTrimMs = actualDurationMs))
+            }
+        }
+    }
+
+    fun splitClipAtAbsoluteTime(absoluteTimelineMs: Long) {
         val currentClips = _clips.value.toMutableList()
-        val index = currentClips.indexOfFirst { it.id == clipId }
-        if (index != -1) {
-            val clip = currentClips[index]
-            // splitTimeMs is absolute to the video file
-            if (splitTimeMs > clip.startTrimMs && splitTimeMs < clip.endTrimMs) {
-                val clip1 = Clip(startTrimMs = clip.startTrimMs, endTrimMs = splitTimeMs)
-                val clip2 = Clip(startTrimMs = splitTimeMs, endTrimMs = clip.endTrimMs)
-                currentClips.removeAt(index)
-                currentClips.add(index, clip2)
-                currentClips.add(index, clip1)
+        var accumulated = 0L
+        var targetClipIndex = -1
+        var relativeSplitMs = 0L
+
+        for (i in currentClips.indices) {
+            val clip = currentClips[i]
+            val clipDuration = clip.endTrimMs - clip.startTrimMs
+            if (absoluteTimelineMs >= accumulated && absoluteTimelineMs < accumulated + clipDuration) {
+                targetClipIndex = i
+                relativeSplitMs = absoluteTimelineMs - accumulated
+                break
+            }
+            accumulated += clipDuration
+        }
+
+        if (targetClipIndex != -1) {
+            val clip = currentClips[targetClipIndex]
+            val absoluteSplitMs = clip.startTrimMs + relativeSplitMs
+            // Ensure we don't split exactly at the edges (allow a small margin like 100ms)
+            if (absoluteSplitMs >= clip.startTrimMs + 100 && absoluteSplitMs <= clip.endTrimMs - 100) {
+                saveState()
+                val clip1 = Clip(startTrimMs = clip.startTrimMs, endTrimMs = absoluteSplitMs)
+                val clip2 = Clip(startTrimMs = absoluteSplitMs, endTrimMs = clip.endTrimMs)
+                currentClips.removeAt(targetClipIndex)
+                currentClips.add(targetClipIndex, clip2)
+                currentClips.add(targetClipIndex, clip1)
                 _clips.value = currentClips
-                _hasEdits.value = true
             }
         }
     }
@@ -149,9 +237,9 @@ class VideoEditorViewModel @Inject constructor(
     fun deleteClip(clipId: String) {
         val currentClips = _clips.value.toMutableList()
         if (currentClips.size > 1) { // Prevent deleting the last clip
+            saveState()
             currentClips.removeAll { it.id == clipId }
             _clips.value = currentClips
-            _hasEdits.value = true
         }
     }
 
@@ -159,21 +247,21 @@ class VideoEditorViewModel @Inject constructor(
         val currentClips = _clips.value.toMutableList()
         val index = currentClips.indexOfFirst { it.id == clipId }
         if (index != -1) {
+            saveState()
             val clipToDuplicate = currentClips[index]
             val newClip = Clip(startTrimMs = clipToDuplicate.startTrimMs, endTrimMs = clipToDuplicate.endTrimMs)
             currentClips.add(index + 1, newClip)
             _clips.value = currentClips
-            _hasEdits.value = true
         }
     }
 
     fun moveClip(fromIndex: Int, toIndex: Int) {
         val currentClips = _clips.value.toMutableList()
         if (fromIndex in currentClips.indices && toIndex in currentClips.indices) {
+            saveState()
             val clip = currentClips.removeAt(fromIndex)
             currentClips.add(toIndex, clip)
             _clips.value = currentClips
-            _hasEdits.value = true
         }
     }
 
@@ -181,9 +269,9 @@ class VideoEditorViewModel @Inject constructor(
         val currentClips = _clips.value.toMutableList()
         val index = currentClips.indexOfFirst { it.id == clipId }
         if (index != -1) {
+            saveState()
             currentClips[index] = currentClips[index].copy(startTrimMs = startMs, endTrimMs = endMs)
             _clips.value = currentClips
-            _hasEdits.value = true
         }
     }
 

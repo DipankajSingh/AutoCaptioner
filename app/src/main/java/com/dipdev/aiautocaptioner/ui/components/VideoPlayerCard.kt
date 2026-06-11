@@ -11,19 +11,67 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 /**
- * A self-contained ExoPlayer video card.
+ * A reusable Video Player component that binds to an external Media3 [Player].
  *
- * Creates, configures and releases an [ExoPlayer] instance tied to the
- * Compose lifecycle. Use [showControls] to toggle the playback control bar.
+ * @param player       The Media3 Player instance.
+ * @param modifier     Applied to the container.
+ * @param showControls When true, the Media3 control bar is visible.
+ * @param cornerRadius Corner radius for the clip shape.
+ */
+@Composable
+fun VideoPlayerCard(
+    player: Player?,
+    modifier: Modifier = Modifier.fillMaxSize(),
+    showControls: Boolean = false,
+    cornerRadius: Dp = 4.dp
+) {
+    Box(modifier = modifier.clip(RoundedCornerShape(cornerRadius))) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    this.player = player
+                    useController = showControls
+                    setShowNextButton(false)
+                    setShowPreviousButton(false)
+                }
+            },
+            update  = { view -> 
+                view.player = player 
+                view.useController = showControls
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+        
+        // Transparent overlay for tap-to-play/pause if controls are disabled
+        if (!showControls) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { 
+                        player?.let { p ->
+                            p.playWhenReady = !p.playWhenReady
+                        }
+                    }
+            )
+        }
+    }
+}
+
+/**
+ * A self-contained ExoPlayer video card that manages its own player.
  *
  * @param path         Absolute file path or content URI string.
- * @param modifier     Applied to the [AndroidView].
+ * @param modifier     Applied to the container.
  * @param loop         When true, repeats playback indefinitely.
  * @param autoPlay     When true, starts playing as soon as the player is ready.
  * @param showControls When true, the Media3 control bar is visible.
@@ -40,8 +88,8 @@ fun VideoPlayerCard(
 ) {
     val context = LocalContext.current
     val player = remember(path) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(path))
+        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+            setMediaItem(androidx.media3.common.MediaItem.fromUri(path))
             repeatMode    = if (loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
             playWhenReady = autoPlay
             prepare()
@@ -52,16 +100,10 @@ fun VideoPlayerCard(
         onDispose { player.release() }
     }
 
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                this.player = player
-                useController = showControls
-                setShowNextButton(false)
-                setShowPreviousButton(false)
-            }
-        },
-        update  = { view -> view.player = player },
-        modifier = modifier.clip(RoundedCornerShape(cornerRadius))
+    VideoPlayerCard(
+        player = player,
+        modifier = modifier,
+        showControls = showControls,
+        cornerRadius = cornerRadius
     )
 }
