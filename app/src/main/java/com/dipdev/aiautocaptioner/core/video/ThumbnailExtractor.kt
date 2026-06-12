@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.core.graphics.scale
 
 object ThumbnailExtractor {
 
@@ -46,7 +47,7 @@ object ThumbnailExtractor {
                     val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
                     val targetWidth = (targetHeight * aspectRatio).toInt()
                     
-                    val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+                    val scaledBitmap = bitmap.scale(targetWidth, targetHeight)
                     bitmaps.add(scaledBitmap)
                     
                     if (scaledBitmap != bitmap) {

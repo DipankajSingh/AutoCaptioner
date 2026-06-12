@@ -123,7 +123,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            AppTheme.values().forEach { themeOption ->
+            AppTheme.entries.forEach { themeOption ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

@@ -25,6 +25,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.dipdev.aiautocaptioner.core.video.ThumbnailExtractor
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed class VideoEditorUiState {
     data object Idle : VideoEditorUiState()
@@ -40,7 +41,7 @@ sealed class VideoEditorUiState {
 class VideoEditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
-    private val settingsRepository: SettingsRepository
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<VideoEditorUiState>(VideoEditorUiState.Idle)
@@ -191,7 +192,6 @@ class VideoEditorViewModel @Inject constructor(
 
     fun updateDurationFromPlayer(actualDurationMs: Long) {
         if (actualDurationMs > 0 && actualDurationMs != originalDurationMs) {
-            val ratio = actualDurationMs.toFloat() / originalDurationMs.toFloat()
             originalDurationMs = actualDurationMs
             // Only update clips if no edits have been made yet, or simply scale them?
             // Usually, if we just loaded, we should replace the single clip.
@@ -265,16 +265,6 @@ class VideoEditorViewModel @Inject constructor(
         }
     }
 
-    fun updateTrim(clipId: String, startMs: Long, endMs: Long) {
-        val currentClips = _clips.value.toMutableList()
-        val index = currentClips.indexOfFirst { it.id == clipId }
-        if (index != -1) {
-            saveState()
-            currentClips[index] = currentClips[index].copy(startTrimMs = startMs, endTrimMs = endMs)
-            _clips.value = currentClips
-        }
-    }
-
     @OptIn(UnstableApi::class)
     fun applyEdits() {
         val projectId = currentProjectId ?: return
@@ -335,7 +325,7 @@ class VideoEditorViewModel @Inject constructor(
                         } else if (progressState == Transformer.PROGRESS_STATE_NOT_STARTED) {
                             _uiState.value = VideoEditorUiState.Processing(0)
                         }
-                        kotlinx.coroutines.delay(500)
+                        kotlinx.coroutines.delay(500.milliseconds)
                     }
                 }
 

@@ -15,7 +15,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
         private const val TAG = "WhisperEngine"
 
         // Cap at 4 — on ARM big.LITTLE chips (Snapdragon, Dimensity, Exynos)
-        // scheduling GGML barrier-synchronised matrix ops across efficiency
+        // scheduling GGML barrier-synchronized matrix ops across efficiency
         // cores bottlenecks throughput to the slowest core and causes thermal
         // throttling.  4 performance cores is the practical sweet spot.
         private val THREAD_COUNT: Int =

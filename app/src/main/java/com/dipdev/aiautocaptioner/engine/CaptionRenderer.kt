@@ -58,7 +58,7 @@ object CaptionRenderer {
         val totalH = lines.size * lineH + padY * 2f
         val startY = (videoHeight * style.positionY) - totalH / 2f
 
-        val lineLayouts: List<Triple<List<CaptionAnimator.TimedWord>, Float, Float>> =
+        val lineLayouts: List<Triple<List<TimedWord>, Float, Float>> =
             lines.map { words ->
                 val lineW = words.sumOf { w ->
                     (CaptionPaints.text.measureText(CaptionUtils.sanitize(w.text, style)) + spaceW).toDouble()
@@ -73,11 +73,11 @@ object CaptionRenderer {
 
 
         // Pass 1: Background pill, Outlines, Shadows
-        var lineY_P1 = startY
+        var lineYP1 = startY
         for ((lineWords, lineStartX, lineWidth) in lineLayouts) {
             var x = lineStartX
-            val lineTop = lineY_P1 + fm.top
-            val lineBot = lineY_P1 + fm.bottom
+            val lineTop = lineYP1 + fm.top
+            val lineBot = lineYP1 + fm.bottom
             drawLineBackground(canvas, style, x, lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
 
             for (w in lineWords) {
@@ -88,18 +88,17 @@ object CaptionRenderer {
                 // Draw per-word background pill
                 if (style.backgroundOpacity > 0f && style.backgroundType == BackgroundType.PER_WORD) {
                     tempWordRect.set(x - padX / 2f, lineTop - padY, x + wordW + padX / 2f, lineBot + padY)
-                    canvas.save()
-                    canvas.translate(xfm.translateX, xfm.translateY)
-                    CaptionPaints.bg.alpha = (CaptionPaints.bg.alpha * xfm.alpha).toInt()
-                    canvas.drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
-                    CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
-                    canvas.restore()
+                    canvas.withTranslation(xfm.translateX, xfm.translateY) {
+                        CaptionPaints.bg.alpha = (CaptionPaints.bg.alpha * xfm.alpha).toInt()
+                        drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
+                        CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
+                    }
                 }
 
-                drawWord(canvas, txt, x, lineY_P1, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = true)
+                drawWord(canvas, txt, x, lineYP1, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = true)
                 x += wordW + spaceW
             }
-            lineY_P1 += lineH
+            lineYP1 += lineH
         }
 
         // Disable shadows for text fills so they sit cleanly on top
@@ -107,19 +106,19 @@ object CaptionRenderer {
         CaptionPaints.outline.clearShadowLayer()
 
         // Pass 2: Text Fills and Overlays
-        var lineY_P2 = startY
+        var lineYP2 = startY
         for ((lineWords, lineStartX, _) in lineLayouts) {
             var x = lineStartX
-            val lineTop = lineY_P2 + fm.top
-            val lineBot = lineY_P2 + fm.bottom
+            val lineTop = lineYP2 + fm.top
+            val lineBot = lineYP2 + fm.bottom
             for (w in lineWords) {
                 val txt = CaptionUtils.sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
                 val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
-                drawWord(canvas, txt, x, lineY_P2, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = false)
+                drawWord(canvas, txt, x, lineYP2, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = false)
                 x += wordW + spaceW
             }
-            lineY_P2 += lineH
+            lineYP2 += lineH
         }
     }
 
@@ -141,7 +140,7 @@ object CaptionRenderer {
         val cx = x + wordW / 2f
         val cy = y + (lineBot - lineTop) / 2f + lineTop
 
-        // Determine fill colour
+        // Determine fill color
         val fillColor: Int = when {
             xfm.colorOverride != null -> xfm.colorOverride
             w.isEmphasized            -> style.highlightColor.toInt()
@@ -159,7 +158,7 @@ object CaptionRenderer {
         if (drawTxt.isEmpty() && xfm.alpha < 0.01f) return
 
         canvas.withTranslation(cx, cy) {
-            // Pivot transforms on word centre
+            // Pivot transforms on word center
             scale(xfm.scaleX, xfm.scaleY)
             translate(-cx, -cy)
             translate(xfm.translateX, xfm.translateY)
@@ -243,5 +242,3 @@ object CaptionRenderer {
 
 }
 
-// Kept for any external code that may reference it
-data class RenderWord(val text: String, val isActive: Boolean, val isPast: Boolean, val isEmphasized: Boolean)

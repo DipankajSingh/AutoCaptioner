@@ -35,12 +35,6 @@ class ProjectRepository @Inject constructor(
         private const val TAG = "ProjectRepository"
     }
 
-    // ---- Observe all projects ----
-    // Returns a Flow that automatically emits updates when DB changes
-    // The home screen collects this to show the project list
-    fun getAllProjects(): Flow<List<ProjectEntity>> =
-        projectDao.getAllProjects()
-
     // Returns projects bundled with their exported files
     fun getProjectsWithExportedFiles(): Flow<List<com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles>> =
         projectDao.getProjectsWithExportedFiles()
@@ -168,12 +162,6 @@ class ProjectRepository @Inject constructor(
     // Called at each step of the processing pipeline
     suspend fun updateStatus(projectId: String, status: ProjectStatus) {
         projectDao.updateStatus(projectId, status)
-    }
-
-    // ---- Update audio path ----
-    // Called after audio extraction is complete
-    suspend fun updateAudioPath(projectId: String, audioPath: String) {
-        projectDao.updateAudioPath(projectId, audioPath)
     }
 
     // ---- Update working video path ----
@@ -343,7 +331,7 @@ class ProjectRepository @Inject constructor(
             } else {
                 fpsString.toFloat()
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -360,7 +348,7 @@ class ProjectRepository @Inject constructor(
                     cursor.getString(0)
                 } else null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

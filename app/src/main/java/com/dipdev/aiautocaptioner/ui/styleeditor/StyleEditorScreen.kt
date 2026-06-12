@@ -31,7 +31,6 @@ fun StyleEditorScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
     onNavigateToExport: () -> Unit,
-    onSaved: () -> Unit,
     viewModel: StyleEditorViewModel = hiltViewModel()
 ) {
     val project by viewModel.project.collectAsStateWithLifecycle()
@@ -301,15 +300,12 @@ fun StyleEditorScreen(
                                         onBackgroundOpacityChange = viewModel::updateBackgroundOpacity,
                                         onBackgroundPaddingHChange = viewModel::updateBackgroundPaddingH,
                                         onBackgroundPaddingVChange = viewModel::updateBackgroundPaddingV,
-                                        onBackgroundCornerRadiusChange = viewModel::updateBackgroundCornerRadius,
-                                        onShadowRadiusChange = viewModel::updateShadowRadius,
-                                        onShadowColorChange = viewModel::updateShadowColor
+                                        onBackgroundCornerRadiusChange = viewModel::updateBackgroundCornerRadius
                                     )
                                     StyleTab.ANIMATION -> AnimationTab(
                                         style = style,
                                         onDisplayModeChange = viewModel::updateDisplayMode,
                                         onWordEnterChange = viewModel::updateWordEnterAnimation,
-                                        onWordExitChange = viewModel::updateWordExitAnimation,
                                         onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode,
                                         onAnimationDurationChange = viewModel::updateAnimationDurationMs
                                     )

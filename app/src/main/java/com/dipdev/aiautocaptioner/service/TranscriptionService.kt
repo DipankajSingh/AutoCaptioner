@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -24,7 +23,7 @@ class TranscriptionService : Service() {
         const val CHANNEL_ID = "transcription_channel"
         const val NOTIFICATION_ID = 101
 
-        private val _progressFlow = MutableStateFlow<String>("")
+        private val _progressFlow = MutableStateFlow("")
         val progressFlow: StateFlow<String> = _progressFlow
 
         fun updateProgress(text: String) {
@@ -51,7 +50,7 @@ class TranscriptionService : Service() {
                     notification, 
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Fallback if missing permission or type
                 startForeground(NOTIFICATION_ID, notification)
             }
@@ -87,7 +86,7 @@ class TranscriptionService : Service() {
                 description = descriptionText
             }
             val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
@@ -103,7 +102,7 @@ class TranscriptionService : Service() {
     }
 
     private fun updateNotification(content: String) {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, createNotification(content))
     }
 }

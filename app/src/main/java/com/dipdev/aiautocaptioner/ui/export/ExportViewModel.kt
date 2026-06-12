@@ -38,6 +38,7 @@ import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed class ExportState {
     data object Idle             : ExportState()
@@ -111,7 +112,7 @@ class ExportViewModel @Inject constructor(
             is ExportUiEvent.PrepareExport -> prepareExport(event.projectId)
             is ExportUiEvent.CancelExport -> cancelExport()
             is ExportUiEvent.ResetForReExport -> resetForReExport()
-            is ExportUiEvent.StartExport -> startExport(event.projectId, event.targetBitrate, event.targetFps, event.targetHeight)
+            is ExportUiEvent.StartExport -> startExport(event.projectId, event.targetBitrate)
             is ExportUiEvent.SaveToGallery -> saveToGallery(event.filePath)
         }
     }
@@ -139,9 +140,7 @@ class ExportViewModel @Inject constructor(
 
     private fun startExport(
         projectId: String,
-        targetBitrate: Int? = null,
-        targetFps: Int? = null,
-        targetHeight: Int? = null
+        targetBitrate: Int? = null
     ) {
         if (currentState.exportState == ExportState.Running) return
         setState { copy(exportState = ExportState.Running, progress = 0f) }
@@ -331,7 +330,7 @@ class ExportViewModel @Inject constructor(
                 } else if (status == Transformer.PROGRESS_STATE_NOT_STARTED) {
                     setState { copy(progress = 0f) }
                 }
-                kotlinx.coroutines.delay(100)
+                kotlinx.coroutines.delay(100.milliseconds)
             }
         }
     }

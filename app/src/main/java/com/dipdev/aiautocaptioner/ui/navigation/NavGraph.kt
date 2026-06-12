@@ -184,8 +184,7 @@ fun NavGraph(
                 },
                 onNavigateToExport = {
                     navController.navigate(Screen.Export.createRoute(projectId))
-                },
-                onSaved = { navController.popBackStack() }
+                }
             )
         }
 

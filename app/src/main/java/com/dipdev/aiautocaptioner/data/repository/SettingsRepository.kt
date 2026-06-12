@@ -35,7 +35,7 @@ class SettingsRepository @Inject constructor(
         val themeName = prefs[THEME_KEY] ?: AppTheme.EMERALD.name
         try {
             AppTheme.valueOf(themeName)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             AppTheme.EMERALD
         }
     }.distinctUntilChanged()

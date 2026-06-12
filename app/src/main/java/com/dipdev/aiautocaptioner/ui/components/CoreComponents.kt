@@ -1,25 +1,20 @@
 package com.dipdev.aiautocaptioner.ui.components
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.getValue
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.ui.theme.LocalGlassmorphismEnabled
 
 @Composable
@@ -115,7 +111,7 @@ fun EmptyState(
         modifier = Modifier
             .fillMaxSize()
             .padding(32.dp),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Top
     ) {
         com.airbnb.lottie.compose.LottieAnimation(
@@ -126,12 +122,12 @@ fun EmptyState(
                 .aspectRatio(1f)
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
-        androidx.compose.material3.Text(title, fontSize = 22.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
-        androidx.compose.material3.Text(
+        Text(
             text = subtitle,
             fontSize = 14.sp,
-            color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(32.dp))
         GradientPrimaryButton(
@@ -144,16 +140,16 @@ fun EmptyState(
 @Composable
 fun ModelStat(label: String, value: String) {
     androidx.compose.foundation.layout.Column {
-        androidx.compose.material3.Text(
+        Text(
             text = label,
             fontSize = 11.sp,
-            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
         )
-        androidx.compose.material3.Text(
+        Text(
             text = value,
             fontSize = 12.sp,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-            color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }

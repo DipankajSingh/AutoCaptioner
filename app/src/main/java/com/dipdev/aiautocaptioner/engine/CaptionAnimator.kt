@@ -77,7 +77,7 @@ object CaptionAnimator {
         // Base exit transform (evaluate backward so 1f = fully visible, 0f = exited)
         val xt = if (isExiting) applyAnim(style.wordExitAnimation, 1f - exit, entering = false) else RawTransform()
 
-        var alpha  = et.alpha * (if (isExiting) {
+        val alpha  = et.alpha * (if (isExiting) {
             if (style.wordExitAnimation == AnimationType.NONE) (1f - AnimationUtils.easeInCubic(exit)).coerceIn(0f, 1f) else xt.alpha
         } else 1f)
         var scaleX = et.scaleX * (if (isExiting) xt.scaleX else 1f)

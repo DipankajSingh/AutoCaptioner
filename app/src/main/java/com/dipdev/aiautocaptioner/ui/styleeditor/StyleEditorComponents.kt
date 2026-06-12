@@ -12,12 +12,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -154,34 +151,6 @@ fun PresetsTab(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun ToolCard(
-    label: String,
-    displayValue: String,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp)) // Flattened shape
-            .padding(12.dp)
-            .heightIn(min = 90.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.widthIn(min = 80.dp)
-        ) {
-            Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (displayValue.isNotEmpty()) {
-                Text(displayValue, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        content()
     }
 }
 

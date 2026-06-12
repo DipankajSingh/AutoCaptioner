@@ -36,11 +36,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,12 +46,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -61,6 +59,7 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import androidx.core.net.toUri
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +94,7 @@ fun ExportScreen(
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 try {
                     val retriever = android.media.MediaMetadataRetriever()
-                    retriever.setDataSource(context, android.net.Uri.parse(workingVideoPath))
+                    retriever.setDataSource(context, workingVideoPath.toUri())
                     
                     val w = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1080
                     val h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 1920
@@ -121,9 +120,7 @@ fun ExportScreen(
     }
 
     // Calculate effective targets
-    val computedTargetHeight = if (selectedHeight == -1) originalHeight else selectedHeight
-    val computedTargetFps = if (selectedFps == -1) originalFps else selectedFps
-    
+
     val computedTargetBitrate = when (selectedQuality) {
         0 -> (originalBitrate * 0.6).toInt() // Low Quality
         1 -> originalBitrate                 // Recommended (Match Original)
@@ -174,23 +171,22 @@ fun ExportScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                when (val state = exportState) {
+                when (exportState) {
 
                 // ── Success / Already Exported ────────────────────────────
                 is ExportState.AlreadyExported,
                 is ExportState.Success,
                 is ExportState.SavedToGallery -> {
-                    val path = outputPath
 
-                    if (state is ExportState.Success || state is ExportState.SavedToGallery) {
+                    if (exportState is ExportState.Success || exportState is ExportState.SavedToGallery) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     Text(
-                        text = when (state) {
-                            is ExportState.Success        -> "Export Complete!"
+                        text = when (exportState) {
+                            is ExportState.Success -> "Export Complete!"
                             is ExportState.SavedToGallery -> "Saved to Gallery!"
-                            else                          -> "Previously Exported"
+                            else -> "Previously Exported"
                         },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
@@ -199,9 +195,9 @@ fun ExportScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Video preview
-                    if (path != null) {
+                    if (outputPath != null) {
                         VideoPlayerCard(
-                            path     = path,
+                            path = outputPath,
                             modifier = Modifier.fillMaxWidth().weight(1f)
                         )
                     } else {
@@ -225,7 +221,9 @@ fun ExportScreen(
                         // Save to Gallery
                         Button(
                             onClick = {
-                                if (path != null) viewModel.setEvent(ExportUiEvent.SaveToGallery(path))
+                                if (outputPath != null) viewModel.setEvent(ExportUiEvent.SaveToGallery(
+                                    outputPath
+                                ))
                             },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(4.dp),
@@ -243,10 +241,10 @@ fun ExportScreen(
                         // Share
                         Button(
                             onClick = {
-                                if (path != null) {
+                                if (outputPath != null) {
                                     context.startActivity(
                                         android.content.Intent.createChooser(
-                                            viewModel.shareVideo(path), "Share Video"
+                                            viewModel.shareVideo(outputPath), "Share Video"
                                         )
                                     )
                                 }
@@ -438,7 +436,7 @@ fun ExportScreen(
                         color = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = state.message,
+                        text = exportState.message,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center

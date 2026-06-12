@@ -16,7 +16,7 @@ interface CaptionWordDao {
     // Get ALL words for an entire project, ordered by time
     // This is the critical query for the preview screen
     // The preview needs to find the active word at the current playback time
-    // Having all words pre-loaded sorted by time makes this instant
+    // Having all words preloaded sorted by time makes this instant
     @Query("SELECT * FROM caption_words WHERE projectId = :projectId ORDER BY startTimeMs ASC")
     suspend fun getAllWordsForProject(projectId: String): List<CaptionWordEntity>
 

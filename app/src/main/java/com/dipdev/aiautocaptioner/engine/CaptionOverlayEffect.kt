@@ -10,6 +10,7 @@ import androidx.media3.effect.BitmapOverlay
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
+import androidx.core.graphics.createBitmap
 
 @UnstableApi
 class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
@@ -22,7 +23,7 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
 ) : BitmapOverlay() {
 
     // Create a recycled bitmap matching exactly the physical boundaries of the video encode frame
-    private var recycledBitmap: Bitmap = Bitmap.createBitmap(videoWidth, videoHeight, Bitmap.Config.ARGB_8888)
+    private var recycledBitmap: Bitmap = createBitmap(videoWidth, videoHeight)
     private var overlayCanvas: Canvas = Canvas(recycledBitmap)
 
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
@@ -31,7 +32,7 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
 
         val currentPositionMs = presentationTimeUs / 1000
 
-        com.dipdev.aiautocaptioner.engine.CaptionRenderer.draw(
+        CaptionRenderer.draw(
             canvas = overlayCanvas,
             currentPositionMs = currentPositionMs,
             videoWidth = videoWidth,

@@ -41,8 +41,6 @@ fun ColorTab(
     onBackgroundPaddingHChange: (Float) -> Unit,
     onBackgroundPaddingVChange: (Float) -> Unit,
     onBackgroundCornerRadiusChange: (Float) -> Unit,
-    onShadowRadiusChange: (Float) -> Unit,
-    onShadowColorChange: (Long) -> Unit,
 ) {
     var activeTool by remember { mutableStateOf<ColorSubTool?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)

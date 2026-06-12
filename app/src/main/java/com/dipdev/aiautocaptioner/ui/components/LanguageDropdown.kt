@@ -35,10 +35,11 @@ private val LANGUAGES = listOf(
  */
 @Composable
 fun LanguageDropdown(
+    modifier: Modifier = Modifier,
     selectedLanguage: String,
     onLanguageSelected: (String) -> Unit,
     isMultilingual: Boolean = true,
-    modifier: Modifier = Modifier
+
 ) {
     // When an English-only model is active, force the selection to "en"
     LaunchedEffect(isMultilingual) {

@@ -110,10 +110,6 @@ class ModelRepository @Inject constructor(
         Log.i(TAG, "Active model set to: $modelId")
     }
 
-    // Check if any model is downloaded and ready to use
-    fun hasDownloadedModel(): Boolean =
-        availableModels.any { getModelFile(it.id).exists() }
-
     // Get the file path where a model should be stored
     // All models stored in: /files/models/ggml-{modelId}.bin
     fun getModelFile(modelId: String): File {
@@ -188,10 +184,7 @@ class ModelRepository @Inject constructor(
                 return@flow
             }
 
-            val body = response.body ?: run {
-                emit(DownloadState.Error("Received empty response from server. Please try again."))
-                return@flow
-            }
+            val body = response.body
 
             val isPartial = response.code == 206
             if (!isPartial && downloadedBytes > 0) {

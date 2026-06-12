@@ -130,7 +130,7 @@ fun HomeScreen(
                     
                     androidx.compose.material3.IconButton(onClick = onNavigateToSettings) {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Settings,
+                            imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -224,7 +224,7 @@ fun HomeScreen(
                                 }
                                 try {
                                     context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Video"))
-                                } catch (e: android.content.ActivityNotFoundException) {
+                                } catch (_: android.content.ActivityNotFoundException) {
                                     // Handle missing activity gracefully
                                 }
                             },

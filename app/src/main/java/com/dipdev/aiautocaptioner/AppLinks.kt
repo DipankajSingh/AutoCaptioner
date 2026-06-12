@@ -23,9 +23,6 @@ object AppLinks {
         get() = Firebase.remoteConfig.getString("developer_website_url")
             .takeIf { it.isNotBlank() } ?: "https://autocaptioner-app.vercel.app"
 
-    const val PLAY_STORE = "https://play.google.com/store/apps/details?id=com.dipdev.aiautocaptioner"
-    const val GITHUB = "https://github.com/dipdevlabs/autocaptioner"
-
     // ── Support ──────────────────────────────────────────────────────────────
     const val SUPPORT_EMAIL = "support@autocaptioner.com"
     const val BUG_REPORT = "https://github.com/dipdevlabs/autocaptioner/issues"

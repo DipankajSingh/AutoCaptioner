@@ -22,7 +22,7 @@ fun WordChips(
     words: List<CaptionWordEntity>,
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
-    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    @OptIn(ExperimentalLayoutApi::class)
     androidx.compose.foundation.layout.FlowRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -75,7 +75,7 @@ fun WordChip(
                 fontWeight = if (word.isEmphasized) FontWeight.Bold else FontWeight.Normal
             )
             Text(
-                text = "${formatMs(word.startTimeMs)}",
+                text = formatMs(word.startTimeMs),
                 fontSize = 9.sp,
                 color = textColor.copy(alpha = 0.5f)
             )

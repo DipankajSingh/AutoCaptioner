@@ -28,7 +28,6 @@ fun AnimationTab(
     style: CaptionStyleEntity,
     onDisplayModeChange: (DisplayMode) -> Unit,
     onWordEnterChange: (AnimationType) -> Unit,
-    onWordExitChange: (AnimationType) -> Unit,
     onKaraokeHighlightChange: (KaraokeHighlightMode) -> Unit,
     onAnimationDurationChange: (Int) -> Unit,
 ) {
@@ -123,7 +122,7 @@ fun AnimationTab(
                         }
                     }
                     AnimSubTool.SPEED -> {
-                        androidx.compose.foundation.layout.Column(
+                        Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(

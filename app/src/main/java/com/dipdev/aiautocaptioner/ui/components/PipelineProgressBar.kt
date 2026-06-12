@@ -32,7 +32,7 @@ fun PipelineProgressBar(
     onNavigateToStage: (PipelineStage) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val stages = PipelineStage.values()
+    val stages = PipelineStage.entries.toTypedArray()
 
     Row(
         modifier = modifier

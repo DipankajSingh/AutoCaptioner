@@ -2,14 +2,16 @@ package com.dipdev.aiautocaptioner.ui.processing
 
 import android.content.Context
 import android.content.Intent
-import android.media.MediaExtractor
-import android.media.MediaFormat
-import android.media.MediaMuxer
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
+import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine.WordTimestamp
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
+import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
@@ -17,10 +19,7 @@ import com.dipdev.aiautocaptioner.data.repository.TranscriptionSegment
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionWord
 import com.dipdev.aiautocaptioner.service.TranscriptionService
 import dagger.hilt.android.lifecycle.HiltViewModel
-import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.dipdev.aiautocaptioner.data.model.WhisperModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,15 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import javax.inject.Inject
-import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine.WordTimestamp
 
 sealed class ProcessingStep {
     data object Idle : ProcessingStep()
@@ -109,6 +101,7 @@ class ProcessingViewModel @Inject constructor(
         _step.value = ProcessingStep.Cancelling
         activeJob?.cancel()
         activeJob = null
+        // TODO 'NonCancellable' object should not be used with 'launch' builder, it violates structured concurrency
         viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
             whisperEngine.release()
             context.stopService(Intent(context, TranscriptionService::class.java))
@@ -116,6 +109,7 @@ class ProcessingViewModel @Inject constructor(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun startProcessing(projectId: String) {
         if (activeJob?.isActive == true) return
         isCancelled = false         // Reset flag for each fresh processing run
@@ -266,7 +260,7 @@ class ProcessingViewModel @Inject constructor(
             val isLastWord = i == words.size - 1
             val nextWord = if (!isLastWord) words[i + 1] else null
             val gapToNext = if (nextWord != null) nextWord.startTimeMs - word.endTimeMs else Long.MAX_VALUE
-            val shouldSplit = gapToNext > 1000 || currentWords.size >= 8 || isLastWord
+            val shouldSplit = gapToNext > 1000 || currentWords.size >= 8
             if (shouldSplit && currentWords.isNotEmpty()) {
                 segments.add(
                     TranscriptionSegment(
@@ -303,6 +297,7 @@ class ProcessingViewModel @Inject constructor(
             acc
         }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun mergeAndSplitSegments(rawSegments: List<TranscriptionSegment>): List<TranscriptionSegment> {
         if (rawSegments.isEmpty()) return emptyList()
 

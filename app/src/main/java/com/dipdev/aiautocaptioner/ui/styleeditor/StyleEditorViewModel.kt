@@ -3,6 +3,8 @@ package com.dipdev.aiautocaptioner.ui.styleeditor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 @HiltViewModel
 class StyleEditorViewModel @Inject constructor(
@@ -45,7 +48,7 @@ class StyleEditorViewModel @Inject constructor(
     fun initPlayer(videoPath: String) {
         if (exoPlayer != null) return           // already alive — don't recreate
         val player = ExoPlayer.Builder(appContext).build().apply {
-            setMediaItem(MediaItem.fromUri(android.net.Uri.parse(videoPath)))
+            setMediaItem(MediaItem.fromUri(videoPath.toUri()))
             repeatMode = Player.REPEAT_MODE_ALL
             prepare()
             playWhenReady = false
@@ -133,6 +136,7 @@ class StyleEditorViewModel @Inject constructor(
         _canRedo.value = redoStack.isNotEmpty()
     }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun undo() {
         if (undoStack.isEmpty()) return
         val current = _activeStyle.value ?: return
@@ -142,6 +146,7 @@ class StyleEditorViewModel @Inject constructor(
         lastPushProperty = ""
     }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun redo() {
         if (redoStack.isEmpty()) return
         val current = _activeStyle.value ?: return
@@ -292,11 +297,6 @@ class StyleEditorViewModel @Inject constructor(
         _activeStyle.value = _activeStyle.value?.copy(wordEnterAnimation = anim)
     }
 
-    fun updateWordExitAnimation(anim: AnimationType) {
-        pushState("wordExitAnimation")
-        _activeStyle.value = _activeStyle.value?.copy(wordExitAnimation = anim)
-    }
-
     fun updateKaraokeHighlightMode(mode: KaraokeHighlightMode) {
         pushState("karaokeHighlightMode")
         _activeStyle.value = _activeStyle.value?.copy(karaokeHighlightMode = mode)
@@ -330,8 +330,6 @@ class StyleEditorViewModel @Inject constructor(
     fun updateBackgroundPaddingH(v: Float) { pushState("backgroundPaddingH"); _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingH = v) }
     fun updateBackgroundPaddingV(v: Float) { pushState("backgroundPaddingV"); _activeStyle.value = _activeStyle.value?.copy(backgroundPaddingV = v) }
     fun updateBackgroundCornerRadius(v: Float) { pushState("backgroundCornerRadius"); _activeStyle.value = _activeStyle.value?.copy(backgroundCornerRadius = v) }
-    fun updateShadowRadius(v: Float)  { pushState("shadowRadius"); _activeStyle.value = _activeStyle.value?.copy(shadowRadius = v) }
-    fun updateShadowColor(v: Long)    { pushState("shadowColor"); _activeStyle.value = _activeStyle.value?.copy(shadowColor = v) }
     fun updateAnimationDurationMs(v: Int) { pushState("animationDurationMs"); _activeStyle.value = _activeStyle.value?.copy(animationDurationMs = v) }
     fun updateLetterSpacing(v: Float) { pushState("letterSpacing"); _activeStyle.value = _activeStyle.value?.copy(letterSpacing = v) }
     fun updateIsItalic(v: Boolean)    { pushState("isItalic"); _activeStyle.value = _activeStyle.value?.copy(isItalic = v) }

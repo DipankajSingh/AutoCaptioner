@@ -21,6 +21,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.engine.CaptionRenderer
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VideoPreview(
@@ -50,7 +51,7 @@ fun VideoPreview(
             } else {
                 // Paused — one update then sleep to avoid constant recomposition
                 currentPositionMs = exoPlayer.currentPosition
-                kotlinx.coroutines.delay(250)
+                kotlinx.coroutines.delay(250.milliseconds)
             }
         }
     }

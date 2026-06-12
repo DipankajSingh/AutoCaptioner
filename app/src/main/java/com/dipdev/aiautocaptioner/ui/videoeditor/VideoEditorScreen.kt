@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor
 
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,61 +13,56 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Done
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RangeSlider
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.Remove
-import androidx.compose.material.icons.outlined.Undo
-import androidx.compose.material.icons.outlined.Redo
-import androidx.compose.material3.Divider
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import kotlinx.coroutines.isActive
-import androidx.compose.foundation.background
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.DisposableEffect
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import kotlinx.coroutines.isActive
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,7 +83,7 @@ fun VideoEditorScreen(
     var showBackDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedClipId by remember { mutableStateOf<String?>(null) }
-    var zoomLevel by remember { mutableStateOf(1f) }
+    var zoomLevel by remember { mutableFloatStateOf(1f) }
     
     val context = LocalContext.current
     val player = remember {
@@ -112,7 +108,7 @@ fun VideoEditorScreen(
     }
 
     // Keep track of dragging state to prevent video stutter during drag
-    var isDragging by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var isDragging by androidx.compose.runtime.remember { mutableStateOf(false) }
 
     // Sync ExoPlayer playlist with clips
     LaunchedEffect(clips, uiState, isDragging) {
@@ -153,10 +149,9 @@ fun VideoEditorScreen(
             // Try to preserve timeline position across playlist updates
             val oldWindowIndex = player.currentMediaItemIndex
             val oldPos = player.currentPosition
-            var absoluteTimelineMs = 0L
-            // We can't perfectly recover absolute time here without storing the OLD mergedClips, 
+            // We can't perfectly recover absolute time here without storing the OLD mergedClips,
             // but for simplicity we rely on dragging dropping to handle seeking.
-            // If the playlist size didn't change drastically, we just seek to 0, or attempt best effort:
+            // If the playlist size didn't change drastically, we just seek to 0, or attempt the best effort:
             
             val wasPlaying = player.playWhenReady
             player.setMediaItems(mediaItems)
@@ -172,7 +167,7 @@ fun VideoEditorScreen(
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) {
                         val duration = player.duration
-                        if (duration > 0 && duration != androidx.media3.common.C.TIME_UNSET) {
+                        if (duration > 0) {
                             viewModel.updateDurationFromPlayer(duration)
                         }
                     }
@@ -265,7 +260,7 @@ fun VideoEditorScreen(
                 }
                 is VideoEditorUiState.Ready -> {
                     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
-                    var currentTimelineMs by remember { mutableStateOf(0L) }
+                    var currentTimelineMs by remember { mutableLongStateOf(0L) }
 
                     // Recompute mergedClips locally for the timer
                     val mergedClips = remember(clips) {
@@ -297,7 +292,7 @@ fun VideoEditorScreen(
                                 accumulated += (mergedClips[i].endTrimMs - mergedClips[i].startTrimMs)
                             }
                             currentTimelineMs = accumulated + posInWindow
-                            kotlinx.coroutines.delay(16)
+                            kotlinx.coroutines.delay(16.milliseconds)
                         }
                     }
 
@@ -337,12 +332,12 @@ fun VideoEditorScreen(
                         }
                         
                         // Horizontal Separator
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
-                            color = Color.DarkGray,
-                            thickness = 1.dp
+                            thickness = 1.dp,
+                            color = Color.DarkGray
                         )
                         
                         Box(modifier = Modifier.fillMaxWidth().height(100.dp)) {
@@ -380,18 +375,13 @@ fun VideoEditorScreen(
                             }
 
                             Spacer(modifier = Modifier.width(16.dp))
-                            
-                            // Vertical Separator
-                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray))
-                            
-                            Spacer(modifier = Modifier.width(16.dp))
 
                             // Undo / Redo
                             IconButton(onClick = { viewModel.undo() }, enabled = canUndo) {
-                                Icon(Icons.Outlined.Undo, contentDescription = "Undo")
+                                Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = "Undo")
                             }
                             IconButton(onClick = { viewModel.redo() }, enabled = canRedo) {
-                                Icon(Icons.Outlined.Redo, contentDescription = "Redo")
+                                Icon(Icons.AutoMirrored.Outlined.Redo, contentDescription = "Redo")
                             }
 
                             Spacer(modifier = Modifier.width(16.dp))

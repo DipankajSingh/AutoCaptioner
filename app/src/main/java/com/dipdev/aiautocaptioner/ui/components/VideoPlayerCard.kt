@@ -1,5 +1,8 @@
+
+
 package com.dipdev.aiautocaptioner.ui.components
 
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -16,6 +19,7 @@ import androidx.media3.ui.PlayerView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.media3.common.util.UnstableApi
 
 /**
  * A reusable Video Player component that binds to an external Media3 [Player].
@@ -25,10 +29,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
  * @param showControls When true, the Media3 control bar is visible.
  * @param cornerRadius Corner radius for the clip shape.
  */
+@OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerCard(
+    modifier: Modifier = Modifier,
     player: Player?,
-    modifier: Modifier = Modifier.fillMaxSize(),
     showControls: Boolean = false,
     cornerRadius: Dp = 4.dp
 ) {
@@ -79,8 +84,8 @@ fun VideoPlayerCard(
  */
 @Composable
 fun VideoPlayerCard(
+    modifier: Modifier = Modifier,
     path: String,
-    modifier: Modifier = Modifier.fillMaxSize(),
     loop: Boolean = true,
     autoPlay: Boolean = true,
     showControls: Boolean = true,

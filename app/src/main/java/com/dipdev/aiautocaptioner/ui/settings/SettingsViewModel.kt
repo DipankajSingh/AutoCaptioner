@@ -2,12 +2,10 @@ package com.dipdev.aiautocaptioner.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 

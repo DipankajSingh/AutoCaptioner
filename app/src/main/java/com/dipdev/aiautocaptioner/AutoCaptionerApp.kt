@@ -22,7 +22,7 @@ class AiAutoCaptioner : Application() {
         // ── Crashlytics ────────────────────────────────────────────────────
         // Enable crash collection. Set to false for debug builds to avoid
         // polluting the dashboard with development crashes.
-        Firebase.crashlytics.setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
+        Firebase.crashlytics.isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
 
         // ── Analytics ─────────────────────────────────────────────────────
         // Collect anonymized usage data. Disabled in debug builds.

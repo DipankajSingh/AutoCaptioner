@@ -1,32 +1,37 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,22 +43,21 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.layout.Column
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.model.Clip
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun VideoTimelineView(
     clips: List<Clip>,
@@ -69,7 +73,7 @@ fun VideoTimelineView(
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    var boxWidthPx by remember { mutableStateOf(0) }
+    var boxWidthPx by remember { mutableIntStateOf(0) }
     val textMeasurer = rememberTextMeasurer()
     
     val density = LocalDensity.current
@@ -78,7 +82,7 @@ fun VideoTimelineView(
     
     var isDragging by remember { mutableStateOf(false) }
     var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
-    var dragOffset by remember { mutableStateOf(0f) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
 
     // Sync playhead with video playback
@@ -95,7 +99,7 @@ fun VideoTimelineView(
                 val scrollOffset = (currentPosMs * pixelsPerMs).toInt()
                 scrollState.scrollTo(scrollOffset)
             }
-            delay(16) // ~60fps
+            delay(16.milliseconds) // ~60fps
         }
     }
 

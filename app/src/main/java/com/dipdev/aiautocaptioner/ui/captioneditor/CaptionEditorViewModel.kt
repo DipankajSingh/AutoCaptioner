@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.captioneditor
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.data.db.entity.EmphasisType
@@ -11,17 +12,12 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.Job
-import java.io.File
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -161,7 +157,4 @@ class CaptionEditorViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-    }
 }
