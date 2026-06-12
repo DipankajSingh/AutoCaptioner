@@ -82,8 +82,63 @@ fun VideoTimelineView(
     
     var isDragging by remember { mutableStateOf(false) }
     var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var dragPointerScreenX by remember { mutableFloatStateOf(0f) }
     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
+
+    val halfWidthPx = boxWidthPx / 2f
+    val clipLayoutCenters = remember(clips, pixelsPerMs, halfWidthPx) {
+        val centers = FloatArray(clips.size)
+        var accX = 0f
+        for (i in clips.indices) {
+            val width = (clips[i].endTrimMs - clips[i].startTrimMs) * pixelsPerMs
+            centers[i] = halfWidthPx + accX + width / 2
+            accX += width
+        }
+        centers
+    }
+
+    val checkSwaps: () -> Unit = {
+        val draggedIdx = draggingClipIndex
+        if (draggedIdx != null && draggedIdx in clips.indices) {
+            val centerInRow = dragPointerScreenX + scrollState.value
+            if (draggedIdx < clips.size - 1) {
+                val nextCenter = clipLayoutCenters[draggedIdx + 1]
+                if (centerInRow > nextCenter) {
+                    onMoveClip(draggedIdx, draggedIdx + 1)
+                    draggingClipIndex = draggedIdx + 1
+                }
+            } else if (draggedIdx > 0) {
+                val prevCenter = clipLayoutCenters[draggedIdx - 1]
+                if (centerInRow < prevCenter) {
+                    onMoveClip(draggedIdx, draggedIdx - 1)
+                    draggingClipIndex = draggedIdx - 1
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(draggingClipIndex, dragPointerScreenX) {
+        if (draggingClipIndex != null) {
+            val edgeThreshold = with(density) { 60.dp.toPx() }
+            val speed = 15f
+            while (isActive) {
+                var scrolled = false
+                if (dragPointerScreenX < edgeThreshold && scrollState.value > 0) {
+                    scrollState.scrollTo((scrollState.value - speed.toInt()).coerceAtLeast(0))
+                    scrolled = true
+                } else if (dragPointerScreenX > boxWidthPx - edgeThreshold && scrollState.value < scrollState.maxValue) {
+                    scrollState.scrollTo((scrollState.value + speed.toInt()).coerceAtMost(scrollState.maxValue))
+                    scrolled = true
+                }
+                if (scrolled) {
+                    checkSwaps()
+                    delay(16)
+                } else {
+                    break
+                }
+            }
+        }
+    }
 
     // Sync playhead with video playback
     LaunchedEffect(player, isDragging, pixelsPerMs, mergedClips) {
@@ -219,13 +274,19 @@ fun VideoTimelineView(
                             val isSelected = clip.id == selectedClipId
                             val currentClipIndex by rememberUpdatedState(index)
                             val isBeingDragged = draggingClipIndex == currentClipIndex
+                            val layoutCenter = clipLayoutCenters[index]
+                            val currentDragOffset = if (isBeingDragged) {
+                                (dragPointerScreenX + scrollState.value) - layoutCenter
+                            } else {
+                                0f
+                            }
 
                         Box(
                             modifier = Modifier
                                 .width(clipWidthDp)
                                 .fillMaxHeight()
                                 .zIndex(if (isBeingDragged) 1f else 0f)
-                                .offset { IntOffset(if (isBeingDragged) dragOffset.toInt() else 0, 0) }
+                                .offset { IntOffset(currentDragOffset.toInt(), 0) }
                                 .padding(horizontal = 1.dp) // slight gap between clips
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(Color.DarkGray)
@@ -239,29 +300,19 @@ fun VideoTimelineView(
                                         onDragStart = { 
                                             draggingClipIndex = currentClipIndex 
                                             onDragStateChange(true)
+                                            dragPointerScreenX = clipLayoutCenters[currentClipIndex] - scrollState.value
                                         },
                                         onDrag = { change, dragAmount ->
                                             change.consume()
-                                            dragOffset += dragAmount.x
-                                            val threshold = clipWidthPx / 2
-                                            if (dragOffset > threshold && currentClipIndex < clips.size - 1) {
-                                                onMoveClip(currentClipIndex, currentClipIndex + 1)
-                                                draggingClipIndex = currentClipIndex + 1
-                                                dragOffset -= clipWidthPx
-                                            } else if (dragOffset < -threshold && currentClipIndex > 0) {
-                                                onMoveClip(currentClipIndex, currentClipIndex - 1)
-                                                draggingClipIndex = currentClipIndex - 1
-                                                dragOffset += clipWidthPx
-                                            }
+                                            dragPointerScreenX += dragAmount.x
+                                            checkSwaps()
                                         },
                                         onDragEnd = {
                                             draggingClipIndex = null
-                                            dragOffset = 0f
                                             onDragStateChange(false)
                                         },
                                         onDragCancel = {
                                             draggingClipIndex = null
-                                            dragOffset = 0f
                                             onDragStateChange(false)
                                         }
                                     )
