@@ -358,10 +358,11 @@ fun VideoEditorScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Action Buttons Row (Horizontally Scrollable)
+                        val toolsScrollState = androidx.compose.foundation.rememberScrollState()
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+                                .horizontalScroll(toolsScrollState)
                                 .padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
@@ -387,7 +388,7 @@ fun VideoEditorScreen(
                             Spacer(modifier = Modifier.width(16.dp))
                             
                             // Vertical Separator
-                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(Color.Gray))
+                            Box(modifier = Modifier.height(24.dp).width(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                             
                             Spacer(modifier = Modifier.width(16.dp))
 
@@ -409,6 +410,32 @@ fun VideoEditorScreen(
                                 }) {
                                     Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                                 }
+                            }
+                        }
+
+                        if (toolsScrollState.maxValue > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            androidx.compose.foundation.Canvas(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(2.dp)
+                                    .align(Alignment.CenterHorizontally)
+                            ) {
+                                drawRoundRect(
+                                    color = trackColor,
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+                                )
+                                val progress = toolsScrollState.value.toFloat() / toolsScrollState.maxValue
+                                val thumbWidth = size.width * 0.4f
+                                val thumbOffset = progress * (size.width - thumbWidth)
+                                drawRoundRect(
+                                    color = thumbColor,
+                                    topLeft = androidx.compose.ui.geometry.Offset(thumbOffset, 0f),
+                                    size = androidx.compose.ui.geometry.Size(thumbWidth, size.height),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx())
+                                )
                             }
                         }
                     }
