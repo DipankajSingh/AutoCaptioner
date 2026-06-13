@@ -26,9 +26,14 @@ import com.dipdev.aiautocaptioner.service.TranscriptionService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -93,6 +98,7 @@ class ProcessingViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "ProcessingVM"
+        private const val SEGMENT_DRIP_DELAY_MS = 400L
     }
 
     private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
@@ -105,9 +111,21 @@ class ProcessingViewModel @Inject constructor(
     private val _workingVideoPath = MutableStateFlow<String?>(null)
     val workingVideoPath: StateFlow<String?> = _workingVideoPath.asStateFlow()
 
-    // Streaming segments — the UI observes this to show live captions
+    // ── Drip-feed segment streaming ──────────────────────────────────────
+    // Raw segments arrive here from the JNI callback (can be bursty)
+    private val _segmentBuffer = Channel<StreamedSegment>(Channel.UNLIMITED)
+    // UI observes this — segments appear one at a time with pacing
     private val _streamedSegments = MutableStateFlow<List<StreamedSegment>>(emptyList())
     val streamedSegments: StateFlow<List<StreamedSegment>> = _streamedSegments.asStateFlow()
+    private var dripJob: Job? = null
+
+    // Total segment count for the Done screen summary
+    private val _segmentCount = MutableStateFlow(0)
+    val segmentCount: StateFlow<Int> = _segmentCount.asStateFlow()
+
+    // One-shot event: auto-navigate after Done
+    private val _navigateToStyleEditor = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val navigateToStyleEditor: SharedFlow<Unit> = _navigateToStyleEditor.asSharedFlow()
 
     // Safety check state for model downloads
     private val _safetyCheck = MutableStateFlow<ModelSafetyCheck>(ModelSafetyCheck.Idle)
@@ -124,6 +142,32 @@ class ProcessingViewModel @Inject constructor(
     private var activeJob: Job? = null
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L
+
+    /** Start draining the segment buffer, emitting one segment at a time to the UI. */
+    private fun startDripFeed() {
+        dripJob?.cancel()
+        dripJob = viewModelScope.launch {
+            for (segment in _segmentBuffer) {
+                _streamedSegments.value += segment
+                delay(SEGMENT_DRIP_DELAY_MS)
+            }
+        }
+    }
+
+    /** Stop the drip feed and drain any remaining buffered segments immediately. */
+    private fun flushDripFeed() {
+        dripJob?.cancel()
+        dripJob = null
+        // Drain anything left in the buffer
+        val remaining = mutableListOf<StreamedSegment>()
+        while (true) {
+            val seg = _segmentBuffer.tryReceive().getOrNull() ?: break
+            remaining.add(seg)
+        }
+        if (remaining.isNotEmpty()) {
+            _streamedSegments.value += remaining
+        }
+    }
 
     // ════════════════════════════════════════════════════════════════════════
     // Prepare — called when the screen first appears
@@ -189,6 +233,28 @@ class ProcessingViewModel @Inject constructor(
         _step.value = ProcessingStep.SetupAI(
             models = compatibleModels,
             recommendedModelId = if (compatibleModels.any { it.id == recommendedId }) recommendedId else compatibleModels.firstOrNull()?.id
+        )
+    }
+
+    /**
+     * Called when a returning user taps "Change" on the model indicator.
+     * Shows the same picker bottom sheet but also includes already-downloaded models.
+     */
+    fun showModelPicker() {
+        val language = _selectedLanguage.value
+        val allModels = modelRepository.getAvailableModels()
+
+        val compatibleModels = if (language != "en") {
+            allModels.filter { it.isMultilingual }
+        } else {
+            allModels.filter { !it.isMultilingual }
+        }
+
+        val currentModelId = activeModel.value?.id
+
+        _step.value = ProcessingStep.SetupAI(
+            models = compatibleModels,
+            recommendedModelId = currentModelId ?: compatibleModels.firstOrNull()?.id
         )
     }
 
@@ -313,6 +379,8 @@ class ProcessingViewModel @Inject constructor(
         if (activeJob?.isActive == true) return
         isCancelled = false         // Reset flag for each fresh processing run
         _streamedSegments.value = emptyList() // Clear any previous segments
+        _segmentCount.value = 0
+        startDripFeed() // Begin draining the segment buffer
         _step.value = ProcessingStep.ExtractingAudio
         val language = _selectedLanguage.value
 
@@ -384,7 +452,7 @@ class ProcessingViewModel @Inject constructor(
                         TranscriptionService.updateProgress("Transcribing video... ${percent}%")
                     },
                     onSegmentDecoded = { text, startMs, endMs ->
-                        // Stream segment to UI for live subtitle preview
+                        // Buffer segment for drip-feed to UI
                         val trimmed = text.trim()
                         if (trimmed.isNotBlank() && !trimmed.startsWith("[")) {
                             val segment = StreamedSegment(
@@ -392,7 +460,7 @@ class ProcessingViewModel @Inject constructor(
                                 startMs = startMs,
                                 endMs = endMs
                             )
-                            _streamedSegments.value += segment
+                            _segmentBuffer.trySend(segment)
                         }
                     }
                 )
@@ -441,10 +509,16 @@ class ProcessingViewModel @Inject constructor(
 
                 captionRepository.saveTranscription(projectId, finalSegments)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBED)
+                _segmentCount.value = finalSegments.size
 
                 whisperEngine.release()
                 context.stopService(Intent(context, TranscriptionService::class.java))
+                flushDripFeed() // Show any remaining buffered segments immediately
                 _step.value = ProcessingStep.Done
+
+                // Auto-navigate after a brief success animation
+                delay(2000)
+                _navigateToStyleEditor.tryEmit(Unit)
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 Log.i(TAG, "Transcription cancelled")

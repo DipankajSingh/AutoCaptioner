@@ -70,14 +70,15 @@ fun VideoPlayerCard(
             var isPlaying by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(player?.playWhenReady ?: false) }
             
             // Sync state with player when it changes externally
-            androidx.compose.runtime.LaunchedEffect(player) {
-                if (player != null) {
-                    val listener = object : Player.Listener {
-                        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                            isPlaying = playWhenReady
-                        }
+            androidx.compose.runtime.DisposableEffect(player) {
+                val listener = object : Player.Listener {
+                    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                        isPlaying = playWhenReady
                     }
-                    player.addListener(listener)
+                }
+                player?.addListener(listener)
+                onDispose {
+                    player?.removeListener(listener)
                 }
             }
 

@@ -4,6 +4,7 @@ package com.dipdev.aiautocaptioner.ui.processing
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -17,14 +18,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
@@ -36,6 +44,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -43,8 +52,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,17 +74,15 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.AudioWaveformAnimation
+import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
+import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
 import com.dipdev.aiautocaptioner.ui.components.ProcessingStateHeader
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.IconButton
 import com.dipdev.aiautocaptioner.ui.processing.components.ModelPickerCard
 
 @SuppressLint("DefaultLocale")
@@ -94,9 +102,17 @@ fun ProcessingScreen(
     val workingVideoPath by viewModel.workingVideoPath.collectAsStateWithLifecycle()
     val streamedSegments by viewModel.streamedSegments.collectAsStateWithLifecycle()
     val safetyCheck by viewModel.safetyCheck.collectAsStateWithLifecycle()
+    val segmentCount by viewModel.segmentCount.collectAsStateWithLifecycle()
 
     LaunchedEffect(projectId) {
         viewModel.prepareForProject(projectId)
+    }
+
+    // Auto-navigate to Style Editor after Done
+    LaunchedEffect(Unit) {
+        viewModel.navigateToStyleEditor.collect {
+            onNavigateToStyleEditor()
+        }
     }
 
     val isProcessing = step is ProcessingStep.DownloadingModel ||
@@ -104,7 +120,7 @@ fun ProcessingScreen(
                        step is ProcessingStep.Transcribing ||
                        step is ProcessingStep.Saving
 
-    var showCancelDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
 
     // Cancel the active job when system back is pressed during processing
     BackHandler(enabled = isProcessing) {
@@ -112,21 +128,21 @@ fun ProcessingScreen(
     }
 
     if (showCancelDialog) {
-        androidx.compose.material3.AlertDialog(
+        AlertDialog(
             onDismissRequest = { showCancelDialog = false },
             title = { Text("Cancel Process?", fontWeight = FontWeight.Bold) },
             text = { Text("Are you sure you want to stop? Your progress will be lost.") },
             confirmButton = {
-                androidx.compose.material3.TextButton(onClick = {
+                TextButton(onClick = {
                     showCancelDialog = false
                     viewModel.cancel()
-                    onCancel() // Exit back to home
+                    onCancel()
                 }) {
                     Text("Stop & Exit", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showCancelDialog = false }) {
+                TextButton(onClick = { showCancelDialog = false }) {
                     Text("Keep Processing")
                 }
             }
@@ -164,8 +180,7 @@ fun ProcessingScreen(
                     Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit the video")
                 }
             } else {
-                // Empty spacer to maintain the Arrangement.SpaceBetween layout
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(48.dp))
+                Spacer(modifier = Modifier.size(48.dp))
             }
         }
 
@@ -197,7 +212,7 @@ fun ProcessingScreen(
                         verticalArrangement = Arrangement.Top
                     ) {
                         workingVideoPath?.let { path ->
-                            com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard(
+                            GlassmorphicCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f)
@@ -212,7 +227,7 @@ fun ProcessingScreen(
                             }
                         }
 
-                        com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard(
+                        GlassmorphicCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
@@ -230,9 +245,33 @@ fun ProcessingScreen(
                                     isMultilingual = activeModel?.isMultilingual ?: true
                                 )
 
+                                // Model indicator — only show if a model is already active
+                                activeModel?.let { model ->
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Model: ${model.displayName}",
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
+                                        TextButton(
+                                            onClick = { viewModel.showModelPicker() }
+                                        ) {
+                                            Text(
+                                                text = "Change",
+                                                fontSize = 13.sp
+                                            )
+                                        }
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(20.dp))
 
-                                com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton(
+                                GradientPrimaryButton(
                                     text = "Generate Captions",
                                     onClick = {
                                         if (activeModel == null) {
@@ -247,14 +286,13 @@ fun ProcessingScreen(
                         }
                     }
 
-                    // Conditionally show the bottom sheet on top of the Ready UI
                     if (currentStep is ProcessingStep.SetupAI) {
                         var selectedModelId by remember { mutableStateOf(currentStep.recommendedModelId) }
                         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                         
                         ModalBottomSheet(
                             onDismissRequest = {
-                                viewModel.cancelModelSetup() // Go back to Ready without wiping state
+                                viewModel.cancelModelSetup()
                             },
                             sheetState = sheetState,
                             dragHandle = { BottomSheetDefaults.DragHandle() }
@@ -262,7 +300,7 @@ fun ProcessingScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * 0.7f) // Max 70% height
+                                    .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.7f)
                                     .padding(horizontal = 24.dp)
                                     .padding(bottom = 32.dp)
                             ) {
@@ -295,7 +333,7 @@ fun ProcessingScreen(
 
                                 Spacer(modifier = Modifier.height(20.dp))
 
-                                com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton(
+                                GradientPrimaryButton(
                                     text = "Download & Generate",
                                     onClick = {
                                         selectedModelId?.let {
@@ -410,7 +448,7 @@ fun ProcessingScreen(
                     }
                 }
 
-                // ── Transcribing (with live subtitle preview) ────────────
+                // ── Transcribing (Option C: abstract animation + live transcript feed) ──
                 is ProcessingStep.Transcribing -> {
                     val rawProgress = currentStep.progress
                     val animatedProgress by animateFloatAsState(
@@ -418,118 +456,133 @@ fun ProcessingScreen(
                         animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
                         label = "transcriptionProgress"
                     )
+                    val percent = (rawProgress * 100).toInt()
+                    val listState = rememberLazyListState()
+
+                    // Auto-scroll to bottom when new segments appear
+                    LaunchedEffect(streamedSegments.size) {
+                        if (streamedSegments.isNotEmpty()) {
+                            listState.animateScrollToItem(streamedSegments.size - 1)
+                        }
+                    }
 
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Video preview with live captions overlaid
-                        workingVideoPath?.let { path ->
+                        // ── Abstract AI animation with progress overlay ──
+                        GlassmorphicCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                                .padding(bottom = 8.dp),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                                    .padding(bottom = 16.dp)
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
                             ) {
-                                // Implement the "seek-on-segment" live playback
-                                val context = androidx.compose.ui.platform.LocalContext.current
-                                val player = remember(path) {
-                                    androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
-                                        setMediaItem(androidx.media3.common.MediaItem.fromUri(path))
-                                        volume = 0f // Play silently in background
-                                        prepare()
-                                    }
-                                }
-                                
-                                DisposableEffect(player) {
-                                    onDispose { player.release() }
-                                }
-
-                                val latestSegment = streamedSegments.lastOrNull()
-                                
-                                // Seek the video whenever a new segment arrives
-                                LaunchedEffect(latestSegment) {
-                                    if (latestSegment != null) {
-                                        player.seekTo(latestSegment.startMs)
-                                        player.play()
-                                    }
-                                }
-
-                                VideoPlayerCard(
-                                    player = player,
-                                    showControls = false,
-                                    modifier = Modifier.fillMaxSize()
+                                AiProcessingAnimation(
+                                    modifier = Modifier.fillMaxSize(),
+                                    progress = animatedProgress
                                 )
-                                // Live caption overlay
-                                if (latestSegment != null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .padding(16.dp)
-                                            .background(
-                                                color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.75f),
-                                                shape = RoundedCornerShape(8.dp)
-                                            )
-                                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    ) {
+
+                                // Progress text overlay
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "$percent%",
+                                        fontSize = 28.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Generating...",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                    if (currentStep.estimatedSecondsRemaining != null) {
+                                        val secs = currentStep.estimatedSecondsRemaining
                                         Text(
-                                            text = latestSegment.text,
-                                            color = MaterialTheme.colorScheme.inverseOnSurface,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
+                                            text = if (secs >= 60) "~${secs / 60}m left"
+                                            else "~${secs}s left",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                                         )
                                     }
                                 }
                             }
-                        } ?: run {
-                            // Fallback if no video path — show waveform
-                            AudioWaveformAnimation(modifier = Modifier
-                                .size(120.dp)
-                                .padding(bottom = 16.dp))
-                            Spacer(modifier = Modifier.weight(1f))
                         }
 
-                        // Progress ring + percentage
-                        Box(contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                progress = { animatedProgress },
-                                modifier = Modifier.size(80.dp),
-                                strokeWidth = 5.dp,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                color = MaterialTheme.colorScheme.primary,
-                                strokeCap = StrokeCap.Round
-                            )
-                            val percent = (rawProgress * 100).toInt()
-                            Text(
-                                text = "$percent%",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        // ── Live transcript feed ──
+                        GlassmorphicCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(vertical = 8.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            if (streamedSegments.isEmpty()) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            strokeCap = StrokeCap.Round
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Waiting for first caption...",
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                        )
+                                    }
+                                }
+                            } else {
+                                val scrollState = rememberScrollState()
+                                LaunchedEffect(streamedSegments.size) {
+                                    scrollState.animateScrollTo(scrollState.maxValue)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scrollState)
+                                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                                ) {
+                                    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                                    androidx.compose.foundation.layout.FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        val total = streamedSegments.size
+                                        // Display up to the last 60 words to keep performance smooth while feeling like a teleprompter
+                                        val displaySegments = streamedSegments.takeLast(60)
+                                        val startIndex = total - displaySegments.size
+
+                                        displaySegments.forEachIndexed { index, segment ->
+                                            val globalIndex = startIndex + index
+                                            val isRecent = globalIndex >= total - 3 // Highlight last 3 words
+                                            
+                                            AnimatedVisibility(
+                                                visible = true,
+                                                enter = fadeIn(tween(300))
+                                            ) {
+                                                Text(
+                                                    text = segment.text,
+                                                    fontSize = 16.sp,
+                                                    color = if (isRecent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                    fontWeight = if (isRecent) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = "Transcribing",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        if (currentStep.estimatedSecondsRemaining != null) {
-                            val secs = currentStep.estimatedSecondsRemaining
-                            Text(
-                                text = if (secs >= 60) "~${secs / 60} min remaining"
-                                else "~$secs sec remaining",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         AppOutlinedButton(
                             onClick = { viewModel.cancel() }
@@ -554,7 +607,7 @@ fun ProcessingScreen(
                     }
                 }
 
-                // ── Done (Lottie success animation) ──────────────────────
+                // ── Done (brief success → auto-navigates) ──────────────
                 is ProcessingStep.Done -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -572,63 +625,49 @@ fun ProcessingScreen(
                         LottieAnimation(
                             composition = composition,
                             progress = { lottieProgress },
-                            modifier = Modifier.size(120.dp)
+                            modifier = Modifier.size(80.dp)
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
+
                         Text(
-                            text = "Captions Ready!",
-                            fontSize = 24.sp,
+                            text = "Captions Generated!",
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
 
-                        var showBottomSheet by remember { mutableStateOf(true) }
-                        if (showBottomSheet) {
-                            ModalBottomSheet(
-                                onDismissRequest = { showBottomSheet = false },
-                                dragHandle = { BottomSheetDefaults.DragHandle() }
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "What next?",
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    Button(
-                                        onClick = {
-                                            showBottomSheet = false
-                                            onNavigateToStyleEditor()
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Choose a Style (Recommended)")
-                                    }
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    OutlinedButton(
-                                        onClick = {
-                                            showBottomSheet = false
-                                            onNavigateToCaptionEditor()
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Review & Edit Captions")
-                                    }
-                                    Spacer(modifier = Modifier.height(32.dp))
-                                }
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Button(onClick = { showBottomSheet = true }) {
-                                Text("Continue")
-                            }
+                        if (segmentCount > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "$segmentCount segments created",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        GradientPrimaryButton(
+                            text = "Style Your Captions",
+                            onClick = { onNavigateToStyleEditor() },
+                            modifier = Modifier.fillMaxWidth().height(52.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        AppOutlinedButton(
+                            onClick = { onNavigateToCaptionEditor() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Review & Edit", maxLines = 1) }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        TextButton(onClick = { viewModel.prepareForProject(projectId) }) {
+                            Text(
+                                text = "Re-generate with different settings",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
                         }
                     }
                 }
@@ -758,3 +797,10 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+@SuppressLint("DefaultLocale")
+private fun formatTimestamp(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%d:%02d", minutes, seconds)
+}

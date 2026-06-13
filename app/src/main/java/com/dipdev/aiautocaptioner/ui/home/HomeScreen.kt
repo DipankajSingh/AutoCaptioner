@@ -91,7 +91,7 @@ fun HomeScreen(
         if (importState is ImportState.Success) {
             val projectId = (importState as ImportState.Success).projectId
             viewModel.resetImportState()
-            onNavigateToProcessing(projectId)
+            onNavigateToVideoEditor(projectId)
         }
     }
 
