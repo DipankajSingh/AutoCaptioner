@@ -20,7 +20,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.media3.common.util.UnstableApi
-
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
 /**
  * A reusable Video Player component that binds to an external Media3 [Player].
  *
@@ -56,6 +67,20 @@ fun VideoPlayerCard(
         
         // Transparent overlay for tap-to-play/pause if controls are disabled
         if (!showControls) {
+            var isPlaying by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(player?.playWhenReady ?: false) }
+            
+            // Sync state with player when it changes externally
+            androidx.compose.runtime.LaunchedEffect(player) {
+                if (player != null) {
+                    val listener = object : Player.Listener {
+                        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                            isPlaying = playWhenReady
+                        }
+                    }
+                    player.addListener(listener)
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -65,9 +90,30 @@ fun VideoPlayerCard(
                     ) { 
                         player?.let { p ->
                             p.playWhenReady = !p.playWhenReady
+                            isPlaying = p.playWhenReady
                         }
+                    },
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                if (!isPlaying) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(40.dp)
+                        )
                     }
-            )
+                }
+            }
         }
     }
 }

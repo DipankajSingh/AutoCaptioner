@@ -49,13 +49,20 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
         audioData: FloatArray,
         language: String,
         nThreads: Int,
-        listener: ProgressListener? = null
+        listener: ProgressListener? = null,
+        segmentListener: SegmentListener? = null
     ): Array<String>?
 
     @Keep
     fun interface ProgressListener {
         @Keep
         fun onProgress(progress: Int)
+    }
+
+    @Keep
+    fun interface SegmentListener {
+        @Keep
+        fun onSegment(text: String, startMs: Long, endMs: Long)
     }
 
     // -------------------------------------------------------
@@ -126,14 +133,16 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     suspend fun transcribeWithWordTimestamps(
         samples: FloatArray,
         language: String = "en",
-        onProgress: ((Int) -> Unit)? = null
+        onProgress: ((Int) -> Unit)? = null,
+        onSegmentDecoded: ((text: String, startMs: Long, endMs: Long) -> Unit)? = null
     ): List<WordTimestamp> {
         return withContext(Dispatchers.IO) {
             engineMutex.withLock {
                 val handle = nativeHandle
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val raw = transcribeWithTimestamps(handle, samples, language, THREAD_COUNT, listener)
+                val segListener = onSegmentDecoded?.let { cb -> SegmentListener { text, startMs, endMs -> cb(text, startMs, endMs) } }
+                val raw = transcribeWithTimestamps(handle, samples, language, THREAD_COUNT, listener, segListener)
                     ?: return@withContext emptyList()
                 raw.mapNotNull { entry ->
                     val parts = entry.split("|")

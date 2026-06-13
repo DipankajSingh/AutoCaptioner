@@ -296,9 +296,10 @@ class VideoEditorViewModel @Inject constructor(
                 transformer = Transformer.Builder(context)
                     .addListener(object : Transformer.Listener {
                         override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                            // On success, replace the project's working video path
+                            // On success, replace the project's working video path and update status
                             viewModelScope.launch {
                                 projectRepository.updateWorkingVideoPath(projectId, tempOutputFile.absolutePath)
+                                projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
                                 _uiState.value = VideoEditorUiState.Success
                             }
                         }

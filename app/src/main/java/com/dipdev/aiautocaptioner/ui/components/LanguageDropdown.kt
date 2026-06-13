@@ -57,7 +57,7 @@ fun LanguageDropdown(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text       = "Language",
+            text       = "Select video language",
             fontSize   = 13.sp,
             color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             modifier   = Modifier.padding(bottom = 6.dp)

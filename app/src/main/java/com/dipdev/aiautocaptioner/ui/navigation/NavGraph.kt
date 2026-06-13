@@ -71,8 +71,11 @@ fun NavGraph(
 
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToProcessing = { projectId ->
+                onNavigateToVideoEditor = { projectId ->
                     navController.navigate(Screen.VideoEditor.createRoute(projectId))
+                },
+                onNavigateToProcessing = { projectId ->
+                    navController.navigate(Screen.Processing.createRoute(projectId))
                 },
                 onNavigateToEditor = { projectId ->
                     navController.navigate(Screen.StyleEditor.createRoute(projectId))
@@ -138,9 +141,6 @@ fun NavGraph(
                 },
                 onNavigateToVideoEditor = {
                     navController.navigate(Screen.VideoEditor.createRoute(projectId))
-                },
-                onNavigateToDeviceCheck = {
-                    navController.navigate(Screen.DeviceCheck.route)
                 },
                 onCancel = { navController.popBackStack() }
             )

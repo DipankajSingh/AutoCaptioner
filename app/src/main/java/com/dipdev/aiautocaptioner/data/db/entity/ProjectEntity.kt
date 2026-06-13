@@ -90,6 +90,7 @@ data class ProjectEntity(
 // Stored as String in the database (Room converts enum to String automatically)
 enum class ProjectStatus {
     IMPORTED,           // video copied to app storage, nothing processed yet
+    READY_FOR_PROCESSING, // video has been edited, ready for caption generation
     EXTRACTING_AUDIO,   // FFmpeg/Media3 is currently extracting audio
     TRANSCRIBING,       // Whisper is currently running
     TRANSCRIBED,        // captions are ready — user can edit, preview, export

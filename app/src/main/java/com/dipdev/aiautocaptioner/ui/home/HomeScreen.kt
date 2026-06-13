@@ -63,6 +63,7 @@ import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onNavigateToVideoEditor: (String) -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToEditor: (String) -> Unit,
     onNavigateToModelManager: () -> Unit,
@@ -206,7 +207,8 @@ fun HomeScreen(
                             projectWithExports = projectWithExports,
                             onClick = {
                                 when (projectWithExports.project.status) {
-                                    ProjectStatus.IMPORTED,
+                                    ProjectStatus.IMPORTED -> onNavigateToVideoEditor(projectWithExports.project.id)
+                                    ProjectStatus.READY_FOR_PROCESSING,
                                     ProjectStatus.EXTRACTING_AUDIO,
                                     ProjectStatus.TRANSCRIBING -> onNavigateToProcessing(projectWithExports.project.id)
                                     else -> onNavigateToEditor(projectWithExports.project.id)

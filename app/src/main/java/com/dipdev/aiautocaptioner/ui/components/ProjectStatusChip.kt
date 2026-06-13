@@ -20,6 +20,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 fun ProjectStatusChip(status: ProjectStatus) {
     val (label, color) = when (status) {
         ProjectStatus.IMPORTED          -> "Imported"       to MaterialTheme.colorScheme.onSurfaceVariant
+        ProjectStatus.READY_FOR_PROCESSING -> "Ready for AI" to MaterialTheme.colorScheme.primary
         ProjectStatus.EXTRACTING_AUDIO  -> "Extracting…"    to MaterialTheme.colorScheme.tertiary
         ProjectStatus.TRANSCRIBING      -> "Transcribing…"  to MaterialTheme.colorScheme.tertiary
         ProjectStatus.TRANSCRIBED       -> "Ready"          to MaterialTheme.colorScheme.primary

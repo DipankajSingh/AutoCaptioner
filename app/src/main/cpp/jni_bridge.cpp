@@ -135,6 +135,38 @@ struct ProgressCallbackContext {
     }
 };
 
+struct SegmentCallbackContext {
+    JavaVM* jvm;
+    jobject listener;
+    jmethodID onSegment;
+
+    SegmentCallbackContext(JNIEnv* env, jobject lst) : jvm(nullptr), listener(nullptr), onSegment(nullptr) {
+        env->GetJavaVM(&jvm);
+        if (lst) {
+            listener = env->NewGlobalRef(lst);
+            jclass clazz = env->GetObjectClass(lst);
+            onSegment = env->GetMethodID(clazz, "onSegment", "(Ljava/lang/String;JJ)V");
+            env->DeleteLocalRef(clazz);
+        }
+    }
+
+    ~SegmentCallbackContext() {
+        if (listener && jvm) {
+            JNIEnv* env = nullptr;
+            jint rc = jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+            if (rc == JNI_OK) {
+                env->DeleteGlobalRef(listener);
+            } else if (rc == JNI_EDETACHED) {
+                if (jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+                    env->DeleteGlobalRef(listener);
+                    jvm->DetachCurrentThread();
+                }
+            }
+            listener = nullptr;
+        }
+    }
+};
+
 static void android_whisper_progress_callback(struct whisper_context * /*ctx*/, struct whisper_state * /*state*/, int progress, void * user_data) {
     if (!user_data) return;
     ProgressCallbackContext* cb = static_cast<ProgressCallbackContext*>(user_data);
@@ -149,6 +181,41 @@ static void android_whisper_progress_callback(struct whisper_context * /*ctx*/, 
         cb->jvm->AttachCurrentThread(&env, nullptr);
         env->CallVoidMethod(cb->listener, cb->onProgress, (jint)progress);
         env->ExceptionClear();
+        cb->jvm->DetachCurrentThread();
+    }
+}
+
+static void android_whisper_new_segment_callback(struct whisper_context * /*ctx*/, struct whisper_state * state, int n_new, void * user_data) {
+    if (!user_data) return;
+    SegmentCallbackContext* cb = static_cast<SegmentCallbackContext*>(user_data);
+    if (!cb->listener || !cb->onSegment) return;
+
+    JNIEnv * env = nullptr;
+    bool did_attach = false;
+    jint rc = cb->jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
+    if (rc == JNI_EDETACHED) {
+        if (cb->jvm->AttachCurrentThread(&env, nullptr) != JNI_OK) return;
+        did_attach = true;
+    } else if (rc != JNI_OK) {
+        return;
+    }
+
+    int total = whisper_full_n_segments_from_state(state);
+    for (int i = total - n_new; i < total; i++) {
+        const char * text = whisper_full_get_segment_text_from_state(state, i);
+        if (text == nullptr) continue;
+
+        int64_t t0 = whisper_full_get_segment_t0_from_state(state, i);
+        int64_t t1 = whisper_full_get_segment_t1_from_state(state, i);
+
+        std::string safeText = sanitizeForJni(std::string(text));
+        jstring jtext = env->NewStringUTF(safeText.c_str());
+        env->CallVoidMethod(cb->listener, cb->onSegment, jtext, (jlong)(t0 * 10), (jlong)(t1 * 10));
+        env->ExceptionClear();
+        env->DeleteLocalRef(jtext);
+    }
+
+    if (did_attach) {
         cb->jvm->DetachCurrentThread();
     }
 }
@@ -254,7 +321,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
 // ---------------------------------------------------------------------------
 JNIEXPORT jobjectArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jint n_threads, jobject listener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jint n_threads, jobject listener, jobject segmentListener) {
 
     whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -284,10 +351,20 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
         params.progress_callback_user_data = cb_ctx;
     }
 
+    SegmentCallbackContext* seg_ctx = nullptr;
+    if (segmentListener != nullptr) {
+        seg_ctx = new SegmentCallbackContext(env, segmentListener);
+        params.new_segment_callback = android_whisper_new_segment_callback;
+        params.new_segment_callback_user_data = seg_ctx;
+    }
+
     int result = whisper_full(ctx, params, samples, (int) n_samples);
 
     if (cb_ctx != nullptr) {
         delete cb_ctx;
+    }
+    if (seg_ctx != nullptr) {
+        delete seg_ctx;
     }
 
     env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);

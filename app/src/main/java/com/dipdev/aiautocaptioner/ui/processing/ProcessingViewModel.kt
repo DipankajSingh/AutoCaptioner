@@ -1,9 +1,13 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
+
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import androidx.annotation.RequiresApi
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.StatFs
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +17,7 @@ import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine.WordTimestamp
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
+import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.TranscriptionSegment
@@ -30,9 +35,22 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// ════════════════════════════════════════════════════════════════════════════════
+// Processing Steps — represents the current state of the processing pipeline
+// ════════════════════════════════════════════════════════════════════════════════
 sealed class ProcessingStep {
     data object Idle : ProcessingStep()
     data object Ready : ProcessingStep()
+
+    // First-time model setup
+    data class SetupAI(val models: List<WhisperModel>, val recommendedModelId: String?) : ProcessingStep()
+    data class DownloadingModel(
+        val modelName: String,
+        val progress: Int = 0,
+        val downloadedBytes: Long = 0,
+        val totalBytes: Long = 0
+    ) : ProcessingStep()
+
     data object ExtractingAudio : ProcessingStep()
     data object LoadingModel : ProcessingStep()
     data class Transcribing(val progress: Float = 0f, val estimatedSecondsRemaining: Int? = null) : ProcessingStep()
@@ -41,6 +59,25 @@ sealed class ProcessingStep {
     data object Cancelling : ProcessingStep()
     data object Cancelled : ProcessingStep()
     data class Error(val message: String) : ProcessingStep()
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Streamed segment — a single caption chunk decoded by the AI in real-time
+// ════════════════════════════════════════════════════════════════════════════════
+data class StreamedSegment(
+    val text: String,
+    val startMs: Long,
+    val endMs: Long
+)
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Safety check for first-time downloads
+// ════════════════════════════════════════════════════════════════════════════════
+sealed class ModelSafetyCheck {
+    data object Idle : ModelSafetyCheck()
+    data class StorageError(val requiredMb: Long) : ModelSafetyCheck()
+    data class CellularWarning(val modelId: String, val sizeMb: Long) : ModelSafetyCheck()
+    data object Passed : ModelSafetyCheck()
 }
 
 @HiltViewModel
@@ -54,6 +91,10 @@ class ProcessingViewModel @Inject constructor(
     private val audioExtractionUseCase: com.dipdev.aiautocaptioner.core.audio.AudioExtractionUseCase
 ) : ViewModel() {
 
+    companion object {
+        private const val TAG = "ProcessingVM"
+    }
+
     private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
     val step: StateFlow<ProcessingStep> = _step.asStateFlow()
 
@@ -63,6 +104,14 @@ class ProcessingViewModel @Inject constructor(
 
     private val _workingVideoPath = MutableStateFlow<String?>(null)
     val workingVideoPath: StateFlow<String?> = _workingVideoPath.asStateFlow()
+
+    // Streaming segments — the UI observes this to show live captions
+    private val _streamedSegments = MutableStateFlow<List<StreamedSegment>>(emptyList())
+    val streamedSegments: StateFlow<List<StreamedSegment>> = _streamedSegments.asStateFlow()
+
+    // Safety check state for model downloads
+    private val _safetyCheck = MutableStateFlow<ModelSafetyCheck>(ModelSafetyCheck.Idle)
+    val safetyCheck: StateFlow<ModelSafetyCheck> = _safetyCheck.asStateFlow()
 
     /** The currently active Whisper model — used by the UI to check isMultilingual. */
     val activeModel: StateFlow<WhisperModel?> = modelRepository.getActiveModel()
@@ -76,7 +125,10 @@ class ProcessingViewModel @Inject constructor(
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L
 
-    /** Move to the Ready state so the screen shows a Start button */
+    // ════════════════════════════════════════════════════════════════════════
+    // Prepare — called when the screen first appears
+    // ════════════════════════════════════════════════════════════════════════
+
     fun prepareForProject(projectId: String) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
@@ -86,7 +138,7 @@ class ProcessingViewModel @Inject constructor(
 
             if (project?.status == ProjectStatus.TRANSCRIBED || project?.status == ProjectStatus.EXPORTED) {
                 _step.value = ProcessingStep.Done
-            } else if (_step.value == ProcessingStep.Idle) {
+            } else {
                 _step.value = ProcessingStep.Ready
             }
         }
@@ -96,23 +148,171 @@ class ProcessingViewModel @Inject constructor(
         _selectedLanguage.value = language
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // First-time model setup — Option B (Bottom Sheet picker)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Called when the user taps "Generate Captions" but no model is downloaded.
+     * Filters models by language compatibility and profiles the device to recommend one.
+     */
+    fun showModelSetup() {
+        val language = _selectedLanguage.value
+        val allModels = modelRepository.getAvailableModels()
+
+        // Filter: if non-English language selected, only show multilingual models.
+        // If English is selected, only show English-optimized models (.en models).
+        val compatibleModels = if (language != "en") {
+            allModels.filter { it.isMultilingual }
+        } else {
+            allModels.filter { !it.isMultilingual }
+        }
+
+        // Recommend based on RAM (same logic as DeviceCheckViewModel)
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memInfo)
+        val totalRamMb = (memInfo.totalMem / 1024 / 1024).toInt()
+
+        val recommendedId = when {
+            language != "en" -> when {
+                totalRamMb >= 3000 -> "small"
+                else -> "base"
+            }
+            else -> when {
+                totalRamMb >= 3000 -> "small.en"
+                totalRamMb >= 1500 -> "base.en"
+                else -> "tiny.en"
+            }
+        }
+
+        _step.value = ProcessingStep.SetupAI(
+            models = compatibleModels,
+            recommendedModelId = if (compatibleModels.any { it.id == recommendedId }) recommendedId else compatibleModels.firstOrNull()?.id
+        )
+    }
+
+    /**
+     * Run safety checks before downloading. Shows cellular/storage warnings if needed.
+     */
+    fun checkSafetyAndDownload(modelId: String) {
+        val model = modelRepository.getModelById(modelId) ?: return
+
+        // Check storage
+        val statFs = StatFs(context.filesDir.absolutePath)
+        val availableMb = (statFs.availableBlocksLong * statFs.blockSizeLong) / (1024 * 1024)
+        val requiredMb = (model.sizeMb * 1.5).toLong()
+
+        if (availableMb < requiredMb) {
+            _safetyCheck.value = ModelSafetyCheck.StorageError(requiredMb)
+            return
+        }
+
+        // Check cellular
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetwork
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        val isCellular = networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+
+        if (isCellular) {
+            _safetyCheck.value = ModelSafetyCheck.CellularWarning(modelId, model.sizeMb.toLong())
+            return
+        }
+
+        _safetyCheck.value = ModelSafetyCheck.Passed
+        startModelDownload(modelId)
+    }
+
+    fun resetSafetyCheck() {
+        _safetyCheck.value = ModelSafetyCheck.Idle
+    }
+
+    fun cancelModelSetup() {
+        if (_step.value is ProcessingStep.SetupAI) {
+            _step.value = ProcessingStep.Ready
+        }
+    }
+
+    /**
+     * Proceed with download after user confirms cellular warning.
+
+     */
+    fun confirmCellularDownload(modelId: String) {
+        _safetyCheck.value = ModelSafetyCheck.Idle
+        startModelDownload(modelId)
+    }
+
+    /**
+     * Download the selected model inline, then automatically start processing.
+     */
+    private var pendingProjectId: String? = null
+
+    fun downloadAndProcess(modelId: String, projectId: String) {
+        pendingProjectId = projectId
+        checkSafetyAndDownload(modelId)
+    }
+
+    private fun startModelDownload(modelId: String) {
+        val model = modelRepository.getModelById(modelId) ?: return
+
+        // If already downloaded, skip directly to processing
+        if (model.isDownloaded) {
+            pendingProjectId?.let { startProcessing(it) }
+            return
+        }
+
+        _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
+
+        viewModelScope.launch {
+            modelRepository.downloadModel(modelId).collect { state ->
+                when (state) {
+                    is DownloadState.Starting -> {
+                        _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
+                    }
+                    is DownloadState.Downloading -> {
+                        _step.value = ProcessingStep.DownloadingModel(
+                            modelName = model.displayName,
+                            progress = state.progress,
+                            downloadedBytes = state.downloadedBytes,
+                            totalBytes = state.totalBytes
+                        )
+                    }
+                    is DownloadState.Complete -> {
+                        Log.i(TAG, "Model download complete, starting processing")
+                        pendingProjectId?.let { startProcessing(it) }
+                    }
+                    is DownloadState.Error -> {
+                        _step.value = ProcessingStep.Error("Model download failed: ${state.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Cancel
+    // ════════════════════════════════════════════════════════════════════════
+
     fun cancel() {
         isCancelled = true          // Set BEFORE cancelling the job to close the race window
         _step.value = ProcessingStep.Cancelling
         activeJob?.cancel()
         activeJob = null
-        // TODO 'NonCancellable' object should not be used with 'launch' builder, it violates structured concurrency
-        viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             whisperEngine.release()
             context.stopService(Intent(context, TranscriptionService::class.java))
             _step.value = ProcessingStep.Cancelled
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    // ════════════════════════════════════════════════════════════════════════
+    // Main processing pipeline
+    // ════════════════════════════════════════════════════════════════════════
+
     fun startProcessing(projectId: String) {
         if (activeJob?.isActive == true) return
         isCancelled = false         // Reset flag for each fresh processing run
+        _streamedSegments.value = emptyList() // Clear any previous segments
         _step.value = ProcessingStep.ExtractingAudio
         val language = _selectedLanguage.value
 
@@ -134,8 +334,6 @@ class ProcessingViewModel @Inject constructor(
                 TranscriptionService.updateProgress("Extracting audio...")
                 ContextCompat.startForegroundService(context, Intent(context, TranscriptionService::class.java))
                 projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
-
-                // Step 1 - Now handled directly in memory
 
                 // Step 2 — Persist selected language before transcription
                 projectRepository.updateProject(
@@ -164,7 +362,7 @@ class ProcessingViewModel @Inject constructor(
                     }
                 }
 
-                // Step 4 — Transcribe using full audio with JNI progress callback
+                // Step 4 — Transcribe using full audio with JNI progress + segment callbacks
                 transcriptionStartTimeMs = System.currentTimeMillis()
                 _step.value = ProcessingStep.Transcribing(0f)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
@@ -184,6 +382,18 @@ class ProcessingViewModel @Inject constructor(
                         } else null
                         _step.value = ProcessingStep.Transcribing(progressFraction, etaSecs)
                         TranscriptionService.updateProgress("Transcribing video... ${percent}%")
+                    },
+                    onSegmentDecoded = { text, startMs, endMs ->
+                        // Stream segment to UI for live subtitle preview
+                        val trimmed = text.trim()
+                        if (trimmed.isNotBlank() && !trimmed.startsWith("[")) {
+                            val segment = StreamedSegment(
+                                text = trimmed,
+                                startMs = startMs,
+                                endMs = endMs
+                            )
+                            _streamedSegments.value += segment
+                        }
                     }
                 )
 
@@ -237,10 +447,10 @@ class ProcessingViewModel @Inject constructor(
                 _step.value = ProcessingStep.Done
 
             } catch (e: kotlinx.coroutines.CancellationException) {
-                android.util.Log.i("Processing", "Transcription cancelled")
+                Log.i(TAG, "Transcription cancelled")
                 throw e
             } catch (e: Exception) {
-                android.util.Log.e("Processing", "Error: ${e.message}", e)
+                Log.e(TAG, "Error: ${e.message}", e)
                 crashReporter.recordException(e)
                 whisperEngine.release()
                 context.stopService(Intent(context, TranscriptionService::class.java))
@@ -248,6 +458,10 @@ class ProcessingViewModel @Inject constructor(
             }
         }
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Word grouping utilities (unchanged from original)
+    // ════════════════════════════════════════════════════════════════════════
 
     private fun groupWordsIntoSegments(words: List<WordTimestamp>): List<TranscriptionSegment> {
         if (words.isEmpty()) return emptyList()
@@ -297,7 +511,6 @@ class ProcessingViewModel @Inject constructor(
             acc
         }
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun mergeAndSplitSegments(rawSegments: List<TranscriptionSegment>): List<TranscriptionSegment> {
         if (rawSegments.isEmpty()) return emptyList()
 
@@ -322,8 +535,8 @@ class ProcessingViewModel @Inject constructor(
 
         // If the very last segment ended up with < 3 words, try merging it backwards
         if (merged.size > 1 && merged.last().words.size < 3) {
-            val last = merged.removeLast()
-            val prev = merged.removeLast()
+            val last = merged.removeAt(merged.lastIndex)
+            val prev = merged.removeAt(merged.lastIndex)
             val combined = TranscriptionSegment(
                 startTimeMs = minOf(prev.startTimeMs, last.startTimeMs),
                 endTimeMs = maxOf(prev.endTimeMs, last.endTimeMs),
@@ -390,7 +603,6 @@ class ProcessingViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         activeJob?.cancel()
-        // whisperEngine.release() is a suspend function, and viewModelScope is cancelled here.
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             whisperEngine.release()
         }
