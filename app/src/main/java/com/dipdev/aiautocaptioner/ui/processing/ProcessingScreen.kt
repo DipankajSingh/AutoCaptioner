@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -55,9 +56,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
@@ -311,7 +314,7 @@ fun ProcessingScreen(
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
                                 Text(
-                                    text = "Choose a model to power your captions. This is a one-time download.",
+                                    text = "Choose a model to power your captions.",
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(bottom = 20.dp)
@@ -333,8 +336,11 @@ fun ProcessingScreen(
 
                                 Spacer(modifier = Modifier.height(20.dp))
 
+                                val selectedModel = currentStep.models.find { it.id == selectedModelId }
+                                val isSelectedModelDownloaded = selectedModel?.isDownloaded == true
+
                                 GradientPrimaryButton(
-                                    text = "Download & Generate",
+                                    text = if (isSelectedModelDownloaded) "Use & Generate" else "Download & Generate",
                                     onClick = {
                                         selectedModelId?.let {
                                             viewModel.downloadAndProcess(it, projectId)
@@ -440,6 +446,7 @@ fun ProcessingScreen(
                             modifier = Modifier.size(48.dp),
                             strokeCap = StrokeCap.Round
                         )
+
                         Spacer(modifier = Modifier.height(24.dp))
                         ProcessingStateHeader(
                             title = "Loading AI Model",
@@ -526,6 +533,11 @@ fun ProcessingScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            strokeCap = StrokeCap.Round
+                                        )
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
@@ -542,8 +554,13 @@ fun ProcessingScreen(
                                 }
                             } else {
                                 val scrollState = rememberScrollState()
+                                // Scroll smoothly after layout settles
                                 LaunchedEffect(streamedSegments.size) {
-                                    scrollState.animateScrollTo(scrollState.maxValue)
+                                    delay(50) // Let layout measure first
+                                    scrollState.animateScrollTo(
+                                        scrollState.maxValue,
+                                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                                    )
                                 }
                                 Box(
                                     modifier = Modifier
@@ -554,25 +571,31 @@ fun ProcessingScreen(
                                     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                                     androidx.compose.foundation.layout.FlowRow(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         val total = streamedSegments.size
-                                        // Display up to the last 60 words to keep performance smooth while feeling like a teleprompter
                                         val displaySegments = streamedSegments.takeLast(60)
                                         val startIndex = total - displaySegments.size
 
                                         displaySegments.forEachIndexed { index, segment ->
                                             val globalIndex = startIndex + index
-                                            val isRecent = globalIndex >= total - 3 // Highlight last 3 words
-                                            
-                                            AnimatedVisibility(
-                                                visible = true,
-                                                enter = fadeIn(tween(300))
-                                            ) {
+                                            val isRecent = globalIndex >= total - 3
+                                            // Each word fades in when it first appears
+                                            key("${segment.startMs}_${segment.endMs}_${segment.text}") {
+                                                val alpha = remember { Animatable(0f) }
+                                                LaunchedEffect(Unit) {
+                                                    alpha.animateTo(
+                                                        targetValue = 1f,
+                                                        animationSpec = tween(400)
+                                                    )
+                                                }
                                                 Text(
                                                     text = segment.text,
                                                     fontSize = 16.sp,
-                                                    color = if (isRecent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                    color = if (isRecent)
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = alpha.value)
+                                                    else
+                                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f * alpha.value),
                                                     fontWeight = if (isRecent) FontWeight.Bold else FontWeight.Normal
                                                 )
                                             }
@@ -592,16 +615,17 @@ fun ProcessingScreen(
 
                 // ── Saving ───────────────────────────────────────────────
                 is ProcessingStep.Saving -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
                         CircularProgressIndicator(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(48.dp),
                             strokeCap = StrokeCap.Round
                         )
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+
                         Spacer(modifier = Modifier.height(24.dp))
                         ProcessingStateHeader(title = "Saving Captions")
                     }
@@ -669,6 +693,11 @@ fun ProcessingScreen(
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
                         }
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp),
+                            strokeCap = StrokeCap.Round
+                        )
                     }
                 }
 
@@ -679,11 +708,7 @@ fun ProcessingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp),
-                            strokeCap = StrokeCap.Round
-                        )
+
                         Spacer(modifier = Modifier.height(24.dp))
                         ProcessingStateHeader(
                             title = "Cancelling",

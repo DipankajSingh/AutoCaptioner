@@ -226,7 +226,8 @@ fun VideoTimelineView(
 
             Column(modifier = Modifier.fillMaxHeight()) {
                 // Ruler
-                val totalWidthDp = with(density) { (totalEditedMs * pixelsPerMs).toDp() }
+                val safeTotalWidthPx = maxOf(1f, totalEditedMs * pixelsPerMs)
+                val totalWidthDp = with(density) { safeTotalWidthPx.toDp() }
                 Canvas(modifier = Modifier.width(totalWidthDp).height(30.dp)) {
                     val durationSec = totalEditedMs / 1000
                     for (i in 0..durationSec) {
@@ -253,10 +254,12 @@ fun VideoTimelineView(
                         // Draw timestamp every second if zoomed in, or every 5 seconds if zoomed out
                         if (zoomLevel >= 1f || i % 5 == 0L || durationSec < 10) {
                             val timeText = String.format("%02d:%02d", i / 60, i % 60)
-                            drawText(
-                                textMeasurer = textMeasurer,
+                            val layoutResult = textMeasurer.measure(
                                 text = timeText,
-                                style = TextStyle(color = Color.LightGray, fontSize = 10.sp),
+                                style = TextStyle(color = Color.LightGray, fontSize = 10.sp)
+                            )
+                            drawText(
+                                textLayoutResult = layoutResult,
                                 topLeft = Offset(x + 4f, size.height - 30f)
                             )
                         }
@@ -268,7 +271,7 @@ fun VideoTimelineView(
                     clips.forEachIndexed { index, clip ->
                         androidx.compose.runtime.key(clip.id) {
                             val durationMs = clip.endTrimMs - clip.startTrimMs
-                            val clipWidthPx = durationMs * pixelsPerMs
+                            val clipWidthPx = maxOf(1f, durationMs * pixelsPerMs)
                             val clipWidthDp = with(density) { clipWidthPx.toDp() }
                             
                             val isSelected = clip.id == selectedClipId

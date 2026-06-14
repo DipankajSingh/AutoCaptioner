@@ -193,23 +193,7 @@ fun StyleEditorScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            com.dipdev.aiautocaptioner.ui.components.PipelineProgressBar(
-                currentStage = com.dipdev.aiautocaptioner.ui.components.PipelineStage.STYLE,
-                onNavigateToStage = { stage ->
-                    when (stage) {
-                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.REVIEW -> {
-                            viewModel.saveAndApply(projectId)
-                            onNavigateToCaptionEditor()
-                        }
-                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.IMPORT,
-                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.AI_CAPTIONS -> {
-                            viewModel.saveAndApply(projectId)
-                            onNavigateBack() // Or a more specific route, but BackHandler does this too
-                        }
-                        else -> {}
-                    }
-                }
-            )
+
 
             // Caption live preview taking available space
             Box(

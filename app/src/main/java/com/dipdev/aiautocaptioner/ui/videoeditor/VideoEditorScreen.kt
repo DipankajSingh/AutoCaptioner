@@ -136,7 +136,7 @@ fun VideoEditorScreen(
 
             val mediaItems = mergedClips.map { clip ->
                 MediaItem.Builder()
-                    .setUri(stateReady.originalPath)
+                    .setUri(android.net.Uri.parse(stateReady.originalPath).toString())
                     .setClippingConfiguration(
                         MediaItem.ClippingConfiguration.Builder()
                             .setStartPositionMs(clip.startTrimMs)

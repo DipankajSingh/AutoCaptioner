@@ -78,7 +78,7 @@ fun VideoPreview(
         ) {
             Box(
                 modifier = Modifier
-                    .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = videoAspectRatio < 1f)
+                    .aspectRatio(videoAspectRatio)
             ) {
                 AndroidView(
                     factory = { ctx ->

@@ -18,6 +18,7 @@ object ThumbnailExtractor {
      * @return A list of extracted Bitmaps.
      */
     suspend fun extractThumbnails(
+        context: android.content.Context,
         videoPath: String,
         startMs: Long,
         endMs: Long,
@@ -27,7 +28,11 @@ object ThumbnailExtractor {
         val retriever = MediaMetadataRetriever()
         
         try {
-            retriever.setDataSource(videoPath)
+            if (videoPath.startsWith("content://") || videoPath.startsWith("file://")) {
+                retriever.setDataSource(context, android.net.Uri.parse(videoPath))
+            } else {
+                retriever.setDataSource(videoPath)
+            }
             
             // Calculate the step interval between frames
             val duration = endMs - startMs

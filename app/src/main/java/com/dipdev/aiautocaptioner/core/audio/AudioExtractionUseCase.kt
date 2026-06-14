@@ -8,7 +8,9 @@ import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import javax.inject.Inject
 
-class AudioExtractionUseCase @Inject constructor() {
+class AudioExtractionUseCase @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
+) {
 
     @Suppress("DEPRECATION")
     suspend fun extractAudioFloatArray(videoPath: String): FloatArray {
@@ -17,7 +19,11 @@ class AudioExtractionUseCase @Inject constructor() {
             var codec: MediaCodec? = null
 
             try {
-                extractor.setDataSource(videoPath)
+                if (videoPath.startsWith("content://") || videoPath.startsWith("file://")) {
+                    extractor.setDataSource(context, android.net.Uri.parse(videoPath), null)
+                } else {
+                    extractor.setDataSource(videoPath)
+                }
                 var audioTrackIndex = -1
                 var audioFormat: MediaFormat? = null
                 for (i in 0 until extractor.trackCount) {

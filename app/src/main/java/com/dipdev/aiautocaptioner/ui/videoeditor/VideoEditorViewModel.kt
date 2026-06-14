@@ -89,6 +89,7 @@ class VideoEditorViewModel @Inject constructor(
                     for (clip in currentClips) {
                         if (!newMap.containsKey(clip.id)) {
                             val bitmaps = ThumbnailExtractor.extractThumbnails(
+                                context = context,
                                 videoPath = originalVideoPath,
                                 startMs = clip.startTrimMs,
                                 endMs = clip.endTrimMs,
@@ -119,7 +120,11 @@ class VideoEditorViewModel @Inject constructor(
                 var durationMs = 0L
                 try {
                     val retriever = MediaMetadataRetriever()
-                    retriever.setDataSource(project.workingVideoPath)
+                    if (project.workingVideoPath.startsWith("content://") || project.workingVideoPath.startsWith("file://")) {
+                        retriever.setDataSource(context, android.net.Uri.parse(project.workingVideoPath))
+                    } else {
+                        retriever.setDataSource(project.workingVideoPath)
+                    }
                     val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                     durationMs = durationStr?.toLongOrNull() ?: 0L
                     retriever.release()

@@ -153,15 +153,7 @@ fun ExportScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            com.dipdev.aiautocaptioner.ui.components.PipelineProgressBar(
-                currentStage = com.dipdev.aiautocaptioner.ui.components.PipelineStage.EXPORT,
-                onNavigateToStage = { stage ->
-                    when (stage) {
-                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.STYLE -> onNavigateBack()
-                        else -> {}
-                    }
-                }
-            )
+
             
             Column(
                 modifier = Modifier
@@ -374,13 +366,19 @@ fun ExportScreen(
                         animationSpec = tween(300),
                         label = "export_progress"
                     )
-                    LinearProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.fillMaxWidth().height(12.dp)
-                            .clip(RoundedCornerShape(6.dp)),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
                     Text("Rendering Video...", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(8.dp))

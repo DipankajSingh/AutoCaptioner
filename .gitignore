@@ -41,3 +41,5 @@ app/src/main/cpp/whisper-arch.h
 app/src/main/cpp/whisper.cpp
 app/src/main/cpp/whisper.h
 google-services.json
+
+pending_tasks.md

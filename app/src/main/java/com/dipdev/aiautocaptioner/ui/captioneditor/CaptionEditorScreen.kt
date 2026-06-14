@@ -168,16 +168,6 @@ fun CaptionEditorScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            com.dipdev.aiautocaptioner.ui.components.PipelineProgressBar(
-                currentStage = com.dipdev.aiautocaptioner.ui.components.PipelineStage.REVIEW,
-                onNavigateToStage = { stage ->
-                    when (stage) {
-                        com.dipdev.aiautocaptioner.ui.components.PipelineStage.STYLE -> onNavigateToStyleEditor()
-                        else -> {}
-                    }
-                }
-            )
-
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = viewModel::updateSearchQuery,

@@ -74,11 +74,18 @@ fun ModelDownloadScreen(
             when (val state = downloadState) {
 
                 is DownloadState.Starting -> {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(0.6f).height(10.dp).clip(RoundedCornerShape(5.dp)),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                    ) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
                     Text("Preparing download...", fontSize = 16.sp)
                 }
@@ -149,14 +156,19 @@ private fun DownloadingContent(
 
     Spacer(modifier = Modifier.height(40.dp))
 
-    LinearProgressIndicator(
-        progress = { animatedProgress },
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(8.dp),
-        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-        color = MaterialTheme.colorScheme.primary
-    )
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+    ) {
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier = Modifier.fillMaxSize(),
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
 
     Spacer(modifier = Modifier.height(16.dp))
 
