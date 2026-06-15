@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.modeldownload
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -74,18 +75,14 @@ fun ModelDownloadScreen(
             when (val state = downloadState) {
 
                 is DownloadState.Starting -> {
+                    // Manual progress bar to avoid LinearProgressIndicator constraint crash
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.6f)
                             .height(10.dp)
                             .clip(RoundedCornerShape(5.dp))
-                    ) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    }
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text("Preparing download...", fontSize = 16.sp)
                 }
@@ -156,17 +153,19 @@ private fun DownloadingContent(
 
     Spacer(modifier = Modifier.height(40.dp))
 
+    // Manual progress bar to avoid LinearProgressIndicator constraint crash
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(8.dp)
             .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        LinearProgressIndicator(
-            progress = { animatedProgress },
-            modifier = Modifier.fillMaxSize(),
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            color = MaterialTheme.colorScheme.primary
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary)
         )
     }
 
