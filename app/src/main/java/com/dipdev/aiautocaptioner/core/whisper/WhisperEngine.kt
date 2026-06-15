@@ -41,7 +41,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     // All other functions that operate on the context now accept that handle.
     // -------------------------------------------------------
     private external fun loadModel(modelPath: String): Long
-    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, nThreads: Int, listener: ProgressListener? = null): String
+    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, nThreads: Int, listener: ProgressListener? = null): ByteArray?
     private external fun isModelLoaded(handle: Long): Boolean
     private external fun freeModel(handle: Long)
     private external fun transcribeWithTimestamps(
@@ -51,7 +51,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
         nThreads: Int,
         listener: ProgressListener? = null,
         segmentListener: SegmentListener? = null
-    ): Array<String>?
+    ): ByteArray?
 
     @Keep
     fun interface ProgressListener {
@@ -62,7 +62,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     @Keep
     fun interface SegmentListener {
         @Keep
-        fun onSegment(text: String, startMs: Long, endMs: Long)
+        fun onSegment(textBytes: ByteArray, startMs: Long, endMs: Long)
     }
 
     // -------------------------------------------------------
@@ -121,8 +121,8 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
                     return@withContext ""
                 }
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val result = transcribe(handle, samples, language, THREAD_COUNT, listener)
-                result
+                val resultBytes = transcribe(handle, samples, language, THREAD_COUNT, listener)
+                if (resultBytes != null) String(resultBytes, Charsets.UTF_8) else ""
             }
         }
     }
@@ -141,11 +141,16 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
                 val handle = nativeHandle
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val segListener = onSegmentDecoded?.let { cb -> SegmentListener { text, startMs, endMs -> cb(text, startMs, endMs) } }
-                val raw = transcribeWithTimestamps(handle, samples, language, THREAD_COUNT, listener, segListener)
+                val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
+                val rawBytes = transcribeWithTimestamps(handle, samples, language, THREAD_COUNT, listener, segListener)
                     ?: return@withContext emptyList()
-                raw.mapNotNull { entry ->
-                    val parts = entry.split("|")
+                
+                val rawString = String(rawBytes, Charsets.UTF_8)
+                val entries = rawString.split("\n")
+                
+                entries.mapNotNull { entry ->
+                    if (entry.isBlank()) return@mapNotNull null
+                    val parts = entry.split("\t")
                     if (parts.size != 4) return@mapNotNull null
                     WordTimestamp(
                         word = parts[0].trim(),

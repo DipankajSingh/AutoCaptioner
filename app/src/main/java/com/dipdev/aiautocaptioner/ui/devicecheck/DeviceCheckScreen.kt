@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.ui.components.ModelStat
 
@@ -136,7 +137,7 @@ fun DeviceCheckScreen(
     }
 
     when (val state = safetyState) {
-        is SafetyCheckState.StorageError -> {
+        is ModelSafetyCheckState.StorageError -> {
             AlertDialog(
                 onDismissRequest = { viewModel.resetSafetyState() },
                 title = { Text("Not enough storage") },
@@ -148,7 +149,7 @@ fun DeviceCheckScreen(
                 }
             )
         }
-        is SafetyCheckState.CellularWarning -> {
+        is ModelSafetyCheckState.CellularWarning -> {
             AlertDialog(
                 onDismissRequest = { viewModel.resetSafetyState() },
                 title = { Text("Cellular Data Warning") },
@@ -168,13 +169,13 @@ fun DeviceCheckScreen(
                 }
             )
         }
-        is SafetyCheckState.Passed -> {
+        is ModelSafetyCheckState.Passed -> {
             LaunchedEffect(Unit) {
                 selectedModelId?.let { onModelSelected(it) }
                 viewModel.resetSafetyState()
             }
         }
-        SafetyCheckState.Idle -> {}
+        ModelSafetyCheckState.Idle -> {}
     }
 }
 

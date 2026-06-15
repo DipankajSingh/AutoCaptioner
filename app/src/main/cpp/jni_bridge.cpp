@@ -4,92 +4,7 @@
 #include <android/log.h>
 #include "whisper.h"
 
-// ---------------------------------------------------------------------------
-// sanitizeForJni — strip null bytes and replace invalid / unsupported
-// Modified UTF-8 byte sequences so that NewStringUTF never crashes.
-//
-// JNI Modified UTF-8 differs from standard UTF-8 in two key ways:
-//   1. Null bytes (U+0000) are encoded as 0xC0 0x80, not 0x00.
-//      Raw 0x00 bytes inside a string are illegal and crash the JVM.
-//   2. Codepoints above U+FFFF (4-byte UTF-8 sequences, lead byte 0xF0–0xF7)
-//      are not supported.  They must be encoded as CESU-8 surrogate pairs,
-//      but for simplicity we replace them with '?' here.
-//
-// Validation rules applied byte-by-byte:
-//   0x01–0x7F  : valid single-byte
-//   0xC2–0xDF  + one  continuation (0x80–0xBF) : valid 2-byte
-//   0xE0–0xEF  + two  continuations             : valid 3-byte
-//   0xF0–0xF7  (4-byte lead)                    : replace whole sequence with '?'
-//   Anything else                                : replace byte with '?'
-// ---------------------------------------------------------------------------
-static std::string sanitizeForJni(const std::string& input) {
-    std::string out;
-    out.reserve(input.size());
-    size_t i = 0;
-    while (i < input.size()) {
-        unsigned char c = static_cast<unsigned char>(input[i]);
-
-        // Strip embedded nulls — illegal in Modified UTF-8
-        if (c == 0x00) {
-            ++i;
-            continue;
-        }
-
-        // Single-byte ASCII (0x01–0x7F)
-        if (c <= 0x7F) {
-            out += static_cast<char>(c);
-            ++i;
-            continue;
-        }
-
-        // 4-byte sequence (0xF0–0xF7) — not supported in Modified UTF-8
-        if (c >= 0xF0 && c <= 0xF7) {
-            // Consume the lead byte plus up to 3 continuation bytes
-            out += '?';
-            ++i;
-            while (i < input.size() &&
-                   (static_cast<unsigned char>(input[i]) & 0xC0) == 0x80) {
-                ++i;
-            }
-            continue;
-        }
-
-        // 3-byte sequence (0xE0–0xEF)
-        if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 < input.size() &&
-                (static_cast<unsigned char>(input[i+1]) & 0xC0) == 0x80 &&
-                (static_cast<unsigned char>(input[i+2]) & 0xC0) == 0x80) {
-                out += static_cast<char>(input[i]);
-                out += static_cast<char>(input[i+1]);
-                out += static_cast<char>(input[i+2]);
-                i += 3;
-            } else {
-                out += '?';
-                ++i;
-            }
-            continue;
-        }
-
-        // 2-byte sequence (0xC2–0xDF); 0xC0/0xC1 are overlong and illegal
-        if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 < input.size() &&
-                (static_cast<unsigned char>(input[i+1]) & 0xC0) == 0x80) {
-                out += static_cast<char>(input[i]);
-                out += static_cast<char>(input[i+1]);
-                i += 2;
-            } else {
-                out += '?';
-                ++i;
-            }
-            continue;
-        }
-
-        // Any other byte (continuation byte without lead, 0x80–0xBF, 0xC0, 0xC1, 0xF8+)
-        out += '?';
-        ++i;
-    }
-    return out;
-}
+// Deleted sanitizeForJni since we now pass raw byte arrays instead of Strings.
 
 #define TAG "WhisperJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
@@ -111,8 +26,11 @@ struct ProgressCallbackContext {
         if (lst) {
             listener = env->NewGlobalRef(lst);
             jclass clazz = env->GetObjectClass(lst);
-            onProgress = env->GetMethodID(clazz, "onProgress", "(I)V");
-            env->DeleteLocalRef(clazz);
+            if (clazz) {
+                onProgress = env->GetMethodID(clazz, "onProgress", "(I)V");
+                if (env->ExceptionCheck()) { env->ExceptionClear(); }
+                env->DeleteLocalRef(clazz);
+            }
         }
     }
 
@@ -145,8 +63,11 @@ struct SegmentCallbackContext {
         if (lst) {
             listener = env->NewGlobalRef(lst);
             jclass clazz = env->GetObjectClass(lst);
-            onSegment = env->GetMethodID(clazz, "onSegment", "(Ljava/lang/String;JJ)V");
-            env->DeleteLocalRef(clazz);
+            if (clazz) {
+                onSegment = env->GetMethodID(clazz, "onSegment", "([BJJ)V");
+                if (env->ExceptionCheck()) { env->ExceptionClear(); }
+                env->DeleteLocalRef(clazz);
+            }
         }
     }
 
@@ -178,10 +99,11 @@ static void android_whisper_progress_callback(struct whisper_context * /*ctx*/, 
         env->CallVoidMethod(cb->listener, cb->onProgress, (jint)progress);
         env->ExceptionClear();
     } else if (rc == JNI_EDETACHED) {
-        cb->jvm->AttachCurrentThread(&env, nullptr);
-        env->CallVoidMethod(cb->listener, cb->onProgress, (jint)progress);
-        env->ExceptionClear();
-        cb->jvm->DetachCurrentThread();
+        if (cb->jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            env->CallVoidMethod(cb->listener, cb->onProgress, (jint)progress);
+            env->ExceptionClear();
+            cb->jvm->DetachCurrentThread();
+        }
     }
 }
 
@@ -208,11 +130,14 @@ static void android_whisper_new_segment_callback(struct whisper_context * /*ctx*
         int64_t t0 = whisper_full_get_segment_t0_from_state(state, i);
         int64_t t1 = whisper_full_get_segment_t1_from_state(state, i);
 
-        std::string safeText = sanitizeForJni(std::string(text));
-        jstring jtext = env->NewStringUTF(safeText.c_str());
-        env->CallVoidMethod(cb->listener, cb->onSegment, jtext, (jlong)(t0 * 10), (jlong)(t1 * 10));
-        env->ExceptionClear();
-        env->DeleteLocalRef(jtext);
+        int len = strlen(text);
+        jbyteArray jtext = env->NewByteArray(len);
+        if (jtext != nullptr) {
+            env->SetByteArrayRegion(jtext, 0, len, reinterpret_cast<const jbyte*>(text));
+            env->CallVoidMethod(cb->listener, cb->onSegment, jtext, (jlong)(t0 * 10), (jlong)(t1 * 10));
+            env->ExceptionClear();
+            env->DeleteLocalRef(jtext);
+        }
     }
 
     if (did_attach) {
@@ -252,19 +177,27 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
 // ---------------------------------------------------------------------------
 // transcribe — plain text transcription (no timestamps).
 // ---------------------------------------------------------------------------
-JNIEXPORT jstring JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
         JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jint n_threads, jobject listener) {
 
     whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
         LOGE("transcribe called with null handle!");
-        return env->NewStringUTF("[Error: model not loaded]");
+        return nullptr;
     }
 
-    const char * lang = env->GetStringUTFChars(lang_str, nullptr);
+    const char * lang = nullptr;
+    if (lang_str != nullptr) {
+        lang = env->GetStringUTFChars(lang_str, nullptr);
+    }
+    
     jsize n_samples   = env->GetArrayLength(audio_data);
     jfloat * samples  = env->GetFloatArrayElements(audio_data, nullptr);
+    if (samples == nullptr) {
+        if (lang != nullptr) env->ReleaseStringUTFChars(lang_str, lang);
+        return nullptr;
+    }
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads        = (int) n_threads;
@@ -276,10 +209,14 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     params.print_timestamps = false;
 
     ProgressCallbackContext* cb_ctx = nullptr;
-    if (listener != nullptr) {
-        cb_ctx = new ProgressCallbackContext(env, listener);
-        params.progress_callback = android_whisper_progress_callback;
-        params.progress_callback_user_data = cb_ctx;
+    try {
+        if (listener != nullptr) {
+            cb_ctx = new ProgressCallbackContext(env, listener);
+            params.progress_callback = android_whisper_progress_callback;
+            params.progress_callback_user_data = cb_ctx;
+        }
+    } catch (...) {
+        LOGE("Failed to allocate ProgressCallbackContext");
     }
 
     int result = whisper_full(ctx, params, samples, (int) n_samples);
@@ -289,11 +226,13 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     }
 
     env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);
-    env->ReleaseStringUTFChars(lang_str, lang);
+    if (lang != nullptr) {
+        env->ReleaseStringUTFChars(lang_str, lang);
+    }
 
     if (result != 0) {
         LOGE("Transcription failed with code: %d", result);
-        return env->NewStringUTF("[Transcription failed]");
+        return nullptr;
     }
 
     std::string text;
@@ -306,8 +245,13 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     }
 
     LOGI("Transcription done: %zu chars", text.size());
-    std::string safeText = sanitizeForJni(text);
-    return env->NewStringUTF(safeText.c_str());
+    
+    int len = text.size();
+    jbyteArray jBytes = env->NewByteArray(len);
+    if (jBytes != nullptr) {
+        env->SetByteArrayRegion(jBytes, 0, len, reinterpret_cast<const jbyte*>(text.data()));
+    }
+    return jBytes;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +263,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
 // Fix: call DeleteLocalRef immediately after SetObjectArrayElement so the
 // slot is reclaimed within the same loop iteration.
 // ---------------------------------------------------------------------------
-JNIEXPORT jobjectArray JNICALL
+JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
         JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jint n_threads, jobject listener, jobject segmentListener) {
 
@@ -329,9 +273,16 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
         return nullptr;
     }
 
-    const char * lang = env->GetStringUTFChars(lang_str, nullptr);
+    const char * lang = nullptr;
+    if (lang_str != nullptr) {
+        lang = env->GetStringUTFChars(lang_str, nullptr);
+    }
     jsize n_samples   = env->GetArrayLength(audio_data);
     jfloat * samples  = env->GetFloatArrayElements(audio_data, nullptr);
+    if (samples == nullptr) {
+        if (lang != nullptr) env->ReleaseStringUTFChars(lang_str, lang);
+        return nullptr;
+    }
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads        = (int) n_threads;
@@ -345,17 +296,21 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     params.max_len          = 1;
 
     ProgressCallbackContext* cb_ctx = nullptr;
-    if (listener != nullptr) {
-        cb_ctx = new ProgressCallbackContext(env, listener);
-        params.progress_callback = android_whisper_progress_callback;
-        params.progress_callback_user_data = cb_ctx;
-    }
-
     SegmentCallbackContext* seg_ctx = nullptr;
-    if (segmentListener != nullptr) {
-        seg_ctx = new SegmentCallbackContext(env, segmentListener);
-        params.new_segment_callback = android_whisper_new_segment_callback;
-        params.new_segment_callback_user_data = seg_ctx;
+    try {
+        if (listener != nullptr) {
+            cb_ctx = new ProgressCallbackContext(env, listener);
+            params.progress_callback = android_whisper_progress_callback;
+            params.progress_callback_user_data = cb_ctx;
+        }
+
+        if (segmentListener != nullptr) {
+            seg_ctx = new SegmentCallbackContext(env, segmentListener);
+            params.new_segment_callback = android_whisper_new_segment_callback;
+            params.new_segment_callback_user_data = seg_ctx;
+        }
+    } catch (...) {
+        LOGE("Failed to allocate callback contexts");
     }
 
     int result = whisper_full(ctx, params, samples, (int) n_samples);
@@ -368,7 +323,9 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     }
 
     env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);
-    env->ReleaseStringUTFChars(lang_str, lang);
+    if (lang != nullptr) {
+        env->ReleaseStringUTFChars(lang_str, lang);
+    }
 
     if (result != 0) {
         LOGE("Transcription failed: %d", result);
@@ -377,8 +334,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
 
     int n_segments = whisper_full_n_segments(ctx);
 
-    // Collect valid entries first — filter out empty/special tokens
-    std::vector<std::string> entries;
+    std::string text_result;
     for (int i = 0; i < n_segments; i++) {
         const char * text = whisper_full_get_segment_text(ctx, i);
         if (text == nullptr) continue;
@@ -404,33 +360,17 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
             confidence = whisper_full_get_token_data(ctx, i, 0).p;
         }
 
-        std::string entry = word + "|" + std::to_string(start_ms) + "|" + std::to_string(end_ms) + "|" + std::to_string(confidence);
-        entries.push_back(entry);
+        text_result += word + "\t" + std::to_string(start_ms) + "\t" + std::to_string(end_ms) + "\t" + std::to_string(confidence) + "\n";
     }
 
-    LOGI("Total segments: %d, valid words: %d", n_segments, (int)entries.size());
+    LOGI("Total segments: %d", n_segments);
 
-    // Build the result array.
-    // DeleteLocalRef on stringClass and on each jstring to stay well under
-    // the 512-slot JNI local reference table limit.
-    jclass stringClass = env->FindClass("java/lang/String");
-    jobjectArray resultArray = env->NewObjectArray(
-            (jsize)entries.size(), stringClass, nullptr);
-    if (resultArray == nullptr) {
-        LOGE("Failed to allocate string array");
-        env->DeleteLocalRef(stringClass);
-        return nullptr;
+    int len = text_result.size();
+    jbyteArray jBytes = env->NewByteArray(len);
+    if (jBytes != nullptr) {
+        env->SetByteArrayRegion(jBytes, 0, len, reinterpret_cast<const jbyte*>(text_result.data()));
     }
-    env->DeleteLocalRef(stringClass);  // no longer needed after NewObjectArray
-
-    for (int i = 0; i < (int)entries.size(); i++) {
-        std::string safeEntry = sanitizeForJni(entries[i]);
-        jstring localStr = env->NewStringUTF(safeEntry.c_str());
-        env->SetObjectArrayElement(resultArray, i, localStr);
-        env->DeleteLocalRef(localStr);  // reclaim slot immediately — prevents overflow
-    }
-
-    return resultArray;
+    return jBytes;
 }
 
 // ---------------------------------------------------------------------------
