@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- Explicitly declare Play Billing (RevenueCat merges this automatically, but good for clarity) -->
+    <uses-permission android:name="com.android.vending.BILLING" />
 
     <application
         android:name=".AiAutoCaptioner"
