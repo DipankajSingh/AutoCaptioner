@@ -179,7 +179,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
 // ---------------------------------------------------------------------------
 JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jint n_threads, jobject listener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jobject listener) {
 
     whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -202,7 +202,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads        = (int) n_threads;
     params.language         = lang;
-    params.translate        = false;
+    params.translate        = translate_to_english == JNI_TRUE;
     params.print_special    = false;
     params.print_progress   = false;
     params.print_realtime   = false;
@@ -265,7 +265,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
 // ---------------------------------------------------------------------------
 JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jint n_threads, jobject listener, jobject segmentListener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jobject listener, jobject segmentListener) {
 
     whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -287,7 +287,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads        = (int) n_threads;
     params.language         = lang;
-    params.translate        = false;
+    params.translate        = translate_to_english == JNI_TRUE;
     params.print_special    = false;
     params.print_progress   = false;
     params.print_realtime   = false;

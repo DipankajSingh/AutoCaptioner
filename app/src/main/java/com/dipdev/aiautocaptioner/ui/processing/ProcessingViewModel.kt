@@ -80,6 +80,7 @@ sealed class ModelSafetyCheck {
 data class ProcessingUiState(
     val step: ProcessingStep = ProcessingStep.Idle,
     val selectedLanguage: String = "en",
+    val translateToEnglish: Boolean = false,
     val workingVideoPath: String? = null,
     val streamedSegments: List<StreamedSegment> = emptyList(),
     val segmentCount: Int = 0,
@@ -90,6 +91,7 @@ data class ProcessingUiState(
 sealed class ProcessingUiEvent : UiEvent {
     data class PrepareForProject(val projectId: String) : ProcessingUiEvent()
     data class SelectLanguage(val language: String) : ProcessingUiEvent()
+    data class ToggleTranslation(val enabled: Boolean) : ProcessingUiEvent()
     data object ShowModelSetup : ProcessingUiEvent()
     data object ShowModelPicker : ProcessingUiEvent()
     data class CheckSafetyAndDownload(val modelId: String) : ProcessingUiEvent()
@@ -141,6 +143,7 @@ class ProcessingViewModel @Inject constructor(
         when (event) {
             is ProcessingUiEvent.PrepareForProject -> prepareForProject(event.projectId)
             is ProcessingUiEvent.SelectLanguage -> selectLanguage(event.language)
+            is ProcessingUiEvent.ToggleTranslation -> setState { copy(translateToEnglish = event.enabled) }
             is ProcessingUiEvent.ShowModelSetup -> showModelSetup()
             is ProcessingUiEvent.ShowModelPicker -> showModelPicker()
             is ProcessingUiEvent.CheckSafetyAndDownload -> checkSafetyAndDownload(event.modelId)
@@ -194,7 +197,12 @@ class ProcessingViewModel @Inject constructor(
     }
 
     private fun selectLanguage(language: String) {
-        setState { copy(selectedLanguage = language) }
+        setState { 
+            copy(
+                selectedLanguage = language,
+                translateToEnglish = if (language == "en") false else translateToEnglish
+            ) 
+        }
     }
 
     private fun showModelSetup() {
@@ -373,6 +381,7 @@ class ProcessingViewModel @Inject constructor(
                     whisperEngine.transcribeWithWordTimestamps(
                         samples = pcmSamples,
                         language = language,
+                        translateToEnglish = currentState.translateToEnglish,
                     onProgress = { percent ->
                         val progressFraction = percent / 100f
                         val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs

@@ -25,8 +25,10 @@ fun ReadyStateView(
     step: ProcessingStep,
     workingVideoPath: String?,
     selectedLanguage: String,
+    translateToEnglish: Boolean,
     activeModel: WhisperModel?,
     onLanguageSelected: (String) -> Unit,
+    onToggleTranslation: (Boolean) -> Unit,
     onShowModelPicker: () -> Unit,
     onShowModelSetup: () -> Unit,
     onStartProcessing: () -> Unit,
@@ -71,6 +73,29 @@ fun ReadyStateView(
                     onLanguageSelected = onLanguageSelected,
                     isMultilingual = activeModel?.isMultilingual ?: true
                 )
+
+                if (selectedLanguage != "en") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Translate to English",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Switch(
+                            checked = translateToEnglish,
+                            onCheckedChange = onToggleTranslation,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                }
 
                 activeModel?.let { model ->
                     Spacer(modifier = Modifier.height(12.dp))

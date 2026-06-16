@@ -41,13 +41,14 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     // All other functions that operate on the context now accept that handle.
     // -------------------------------------------------------
     private external fun loadModel(modelPath: String): Long
-    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, nThreads: Int, listener: ProgressListener? = null): ByteArray?
+    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, translateToEnglish: Boolean, nThreads: Int, listener: ProgressListener? = null): ByteArray?
     private external fun isModelLoaded(handle: Long): Boolean
     private external fun freeModel(handle: Long)
     private external fun transcribeWithTimestamps(
         handle: Long,
         audioData: FloatArray,
         language: String,
+        translateToEnglish: Boolean,
         nThreads: Int,
         listener: ProgressListener? = null,
         segmentListener: SegmentListener? = null
@@ -111,6 +112,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     suspend fun transcribeAudio(
         samples: FloatArray,
         language: String = "en",
+        translateToEnglish: Boolean = false,
         onProgress: ((Int) -> Unit)? = null
     ): String {
         return withContext(Dispatchers.IO) {
@@ -121,7 +123,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
                     return@withContext ""
                 }
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val resultBytes = transcribe(handle, samples, language, THREAD_COUNT, listener)
+                val resultBytes = transcribe(handle, samples, language, translateToEnglish, THREAD_COUNT, listener)
                 if (resultBytes != null) String(resultBytes, Charsets.UTF_8) else ""
             }
         }
@@ -133,6 +135,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     suspend fun transcribeWithWordTimestamps(
         samples: FloatArray,
         language: String = "en",
+        translateToEnglish: Boolean = false,
         onProgress: ((Int) -> Unit)? = null,
         onSegmentDecoded: ((text: String, startMs: Long, endMs: Long) -> Unit)? = null
     ): List<WordTimestamp> {
@@ -142,7 +145,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
-                val rawBytes = transcribeWithTimestamps(handle, samples, language, THREAD_COUNT, listener, segListener)
+                val rawBytes = transcribeWithTimestamps(handle, samples, language, translateToEnglish, THREAD_COUNT, listener, segListener)
                     ?: return@withContext emptyList()
                 
                 val rawString = String(rawBytes, Charsets.UTF_8)

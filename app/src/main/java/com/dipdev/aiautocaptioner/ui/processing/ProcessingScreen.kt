@@ -53,6 +53,7 @@ fun ProcessingScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val step = uiState.step
     val selectedLanguage = uiState.selectedLanguage
+    val translateToEnglish = uiState.translateToEnglish
     val activeModel = uiState.activeModel
     val workingVideoPath = uiState.workingVideoPath
     val streamedSegments = uiState.streamedSegments
@@ -142,8 +143,10 @@ fun ProcessingScreen(
                         step = currentStep,
                         workingVideoPath = workingVideoPath,
                         selectedLanguage = selectedLanguage,
+                        translateToEnglish = translateToEnglish,
                         activeModel = activeModel,
                         onLanguageSelected = { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(it)) },
+                        onToggleTranslation = { viewModel.setEvent(ProcessingUiEvent.ToggleTranslation(it)) },
                         onShowModelPicker = { viewModel.setEvent(ProcessingUiEvent.ShowModelPicker) },
                         onShowModelSetup = { viewModel.setEvent(ProcessingUiEvent.ShowModelSetup) },
                         onStartProcessing = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
