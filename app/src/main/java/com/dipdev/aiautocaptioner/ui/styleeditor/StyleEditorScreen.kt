@@ -2,10 +2,18 @@ package com.dipdev.aiautocaptioner.ui.styleeditor
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
@@ -13,25 +21,34 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
-import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
-import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
-import com.dipdev.aiautocaptioner.ui.paywall.PaywallDialog
-import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.*
-import kotlinx.coroutines.launch
+import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.AnimationTab
+import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.ColorTab
+import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.TextTab
+import com.dipdev.aiautocaptioner.ui.paywall.CustomPaywallDialog
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 
 @Composable
 fun StyleEditorScreen(
@@ -87,13 +104,29 @@ fun StyleEditorScreen(
         viewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
     }
 
+    LaunchedEffect(isPremium) {
+        if (isPremium && pendingPremiumTab != null) {
+            viewModel.setEvent(StyleEditorUiEvent.SelectTab(pendingPremiumTab!!))
+            pendingPremiumTab = null
+            showPaywall = false
+        }
+    }
+
+    val context = LocalContext.current
+
     if (showPaywall) {
-        PaywallDialog(
-            onDismiss = { showPaywall = false; pendingPremiumTab = null },
-            onPurchase = {
-                viewModel.setEvent(StyleEditorUiEvent.UnlockPremiumMock)
+        CustomPaywallDialog(
+            isLoading = uiState.isPurchaseLoading,
+            onPurchaseClick = {
+                (context as? Activity)?.let { activity ->
+                    viewModel.setEvent(StyleEditorUiEvent.PurchaseLifetime(activity))
+                }
+            },
+            onRestoreClick = {
+                viewModel.setEvent(StyleEditorUiEvent.RestorePurchases)
+            },
+            onDismissRequest = {
                 showPaywall = false
-                pendingPremiumTab?.let { viewModel.setEvent(StyleEditorUiEvent.SelectTab(it)) }
                 pendingPremiumTab = null
             }
         )
@@ -240,8 +273,8 @@ fun StyleEditorScreen(
         ) {
             activeStyle?.let { style ->
                 val isPortrait = (project?.videoRotation == 90 || project?.videoRotation == 270)
-                val outWidth = if (isPortrait) project?.videoHeight ?: 1080 else project?.videoWidth ?: 1080
-                val outHeight = if (isPortrait) project?.videoWidth ?: 1920 else project?.videoHeight ?: 1920
+                val outWidth = if (isPortrait) project.videoHeight else project?.videoWidth ?: 1080
+                val outHeight = project?.videoHeight ?: 1920
 
                 VideoPreview(
                     style = style,

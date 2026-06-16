@@ -8,6 +8,9 @@ import com.google.firebase.perf.performance
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
 import dagger.hilt.android.HiltAndroidApp
+import com.revenuecat.purchases.LogLevel
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.PurchasesConfiguration
 
 @HiltAndroidApp
 class AiAutoCaptioner : Application() {
@@ -15,6 +18,15 @@ class AiAutoCaptioner : Application() {
     override fun onCreate() {
         super.onCreate()
         initFirebase()
+        initRevenueCat()
+    }
+
+    private fun initRevenueCat() {
+        Purchases.logLevel = LogLevel.DEBUG
+        Purchases.configure(
+            PurchasesConfiguration.Builder(this, "test_GTLdsaEjNvvBCJkIemFTKrOoHzA")
+                .build()
+        )
     }
 
     private fun initFirebase() {

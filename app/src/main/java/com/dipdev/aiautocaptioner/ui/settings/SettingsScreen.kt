@@ -65,6 +65,32 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            // Customer Center / Subscription Management
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable { 
+                        // TODO: Open native Google Play subscriptions or handle support
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "Manage Subscription",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "View details and manage your AutoCaptioner Pro access",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Glassmorphism Toggle
             Row(
                 modifier = Modifier

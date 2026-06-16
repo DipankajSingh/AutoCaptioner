@@ -27,6 +27,7 @@ splashscreen = "1.2.0"
 lottie = "6.7.1"
 accompanist = "0.37.3"
 firebaseBom = "34.13.0"
+revenuecat = "10.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -73,6 +74,7 @@ firebase-crashlytics-ndk = { group = "com.google.firebase", name = "firebase-cra
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 firebase-perf = { group = "com.google.firebase", name = "firebase-perf" }
 firebase-config = { group = "com.google.firebase", name = "firebase-config" }
+revenuecat-purchases = { group = "com.revenuecat.purchases", name = "purchases", version.ref = "revenuecat" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

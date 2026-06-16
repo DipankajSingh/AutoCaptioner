@@ -19,8 +19,8 @@ android {
         applicationId = "com.dipdev.aiautocaptioner"
         minSdk = 24
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.6"
+        versionCode = 7
+        versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -196,7 +196,13 @@ dependencies {
     implementation(libs.firebase.config)           // Remote Config
 
     // -------------------------------------------------------
+    // RevenueCat
+    // -------------------------------------------------------
+    implementation(libs.revenuecat.purchases)
+
+    // -------------------------------------------------------
     // Testing
+
     // -------------------------------------------------------
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

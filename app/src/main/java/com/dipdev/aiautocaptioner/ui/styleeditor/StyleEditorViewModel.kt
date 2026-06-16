@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import androidx.core.net.toUri
+import com.revenuecat.purchases.restorePurchasesWith
 
 import com.dipdev.aiautocaptioner.data.billing.PremiumManager
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
@@ -44,7 +45,8 @@ data class StyleEditorUiState(
     val wordsMap: Map<String, List<com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity>> = emptyMap(),
     val selectedTab: StyleTab = StyleTab.PRESETS,
     val canUndo: Boolean = false,
-    val canRedo: Boolean = false
+    val canRedo: Boolean = false,
+    val isPurchaseLoading: Boolean = false
 ) : UiState
 
 sealed interface StyleEditorUiEvent : UiEvent {
@@ -82,6 +84,8 @@ sealed interface StyleEditorUiEvent : UiEvent {
     data class DeletePreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
     data object Undo : StyleEditorUiEvent
     data object Redo : StyleEditorUiEvent
+    data class PurchaseLifetime(val activity: android.app.Activity) : StyleEditorUiEvent
+    data object RestorePurchases : StyleEditorUiEvent
 }
 
 sealed interface StyleEditorUiEffect : UiEffect
@@ -136,12 +140,38 @@ class StyleEditorViewModel @Inject constructor(
             is StyleEditorUiEvent.DeletePreset -> deletePreset(event.style)
             is StyleEditorUiEvent.Undo -> undo()
             is StyleEditorUiEvent.Redo -> redo()
+            is StyleEditorUiEvent.PurchaseLifetime -> purchaseLifetime(event.activity)
+            is StyleEditorUiEvent.RestorePurchases -> restorePurchases()
         }
     }
 
     private fun unlockPremiumMock() {
+        // No-op, mock is removed. Purchase is handled by RevenueCat Paywall directly in UI.
+    }
+
+    private fun purchaseLifetime(activity: android.app.Activity) {
         viewModelScope.launch {
-            premiumManager.unlockPremium()
+            setState { copy(isPurchaseLoading = true) }
+            val result = premiumManager.purchaseLifetime(activity)
+            setState { copy(isPurchaseLoading = false) }
+        }
+    }
+
+    private fun restorePurchases() {
+        viewModelScope.launch {
+            setState { copy(isPurchaseLoading = true) }
+            try {
+                com.revenuecat.purchases.Purchases.sharedInstance.restorePurchasesWith(
+                    onSuccess = { customerInfo ->
+                        setState { copy(isPurchaseLoading = false) }
+                    },
+                    onError = { error ->
+                        setState { copy(isPurchaseLoading = false) }
+                    }
+                )
+            } catch (e: Exception) {
+                setState { copy(isPurchaseLoading = false) }
+            }
         }
     }
 
