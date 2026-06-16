@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.NotInterested
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -101,8 +100,6 @@ fun CustomPaywallDialog(
                 FeatureItem(icon = Icons.Default.HighQuality, text = "Export in 4K Resolution")
                 Spacer(modifier = Modifier.height(12.dp))
                 FeatureItem(icon = Icons.Default.AutoAwesome, text = "Access to all Premium Animation Styles")
-                Spacer(modifier = Modifier.height(12.dp))
-                FeatureItem(icon = Icons.Default.NotInterested, text = "No Watermarks")
 
                 Spacer(modifier = Modifier.height(32.dp))
 
