@@ -50,10 +50,9 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _importState.value = ImportState.Loading
             val result = projectRepository.importVideo(uri)
-            _importState.value = result.fold(
-                onSuccess = { projectId -> ImportState.Success(projectId) },
-                onFailure = { e -> ImportState.Error(e.message ?: "Import failed") }
-            )
+            _importState.value = result.fold(ImportState::Success) { e -> 
+                ImportState.Error(e.message ?: "Import failed") 
+            }
         }
     }
 

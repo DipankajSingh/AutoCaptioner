@@ -1,11 +1,9 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
-
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.core.whisper.CaptionSegmenter
@@ -17,20 +15,19 @@ import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.service.TranscriptionService
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
@@ -80,6 +77,34 @@ sealed class ModelSafetyCheck {
     data object Passed : ModelSafetyCheck()
 }
 
+data class ProcessingUiState(
+    val step: ProcessingStep = ProcessingStep.Idle,
+    val selectedLanguage: String = "en",
+    val workingVideoPath: String? = null,
+    val streamedSegments: List<StreamedSegment> = emptyList(),
+    val segmentCount: Int = 0,
+    val safetyCheck: ModelSafetyCheck = ModelSafetyCheck.Idle,
+    val activeModel: WhisperModel? = null
+) : UiState
+
+sealed class ProcessingUiEvent : UiEvent {
+    data class PrepareForProject(val projectId: String) : ProcessingUiEvent()
+    data class SelectLanguage(val language: String) : ProcessingUiEvent()
+    data object ShowModelSetup : ProcessingUiEvent()
+    data object ShowModelPicker : ProcessingUiEvent()
+    data class CheckSafetyAndDownload(val modelId: String) : ProcessingUiEvent()
+    data class ConfirmCellularDownload(val modelId: String) : ProcessingUiEvent()
+    data class DownloadAndProcess(val modelId: String, val projectId: String) : ProcessingUiEvent()
+    data object ResetSafetyCheck : ProcessingUiEvent()
+    data object CancelModelSetup : ProcessingUiEvent()
+    data object Cancel : ProcessingUiEvent()
+    data class StartProcessing(val projectId: String) : ProcessingUiEvent()
+}
+
+sealed class ProcessingUiEffect : UiEffect {
+    data object NavigateToStyleEditor : ProcessingUiEffect()
+}
+
 @HiltViewModel
 class ProcessingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -90,118 +115,92 @@ class ProcessingViewModel @Inject constructor(
     private val crashReporter: CrashReporter,
     private val audioExtractionUseCase: com.dipdev.aiautocaptioner.core.audio.AudioExtractionUseCase,
     private val deviceCapabilityUseCase: com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase
-) : ViewModel() {
+) : BaseViewModel<ProcessingUiState, ProcessingUiEvent, ProcessingUiEffect>(ProcessingUiState()) {
 
     companion object {
         private const val TAG = "ProcessingVM"
         private const val SEGMENT_DRIP_DELAY_MS = 400L
     }
 
-    private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
-    val step: StateFlow<ProcessingStep> = _step.asStateFlow()
-
-    // The language currently selected in the UI — bound to the picker
-    private val _selectedLanguage = MutableStateFlow("en")
-    val selectedLanguage: StateFlow<String> = _selectedLanguage.asStateFlow()
-
-    private val _workingVideoPath = MutableStateFlow<String?>(null)
-    val workingVideoPath: StateFlow<String?> = _workingVideoPath.asStateFlow()
-
-    // ── Drip-feed segment streaming ──────────────────────────────────────
-    // Raw segments arrive here from the JNI callback (can be bursty)
     private val _segmentBuffer = Channel<StreamedSegment>(Channel.UNLIMITED)
-    // UI observes this — segments appear one at a time with pacing
-    private val _streamedSegments = MutableStateFlow<List<StreamedSegment>>(emptyList())
-    val streamedSegments: StateFlow<List<StreamedSegment>> = _streamedSegments.asStateFlow()
     private var dripJob: Job? = null
-
-    // Total segment count for the Done screen summary
-    private val _segmentCount = MutableStateFlow(0)
-    val segmentCount: StateFlow<Int> = _segmentCount.asStateFlow()
-
-    // One-shot event: auto-navigate after Done
-    private val _navigateToStyleEditor = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val navigateToStyleEditor: SharedFlow<Unit> = _navigateToStyleEditor.asSharedFlow()
-
-    // Safety check state for model downloads
-    private val _safetyCheck = MutableStateFlow<ModelSafetyCheck>(ModelSafetyCheck.Idle)
-    val safetyCheck: StateFlow<ModelSafetyCheck> = _safetyCheck.asStateFlow()
-
-    /** The currently active Whisper model — used by the UI to check isMultilingual. */
-    val activeModel: StateFlow<WhisperModel?> = modelRepository.getActiveModel()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = null
-        )
-
     private var activeJob: Job? = null
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L
+    private var pendingProjectId: String? = null
 
-    /** Start draining the segment buffer, emitting one segment at a time to the UI. */
+    init {
+        viewModelScope.launch {
+            modelRepository.getActiveModel().collect { model ->
+                setState { copy(activeModel = model) }
+            }
+        }
+    }
+
+    override fun handleEvent(event: ProcessingUiEvent) {
+        when (event) {
+            is ProcessingUiEvent.PrepareForProject -> prepareForProject(event.projectId)
+            is ProcessingUiEvent.SelectLanguage -> selectLanguage(event.language)
+            is ProcessingUiEvent.ShowModelSetup -> showModelSetup()
+            is ProcessingUiEvent.ShowModelPicker -> showModelPicker()
+            is ProcessingUiEvent.CheckSafetyAndDownload -> checkSafetyAndDownload(event.modelId)
+            is ProcessingUiEvent.ConfirmCellularDownload -> confirmCellularDownload(event.modelId)
+            is ProcessingUiEvent.DownloadAndProcess -> downloadAndProcess(event.modelId, event.projectId)
+            is ProcessingUiEvent.ResetSafetyCheck -> resetSafetyCheck()
+            is ProcessingUiEvent.CancelModelSetup -> cancelModelSetup()
+            is ProcessingUiEvent.Cancel -> cancel()
+            is ProcessingUiEvent.StartProcessing -> startProcessing(event.projectId)
+        }
+    }
+
     private fun startDripFeed() {
         dripJob?.cancel()
         dripJob = viewModelScope.launch {
             for (segment in _segmentBuffer) {
-                _streamedSegments.value += segment
+                setState { copy(streamedSegments = streamedSegments + segment) }
                 delay(SEGMENT_DRIP_DELAY_MS.milliseconds)
             }
         }
     }
 
-    /** Stop the drip feed and drain any remaining buffered segments immediately. */
     private fun flushDripFeed() {
         dripJob?.cancel()
         dripJob = null
-        // Drain anything left in the buffer
         val remaining = mutableListOf<StreamedSegment>()
         while (true) {
             val seg = _segmentBuffer.tryReceive().getOrNull() ?: break
             remaining.add(seg)
         }
         if (remaining.isNotEmpty()) {
-            _streamedSegments.value += remaining
+            setState { copy(streamedSegments = streamedSegments + remaining) }
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Prepare — called when the screen first appears
-    // ════════════════════════════════════════════════════════════════════════
-
-    fun prepareForProject(projectId: String) {
+    private fun prepareForProject(projectId: String) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
-            _workingVideoPath.value = project?.workingVideoPath
-            // Restore the language saved from last transcription
-            _selectedLanguage.value = project?.transcriptionLanguage ?: "en"
-
-            if (project?.status == ProjectStatus.TRANSCRIBED || project?.status == ProjectStatus.EXPORTED) {
-                _step.value = ProcessingStep.Done
-            } else {
-                _step.value = ProcessingStep.Ready
+            setState { 
+                copy(
+                    workingVideoPath = project?.workingVideoPath,
+                    selectedLanguage = project?.transcriptionLanguage ?: "en",
+                    step = if (project?.status == ProjectStatus.TRANSCRIBED || project?.status == ProjectStatus.EXPORTED) {
+                        ProcessingStep.Done
+                    } else {
+                        ProcessingStep.Ready
+                    }
+                )
             }
         }
     }
 
-    fun selectLanguage(language: String) {
-        _selectedLanguage.value = language
+    private fun selectLanguage(language: String) {
+        setState { copy(selectedLanguage = language) }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // First-time model setup — Option B (Bottom Sheet picker)
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Called when the user taps "Generate Captions" but no model is downloaded.
-     * Filters models by language compatibility and profiles the device to recommend one.
-     */
-    fun showModelSetup() {
-        val language = _selectedLanguage.value
+    private fun showModelSetup() {
+        val language = currentState.selectedLanguage
         val allModels = modelRepository.getAvailableModels()
 
-        // Filter: if non-English language selected, only show multilingual models.
-        // If English is selected, only show English-optimized models (.en models).
         val compatibleModels = if (language != "en") {
             allModels.filter { it.isMultilingual }
         } else {
@@ -209,19 +208,13 @@ class ProcessingViewModel @Inject constructor(
         }
 
         val recommendedId = deviceCapabilityUseCase.getRecommendedModel(language)
+        val finalRec = if (compatibleModels.any { it.id == recommendedId }) recommendedId else compatibleModels.firstOrNull()?.id
 
-        _step.value = ProcessingStep.SetupAI(
-            models = compatibleModels,
-            recommendedModelId = if (compatibleModels.any { it.id == recommendedId }) recommendedId else compatibleModels.firstOrNull()?.id
-        )
+        setState { copy(step = ProcessingStep.SetupAI(models = compatibleModels, recommendedModelId = finalRec)) }
     }
 
-    /**
-     * Called when a returning user taps "Change" on the model indicator.
-     * Shows the same picker bottom sheet but also includes already-downloaded models.
-     */
-    fun showModelPicker() {
-        val language = _selectedLanguage.value
+    private fun showModelPicker() {
+        val language = currentState.selectedLanguage
         val allModels = modelRepository.getAvailableModels()
 
         val compatibleModels = if (language != "en") {
@@ -230,59 +223,45 @@ class ProcessingViewModel @Inject constructor(
             allModels.filter { !it.isMultilingual }
         }
 
-        val currentModelId = activeModel.value?.id
+        val currentModelId = currentState.activeModel?.id
+        val finalRec = currentModelId ?: compatibleModels.firstOrNull()?.id
 
-        _step.value = ProcessingStep.SetupAI(
-            models = compatibleModels,
-            recommendedModelId = currentModelId ?: compatibleModels.firstOrNull()?.id
-        )
+        setState { copy(step = ProcessingStep.SetupAI(models = compatibleModels, recommendedModelId = finalRec)) }
     }
 
-    /**
-     * Run safety checks before downloading. Shows cellular/storage warnings if needed.
-     */
-    fun checkSafetyAndDownload(modelId: String) {
+    private fun checkSafetyAndDownload(modelId: String) {
         val model = modelRepository.getModelById(modelId) ?: return
 
         when (val state = deviceCapabilityUseCase.checkSafetyForModel(model.sizeMb.toLong())) {
             is com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState.StorageError -> {
-                _safetyCheck.value = ModelSafetyCheck.StorageError(state.requiredMb)
+                setState { copy(safetyCheck = ModelSafetyCheck.StorageError(state.requiredMb)) }
             }
             is com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState.CellularWarning -> {
-                _safetyCheck.value = ModelSafetyCheck.CellularWarning(modelId, state.sizeMb)
+                setState { copy(safetyCheck = ModelSafetyCheck.CellularWarning(modelId, state.sizeMb)) }
             }
             else -> {
-                _safetyCheck.value = ModelSafetyCheck.Passed
+                setState { copy(safetyCheck = ModelSafetyCheck.Passed) }
                 startModelDownload(modelId)
             }
         }
     }
 
-    fun resetSafetyCheck() {
-        _safetyCheck.value = ModelSafetyCheck.Idle
+    private fun resetSafetyCheck() {
+        setState { copy(safetyCheck = ModelSafetyCheck.Idle) }
     }
 
-    fun cancelModelSetup() {
-        if (_step.value is ProcessingStep.SetupAI) {
-            _step.value = ProcessingStep.Ready
+    private fun cancelModelSetup() {
+        if (currentState.step is ProcessingStep.SetupAI) {
+            setState { copy(step = ProcessingStep.Ready) }
         }
     }
 
-    /**
-     * Proceed with download after user confirms cellular warning.
-
-     */
-    fun confirmCellularDownload(modelId: String) {
-        _safetyCheck.value = ModelSafetyCheck.Idle
+    private fun confirmCellularDownload(modelId: String) {
+        setState { copy(safetyCheck = ModelSafetyCheck.Idle) }
         startModelDownload(modelId)
     }
 
-    /**
-     * Download the selected model inline, then automatically start processing.
-     */
-    private var pendingProjectId: String? = null
-
-    fun downloadAndProcess(modelId: String, projectId: String) {
+    private fun downloadAndProcess(modelId: String, projectId: String) {
         pendingProjectId = projectId
         checkSafetyAndDownload(modelId)
     }
@@ -290,123 +269,110 @@ class ProcessingViewModel @Inject constructor(
     private fun startModelDownload(modelId: String) {
         val model = modelRepository.getModelById(modelId) ?: return
 
-        // If already downloaded, skip directly to processing
         if (model.isDownloaded) {
             pendingProjectId?.let { startProcessing(it) }
             return
         }
 
-        _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
+        setState { copy(step = ProcessingStep.DownloadingModel(modelName = model.displayName)) }
 
         viewModelScope.launch {
             modelRepository.downloadModel(modelId).collect { state ->
                 when (state) {
                     is DownloadState.Starting -> {
-                        _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
+                        setState { copy(step = ProcessingStep.DownloadingModel(modelName = model.displayName)) }
                     }
                     is DownloadState.Downloading -> {
-                        _step.value = ProcessingStep.DownloadingModel(
-                            modelName = model.displayName,
-                            progress = state.progress,
-                            downloadedBytes = state.downloadedBytes,
-                            totalBytes = state.totalBytes
-                        )
+                        setState { 
+                            copy(step = ProcessingStep.DownloadingModel(
+                                modelName = model.displayName,
+                                progress = state.progress,
+                                downloadedBytes = state.downloadedBytes,
+                                totalBytes = state.totalBytes
+                            ))
+                        }
                     }
                     is DownloadState.Complete -> {
                         Log.i(TAG, "Model download complete, starting processing")
                         pendingProjectId?.let { startProcessing(it) }
                     }
                     is DownloadState.Error -> {
-                        _step.value = ProcessingStep.Error("Model download failed: ${state.message}")
+                        setState { copy(step = ProcessingStep.Error("Model download failed: ${state.message}")) }
                     }
                 }
             }
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Cancel
-    // ════════════════════════════════════════════════════════════════════════
-
-    fun cancel() {
-        isCancelled = true          // Set BEFORE cancelling the job to close the race window
-        _step.value = ProcessingStep.Cancelling
+    private fun cancel() {
+        isCancelled = true
+        setState { copy(step = ProcessingStep.Cancelling) }
         activeJob?.cancel()
         activeJob = null
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             whisperEngine.release()
             context.stopService(Intent(context, TranscriptionService::class.java))
-            _step.value = ProcessingStep.Cancelled
+            setState { copy(step = ProcessingStep.Cancelled) }
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Main processing pipeline
-    // ════════════════════════════════════════════════════════════════════════
-
-    fun startProcessing(projectId: String) {
+    private fun startProcessing(projectId: String) {
         if (activeJob?.isActive == true) return
-        isCancelled = false         // Reset flag for each fresh processing run
-        _streamedSegments.value = emptyList() // Clear any previous segments
-        _segmentCount.value = 0
-        startDripFeed() // Begin draining the segment buffer
-        _step.value = ProcessingStep.ExtractingAudio
-        val language = _selectedLanguage.value
+        isCancelled = false
+        setState { copy(streamedSegments = emptyList(), segmentCount = 0, step = ProcessingStep.ExtractingAudio) }
+        startDripFeed()
+        val language = currentState.selectedLanguage
 
         activeJob = viewModelScope.launch {
             try {
                 val project = projectRepository.getProjectById(projectId) ?: run {
-                    _step.value = ProcessingStep.Error("Project not found")
+                    setState { copy(step = ProcessingStep.Error("Project not found")) }
                     return@launch
                 }
 
-                if (project.status == ProjectStatus.TRANSCRIBED ||
-                    project.status == ProjectStatus.EXPORTED) {
-                    _step.value = ProcessingStep.Done
+                if (project.status == ProjectStatus.TRANSCRIBED || project.status == ProjectStatus.EXPORTED) {
+                    setState { copy(step = ProcessingStep.Done) }
                     return@launch
                 }
 
-                // Step 1 — Extract compressed audio track to a proper .m4a file
-                _step.value = ProcessingStep.ExtractingAudio
+                setState { copy(step = ProcessingStep.ExtractingAudio) }
                 TranscriptionService.updateProgress("Extracting audio...")
                 ContextCompat.startForegroundService(context, Intent(context, TranscriptionService::class.java))
                 projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
 
-                // Step 2 — Persist selected language before transcription
-                projectRepository.updateProject(
-                    project.copy(transcriptionLanguage = language)
-                )
+                projectRepository.updateProject(project.copy(transcriptionLanguage = language))
 
-                // Step 3 — Load model if needed
-                _step.value = ProcessingStep.LoadingModel
+                setState { copy(step = ProcessingStep.LoadingModel) }
                 TranscriptionService.updateProgress("Loading AI model...")
                 val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
                     modelRepository.getModelFile(model.id)
                 }
 
                 if (activeModelFile == null || !activeModelFile.exists()) {
-                    _step.value = ProcessingStep.Error("No model downloaded")
+                    setState { copy(step = ProcessingStep.Error("No model downloaded")) }
                     return@launch
                 }
 
                 if (!whisperEngine.isReady()) {
                     val success = whisperEngine.initialize(activeModelFile)
                     if (!success) {
-                        _step.value = ProcessingStep.Error("Failed to load model")
+                        setState { copy(step = ProcessingStep.Error("Failed to load model")) }
                         return@launch
                     }
                 }
 
-                // Step 4 — Transcribe using full audio with JNI progress + segment callbacks
                 transcriptionStartTimeMs = System.currentTimeMillis()
-                _step.value = ProcessingStep.Transcribing(0f)
+                setState { copy(step = ProcessingStep.Transcribing(0f)) }
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
-                val pcmSamples = audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
+                val pcmSamples = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
+                }
 
-                val allWords = whisperEngine.transcribeWithWordTimestamps(
-                    samples = pcmSamples,
-                    language = language,
+                val allWords = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    whisperEngine.transcribeWithWordTimestamps(
+                        samples = pcmSamples,
+                        language = language,
                     onProgress = { percent ->
                         val progressFraction = percent / 100f
                         val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs
@@ -415,47 +381,39 @@ class ProcessingViewModel @Inject constructor(
                             val remainingMs = estimatedTotalMs - elapsedMs
                             (remainingMs / 1000).toInt().coerceAtLeast(1)
                         } else null
-                        _step.value = ProcessingStep.Transcribing(progressFraction, etaSecs)
+                        setState { copy(step = ProcessingStep.Transcribing(progressFraction, etaSecs)) }
                         TranscriptionService.updateProgress("Transcribing video... ${percent}%")
                     },
                     onSegmentDecoded = { text, startMs, endMs ->
-                        // Buffer segment for drip-feed to UI
                         val trimmed = text.trim()
                         if (trimmed.isNotBlank() && !trimmed.startsWith("[")) {
-                            val segment = StreamedSegment(
-                                text = trimmed,
-                                startMs = startMs,
-                                endMs = endMs
-                            )
-                            _segmentBuffer.trySend(segment)
+                            _segmentBuffer.trySend(StreamedSegment(trimmed, startMs, endMs))
                         }
                     }
                 )
+                }
 
-                // Guard: if cancel() fired while JNI was running, discard the result
                 if (isCancelled) return@launch
 
                 if (allWords.isEmpty()) {
-                    _step.value = ProcessingStep.Error("No words transcribed")
+                    setState { copy(step = ProcessingStep.Error("No words transcribed")) }
                     return@launch
                 }
 
-                // Step 5 — Clean and group words into segments
-                _step.value = ProcessingStep.Saving
+                setState { copy(step = ProcessingStep.Saving) }
                 TranscriptionService.updateProgress("Saving transcription...")
                 
                 val finalSegments = CaptionSegmenter.buildFinalSegments(allWords)
 
                 captionRepository.saveTranscription(projectId, finalSegments)
                 projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBED)
-                _segmentCount.value = finalSegments.size
+                setState { copy(segmentCount = finalSegments.size) }
 
-                flushDripFeed() // Show any remaining buffered segments immediately
-                _step.value = ProcessingStep.Done
+                flushDripFeed()
+                setState { copy(step = ProcessingStep.Done) }
 
-                // Auto-navigate after a brief success animation
                 delay(2000.milliseconds)
-                _navigateToStyleEditor.tryEmit(Unit)
+                setEffect(ProcessingUiEffect.NavigateToStyleEditor)
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 Log.i(TAG, "Transcription cancelled")
@@ -463,15 +421,13 @@ class ProcessingViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error: ${e.message}", e)
                 crashReporter.recordException(e)
-                _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
+                setState { copy(step = ProcessingStep.Error(e.message ?: "Unknown error")) }
             } finally {
                 whisperEngine.release()
                 context.stopService(Intent(context, TranscriptionService::class.java))
             }
         }
     }
-
-
 
     override fun onCleared() {
         super.onCleared()

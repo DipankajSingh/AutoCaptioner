@@ -33,9 +33,10 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val currentTheme by viewModel.themeFlow.collectAsStateWithLifecycle()
-    val isGlassmorphism by viewModel.glassmorphismFlow.collectAsStateWithLifecycle()
-    val showTimelineThumbnails by viewModel.showTimelineThumbnailsFlow.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentTheme = uiState.theme
+    val isGlassmorphism = uiState.glassmorphism
+    val showTimelineThumbnails = uiState.showTimelineThumbnails
     val context = LocalContext.current
 
     Scaffold(
@@ -85,7 +86,7 @@ fun SettingsScreen(
                 }
                 Switch(
                     checked = isGlassmorphism,
-                    onCheckedChange = { viewModel.setGlassmorphismEnabled(it) }
+                    onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetGlassmorphism(it)) }
                 )
             }
 
@@ -110,7 +111,7 @@ fun SettingsScreen(
                 }
                 Switch(
                     checked = showTimelineThumbnails,
-                    onCheckedChange = { viewModel.setShowTimelineThumbnails(it) }
+                    onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetShowTimelineThumbnails(it)) }
                 )
             }
 
@@ -127,13 +128,13 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { viewModel.setTheme(themeOption) }
+                        .clickable { viewModel.setEvent(SettingsUiEvent.SetTheme(themeOption)) }
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = (themeOption == currentTheme),
-                        onClick = { viewModel.setTheme(themeOption) }
+                        onClick = { viewModel.setEvent(SettingsUiEvent.SetTheme(themeOption)) }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(

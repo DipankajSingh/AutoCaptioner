@@ -24,10 +24,11 @@ fun DeviceCheckScreen(
     onModelSelected: (String) -> Unit,
     viewModel: DeviceCheckViewModel = hiltViewModel()
 ) {
-    val deviceInfo by viewModel.deviceInfo.collectAsStateWithLifecycle()
-    val models by viewModel.models.collectAsStateWithLifecycle()
-    val recommendedModelId by viewModel.recommendedModelId.collectAsStateWithLifecycle()
-    val safetyState by viewModel.safetyState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val deviceInfo = uiState.deviceInfo
+    val models = uiState.models
+    val recommendedModelId = uiState.recommendedModelId
+    val safetyState = uiState.safetyState
     var selectedModelId by remember { mutableStateOf<String?>(null) }
 
     // Auto-select recommended model once it's known
@@ -114,9 +115,9 @@ fun DeviceCheckScreen(
 
         Button(
             onClick = {
-                val model = models.find { it.id == selectedModelId }
-                if (model != null) {
-                    viewModel.checkSafety(model.sizeMb.toLong())
+                val selected = models.find { it.id == selectedModelId }
+                if (selected != null) {
+                    viewModel.setEvent(DeviceCheckUiEvent.CheckSafety(selected.sizeMb.toLong()))
                 }
             },
             enabled = selectedModelId != null,
@@ -139,11 +140,13 @@ fun DeviceCheckScreen(
     when (val state = safetyState) {
         is ModelSafetyCheckState.StorageError -> {
             AlertDialog(
-                onDismissRequest = { viewModel.resetSafetyState() },
+                onDismissRequest = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) },
                 title = { Text("Not enough storage") },
                 text = { Text("Not enough storage. Please free up space and try again.") },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.resetSafetyState() }) {
+                    TextButton(onClick = {
+                        viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
+                    }) {
                         Text("OK")
                     }
                 }
@@ -151,20 +154,20 @@ fun DeviceCheckScreen(
         }
         is ModelSafetyCheckState.CellularWarning -> {
             AlertDialog(
-                onDismissRequest = { viewModel.resetSafetyState() },
+                onDismissRequest = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) },
                 title = { Text("Cellular Data Warning") },
                 text = { Text("You are on mobile data. This download is around ${state.sizeMb} MB. Continue on mobile data?") },
                 confirmButton = {
-                    TextButton(onClick = {
+                    Button(onClick = {
+                        viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
                         selectedModelId?.let { onModelSelected(it) }
-                        viewModel.resetSafetyState()
                     }) {
-                        Text("Continue Anyway")
+                        Text("Download Anyway")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { viewModel.resetSafetyState() }) {
-                        Text("Wait for Wi-Fi")
+                    TextButton(onClick = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) }) {
+                        Text("Cancel")
                     }
                 }
             )
@@ -172,7 +175,7 @@ fun DeviceCheckScreen(
         is ModelSafetyCheckState.Passed -> {
             LaunchedEffect(Unit) {
                 selectedModelId?.let { onModelSelected(it) }
-                viewModel.resetSafetyState()
+                viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
             }
         }
         ModelSafetyCheckState.Idle -> {}

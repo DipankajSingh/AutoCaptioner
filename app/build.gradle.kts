@@ -2,11 +2,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.dagger.hilt.android")
-    id("com.google.devtools.ksp")
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
-    id("com.google.firebase.firebase-perf")
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.firebase.perf)
 }
 
 
@@ -43,6 +43,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -57,8 +58,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
 
@@ -80,7 +81,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
         freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }
@@ -113,36 +114,36 @@ dependencies {
     // -------------------------------------------------------
     // Navigation
     // -------------------------------------------------------
-    implementation("androidx.navigation:navigation-compose:2.9.8")
+    implementation(libs.androidx.navigation.compose)
 
     // -------------------------------------------------------
     // Lifecycle + ViewModel
     // -------------------------------------------------------
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     // -------------------------------------------------------
     // Hilt Dependency Injection
     // -------------------------------------------------------
-    implementation("com.google.dagger:hilt-android:2.55")
-    ksp("com.google.dagger:hilt-compiler:2.55")
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // -------------------------------------------------------
     // Room Database
     // -------------------------------------------------------
-    implementation("androidx.room:room-runtime:2.8.4")
-    implementation("androidx.room:room-ktx:2.8.4")
-    ksp("androidx.room:room-compiler:2.8.4")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // -------------------------------------------------------
     // Media3 — ExoPlayer + Transformer
     // -------------------------------------------------------
-    implementation("androidx.media3:media3-exoplayer:1.10.0")
-    implementation("androidx.media3:media3-ui:1.10.0")
-    implementation("androidx.media3:media3-transformer:1.10.0")
-    implementation("androidx.media3:media3-effect:1.10.0")
-    implementation("androidx.media3:media3-common:1.10.0")
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.androidx.media3.effect)
+    implementation(libs.androidx.media3.common)
 
     // -------------------------------------------------------
     // FFmpeg Kit — video processing + format fallback
@@ -152,47 +153,47 @@ dependencies {
     // -------------------------------------------------------
     // OkHttp — model downloading
     // -------------------------------------------------------
-    implementation("com.squareup.okhttp3:okhttp:5.3.2")
+    implementation(libs.okhttp)
 
     // -------------------------------------------------------
     // Coroutines
     // -------------------------------------------------------
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation(libs.kotlinx.coroutines.android)
 
     // -------------------------------------------------------
     // DataStore — settings + onboarding flag
     // -------------------------------------------------------
-    implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation(libs.androidx.datastore.preferences)
 
     // -------------------------------------------------------
     // Coil — thumbnail image loading
     // -------------------------------------------------------
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation(libs.coil.compose)
 
     // -------------------------------------------------------
     // Splash Screen
     // -------------------------------------------------------
-    implementation("androidx.core:core-splashscreen:1.2.0")
+    implementation(libs.androidx.core.splashscreen)
 
     // -------------------------------------------------------
     // Lottie — animations
     // -------------------------------------------------------
-    implementation("com.airbnb.android:lottie-compose:6.7.1")
+    implementation(libs.lottie.compose)
 
     // -------------------------------------------------------
     // Accompanist — runtime permissions
     // -------------------------------------------------------
-    implementation("com.google.accompanist:accompanist-permissions:0.37.3")
+    implementation(libs.accompanist.permissions)
 
     // -------------------------------------------------------
     // Firebase
     // -------------------------------------------------------
-    implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
-    implementation("com.google.firebase:firebase-crashlytics")      // Crash reporting
-    implementation("com.google.firebase:firebase-crashlytics-ndk")  // NDK/C++ crash support
-    implementation("com.google.firebase:firebase-analytics")        // Usage analytics
-    implementation("com.google.firebase:firebase-perf")             // Performance monitoring
-    implementation("com.google.firebase:firebase-config")           // Remote Config
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)      // Crash reporting
+    implementation(libs.firebase.crashlytics.ndk)  // NDK/C++ crash support
+    implementation(libs.firebase.analytics)        // Usage analytics
+    implementation(libs.firebase.perf)             // Performance monitoring
+    implementation(libs.firebase.config)           // Remote Config
 
     // -------------------------------------------------------
     // Testing

@@ -1,13 +1,9 @@
 package com.dipdev.aiautocaptioner.ui.export
 
-import android.content.ContentValues
+import android.os.Environment
 import android.content.Context
 import android.content.Intent
-import android.media.MediaScannerConnection
-import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
-import androidx.core.content.FileProvider
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
@@ -34,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import com.dipdev.aiautocaptioner.core.utils.MediaManager
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
@@ -84,7 +81,8 @@ class ExportViewModel @Inject constructor(
     private val captionRepository: CaptionRepository,
     private val exportedFileDao: ExportedFileDao,
     private val crashReporter: CrashReporter,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val mediaManager: MediaManager
 ) : BaseViewModel<ExportUiState, ExportUiEvent, ExportUiEffect>(ExportUiState()) {
 
     private var activeTransformer: Transformer? = null
@@ -248,54 +246,12 @@ class ExportViewModel @Inject constructor(
 
     private fun saveToGallery(filePath: String) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val sourceFile = File(filePath)
-                    if (!sourceFile.exists()) return@withContext
-
-                    val fileName = "AutoCaptioner_${System.currentTimeMillis()}.mp4"
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        val values = ContentValues().apply {
-                            put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
-                            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                            put(MediaStore.Video.Media.RELATIVE_PATH,
-                                "${Environment.DIRECTORY_MOVIES}/AutoCaptioner")
-                            put(MediaStore.Video.Media.IS_PENDING, 1)
-                        }
-                        val resolver = context.contentResolver
-                        val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-                            ?: return@withContext
-
-                        resolver.openOutputStream(uri)?.use { out ->
-                            sourceFile.inputStream().use { it.copyTo(out) }
-                        }
-                        values.clear()
-                        values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                        resolver.update(uri, values, null, null)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        val destDir = File(
-                            Environment.getExternalStoragePublicDirectory(
-                                Environment.DIRECTORY_MOVIES
-                            ), "AutoCaptioner"
-                        )
-                        destDir.mkdirs()
-                        val destFile = File(destDir, fileName)
-                        sourceFile.copyTo(destFile, overwrite = true)
-                        MediaScannerConnection.scanFile(
-                            context,
-                            arrayOf(destFile.absolutePath),
-                            arrayOf("video/mp4"),
-                            null
-                        )
-                    }
-
-                    setState { copy(exportState = ExportState.SavedToGallery) }
-                } catch (e: Exception) {
-                    crashReporter.recordException(e)
-                    setState { copy(exportState = ExportState.Error("Failed to save to gallery: ${e.message}")) }
-                }
+            try {
+                mediaManager.saveVideoToGallery(filePath)
+                setState { copy(exportState = ExportState.SavedToGallery) }
+            } catch (e: Exception) {
+                crashReporter.recordException(e)
+                setState { copy(exportState = ExportState.Error("Failed to save to gallery: ${e.message}")) }
             }
         }
     }
@@ -306,18 +262,8 @@ class ExportViewModel @Inject constructor(
         }
     }
 
-    fun shareVideo(path: String): Intent {
-        val file = File(path)
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-        return Intent(Intent.ACTION_SEND).apply {
-            type = "video/mp4"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+    fun shareVideo(path: String) {
+        mediaManager.shareVideo(path)
     }
 
     private fun trackProgress(transformer: Transformer) {

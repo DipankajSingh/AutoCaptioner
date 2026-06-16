@@ -31,12 +31,12 @@ fun ModelDownloadScreen(
     onNavigateBack: (() -> Unit)? = null,
     viewModel: ModelDownloadViewModel = hiltViewModel()
 ) {
-    val downloadState by viewModel.downloadState.collectAsStateWithLifecycle()
-    val modelName by viewModel.modelName.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val downloadState = uiState.downloadState
+    val modelName = uiState.modelName
 
-    // Start download when screen first appears
     LaunchedEffect(modelId) {
-        viewModel.startDownload(modelId)
+        viewModel.setEvent(ModelDownloadUiEvent.StartDownload(modelId))
     }
 
     // Navigate when complete
@@ -117,7 +117,7 @@ fun ModelDownloadScreen(
                 is DownloadState.Error -> {
                     ErrorContent(
                         message = state.message,
-                        onRetry = { viewModel.retry(modelId) }
+                        onRetry = { viewModel.setEvent(ModelDownloadUiEvent.Retry(modelId)) }
                     )
                 }
             }

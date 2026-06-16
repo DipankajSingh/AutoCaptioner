@@ -11,36 +11,52 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+
+data class ModelDownloadUiState(
+    val downloadState: DownloadState = DownloadState.Starting,
+    val modelName: String = ""
+) : UiState
+
+sealed interface ModelDownloadUiEvent : UiEvent {
+    data class StartDownload(val modelId: String) : ModelDownloadUiEvent
+    data class Retry(val modelId: String) : ModelDownloadUiEvent
+}
+
+sealed interface ModelDownloadUiEffect : UiEffect
+
 @HiltViewModel
 class ModelDownloadViewModel @Inject constructor(
     private val modelRepository: ModelRepository
-) : ViewModel() {
+) : BaseViewModel<ModelDownloadUiState, ModelDownloadUiEvent, ModelDownloadUiEffect>(ModelDownloadUiState()) {
 
-    private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Starting)
-    val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
+    override fun handleEvent(event: ModelDownloadUiEvent) {
+        when (event) {
+            is ModelDownloadUiEvent.StartDownload -> startDownload(event.modelId)
+            is ModelDownloadUiEvent.Retry -> {
+                setState { copy(downloadState = DownloadState.Starting) }
+                startDownload(event.modelId)
+            }
+        }
+    }
 
-    private val _modelName = MutableStateFlow("")
-    val modelName: StateFlow<String> = _modelName.asStateFlow()
-
-    fun startDownload(modelId: String) {
+    private fun startDownload(modelId: String) {
         val model = modelRepository.getModelById(modelId) ?: return
-        _modelName.value = model.displayName
+        setState { copy(modelName = model.displayName) }
 
         // If already downloaded just emit Complete immediately
         if (model.isDownloaded) {
-            _downloadState.value = DownloadState.Complete(model.localPath!!)
+            setState { copy(downloadState = DownloadState.Complete(model.localPath!!)) }
             return
         }
 
         viewModelScope.launch {
             modelRepository.downloadModel(modelId).collect { state ->
-                _downloadState.value = state
+                setState { copy(downloadState = state) }
             }
         }
-    }
-
-    fun retry(modelId: String) {
-        _downloadState.value = DownloadState.Starting
-        startDownload(modelId)
     }
 }

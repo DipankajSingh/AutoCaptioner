@@ -11,61 +11,76 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+
+data class ModelManagerUiState(
+    val availableModels: List<WhisperModel> = emptyList(),
+    val activeModel: WhisperModel? = null,
+    val downloadStates: Map<String, DownloadState> = emptyMap()
+) : UiState
+
+sealed interface ModelManagerUiEvent : UiEvent {
+    data object RefreshModels : ModelManagerUiEvent
+    data class SetActiveModel(val model: WhisperModel) : ModelManagerUiEvent
+    data class StartDownload(val modelId: String) : ModelManagerUiEvent
+    data class DeleteModel(val modelId: String) : ModelManagerUiEvent
+}
+
+sealed interface ModelManagerUiEffect : UiEffect
+
 @HiltViewModel
 class ModelManagerViewModel @Inject constructor(
     private val modelRepository: ModelRepository
-) : ViewModel() {
+) : BaseViewModel<ModelManagerUiState, ModelManagerUiEvent, ModelManagerUiEffect>(
+    ModelManagerUiState(availableModels = modelRepository.getAvailableModels())
+) {
 
-    // Main listing of all statically defined models with mapped dynamic properties (isDownloaded)
-    private val _availableModels = MutableStateFlow(modelRepository.getAvailableModels())
-    val availableModels: StateFlow<List<WhisperModel>> = _availableModels.asStateFlow()
-
-    // Emits the currently active selected model
-    val activeModel: StateFlow<WhisperModel?> = modelRepository.getActiveModel()
-        .stateInDefault(scope = viewModelScope, initialValue = null)
-
-    // Tracks downloading instances for any models triggered off cards
-    private val _downloadStates = MutableStateFlow<Map<String, DownloadState>>(emptyMap())
-    val downloadStates: StateFlow<Map<String, DownloadState>> = _downloadStates.asStateFlow()
-
-    fun refreshModels() {
-        _availableModels.value = modelRepository.getAvailableModels()
-    }
-
-    fun setActiveModel(model: WhisperModel) {
+    init {
         viewModelScope.launch {
-            modelRepository.setActiveModel(model.id)
-        }
-    }
-
-    fun startDownload(modelId: String) {
-        viewModelScope.launch {
-            modelRepository.downloadModel(modelId).collect { state ->
-                // Update tracking map dynamically
-                _downloadStates.update { currentMap ->
-                    val newMap = currentMap.toMutableMap()
-                    newMap[modelId] = state
-                    newMap
-                }
-                
-                // If it hits complete, trigger an ambient repository scan
-                if (state is DownloadState.Complete) {
-                    refreshModels()
-                }
+            modelRepository.getActiveModel().collect { activeModel ->
+                setState { copy(activeModel = activeModel) }
             }
         }
     }
 
-    fun deleteModel(modelId: String) {
-        viewModelScope.launch {
-            modelRepository.deleteModel(modelId)
-            // Immediately run a sweep to drop mapping references
-            _downloadStates.update { currentMap ->
-                val newMap = currentMap.toMutableMap()
-                newMap.remove(modelId)
-                newMap
+    override fun handleEvent(event: ModelManagerUiEvent) {
+        when (event) {
+            is ModelManagerUiEvent.RefreshModels -> {
+                setState { copy(availableModels = modelRepository.getAvailableModels()) }
             }
-            refreshModels()
+            is ModelManagerUiEvent.SetActiveModel -> {
+                viewModelScope.launch {
+                    modelRepository.setActiveModel(event.model.id)
+                }
+            }
+            is ModelManagerUiEvent.StartDownload -> {
+                viewModelScope.launch {
+                    modelRepository.downloadModel(event.modelId).collect { state ->
+                        setState {
+                            val newMap = downloadStates.toMutableMap()
+                            newMap[event.modelId] = state
+                            copy(downloadStates = newMap)
+                        }
+                        if (state is DownloadState.Complete) {
+                            handleEvent(ModelManagerUiEvent.RefreshModels)
+                        }
+                    }
+                }
+            }
+            is ModelManagerUiEvent.DeleteModel -> {
+                viewModelScope.launch {
+                    modelRepository.deleteModel(event.modelId)
+                    setState {
+                        val newMap = downloadStates.toMutableMap()
+                        newMap.remove(event.modelId)
+                        copy(downloadStates = newMap)
+                    }
+                    handleEvent(ModelManagerUiEvent.RefreshModels)
+                }
+            }
         }
     }
 }

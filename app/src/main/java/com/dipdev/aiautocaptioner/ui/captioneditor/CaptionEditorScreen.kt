@@ -72,13 +72,14 @@ fun CaptionEditorScreen(
     onNavigateToProcessing: (String) -> Unit,
     viewModel: CaptionEditorViewModel = hiltViewModel()
 ) {
-    val project by viewModel.project.collectAsStateWithLifecycle()
-    val segments by viewModel.segments.collectAsStateWithLifecycle()
-    val filteredSegments by viewModel.filteredSegments.collectAsStateWithLifecycle()
-    val wordsMap by viewModel.wordsMap.collectAsStateWithLifecycle()
-    val expandedSegmentId by viewModel.expandedSegmentId.collectAsStateWithLifecycle()
-    val retranscribeRequested by viewModel.retranscribeRequested.collectAsStateWithLifecycle()
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val project = uiState.project
+    val segments = uiState.segments
+    val filteredSegments = uiState.filteredSegments
+    val wordsMap = uiState.wordsMap
+    val expandedSegmentId = uiState.expandedSegmentId
+    val retranscribeRequested = uiState.retranscribeRequested
+    val searchQuery = uiState.searchQuery
 
     var showJumpDialog by remember { mutableStateOf(false) }
     var jumpMinutes by remember { mutableStateOf("") }
@@ -87,12 +88,12 @@ fun CaptionEditorScreen(
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(projectId) {
-        viewModel.loadProject(projectId)
+        viewModel.setEvent(CaptionEditorUiEvent.LoadProject(projectId))
     }
 
     LaunchedEffect(retranscribeRequested) {
         if (retranscribeRequested) {
-            viewModel.retranscribeHandled()
+            viewModel.setEvent(CaptionEditorUiEvent.RetranscribeHandled)
             onNavigateToProcessing(projectId)
         }
     }
@@ -122,11 +123,7 @@ fun CaptionEditorScreen(
         if (player == null) return@LaunchedEffect
         while (true) {
             currentPositionMs = player.currentPosition
-            if (player.isPlaying) {
-                androidx.compose.runtime.withFrameMillis { }
-            } else {
-                kotlinx.coroutines.delay(200.milliseconds)
-            }
+            kotlinx.coroutines.delay(if (player.isPlaying) 100L else 500L)
         }
     }
 
@@ -149,16 +146,20 @@ fun CaptionEditorScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.srtContentToShare.collect { content ->
-            val srtFile = java.io.File(context.cacheDir, "captions_$projectId.srt")
-            srtFile.writeText(content)
-            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", srtFile)
-            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "application/x-subrip"
-                putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is CaptionEditorUiEffect.ShareSrt -> {
+                    val srtFile = java.io.File(context.cacheDir, "captions_$projectId.srt")
+                    srtFile.writeText(effect.content)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", srtFile)
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "application/x-subrip"
+                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(intent, "Share SRT"))
+                }
             }
-            context.startActivity(android.content.Intent.createChooser(intent, "Share SRT"))
         }
     }
 
@@ -183,7 +184,7 @@ fun CaptionEditorScreen(
                         Text("Jump", color = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(
-                        onClick = { viewModel.retranscribe(projectId) }
+                        onClick = { viewModel.setEvent(CaptionEditorUiEvent.Retranscribe(projectId)) }
                     ) {
                         Icon(
                             Icons.Default.Refresh,
@@ -208,7 +209,7 @@ fun CaptionEditorScreen(
                     Text("Style Editor", maxLines = 1)
                 }
                 AppPrimaryButton(
-                    onClick = { viewModel.shareSrt(projectId) },
+                    onClick = { viewModel.setEvent(CaptionEditorUiEvent.ShareSrt(projectId)) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Export SRT", maxLines = 1)
@@ -235,7 +236,7 @@ fun CaptionEditorScreen(
 
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = viewModel::updateSearchQuery,
+                onValueChange = { viewModel.setEvent(CaptionEditorUiEvent.UpdateSearchQuery(it)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -245,7 +246,7 @@ fun CaptionEditorScreen(
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                        IconButton(onClick = { viewModel.setEvent(CaptionEditorUiEvent.UpdateSearchQuery("")) }) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear search")
                         }
                     }
@@ -287,12 +288,12 @@ fun CaptionEditorScreen(
                             words = words,
                             isExpanded = isExpanded,
                             isActive = isActive,
-                            onToggleExpand = { viewModel.toggleSegmentExpanded(segment.id) },
+                            onToggleExpand = { viewModel.setEvent(CaptionEditorUiEvent.ToggleSegmentExpanded(segment.id)) },
                             onSaveText = { newText ->
-                                viewModel.saveSegmentText(segment, newText)
+                                viewModel.setEvent(CaptionEditorUiEvent.SaveSegmentText(segment, newText))
                             },
                             onWordLongPress = { word ->
-                                viewModel.toggleWordEmphasis(word)
+                                viewModel.setEvent(CaptionEditorUiEvent.ToggleWordEmphasis(word))
                             }
                         )
                     }
@@ -411,10 +412,23 @@ private fun SegmentCard(
             if (isExpanded) {
                 // Prioritize local text state while expanded to prevent typing wipeout from delayed DB updates
                 var text by remember(segment.id) { mutableStateOf(segment.text) }
+                val currentText by androidx.compose.runtime.rememberUpdatedState(text)
+                val currentSegmentText by androidx.compose.runtime.rememberUpdatedState(segment.text)
+                val currentOnSaveText by androidx.compose.runtime.rememberUpdatedState(onSaveText)
 
                 LaunchedEffect(text) {
                     kotlinx.coroutines.delay(500)
-                    onSaveText(text)
+                    if (text != segment.text) {
+                        onSaveText(text)
+                    }
+                }
+                
+                androidx.compose.runtime.DisposableEffect(segment.id) {
+                    onDispose {
+                        if (currentText != currentSegmentText) {
+                            currentOnSaveText(currentText)
+                        }
+                    }
                 }
 
                 BasicTextField(

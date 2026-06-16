@@ -41,13 +41,14 @@ fun StyleEditorScreen(
     onNavigateToExport: () -> Unit,
     viewModel: StyleEditorViewModel = hiltViewModel()
 ) {
-    val project by viewModel.project.collectAsStateWithLifecycle()
-    val styles by viewModel.styles.collectAsStateWithLifecycle()
-    val activeStyle by viewModel.activeStyle.collectAsStateWithLifecycle()
-    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
-    val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
-    val canRedo by viewModel.canRedo.collectAsStateWithLifecycle()
-    val isPremium by viewModel.isPremium.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val project = uiState.project
+    val styles = uiState.styles
+    val activeStyle = uiState.activeStyle
+    val selectedTab = uiState.selectedTab
+    val canUndo = uiState.canUndo
+    val canRedo = uiState.canRedo
+    val isPremium = uiState.isPremium
     
     var showExportWarning by remember { mutableStateOf(false) }
     var showPresetDialog by remember { mutableStateOf(false) }
@@ -70,29 +71,29 @@ fun StyleEditorScreen(
     }
 
     BackHandler {
-        viewModel.saveAndApply(projectId)
+        viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
         onNavigateBack()
     }
 
-    val segments by viewModel.segments.collectAsStateWithLifecycle()
-    val wordsMap by viewModel.wordsMap.collectAsStateWithLifecycle()
-    val videoDurationMs by viewModel.videoDurationMs.collectAsStateWithLifecycle()
+    val segments = uiState.segments
+    val wordsMap = uiState.wordsMap
+    val videoDurationMs = uiState.videoDurationMs
 
     LaunchedEffect(project?.workingVideoPath) {
-        project?.workingVideoPath?.let { viewModel.initPlayer(it) }
+        project?.workingVideoPath?.let { viewModel.setEvent(StyleEditorUiEvent.InitPlayer(it)) }
     }
 
     LaunchedEffect(projectId) {
-        viewModel.loadStyles(projectId)
+        viewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
     }
 
     if (showPaywall) {
         PaywallDialog(
             onDismiss = { showPaywall = false; pendingPremiumTab = null },
             onPurchase = {
-                viewModel.unlockPremiumMock()
+                viewModel.setEvent(StyleEditorUiEvent.UnlockPremiumMock)
                 showPaywall = false
-                pendingPremiumTab?.let { viewModel.selectTab(it) }
+                pendingPremiumTab?.let { viewModel.setEvent(StyleEditorUiEvent.SelectTab(it)) }
                 pendingPremiumTab = null
             }
         )
@@ -114,7 +115,7 @@ fun StyleEditorScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showExportWarning = false
-                    viewModel.saveAndApply(projectId)
+                    viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
                     onNavigateToExport()
                 }) {
                     Text("Export Anyway")
@@ -139,7 +140,7 @@ fun StyleEditorScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (presetName.isNotBlank()) {
-                        viewModel.saveAsNewPreset(presetName)
+                        viewModel.setEvent(StyleEditorUiEvent.SaveAsNewPreset(presetName))
                     }
                     showPresetDialog = false
                 }) {
@@ -159,7 +160,7 @@ fun StyleEditorScreen(
             text = { Text("Are you sure you want to delete '${style.name}'?") },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deletePreset(style)
+                    viewModel.setEvent(StyleEditorUiEvent.DeletePreset(style))
                     presetToDelete = null
                 }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -188,7 +189,7 @@ fun StyleEditorScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(onClick = {
-                    viewModel.saveAndApply(projectId)
+                    viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
                     onNavigateBack()
                 }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -196,13 +197,13 @@ fun StyleEditorScreen(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                        onClick = { viewModel.undo() },
+                        onClick = { viewModel.setEvent(StyleEditorUiEvent.Undo) },
                         enabled = canUndo
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (canUndo) Color.White else Color.Gray)
                     }
                     IconButton(
-                        onClick = { viewModel.redo() },
+                        onClick = { viewModel.setEvent(StyleEditorUiEvent.Redo) },
                         enabled = canRedo
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Redo, "Redo", tint = if (canRedo) Color.White else Color.Gray)
@@ -218,7 +219,7 @@ fun StyleEditorScreen(
                             if (project?.hasVisitedCaptionEditor == false) {
                                 showExportWarning = true
                             } else {
-                                viewModel.saveAndApply(projectId)
+                                viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
                                 onNavigateToExport()
                             }
                         }
@@ -251,8 +252,8 @@ fun StyleEditorScreen(
                     wordsMap = wordsMap,
                     durationMs = videoDurationMs,
                     exoPlayer = viewModel.exoPlayer,
-                    onPositionYChange = viewModel::updatePositionY,
-                    onSeek = viewModel::seekTo
+                    onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdatePositionY(it)) },
+                    onSeek = { viewModel.setEvent(StyleEditorUiEvent.SeekTo(it)) }
                 )
             }
         }
@@ -278,7 +279,7 @@ fun StyleEditorScreen(
                             pendingPremiumTab = tab
                             showPaywall = true
                         } else {
-                            viewModel.selectTab(tab)
+                            viewModel.setEvent(StyleEditorUiEvent.SelectTab(tab))
                         }
                     }
                 )
@@ -295,45 +296,45 @@ fun StyleEditorScreen(
                                 PresetsTab(
                                     styles = styles,
                                     activeStyle = activeStyle,
-                                    onPresetSelected = { viewModel.selectPreset(it) },
+                                    onPresetSelected = { viewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
                                     onPresetLongClicked = { if (!it.isDefault) presetToDelete = it }
                                 )
                             }
                             StyleTab.TEXT -> {
                                 TextTab(
                                     style = style,
-                                    onFontSizeChange = viewModel::updateFontSize,
-                                    onFontWeightChange = viewModel::updateFontWeight,
-                                    onMaxWordsChange = viewModel::updateMaxWordsPerLine,
-                                    onMaxLinesChange = viewModel::updateMaxLines,
-                                    onRemovePunctuationChange = viewModel::updateRemovePunctuation,
-                                    onAlignmentChange = viewModel::updateAlignment,
-                                    onLetterSpacingChange = viewModel::updateLetterSpacing,
-                                    onIsItalicChange = viewModel::updateIsItalic
+                                    onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateFontSize(it)) },
+                                    onFontWeightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateFontWeight(it)) },
+                                    onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateMaxWordsPerLine(it)) },
+                                    onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateMaxLines(it)) },
+                                    onRemovePunctuationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateRemovePunctuation(it)) },
+                                    onAlignmentChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateAlignment(it)) },
+                                    onLetterSpacingChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateLetterSpacing(it)) },
+                                    onIsItalicChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateIsItalic(it)) }
                                 )
                             }
                             StyleTab.COLOR -> {
                                 ColorTab(
                                     style = style,
-                                    onTextColorChange = viewModel::updateTextColor,
-                                    onHighlightColorChange = viewModel::updateHighlightColor,
-                                    onOutlineColorChange = viewModel::updateOutlineColor,
-                                    onOutlineWidthChange = viewModel::updateOutlineWidth,
-                                    onBackgroundTypeChange = viewModel::updateBackgroundType,
-                                    onBackgroundColorChange = viewModel::updateBackgroundColor,
-                                    onBackgroundOpacityChange = viewModel::updateBackgroundOpacity,
-                                    onBackgroundPaddingHChange = viewModel::updateBackgroundPaddingH,
-                                    onBackgroundPaddingVChange = viewModel::updateBackgroundPaddingV,
-                                    onBackgroundCornerRadiusChange = viewModel::updateBackgroundCornerRadius
+                                    onTextColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateTextColor(it)) },
+                                    onHighlightColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateHighlightColor(it)) },
+                                    onOutlineColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateOutlineColor(it)) },
+                                    onOutlineWidthChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateOutlineWidth(it)) },
+                                    onBackgroundTypeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundType(it)) },
+                                    onBackgroundColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundColor(it)) },
+                                    onBackgroundOpacityChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundOpacity(it)) },
+                                    onBackgroundPaddingHChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundPaddingH(it)) },
+                                    onBackgroundPaddingVChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundPaddingV(it)) },
+                                    onBackgroundCornerRadiusChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundCornerRadius(it)) }
                                 )
                             }
                             StyleTab.ANIMATION -> {
                                 AnimationTab(
                                     style = style,
-                                    onDisplayModeChange = viewModel::updateDisplayMode,
-                                    onWordEnterChange = viewModel::updateWordEnterAnimation,
-                                    onKaraokeHighlightChange = viewModel::updateKaraokeHighlightMode,
-                                    onAnimationDurationChange = viewModel::updateAnimationDurationMs
+                                    onDisplayModeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateDisplayMode(it)) },
+                                    onWordEnterChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateWordEnterAnimation(it)) },
+                                    onKaraokeHighlightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateKaraokeHighlightMode(it)) },
+                                    onAnimationDurationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateAnimationDurationMs(it)) }
                                 )
                             }
                         }

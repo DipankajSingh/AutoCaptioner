@@ -7,14 +7,31 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+
+data object OnboardingUiState : UiState
+
+sealed interface OnboardingUiEvent : UiEvent {
+    data object CompleteOnboarding : OnboardingUiEvent
+}
+
+sealed interface OnboardingUiEffect : UiEffect
+
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val modelRepository: ModelRepository
-) : ViewModel() {
+) : BaseViewModel<OnboardingUiState, OnboardingUiEvent, OnboardingUiEffect>(OnboardingUiState) {
 
-    fun completeOnboarding() {
-        viewModelScope.launch {
-            modelRepository.setOnboardingComplete()
+    override fun handleEvent(event: OnboardingUiEvent) {
+        when (event) {
+            is OnboardingUiEvent.CompleteOnboarding -> {
+                viewModelScope.launch {
+                    modelRepository.setOnboardingComplete()
+                }
+            }
         }
     }
 }

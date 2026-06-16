@@ -59,6 +59,8 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
+import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import androidx.core.net.toUri
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -211,14 +213,13 @@ fun ExportScreen(
 
 
                         // Save to Gallery
-                        Button(
+                        AppPrimaryButton(
                             onClick = {
                                 if (outputPath != null) viewModel.setEvent(ExportUiEvent.SaveToGallery(
                                     outputPath
                                 ))
                             },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(4.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -231,18 +232,13 @@ fun ExportScreen(
                         }
 
                         // Share
-                        Button(
+                        AppPrimaryButton(
                             onClick = {
                                 if (outputPath != null) {
-                                    context.startActivity(
-                                        android.content.Intent.createChooser(
-                                            viewModel.shareVideo(outputPath), "Share Video"
-                                        )
-                                    )
+                                    viewModel.shareVideo(outputPath)
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(4.dp)
+                            modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null,
                                 modifier = Modifier.size(16.dp))
@@ -256,10 +252,9 @@ fun ExportScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ){
                         // Re-export
-                        OutlinedButton(
+                        AppOutlinedButton(
                             onClick = { viewModel.setEvent(ExportUiEvent.ResetForReExport) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(4.dp)
+                            modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null,
                                 modifier = Modifier.size(16.dp))
@@ -330,21 +325,16 @@ fun ExportScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
                     
-                    Button(
-                        onClick = {
-                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                    AppPrimaryButton(
+                        onClick = { viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
                             viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
+                         }
                     ) {
                         Text("Start Export", fontSize = 16.sp, maxLines = 1)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
+                    AppOutlinedButton(
+                        onClick = onNavigateBack
                     ) { Text("Cancel", maxLines = 1) }
                 }
 
@@ -388,9 +378,8 @@ fun ExportScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(32.dp))
-                    OutlinedButton(
-                        onClick = { viewModel.setEvent(ExportUiEvent.CancelExport) },
-                        shape = RoundedCornerShape(4.dp)
+                    AppOutlinedButton(
+                        onClick = { viewModel.setEvent(ExportUiEvent.CancelExport) }
                     ) { Text("Cancel", maxLines = 1) }
                 }
 
@@ -412,19 +401,14 @@ fun ExportScreen(
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                    AppPrimaryButton(
+                        onClick = { viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
                             viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
+                         }
                     ) { Text("Try Again", maxLines = 1) }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
+                    AppOutlinedButton(
+                        onClick = onNavigateBack
                     ) { Text("Go Back", maxLines = 1) }
                 }
 
@@ -440,19 +424,14 @@ fun ExportScreen(
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                    AppPrimaryButton(
+                        onClick = { viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
                             viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
+                         }
                     ) { Text("Retry", maxLines = 1) }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(4.dp)
+                    AppOutlinedButton(
+                        onClick = onNavigateBack
                     ) { Text("Go Back", maxLines = 1) }
                 }
             }

@@ -32,9 +32,10 @@ fun ModelManagerScreen(
     onNavigateBack: () -> Unit,
     viewModel: ModelManagerViewModel = hiltViewModel()
 ) {
-    val models by viewModel.availableModels.collectAsState()
-    val activeModel by viewModel.activeModel.collectAsState()
-    val downloadStates by viewModel.downloadStates.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val models = uiState.availableModels
+    val activeModel = uiState.activeModel
+    val downloadStates = uiState.downloadStates
 
     Scaffold(
         topBar = {
@@ -64,9 +65,9 @@ fun ModelManagerScreen(
                     model = model,
                     isActive = isActive,
                     downloadState = dlState,
-                    onDownload = { viewModel.startDownload(model.id) },
-                    onSetActive = { viewModel.setActiveModel(model) },
-                    onDelete = { viewModel.deleteModel(model.id) }
+                    onDownload = { viewModel.setEvent(ModelManagerUiEvent.StartDownload(model.id)) },
+                    onSetActive = { viewModel.setEvent(ModelManagerUiEvent.SetActiveModel(model)) },
+                    onDelete = { viewModel.setEvent(ModelManagerUiEvent.DeleteModel(model.id)) }
                 )
             }
         }

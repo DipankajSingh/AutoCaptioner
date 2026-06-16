@@ -74,11 +74,12 @@ fun VideoEditorScreen(
     viewModel: VideoEditorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val clips by viewModel.clips.collectAsStateWithLifecycle()
-    val clipThumbnails by viewModel.clipThumbnails.collectAsStateWithLifecycle()
-    val hasEdits by viewModel.hasEdits.collectAsStateWithLifecycle()
-    val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
-    val canRedo by viewModel.canRedo.collectAsStateWithLifecycle()
+    val step = uiState.step
+    val clips = uiState.clips
+    val clipThumbnails = uiState.clipThumbnails
+    val hasEdits = uiState.hasEdits
+    val canUndo = uiState.canUndo
+    val canRedo = uiState.canRedo
 
     var showBackDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -97,12 +98,21 @@ fun VideoEditorScreen(
         onDispose { player.release() }
     }
 
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is VideoEditorUiEffect.ProjectDeleted -> onNavigateBack()
+            }
+        }
+    }
+
     LaunchedEffect(projectId) {
-        viewModel.loadProject(projectId)
+        viewModel.setEvent(VideoEditorUiEvent.LoadProject(projectId))
     }
 
     LaunchedEffect(uiState) {
-        if (uiState is VideoEditorUiState.Success) {
+        if (step is VideoEditorUiStep.Success) {
             onNavigateToProcessing()
         }
     }
@@ -112,8 +122,8 @@ fun VideoEditorScreen(
 
     // Sync ExoPlayer playlist with clips
     LaunchedEffect(clips, uiState, isDragging) {
-        if (!isDragging && uiState is VideoEditorUiState.Ready && clips.isNotEmpty()) {
-            val stateReady = uiState as VideoEditorUiState.Ready
+        if (!isDragging && step is VideoEditorUiStep.Ready && clips.isNotEmpty()) {
+            val stateReady = step as VideoEditorUiStep.Ready
             
             // Merge contiguous clips to prevent ExoPlayer decode lag
             val mergedClips = mutableListOf<com.dipdev.aiautocaptioner.data.model.Clip>()
@@ -168,7 +178,7 @@ fun VideoEditorScreen(
                     if (playbackState == Player.STATE_READY) {
                         val duration = player.duration
                         if (duration > 0) {
-                            viewModel.updateDurationFromPlayer(duration)
+                            viewModel.setEvent(VideoEditorUiEvent.UpdateDurationFromPlayer(duration))
                         }
                     }
                 }
@@ -196,14 +206,14 @@ fun VideoEditorScreen(
                         if (hasEdits) {
                             showDeleteDialog = true
                         } else {
-                            viewModel.deleteProject { onNavigateBack() }
+                            viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
                         }
                     }) {
                         Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Delete Project")
                     }
                     IconButton(onClick = {
                         if (hasEdits) {
-                            viewModel.applyEdits()
+                            viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
                         } else {
                             onNavigateToProcessing()
                         }
@@ -219,23 +229,23 @@ fun VideoEditorScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (val state = uiState) {
-                is VideoEditorUiState.Idle, is VideoEditorUiState.Loading -> {
+            when (val state = step) {
+                is VideoEditorUiStep.Idle, is VideoEditorUiStep.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                is VideoEditorUiState.Error -> {
+                is VideoEditorUiStep.Error -> {
                     Column(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("Error: ${state.message}", color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
-                        AppPrimaryButton(onClick = { viewModel.loadProject(projectId) }) {
+                        AppPrimaryButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.LoadProject(projectId)) }) {
                             Text("Retry")
                         }
                     }
                 }
-                is VideoEditorUiState.Processing -> {
+                is VideoEditorUiStep.Processing -> {
                     Column(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -250,15 +260,15 @@ fun VideoEditorScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Applying edits...", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.height(16.dp))
-                        AppOutlinedButton(onClick = { viewModel.cancel() }) {
+                        AppOutlinedButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.Cancel) }) {
                             Text("Cancel")
                         }
                     }
                 }
-                is VideoEditorUiState.Success -> {
+                is VideoEditorUiStep.Success -> {
                     // Handled by LaunchedEffect
                 }
-                is VideoEditorUiState.Ready -> {
+                is VideoEditorUiStep.Ready -> {
                     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
                     var currentTimelineMs by remember { mutableLongStateOf(0L) }
 
@@ -347,7 +357,7 @@ fun VideoEditorScreen(
                                 clipThumbnails = clipThumbnails,
                                 selectedClipId = selectedClipId,
                                 onClipSelected = { selectedClipId = it },
-                                onMoveClip = { from, to -> viewModel.moveClip(from, to) },
+                                onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
                                 onDragStateChange = { isDragging = it },
                                 zoomLevel = zoomLevel,
                                 player = player,
@@ -378,10 +388,10 @@ fun VideoEditorScreen(
                             Spacer(modifier = Modifier.width(16.dp))
 
                             // Undo / Redo
-                            IconButton(onClick = { viewModel.undo() }, enabled = canUndo) {
+                            IconButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.Undo) }, enabled = canUndo) {
                                 Icon(Icons.AutoMirrored.Outlined.Undo, contentDescription = "Undo")
                             }
-                            IconButton(onClick = { viewModel.redo() }, enabled = canRedo) {
+                            IconButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.Redo) }, enabled = canRedo) {
                                 Icon(Icons.AutoMirrored.Outlined.Redo, contentDescription = "Redo")
                             }
 
@@ -394,18 +404,18 @@ fun VideoEditorScreen(
 
                             // Split based on absolute timeline ms
                             IconButton(onClick = {
-                                viewModel.splitClipAtAbsoluteTime(currentTimelineMs)
+                                viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(currentTimelineMs))
                             }) {
                                 Icon(Icons.Outlined.ContentCut, contentDescription = "Split")
                             }
 
                             // Contextual Action Buttons
                             if (selectedClipId != null) {
-                                IconButton(onClick = { viewModel.duplicateClip(selectedClipId!!) }) {
+                                IconButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(selectedClipId!!)) }) {
                                     Icon(Icons.Outlined.ContentCopy, contentDescription = "Duplicate")
                                 }
                                 IconButton(onClick = { 
-                                    viewModel.deleteClip(selectedClipId!!)
+                                    viewModel.setEvent(VideoEditorUiEvent.DeleteClip(selectedClipId!!))
                                     selectedClipId = null 
                                 }) {
                                     Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
@@ -452,7 +462,7 @@ fun VideoEditorScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showBackDialog = false
-                    viewModel.applyEdits()
+                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
                 }) {
                     Text("Save & Continue")
                 }
@@ -476,7 +486,7 @@ fun VideoEditorScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
-                    viewModel.deleteProject { onNavigateBack() }
+                    viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
                 }) {
                     Text("Delete")
                 }

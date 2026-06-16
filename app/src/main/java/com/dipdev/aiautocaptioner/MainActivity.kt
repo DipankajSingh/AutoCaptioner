@@ -31,15 +31,15 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Keep the splash screen visible until we know where to navigate
         splashScreen.setKeepOnScreenCondition {
-            mainViewModel.startDestination.value == null
+            mainViewModel.uiState.value.startDestination == null
         }
 
         enableEdgeToEdge()
         setContent {
-            val appTheme by mainViewModel.appTheme.collectAsState()
-            val glassmorphismEnabled by mainViewModel.isGlassmorphismEnabled.collectAsState()
+            val uiState by mainViewModel.uiState.collectAsState()
+            val appTheme = uiState.appTheme
+            val glassmorphismEnabled = uiState.glassmorphismEnabled
 
             AutoCaptionerTheme(
                 appTheme = appTheme,
@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val startDestination by mainViewModel.startDestination.collectAsState()
+                    val startDestination = uiState.startDestination
 
                     // startDestination is guaranteed non-null here because
                     // the splash screen holds until it resolves.

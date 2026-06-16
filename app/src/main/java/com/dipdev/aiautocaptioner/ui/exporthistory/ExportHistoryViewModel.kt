@@ -23,12 +23,14 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
+import com.dipdev.aiautocaptioner.core.utils.MediaManager
 
 @HiltViewModel
 class ExportHistoryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val exportedFileDao: ExportedFileDao,
-    private val captionRepository: CaptionRepository
+    private val captionRepository: CaptionRepository,
+    private val mediaManager: MediaManager
 ) : ViewModel() {
 
     private val _exports = MutableStateFlow<List<ExportedFileEntity>>(emptyList())
@@ -45,56 +47,13 @@ class ExportHistoryViewModel @Inject constructor(
     fun saveVideoToGallery(export: ExportedFileEntity) {
         val path = export.videoFilePath ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            val sourceFile = File(path)
-            if (!sourceFile.exists()) return@launch
-
-            val fileName = "AutoCaptioner_Export_${export.exportedAt}.mp4"
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
-                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                    put(MediaStore.Video.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MOVIES}/AutoCaptioner")
-                    put(MediaStore.Video.Media.IS_PENDING, 1)
-                }
-                val resolver = context.contentResolver
-                val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return@launch
-
-                resolver.openOutputStream(uri)?.use { out ->
-                    FileInputStream(sourceFile).use { it.copyTo(out) }
-                }
-                values.clear()
-                values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
-            } else {
-                @Suppress("DEPRECATION")
-                val destDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "AutoCaptioner")
-                destDir.mkdirs()
-                val destFile = File(destDir, fileName)
-                sourceFile.copyTo(destFile, overwrite = true)
-                @Suppress("DEPRECATION")
-                context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
-                    data = android.net.Uri.fromFile(destFile)
-                })
-            }
+            mediaManager.saveVideoToGallery(path)
         }
     }
 
     fun shareVideo(export: ExportedFileEntity) {
         val path = export.videoFilePath ?: return
-        val file = File(path)
-        if (!file.exists()) return
-        
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "video/mp4"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        val chooser = Intent.createChooser(intent, "Share Video").apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(chooser)
+        mediaManager.shareVideo(path)
     }
 
     fun shareSrt(export: ExportedFileEntity) {
@@ -158,25 +117,11 @@ class ExportHistoryViewModel @Inject constructor(
             if (export.srtFilePath != null && File(export.srtFilePath).exists()) {
                 File(export.srtFilePath)
             } else {
-                val segments = captionRepository.getSegmentsOnce(export.projectId)
-                val sb = java.lang.StringBuilder()
-                segments.forEachIndexed { index, segment ->
-                    sb.append(index + 1).append("\n")
-                    sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
-                    sb.append(segment.text).append("\n\n")
-                }
+                val srtContent = captionRepository.buildSrtContent(export.projectId)
                 val srtFile = File(context.cacheDir, "export_${export.id}.srt")
-                srtFile.writeText(sb.toString())
+                srtFile.writeText(srtContent)
                 srtFile
             }
         }
-    }
-
-    private fun formatSrtTime(timeMs: Long): String {
-        val hours = timeMs / 3600000
-        val minutes = (timeMs % 3600000) / 60000
-        val seconds = (timeMs % 60000) / 1000
-        val millis = timeMs % 1000
-        return String.format("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
     }
 }

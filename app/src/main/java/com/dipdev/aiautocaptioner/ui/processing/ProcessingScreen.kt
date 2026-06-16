@@ -50,20 +50,21 @@ fun ProcessingScreen(
     onCancel: () -> Unit,
     viewModel: ProcessingViewModel = hiltViewModel()
 ) {
-    val step by viewModel.step.collectAsStateWithLifecycle()
-    val selectedLanguage by viewModel.selectedLanguage.collectAsStateWithLifecycle()
-    val activeModel by viewModel.activeModel.collectAsStateWithLifecycle()
-    val workingVideoPath by viewModel.workingVideoPath.collectAsStateWithLifecycle()
-    val streamedSegments by viewModel.streamedSegments.collectAsStateWithLifecycle()
-    val safetyCheck by viewModel.safetyCheck.collectAsStateWithLifecycle()
-    val segmentCount by viewModel.segmentCount.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val step = uiState.step
+    val selectedLanguage = uiState.selectedLanguage
+    val activeModel = uiState.activeModel
+    val workingVideoPath = uiState.workingVideoPath
+    val streamedSegments = uiState.streamedSegments
+    val safetyCheck = uiState.safetyCheck
+    val segmentCount = uiState.segmentCount
 
     LaunchedEffect(projectId) {
-        viewModel.prepareForProject(projectId)
+        viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId))
     }
 
     LaunchedEffect(Unit) {
-        viewModel.navigateToStyleEditor.collect {
+        viewModel.uiEffect.collect {
             onNavigateToStyleEditor()
         }
     }
@@ -84,7 +85,7 @@ fun ProcessingScreen(
             onDismiss = { showCancelDialog = false },
             onConfirm = {
                 showCancelDialog = false
-                viewModel.cancel()
+                viewModel.setEvent(ProcessingUiEvent.Cancel)
                 onCancel()
             }
         )
@@ -142,19 +143,19 @@ fun ProcessingScreen(
                         workingVideoPath = workingVideoPath,
                         selectedLanguage = selectedLanguage,
                         activeModel = activeModel,
-                        onLanguageSelected = { viewModel.selectLanguage(it) },
-                        onShowModelPicker = { viewModel.showModelPicker() },
-                        onShowModelSetup = { viewModel.showModelSetup() },
-                        onStartProcessing = { viewModel.startProcessing(projectId) },
-                        onCancelModelSetup = { viewModel.cancelModelSetup() },
-                        onDownloadAndProcess = { viewModel.downloadAndProcess(it, projectId) }
+                        onLanguageSelected = { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(it)) },
+                        onShowModelPicker = { viewModel.setEvent(ProcessingUiEvent.ShowModelPicker) },
+                        onShowModelSetup = { viewModel.setEvent(ProcessingUiEvent.ShowModelSetup) },
+                        onStartProcessing = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
+                        onCancelModelSetup = { viewModel.setEvent(ProcessingUiEvent.CancelModelSetup) },
+                        onDownloadAndProcess = { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
                     )
                 }
                 is ProcessingStep.DownloadingModel -> {
                     DownloadingStateView(step = currentStep)
                 }
                 is ProcessingStep.ExtractingAudio -> {
-                    ExtractingAudioView(onCancel = { viewModel.cancel() })
+                    ExtractingAudioView(onCancel = { viewModel.setEvent(ProcessingUiEvent.Cancel) })
                 }
                 is ProcessingStep.LoadingModel -> {
                     LoadingModelView()
@@ -163,7 +164,7 @@ fun ProcessingScreen(
                     TranscribingStateView(
                         step = currentStep,
                         streamedSegments = streamedSegments,
-                        onCancel = { viewModel.cancel() }
+                        onCancel = { viewModel.setEvent(ProcessingUiEvent.Cancel) }
                     )
                 }
                 is ProcessingStep.Saving -> {
@@ -174,7 +175,7 @@ fun ProcessingScreen(
                         segmentCount = segmentCount,
                         onNavigateToStyleEditor = onNavigateToStyleEditor,
                         onNavigateToCaptionEditor = onNavigateToCaptionEditor,
-                        onRegenerate = { viewModel.prepareForProject(projectId) }
+                        onRegenerate = { viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId)) }
                     )
                 }
                 is ProcessingStep.Cancelling -> {
@@ -182,14 +183,14 @@ fun ProcessingScreen(
                 }
                 is ProcessingStep.Cancelled -> {
                     CancelledView(
-                        onRetry = { viewModel.startProcessing(projectId) },
+                        onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
                         onGoBack = onCancel
                     )
                 }
                 is ProcessingStep.Error -> {
                     ErrorView(
                         message = currentStep.message,
-                        onRetry = { viewModel.startProcessing(projectId) },
+                        onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
                         onGoBack = onCancel
                     )
                 }
@@ -199,7 +200,7 @@ fun ProcessingScreen(
 
     SafetyCheckDialogs(
         safetyCheck = safetyCheck,
-        onDismiss = { viewModel.resetSafetyCheck() },
-        onProceed = { modelId -> viewModel.confirmCellularDownload(modelId) }
+        onDismiss = { viewModel.setEvent(ProcessingUiEvent.ResetSafetyCheck) },
+        onProceed = { modelId -> viewModel.setEvent(ProcessingUiEvent.ConfirmCellularDownload(modelId)) }
     )
 }

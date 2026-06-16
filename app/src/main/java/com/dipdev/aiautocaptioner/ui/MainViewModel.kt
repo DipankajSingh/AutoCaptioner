@@ -15,24 +15,46 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+data class MainUiState(
+    val startDestination: String? = null,
+    val appTheme: AppTheme = AppTheme.EMERALD,
+    val glassmorphismEnabled: Boolean = true
+) : UiState
+
+sealed interface MainUiEvent : UiEvent
+sealed interface MainUiEffect : UiEffect
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val modelRepository: ModelRepository,
     private val captionRepository: CaptionRepository,
     private val settingsRepository: SettingsRepository
-) : ViewModel() {
-
-    // null = still deciding (show spinner)
-    // non-null = decision made, navigate immediately
-    private val _startDestination = MutableStateFlow<String?>(null)
-    val startDestination: StateFlow<String?> = _startDestination.asStateFlow()
-
-    val appTheme: StateFlow<AppTheme> = settingsRepository.themeFlow.stateInDefault(scope = viewModelScope, initialValue = AppTheme.EMERALD)
-
-    val isGlassmorphismEnabled: StateFlow<Boolean> = settingsRepository.glassmorphismFlow.stateInDefault(scope = viewModelScope, initialValue = true)
+) : BaseViewModel<MainUiState, MainUiEvent, MainUiEffect>(MainUiState()) {
 
     init {
         decideStartDestination()
+        
+        viewModelScope.launch {
+            combine(
+                settingsRepository.themeFlow,
+                settingsRepository.glassmorphismFlow
+            ) { theme, glass ->
+                theme to glass
+            }.distinctUntilChanged().collect { (theme, glass) ->
+                setState { copy(appTheme = theme, glassmorphismEnabled = glass) }
+            }
+        }
+    }
+
+    override fun handleEvent(event: MainUiEvent) {
+        // No events to handle
     }
 
     private fun decideStartDestination() {
@@ -45,10 +67,11 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val onboardingDone = modelRepository.isOnboardingComplete().first()
 
-            _startDestination.value = when {
+            val dest = when {
                 !onboardingDone -> "onboarding"
                 else            -> "home"
             }
+            setState { copy(startDestination = dest) }
         }
     }
 }

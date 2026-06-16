@@ -21,74 +21,115 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+
+data class CaptionEditorUiState(
+    val project: ProjectEntity? = null,
+    val segments: List<CaptionSegmentEntity> = emptyList(),
+    val searchQuery: String = "",
+    val filteredSegments: List<CaptionSegmentEntity> = emptyList(),
+    val wordsMap: Map<String, List<CaptionWordEntity>> = emptyMap(),
+    val expandedSegmentId: String? = null,
+    val retranscribeRequested: Boolean = false
+) : UiState
+
+sealed interface CaptionEditorUiEvent : UiEvent {
+    data class LoadProject(val projectId: String) : CaptionEditorUiEvent
+    data class ToggleSegmentExpanded(val segmentId: String) : CaptionEditorUiEvent
+    data class UpdateSearchQuery(val query: String) : CaptionEditorUiEvent
+    data class SaveSegmentText(val segment: CaptionSegmentEntity, val newText: String) : CaptionEditorUiEvent
+    data class ToggleWordEmphasis(val word: CaptionWordEntity) : CaptionEditorUiEvent
+    data class Retranscribe(val projectId: String) : CaptionEditorUiEvent
+    data object RetranscribeHandled : CaptionEditorUiEvent
+    data class ShareSrt(val projectId: String) : CaptionEditorUiEvent
+}
+
+sealed interface CaptionEditorUiEffect : UiEffect {
+    data class ShareSrt(val content: String) : CaptionEditorUiEffect
+}
+
 @HiltViewModel
 class CaptionEditorViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val captionRepository: CaptionRepository
-) : ViewModel() {
+) : BaseViewModel<CaptionEditorUiState, CaptionEditorUiEvent, CaptionEditorUiEffect>(CaptionEditorUiState()) {
 
-    private val _project = MutableStateFlow<ProjectEntity?>(null)
-    val project: StateFlow<ProjectEntity?> = _project.asStateFlow()
-
-    private val _segments = MutableStateFlow<List<CaptionSegmentEntity>>(emptyList())
-    val segments: StateFlow<List<CaptionSegmentEntity>> = _segments.asStateFlow()
-
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-    val filteredSegments: StateFlow<List<CaptionSegmentEntity>> = combine(_segments, _searchQuery) { segs, query ->
-        if (query.isBlank()) {
-            segs
-        } else {
-            segs.filter { it.text.contains(query, ignoreCase = true) }
+    override fun handleEvent(event: CaptionEditorUiEvent) {
+        when (event) {
+            is CaptionEditorUiEvent.LoadProject -> loadProject(event.projectId)
+            is CaptionEditorUiEvent.ToggleSegmentExpanded -> {
+                setState {
+                    copy(expandedSegmentId = if (expandedSegmentId == event.segmentId) null else event.segmentId)
+                }
+            }
+            is CaptionEditorUiEvent.UpdateSearchQuery -> {
+                setState {
+                    val filtered = if (event.query.isBlank()) {
+                        segments
+                    } else {
+                        segments.filter { it.text.contains(event.query, ignoreCase = true) }
+                    }
+                    copy(searchQuery = event.query, filteredSegments = filtered)
+                }
+            }
+            is CaptionEditorUiEvent.SaveSegmentText -> saveSegmentText(event.segment, event.newText)
+            is CaptionEditorUiEvent.ToggleWordEmphasis -> toggleWordEmphasis(event.word)
+            is CaptionEditorUiEvent.Retranscribe -> {
+                viewModelScope.launch {
+                    projectRepository.updateStatus(event.projectId, ProjectStatus.IMPORTED)
+                    setState { copy(retranscribeRequested = true) }
+                }
+            }
+            is CaptionEditorUiEvent.RetranscribeHandled -> {
+                setState { copy(retranscribeRequested = false) }
+            }
+            is CaptionEditorUiEvent.ShareSrt -> {
+                viewModelScope.launch {
+                    val content = captionRepository.buildSrtContent(event.projectId)
+                    setEffect(CaptionEditorUiEffect.ShareSrt(content))
+                }
+            }
         }
-    }.stateInDefault(viewModelScope, emptyList())
+    }
 
-    private val _wordsMap = MutableStateFlow<Map<String, List<CaptionWordEntity>>>(emptyMap())
-    val wordsMap: StateFlow<Map<String, List<CaptionWordEntity>>> = _wordsMap.asStateFlow()
-
-    private val _expandedSegmentId = MutableStateFlow<String?>(null)
-    val expandedSegmentId: StateFlow<String?> = _expandedSegmentId.asStateFlow()
-
-    fun loadProject(projectId: String) {
+    private fun loadProject(projectId: String) {
         viewModelScope.launch {
-            _project.value = projectRepository.getProjectById(projectId)
+            val proj = projectRepository.getProjectById(projectId)
+            setState { copy(project = proj) }
             projectRepository.updateVisitedCaptionEditor(projectId, true)
 
             launch {
                 captionRepository.getSegmentsForProject(projectId).collect { segs ->
-                    _segments.value = segs
+                    setState {
+                        val filtered = if (searchQuery.isBlank()) {
+                            segs
+                        } else {
+                            segs.filter { it.text.contains(searchQuery, ignoreCase = true) }
+                        }
+                        copy(segments = segs, filteredSegments = filtered)
+                    }
                 }
             }
 
             launch {
                 captionRepository.getAllWordsForProjectFlow(projectId).collect { words ->
-                    _wordsMap.value = words.groupBy { it.segmentId }
+                    setState { copy(wordsMap = words.groupBy { it.segmentId }) }
                 }
             }
         }
     }
 
-    fun toggleSegmentExpanded(segmentId: String) {
-        _expandedSegmentId.value = if (_expandedSegmentId.value == segmentId) null else segmentId
-    }
-
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
-
-    /**
-     * Called when the user finishes editing a segment (focus lost / done).
-     * NOT called on every keystroke — the text field handles its own local state.
-     */
-    fun saveSegmentText(segment: CaptionSegmentEntity, newText: String) {
+    private fun saveSegmentText(segment: CaptionSegmentEntity, newText: String) {
         val trimmed = newText.trim()
         if (trimmed == segment.text) return  // nothing changed, skip DB round-trip
 
         viewModelScope.launch {
             captionRepository.updateSegment(segment.copy(text = trimmed))
 
-            val oldWordsList = _wordsMap.value[segment.id] ?: emptyList()
+            val oldWordsList = uiState.value.wordsMap[segment.id] ?: emptyList()
             val newEntities = CaptionAlignmentUtils.alignWords(
                 oldWords = oldWordsList,
                 newText = trimmed,
@@ -101,7 +142,7 @@ class CaptionEditorViewModel @Inject constructor(
         }
     }
 
-    fun toggleWordEmphasis(word: CaptionWordEntity) {
+    private fun toggleWordEmphasis(word: CaptionWordEntity) {
         viewModelScope.launch {
             captionRepository.toggleEmphasis(
                 wordId = word.id,
@@ -110,30 +151,4 @@ class CaptionEditorViewModel @Inject constructor(
             )
         }
     }
-
-    // ── Retranscribe ──────────────────────────────────────────────────────
-    private val _retranscribeRequested = MutableStateFlow(false)
-    val retranscribeRequested: StateFlow<Boolean> = _retranscribeRequested.asStateFlow()
-
-    private val _srtContentToShare = MutableSharedFlow<String>()
-    val srtContentToShare: SharedFlow<String> = _srtContentToShare.asSharedFlow()
-
-    fun retranscribe(projectId: String) {
-        viewModelScope.launch {
-            projectRepository.updateStatus(projectId, ProjectStatus.IMPORTED)
-            _retranscribeRequested.value = true
-        }
-    }
-
-    fun retranscribeHandled() {
-        _retranscribeRequested.value = false
-    }
-
-    fun shareSrt(projectId: String) {
-        viewModelScope.launch {
-            val content = captionRepository.buildSrtContent(projectId)
-            _srtContentToShare.emit(content)
-        }
-    }
-
 }

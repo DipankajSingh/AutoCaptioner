@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+
 data class DeviceInfo(
     val totalRamMb: Int,
     val availableStorageGb: Float,
@@ -26,40 +31,47 @@ data class DeviceInfo(
 
 // SafetyCheckState removed in favor of ModelSafetyCheckState from DeviceCapabilityUseCase
 
+
+
+data class DeviceCheckUiState(
+    val deviceInfo: DeviceInfo? = null,
+    val models: List<WhisperModel> = emptyList(),
+    val recommendedModelId: String? = null,
+    val safetyState: ModelSafetyCheckState = ModelSafetyCheckState.Idle
+) : UiState
+
+sealed interface DeviceCheckUiEvent : UiEvent {
+    data class CheckSafety(val modelSizeMb: Long) : DeviceCheckUiEvent
+    data object ResetSafetyState : DeviceCheckUiEvent
+}
+
+sealed interface DeviceCheckUiEffect : UiEffect
+
 @HiltViewModel
 class DeviceCheckViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val modelRepository: ModelRepository,
     private val deviceCapabilityUseCase: DeviceCapabilityUseCase
-) : ViewModel() {
-
-    private val _deviceInfo = MutableStateFlow<DeviceInfo?>(null)
-    val deviceInfo: StateFlow<DeviceInfo?> = _deviceInfo.asStateFlow()
-
-    private val _models = MutableStateFlow<List<WhisperModel>>(emptyList())
-    val models: StateFlow<List<WhisperModel>> = _models.asStateFlow()
-
-    private val _recommendedModelId = MutableStateFlow<String?>(null)
-    val recommendedModelId: StateFlow<String?> = _recommendedModelId.asStateFlow()
-
-    private val _safetyState = MutableStateFlow<ModelSafetyCheckState>(ModelSafetyCheckState.Idle)
-    val safetyState: StateFlow<ModelSafetyCheckState> = _safetyState.asStateFlow()
-
-    fun checkSafety(modelSizeMb: Long) {
-        _safetyState.value = deviceCapabilityUseCase.checkSafetyForModel(modelSizeMb)
-    }
-
-    fun resetSafetyState() {
-        _safetyState.value = ModelSafetyCheckState.Idle
-    }
+) : BaseViewModel<DeviceCheckUiState, DeviceCheckUiEvent, DeviceCheckUiEffect>(DeviceCheckUiState()) {
 
     init {
         checkDevice()
     }
 
+    override fun handleEvent(event: DeviceCheckUiEvent) {
+        when (event) {
+            is DeviceCheckUiEvent.CheckSafety -> {
+                setState { copy(safetyState = deviceCapabilityUseCase.checkSafetyForModel(event.modelSizeMb)) }
+            }
+            is DeviceCheckUiEvent.ResetSafetyState -> {
+                setState { copy(safetyState = ModelSafetyCheckState.Idle) }
+            }
+        }
+    }
+
     private fun checkDevice() {
         val info = deviceCapabilityUseCase.getDeviceInfo()
-        _deviceInfo.value = DeviceInfo(
+        val deviceInfo = DeviceInfo(
             totalRamMb = info.totalRamMb,
             availableStorageGb = info.availableStorageGb,
             androidVersion = info.androidVersion,
@@ -68,9 +80,16 @@ class DeviceCheckViewModel @Inject constructor(
 
         // Load models enriched with download status
         val allModels = modelRepository.getAvailableModels()
-        _models.value = allModels
 
         // Recommend based on RAM
-        _recommendedModelId.value = deviceCapabilityUseCase.getRecommendedModel("en")
+        val recommendedModelId = deviceCapabilityUseCase.getRecommendedModel("en")
+
+        setState { 
+            copy(
+                deviceInfo = deviceInfo,
+                models = allModels,
+                recommendedModelId = recommendedModelId
+            )
+        }
     }
 }

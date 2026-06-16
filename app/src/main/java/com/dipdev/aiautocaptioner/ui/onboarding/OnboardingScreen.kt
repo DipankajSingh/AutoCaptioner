@@ -105,7 +105,7 @@ fun OnboardingScreen(
                 if (pagerState.currentPage < pages.size - 1) {
                     TextButton(
                         onClick = {
-                            viewModel.completeOnboarding()
+                            viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
                             onFinish()
                         }
                     ) {
@@ -217,7 +217,7 @@ fun OnboardingScreen(
                 Button(
                     onClick = {
                         if (pagerState.currentPage == pages.size - 1) {
-                            viewModel.completeOnboarding()
+                            viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
                             onFinish()
                         } else {
                             scope.launch {

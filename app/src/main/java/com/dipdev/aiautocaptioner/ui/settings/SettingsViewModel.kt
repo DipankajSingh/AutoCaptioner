@@ -9,32 +9,57 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+data class SettingsUiState(
+    val theme: AppTheme = AppTheme.EMERALD,
+    val glassmorphism: Boolean = true,
+    val showTimelineThumbnails: Boolean = false
+) : UiState
+
+sealed interface SettingsUiEvent : UiEvent {
+    data class SetTheme(val theme: AppTheme) : SettingsUiEvent
+    data class SetGlassmorphism(val enabled: Boolean) : SettingsUiEvent
+    data class SetShowTimelineThumbnails(val enabled: Boolean) : SettingsUiEvent
+}
+
+sealed interface SettingsUiEffect : UiEffect
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository
-) : ViewModel() {
+) : BaseViewModel<SettingsUiState, SettingsUiEvent, SettingsUiEffect>(SettingsUiState()) {
 
-    val themeFlow = settingsRepository.themeFlow.stateInDefault(scope = viewModelScope, initialValue = AppTheme.EMERALD)
-
-    val glassmorphismFlow = settingsRepository.glassmorphismFlow.stateInDefault(scope = viewModelScope, initialValue = true)
-
-    val showTimelineThumbnailsFlow = settingsRepository.showTimelineThumbnailsFlow.stateInDefault(scope = viewModelScope, initialValue = false)
-
-    fun setTheme(theme: AppTheme) {
+    init {
         viewModelScope.launch {
-            settingsRepository.setTheme(theme)
+            combine(
+                settingsRepository.themeFlow,
+                settingsRepository.glassmorphismFlow,
+                settingsRepository.showTimelineThumbnailsFlow
+            ) { theme, glass, thumb ->
+                SettingsUiState(theme, glass, thumb)
+            }.distinctUntilChanged().collect { state ->
+                setState { state }
+            }
         }
     }
 
-    fun setGlassmorphismEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setGlassmorphismEnabled(enabled)
-        }
-    }
-
-    fun setShowTimelineThumbnails(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setShowTimelineThumbnails(enabled)
+    override fun handleEvent(event: SettingsUiEvent) {
+        when (event) {
+            is SettingsUiEvent.SetTheme -> {
+                viewModelScope.launch { settingsRepository.setTheme(event.theme) }
+            }
+            is SettingsUiEvent.SetGlassmorphism -> {
+                viewModelScope.launch { settingsRepository.setGlassmorphismEnabled(event.enabled) }
+            }
+            is SettingsUiEvent.SetShowTimelineThumbnails -> {
+                viewModelScope.launch { settingsRepository.setShowTimelineThumbnails(event.enabled) }
+            }
         }
     }
 }
