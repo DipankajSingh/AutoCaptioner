@@ -9,18 +9,22 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.TextFields
@@ -84,7 +88,13 @@ fun PresetChip(
 }
 
 @Composable
-fun BottomTabItem(name: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+fun BottomTabItem(
+    name: String, 
+    icon: ImageVector, 
+    selected: Boolean, 
+    isPremiumLocked: Boolean = false,
+    onClick: () -> Unit
+) {
     val tint by androidx.compose.animation.animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
     val scale by androidx.compose.animation.core.animateFloatAsState(if (selected) 1.1f else 1.0f)
 
@@ -99,7 +109,17 @@ fun BottomTabItem(name: String, icon: ImageVector, selected: Boolean, onClick: (
             .padding(8.dp)
             .graphicsLayer(scaleX = scale, scaleY = scale)
     ) {
-        Icon(icon, contentDescription = name, tint = tint)
+        Box {
+            Icon(icon, contentDescription = name, tint = tint)
+            if (isPremiumLocked) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = "PRO",
+                    modifier = Modifier.size(10.dp).align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp),
+                    tint = Color(0xFFF6A90A)
+                )
+            }
+        }
         if (selected) {
             Text(name, fontSize = 10.sp, color = tint, fontWeight = FontWeight.Bold)
         }
@@ -109,8 +129,8 @@ fun BottomTabItem(name: String, icon: ImageVector, selected: Boolean, onClick: (
 @Composable
 fun StyleEditorBottomBar(
     selectedTab: StyleTab,
-    onTabSelected: (StyleTab) -> Unit,
-    isCustomizing: Boolean = false
+    isPremium: Boolean,
+    onTabSelected: (StyleTab) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -120,12 +140,10 @@ fun StyleEditorBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT) { onTabSelected(StyleTab.TEXT) }
-        BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR) { onTabSelected(StyleTab.COLOR) }
-        BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION) { onTabSelected(StyleTab.ANIMATION) }
-        if (!isCustomizing) {
-            BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS) { onTabSelected(StyleTab.PRESETS) }
-        }
+        BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS) { onTabSelected(StyleTab.PRESETS) }
+        BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium) { onTabSelected(StyleTab.TEXT) }
+        BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium) { onTabSelected(StyleTab.COLOR) }
+        BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium) { onTabSelected(StyleTab.ANIMATION) }
     }
 }
 

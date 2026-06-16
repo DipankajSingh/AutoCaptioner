@@ -88,6 +88,8 @@ kotlin {
 
 dependencies {
 
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.foundation.layout)
     // -------------------------------------------------------
     // Core Android
     // -------------------------------------------------------

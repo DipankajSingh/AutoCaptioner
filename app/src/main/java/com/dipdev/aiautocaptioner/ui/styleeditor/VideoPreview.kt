@@ -33,6 +33,7 @@ fun VideoPreview(
     wordsMap: Map<String, List<CaptionWordEntity>>,
     durationMs: Long,
     exoPlayer: ExoPlayer?,
+    bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
     onPositionYChange: (Float) -> Unit,
     onSeek: (Long) -> Unit
 ) {
@@ -56,12 +57,6 @@ fun VideoPreview(
         }
     }
 
-    val videoAspectRatio = if (videoWidth > 0 && videoHeight > 0) {
-        videoWidth.toFloat() / videoHeight.toFloat()
-    } else {
-        9f / 16f
-    }
-
     Column(modifier = Modifier.fillMaxSize()) {
         // ── Video + caption overlay ──────────────────────────────────────
         Box(
@@ -76,49 +71,45 @@ fun VideoPreview(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .aspectRatio(videoAspectRatio)
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        player = exoPlayer
+                        useController = false
+                        // Use default resizeMode which is FIT. For 9:16 video on 9:16 screen, it fills perfectly.
+                    }
+                },
+                update = { view -> 
+                    if (view.player != exoPlayer) {
+                        view.player = exoPlayer 
+                    }
+                },
+                modifier = Modifier.matchParentSize()
+            )
+
+            val currentPosY by rememberUpdatedState(style.positionY)
+
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { change, dragAmount ->
+                        change.consume()
+                        val heightPixels = size.height.toFloat()
+                        val newRatio = (currentPosY + (dragAmount / heightPixels)).coerceIn(0f, 1f)
+                        onPositionYChange(newRatio)
+                    }
+                }
             ) {
-                AndroidView(
-                    factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            player = exoPlayer
-                            useController = false
-                        }
-                    },
-                    update = { view -> 
-                        if (view.player != exoPlayer) {
-                            view.player = exoPlayer 
-                        }
-                    },
-                    modifier = Modifier.matchParentSize()
-                )
-
-                val currentPosY by rememberUpdatedState(style.positionY)
-
-                Canvas(modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { change, dragAmount ->
-                            change.consume()
-                            val heightPixels = size.height.toFloat()
-                            val newRatio = (currentPosY + (dragAmount / heightPixels)).coerceIn(0f, 1f)
-                            onPositionYChange(newRatio)
-                        }
-                    }
-                ) {
-                    drawIntoCanvas { canvas ->
-                        CaptionRenderer.draw(
-                            canvas = canvas.nativeCanvas,
-                            currentPositionMs = currentPositionMs,
-                            videoWidth = size.width.toInt(),
-                            videoHeight = size.height.toInt(),
-                            style = style,
-                            segments = segments,
-                            wordsMap = wordsMap
-                        )
-                    }
+                drawIntoCanvas { canvas ->
+                    CaptionRenderer.draw(
+                        canvas = canvas.nativeCanvas,
+                        currentPositionMs = currentPositionMs,
+                        videoWidth = size.width.toInt(),
+                        videoHeight = size.height.toInt(),
+                        style = style,
+                        segments = segments,
+                        wordsMap = wordsMap
+                    )
                 }
             }
         }
@@ -126,7 +117,7 @@ fun VideoPreview(
         // ── Seek bar ────────────────────────────────────────────────────
         if (durationMs > 0) {
             SeekBar(
-                positionMs = currentPositionMs,
+                positionProvider = { currentPositionMs },
                 durationMs = durationMs,
                 onSeek = onSeek,
                 modifier = Modifier
@@ -143,16 +134,13 @@ fun VideoPreview(
  */
 @Composable
 private fun SeekBar(
-    positionMs: Long,
+    positionProvider: () -> Long,
     durationMs: Long,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Track the drag fraction locally so the thumb feels instant
     var dragFraction by remember { mutableFloatStateOf(-1f) }
-    val displayFraction = if (dragFraction >= 0f) dragFraction
-                          else if (durationMs > 0) positionMs.toFloat() / durationMs.toFloat()
-                          else 0f
 
     BoxWithConstraints(
         modifier = modifier
@@ -178,9 +166,14 @@ private fun SeekBar(
         contentAlignment = Alignment.CenterStart
     ) {
         val trackWidthPx = constraints.maxWidth.toFloat()
-        val thumbX = (displayFraction * trackWidthPx).coerceIn(0f, trackWidthPx)
 
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val currentPos = positionProvider()
+            val displayFraction = if (dragFraction >= 0f) dragFraction
+                                  else if (durationMs > 0) currentPos.toFloat() / durationMs.toFloat()
+                                  else 0f
+            val thumbX = (displayFraction * trackWidthPx).coerceIn(0f, trackWidthPx)
+
             val trackHeight = 4.dp.toPx()
             val cy = size.height / 2f
 

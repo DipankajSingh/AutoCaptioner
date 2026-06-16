@@ -22,17 +22,30 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import androidx.core.net.toUri
 
+import com.dipdev.aiautocaptioner.data.billing.PremiumManager
+
 @HiltViewModel
 class StyleEditorViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val captionRepository: CaptionRepository,
-    private val projectRepository: ProjectRepository
+    private val projectRepository: ProjectRepository,
+    private val premiumManager: PremiumManager
 ) : ViewModel() {
+
+    val isPremium: StateFlow<Boolean> = premiumManager.isPremiumFlow
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), false)
+
+    fun unlockPremiumMock() {
+        viewModelScope.launch {
+            premiumManager.unlockPremium()
+        }
+    }
 
     // ---- ExoPlayer lives in the ViewModel so it survives navigation ----
     // Initialised lazily once we know the video path from the project
@@ -96,9 +109,6 @@ class StyleEditorViewModel @Inject constructor(
     private val _selectedTab = MutableStateFlow(StyleTab.PRESETS)
     val selectedTab: StateFlow<StyleTab> = _selectedTab.asStateFlow()
 
-    private val _isCustomizing = MutableStateFlow(false)
-    val isCustomizing: StateFlow<Boolean> = _isCustomizing.asStateFlow()
-
     private val undoStack = mutableListOf<CaptionStyleEntity>()
     private val redoStack = mutableListOf<CaptionStyleEntity>()
 
@@ -136,35 +146,24 @@ class StyleEditorViewModel @Inject constructor(
         _canRedo.value = redoStack.isNotEmpty()
     }
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun undo() {
         if (undoStack.isEmpty()) return
         val current = _activeStyle.value ?: return
         redoStack.add(current)
-        _activeStyle.value = undoStack.removeLast()
+        _activeStyle.value = undoStack.removeAt(undoStack.size - 1)
         updateUndoRedoState()
         lastPushProperty = ""
     }
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun redo() {
         if (redoStack.isEmpty()) return
         val current = _activeStyle.value ?: return
         undoStack.add(current)
-        _activeStyle.value = redoStack.removeLast()
+        _activeStyle.value = redoStack.removeAt(redoStack.size - 1)
         updateUndoRedoState()
         lastPushProperty = ""
     }
 
-    fun setCustomizing(customizing: Boolean) {
-        _isCustomizing.value = customizing
-        if (customizing) {
-            // Default to Text tab when entering customization
-            _selectedTab.value = StyleTab.TEXT
-        } else {
-            _selectedTab.value = StyleTab.PRESETS
-        }
-    }
 
     fun loadStyles(projectId: String) {
         viewModelScope.launch {
