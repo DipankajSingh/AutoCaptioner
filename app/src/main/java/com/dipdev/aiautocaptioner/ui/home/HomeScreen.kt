@@ -59,8 +59,12 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import android.os.Build
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
     onNavigateToVideoEditor: (String) -> Unit,
@@ -78,6 +82,54 @@ fun HomeScreen(
     val importState by viewModel.importState.collectAsStateWithLifecycle()
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
+
+    // Request Notification Permission on Android 13+
+    var showNotificationRationale by remember { mutableStateOf(false) }
+    var hasRequestedNotification by remember { mutableStateOf(false) }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val notificationPermissionState = rememberPermissionState(
+            permission = android.Manifest.permission.POST_NOTIFICATIONS
+        )
+        
+        LaunchedEffect(notificationPermissionState.status) {
+            if (!notificationPermissionState.status.isGranted && !hasRequestedNotification) {
+                showNotificationRationale = true
+            }
+        }
+
+        if (showNotificationRationale) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { 
+                    showNotificationRationale = false
+                    hasRequestedNotification = true
+                },
+                title = { Text("Show Progress in Background?") },
+                text = { Text("AutoCaptioner can show a progress bar in your notifications so you can track transcriptions even when the app is minimized. Would you like to enable this?") },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            showNotificationRationale = false
+                            hasRequestedNotification = true
+                            notificationPermissionState.launchPermissionRequest()
+                        }
+                    ) {
+                        Text("Enable")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = { 
+                            showNotificationRationale = false
+                            hasRequestedNotification = true
+                        }
+                    ) {
+                        Text("Not Now")
+                    }
+                }
+            )
+        }
+    }
 
     // Video picker launcher
     val videoPicker = rememberLauncherForActivityResult(
