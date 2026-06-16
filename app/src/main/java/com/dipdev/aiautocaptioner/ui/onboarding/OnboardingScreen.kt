@@ -147,12 +147,16 @@ fun OnboardingScreen(
                     pushLink(LinkAnnotation.Clickable(
                         tag = "TERMS",
                         linkInteractionListener = {
-                            context.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    com.dipdev.aiautocaptioner.AppLinks.TERMS_OF_SERVICE.toUri()
+                            try {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        com.dipdev.aiautocaptioner.AppLinks.TERMS_OF_SERVICE.toUri()
+                                    )
                                 )
-                            )
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                android.widget.Toast.makeText(context, "No browser installed", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         }
                     ))
                     withStyle(linkStyle) { append(termsConditions) }
@@ -161,12 +165,16 @@ fun OnboardingScreen(
                     pushLink(LinkAnnotation.Clickable(
                         tag = "PRIVACY",
                         linkInteractionListener = {
-                            context.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    com.dipdev.aiautocaptioner.AppLinks.PRIVACY_POLICY.toUri()
+                            try {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        com.dipdev.aiautocaptioner.AppLinks.PRIVACY_POLICY.toUri()
+                                    )
                                 )
-                            )
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                android.widget.Toast.makeText(context, "No browser installed", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         }
                     ))
                     withStyle(linkStyle) { append(privacyPolicy) }

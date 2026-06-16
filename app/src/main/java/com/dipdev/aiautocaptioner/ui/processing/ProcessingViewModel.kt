@@ -383,6 +383,7 @@ class ProcessingViewModel @Inject constructor(
                         language = language,
                         translateToEnglish = currentState.translateToEnglish,
                     onProgress = { percent ->
+                        if (isCancelled) throw kotlinx.coroutines.CancellationException("Cancelled by user")
                         val progressFraction = percent / 100f
                         val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs
                         val etaSecs: Int? = if (progressFraction > 0.05f) {
@@ -394,6 +395,7 @@ class ProcessingViewModel @Inject constructor(
                         TranscriptionService.updateProgress("Transcribing video... ${percent}%")
                     },
                     onSegmentDecoded = { text, startMs, endMs ->
+                        if (isCancelled) throw kotlinx.coroutines.CancellationException("Cancelled by user")
                         val trimmed = text.trim()
                         if (trimmed.isNotBlank() && !trimmed.startsWith("[")) {
                             _segmentBuffer.trySend(StreamedSegment(trimmed, startMs, endMs))

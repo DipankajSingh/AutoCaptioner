@@ -10,11 +10,14 @@ import com.revenuecat.purchases.awaitOfferings
 import com.revenuecat.purchases.awaitPurchase
 import com.revenuecat.purchases.interfaces.UpdatedCustomerInfoListener
 import com.revenuecat.purchases.models.StoreTransaction
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,22 +28,21 @@ class PremiumManager @Inject constructor() {
         const val ENTITLEMENT_PRO = "AutoCaptioner Pro"
     }
 
-    val customerInfoFlow: Flow<CustomerInfo> = callbackFlow {
-        // Fetch initial state
-        try {
-            val initialInfo = Purchases.sharedInstance.awaitCustomerInfo()
-            trySend(initialInfo)
-        } catch (e: Exception) {
-            // Ignore initial error, listener will catch updates
-        }
+    private val _customerInfoFlow = MutableSharedFlow<CustomerInfo>(replay = 1)
+    val customerInfoFlow: Flow<CustomerInfo> = _customerInfoFlow.asSharedFlow()
 
-        val listener = UpdatedCustomerInfoListener { customerInfo ->
-            trySend(customerInfo)
+    init {
+        Purchases.sharedInstance.updatedCustomerInfoListener = UpdatedCustomerInfoListener { customerInfo ->
+            _customerInfoFlow.tryEmit(customerInfo)
         }
-        Purchases.sharedInstance.updatedCustomerInfoListener = listener
-
-        awaitClose {
-            Purchases.sharedInstance.updatedCustomerInfoListener = null
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val initialInfo = Purchases.sharedInstance.awaitCustomerInfo()
+                _customerInfoFlow.tryEmit(initialInfo)
+            } catch (e: Exception) {
+                // Ignore initial error
+            }
         }
     }
 

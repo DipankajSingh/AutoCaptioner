@@ -181,8 +181,7 @@ class StyleEditorViewModel @Inject constructor(
         private set
 
     // Track one word-collector job per segment to avoid unbounded coroutine growth
-    private val wordJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
-
+    // (Removed in favor of a single project-level word flow)
     private fun initPlayer(videoPath: String) {
         if (exoPlayer != null) return           // already alive — don't recreate
         val player = ExoPlayer.Builder(appContext).build().apply {
@@ -207,8 +206,6 @@ class StyleEditorViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        wordJobs.values.forEach { it.cancel() }
-        wordJobs.clear()
         exoPlayer?.release()
         exoPlayer = null
     }
@@ -288,26 +285,13 @@ class StyleEditorViewModel @Inject constructor(
             launch {
                 captionRepository.getSegmentsForProject(projectId).collect { segs ->
                     setState { copy(segments = segs) }
-
-                    val newIds = segs.map { it.id }.toSet()
-                    // Cancel watchers for segments no longer present
-                    val removed = wordJobs.keys - newIds
-                    removed.forEach { id -> wordJobs.remove(id)?.cancel() }
-
-                    // Start watchers only for new segments
-                    segs.forEach { seg ->
-                        if (!wordJobs.containsKey(seg.id)) {
-                            wordJobs[seg.id] = launch {
-                                captionRepository.getWordsForSegment(seg.id).collect { words ->
-                                    val current = uiState.value.wordsMap
-                                    if (current[seg.id] != words) {
-                                        setState { copy(wordsMap = current.toMutableMap().apply { put(seg.id, words) }) }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
+            }
+
+            launch {
+                val words = captionRepository.getAllWordsForProject(projectId)
+                val grouped = words.groupBy { it.segmentId }
+                setState { copy(wordsMap = grouped) }
             }
         }
     }

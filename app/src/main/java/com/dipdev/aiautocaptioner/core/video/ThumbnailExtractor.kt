@@ -39,6 +39,7 @@ object ThumbnailExtractor {
             val stepMs = if (count > 1) duration / (count - 1) else 0
             
             for (i in 0 until count) {
+                kotlinx.coroutines.yield()
                 val timeMs = startMs + (i * stepMs)
                 // MediaMetadataRetriever takes time in microseconds
                 val bitmap = retriever.getFrameAtTime(

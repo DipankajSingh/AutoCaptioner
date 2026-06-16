@@ -48,9 +48,13 @@ class AudioExtractionUseCase @Inject constructor(
 
                 val info = MediaCodec.BufferInfo()
                 var isEOS = false
-                val pcmChunks = mutableListOf<ShortArray>()
+                
+                val tempFile = java.io.File.createTempFile("extracted_audio", ".pcm", context.cacheDir)
+                val dos = java.io.DataOutputStream(java.io.BufferedOutputStream(java.io.FileOutputStream(tempFile)))
+                var totalFloatsWritten = 0
 
                 while (true) {
+                    kotlinx.coroutines.yield()
                     if (!isEOS) {
                         val inputBufferId = codec.dequeueInputBuffer(10000)
                         if (inputBufferId >= 0) {
@@ -66,8 +70,7 @@ class AudioExtractionUseCase @Inject constructor(
                         }
                     }
 
-                    val outputBufferId = codec.
-                    dequeueOutputBuffer(info, 10000)
+                    val outputBufferId = codec.dequeueOutputBuffer(info, 10000)
                     if (outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         audioFormat = codec.outputFormat
                     } else if (outputBufferId >= 0) {
@@ -76,10 +79,43 @@ class AudioExtractionUseCase @Inject constructor(
                             val pcmBytes = ByteArray(info.size)
                             outputBuffer.get(pcmBytes)
                             outputBuffer.clear()
-                            val shortBuffer = ByteBuffer.wrap(pcmBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN).asShortBuffer()
-                            val chunk = ShortArray(shortBuffer.remaining())
-                            shortBuffer.get(chunk)
-                            pcmChunks.add(chunk)
+                            
+                            val pcmEncoding = if (audioFormat?.containsKey(MediaFormat.KEY_PCM_ENCODING) == true) {
+                                audioFormat!!.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                            } else {
+                                android.media.AudioFormat.ENCODING_PCM_16BIT
+                            }
+
+                            val byteBuffer = ByteBuffer.wrap(pcmBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                            val floatArray = when (pcmEncoding) {
+                                android.media.AudioFormat.ENCODING_PCM_FLOAT -> {
+                                    val fb = byteBuffer.asFloatBuffer()
+                                    FloatArray(fb.remaining()).also { fb.get(it) }
+                                }
+                                android.media.AudioFormat.ENCODING_PCM_8BIT -> {
+                                    FloatArray(pcmBytes.size) { i -> (pcmBytes[i].toInt() - 128) / 128.0f }
+                                }
+                                else -> {
+                                    val sb = byteBuffer.asShortBuffer()
+                                    FloatArray(sb.remaining()) { i -> sb.get(i) / 32768.0f }
+                                }
+                            }
+
+                            val channelCount = audioFormat?.getInteger(MediaFormat.KEY_CHANNEL_COUNT) ?: 1
+                            val monoFloats = if (channelCount > 1) {
+                                FloatArray(floatArray.size / channelCount) { i ->
+                                    var sum = 0f
+                                    for (ch in 0 until channelCount) sum += floatArray[i * channelCount + ch]
+                                    sum / channelCount
+                                }
+                            } else {
+                                floatArray
+                            }
+                            
+                            for (f in monoFloats) {
+                                dos.writeFloat(f)
+                            }
+                            totalFloatsWritten += monoFloats.size
                         }
                         codec.releaseOutputBuffer(outputBufferId, false)
                         if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -87,32 +123,23 @@ class AudioExtractionUseCase @Inject constructor(
                         }
                     }
                 }
+                
+                dos.close()
 
                 val sampleRate = audioFormat?.getInteger(MediaFormat.KEY_SAMPLE_RATE) ?: 16000
-                val channelCount = audioFormat?.getInteger(MediaFormat.KEY_CHANNEL_COUNT) ?: 1
+                var finalFloats = FloatArray(totalFloatsWritten)
+                val dis = java.io.DataInputStream(java.io.BufferedInputStream(java.io.FileInputStream(tempFile)))
+                for (i in 0 until totalFloatsWritten) {
+                    finalFloats[i] = dis.readFloat()
+                }
+                dis.close()
+                tempFile.delete()
 
-                val totalSamples = pcmChunks.sumOf { it.size }
-                val pcmShorts = ShortArray(totalSamples)
-                var offset = 0
-                for (chunk in pcmChunks) {
-                    System.arraycopy(chunk, 0, pcmShorts, offset, chunk.size)
-                    offset += chunk.size
+                if (sampleRate != 16000) {
+                    finalFloats = resampleTo16kLinear(finalFloats, sampleRate)
                 }
 
-                val monoShorts: ShortArray = if (channelCount > 1) {
-                    ShortArray(totalSamples / channelCount) { i ->
-                        var sum = 0
-                        for (ch in 0 until channelCount) sum += pcmShorts[i * channelCount + ch]
-                        (sum / channelCount).toShort()
-                    }
-                } else {
-                    pcmShorts
-                }
-
-                val finalShorts = if (sampleRate != 16000) resampleTo16kLinear(monoShorts, sampleRate)
-                                  else monoShorts
-
-                FloatArray(finalShorts.size) { i -> finalShorts[i] / 32768.0f }
+                finalFloats
             } finally {
                 try { codec?.stop() } catch (_: Exception) {}
                 try { codec?.release() } catch (_: Exception) {}
@@ -121,18 +148,18 @@ class AudioExtractionUseCase @Inject constructor(
         }
     }
 
-    private fun resampleTo16kLinear(input: ShortArray, fromRate: Int): ShortArray {
+    private fun resampleTo16kLinear(input: FloatArray, fromRate: Int): FloatArray {
         if (fromRate == 16000) return input
         if (input.size < 2) return input
         val ratio = fromRate.toDouble() / 16000.0
         val outputSize = (input.size / ratio).toInt()
-        return ShortArray(outputSize) { i ->
+        return FloatArray(outputSize) { i ->
             val srcPos = i * ratio
             val srcIndex = srcPos.toInt().coerceIn(0, input.size - 2)
             val fraction = (srcPos - srcIndex).toFloat()
-            val s0 = input[srcIndex].toFloat()
-            val s1 = input[srcIndex + 1].toFloat()
-            (s0 + (s1 - s0) * fraction).toInt().toShort()
+            val s0 = input[srcIndex]
+            val s1 = input[srcIndex + 1]
+            s0 + (s1 - s0) * fraction
         }
     }
 }

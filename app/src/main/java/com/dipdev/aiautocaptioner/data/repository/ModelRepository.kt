@@ -98,8 +98,10 @@ class ModelRepository @Inject constructor(
     // Returns null if no model has been downloaded yet
     fun getActiveModel(): Flow<WhisperModel?> =
         dataStore.data.map { prefs ->
-            val activeId = prefs[ACTIVE_MODEL_KEY]
-            activeId?.let { getModelById(it) }
+            withContext(Dispatchers.IO) {
+                val activeId = prefs[ACTIVE_MODEL_KEY]
+                activeId?.let { getModelById(it) }
+            }
         }.distinctUntilChanged()
 
     // Save which model the user selected as active
@@ -185,6 +187,11 @@ class ModelRepository @Inject constructor(
             }
 
             val body = response.body
+            if (body == null) {
+                response.close()
+                emit(DownloadState.Error("Empty response body from server."))
+                return@flow
+            }
 
             val isPartial = response.code == 206
             if (!isPartial && downloadedBytes > 0) {

@@ -310,6 +310,7 @@ fun HomeScreen(
             if (importState is ImportState.Error) {
                 val message = (importState as ImportState.Error).message
                 LaunchedEffect(importState) {
+                    kotlinx.coroutines.delay(3000)
                     viewModel.resetImportState()
                 }
                 Snackbar(

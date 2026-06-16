@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,9 +41,17 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun fetchAnnouncement() {
-        val config = Firebase.remoteConfig
-        config.fetchAndActivate().addOnCompleteListener { 
-            _announcementMessage.value = config.getString("home_announcement_message")
+        viewModelScope.launch {
+            try {
+                val config = Firebase.remoteConfig
+                config.fetchAndActivate().addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        _announcementMessage.value = config.getString("home_announcement_message")
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore errors
+            }
         }
     }
 

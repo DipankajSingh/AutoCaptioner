@@ -31,7 +31,7 @@ import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
         CaptionStyleEntity::class,
         ExportedFileEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
     autoMigrations = []
 )
@@ -83,6 +83,46 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_exported_files_projectId` ON `exported_files` (`projectId`)")
+            }
+        }
+
+        /** Add foreign key for activeStyleId */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `projects_new` (
+                        `id` TEXT NOT NULL, 
+                        `title` TEXT NOT NULL, 
+                        `originalVideoUri` TEXT NOT NULL, 
+                        `workingVideoPath` TEXT NOT NULL, 
+                        `audioPath` TEXT, 
+                        `thumbnailPath` TEXT, 
+                        `videoDurationMs` INTEGER NOT NULL, 
+                        `videoWidth` INTEGER NOT NULL, 
+                        `videoHeight` INTEGER NOT NULL, 
+                        `videoRotation` INTEGER NOT NULL, 
+                        `videoFps` REAL NOT NULL, 
+                        `status` TEXT NOT NULL, 
+                        `activeStyleId` TEXT, 
+                        `hasVisitedCaptionEditor` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL, 
+                        `updatedAt` INTEGER NOT NULL, 
+                        `exportedVideoPath` TEXT, 
+                        `transcriptionLanguage` TEXT DEFAULT 'en', 
+                        `transcribedWithModelId` TEXT, 
+                        PRIMARY KEY(`id`), 
+                        FOREIGN KEY(`activeStyleId`) REFERENCES `caption_styles`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL
+                    )
+                """.trimIndent())
+                
+                db.execSQL("""
+                    INSERT INTO `projects_new` (`id`, `title`, `originalVideoUri`, `workingVideoPath`, `audioPath`, `thumbnailPath`, `videoDurationMs`, `videoWidth`, `videoHeight`, `videoRotation`, `videoFps`, `status`, `activeStyleId`, `hasVisitedCaptionEditor`, `createdAt`, `updatedAt`, `exportedVideoPath`, `transcriptionLanguage`, `transcribedWithModelId`)
+                    SELECT `id`, `title`, `originalVideoUri`, `workingVideoPath`, `audioPath`, `thumbnailPath`, `videoDurationMs`, `videoWidth`, `videoHeight`, `videoRotation`, `videoFps`, `status`, `activeStyleId`, `hasVisitedCaptionEditor`, `createdAt`, `updatedAt`, `exportedVideoPath`, `transcriptionLanguage`, `transcribedWithModelId` FROM `projects`
+                """.trimIndent())
+                
+                db.execSQL("DROP TABLE `projects`")
+                db.execSQL("ALTER TABLE `projects_new` RENAME TO `projects`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_projects_activeStyleId` ON `projects` (`activeStyleId`)")
             }
         }
     }

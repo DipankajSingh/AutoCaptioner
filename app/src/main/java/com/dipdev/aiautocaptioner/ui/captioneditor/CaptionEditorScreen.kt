@@ -411,7 +411,7 @@ private fun SegmentCard(
 
             if (isExpanded) {
                 // Prioritize local text state while expanded to prevent typing wipeout from delayed DB updates
-                var text by remember(segment.id) { mutableStateOf(segment.text) }
+                var text by remember(segment.id, segment.text) { mutableStateOf(segment.text) }
                 val currentText by androidx.compose.runtime.rememberUpdatedState(text)
                 val currentSegmentText by androidx.compose.runtime.rememberUpdatedState(segment.text)
                 val currentOnSaveText by androidx.compose.runtime.rememberUpdatedState(onSaveText)

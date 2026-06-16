@@ -129,6 +129,7 @@ class ExportViewModel @Inject constructor(
     private fun cancelExport() {
         activeTransformer?.cancel()
         activeTransformer = null
+        currentState.outputPath?.let { File(it).delete() }
         setState { copy(exportState = ExportState.Cancelled) }
     }
 
@@ -228,6 +229,7 @@ class ExportViewModel @Inject constructor(
                             exportResult: ExportResult,
                             exportException: ExportException
                         ) {
+                            activeTransformer = null
                             setState { copy(exportState = ExportState.Error(exportException.message ?: "Unknown Export Error")) }
                         }
                     })

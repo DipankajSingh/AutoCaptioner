@@ -41,7 +41,9 @@ class ProjectRepository @Inject constructor(
 
     // ---- Get single project ----
     suspend fun getProjectById(projectId: String): ProjectEntity? =
-        projectDao.getProjectById(projectId)
+        withContext(Dispatchers.IO) {
+            projectDao.getProjectById(projectId)
+        }
 
     // ---- Import a video ----
     // This is the main entry point when user picks a video from gallery
@@ -161,32 +163,42 @@ class ProjectRepository @Inject constructor(
     // ---- Update project status ----
     // Called at each step of the processing pipeline
     suspend fun updateStatus(projectId: String, status: ProjectStatus) {
-        projectDao.updateStatus(projectId, status)
+        withContext(Dispatchers.IO) {
+            projectDao.updateStatus(projectId, status)
+        }
     }
 
     // ---- Update working video path ----
     suspend fun updateWorkingVideoPath(projectId: String, videoPath: String) {
-        val project = projectDao.getProjectById(projectId) ?: return
-        projectDao.updateProject(project.copy(workingVideoPath = videoPath, updatedAt = System.currentTimeMillis()))
+        withContext(Dispatchers.IO) {
+            val project = projectDao.getProjectById(projectId) ?: return@withContext
+            projectDao.updateProject(project.copy(workingVideoPath = videoPath, updatedAt = System.currentTimeMillis()))
+        }
     }
 
     // ---- Update visited caption editor flag ----
     suspend fun updateVisitedCaptionEditor(projectId: String, hasVisited: Boolean = true) {
-        projectDao.updateVisitedCaptionEditor(projectId, hasVisited)
+        withContext(Dispatchers.IO) {
+            projectDao.updateVisitedCaptionEditor(projectId, hasVisited)
+        }
     }
 
     // ---- Update project complete entity ----
     suspend fun updateProject(project: ProjectEntity) {
-        projectDao.updateProject(project)
+        withContext(Dispatchers.IO) {
+            projectDao.updateProject(project)
+        }
     }
 
     // ---- Rename project ----
     suspend fun renameProject(projectId: String, newTitle: String) {
-        val project = projectDao.getProjectById(projectId) ?: return
-        projectDao.updateProject(
-            project.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis())
-        )
-        Log.i(TAG, "Project renamed to: $newTitle")
+        withContext(Dispatchers.IO) {
+            val project = projectDao.getProjectById(projectId) ?: return@withContext
+            projectDao.updateProject(
+                project.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis())
+            )
+            Log.i(TAG, "Project renamed to: $newTitle")
+        }
     }
 
     // ---- Delete project ----
@@ -196,18 +208,22 @@ class ProjectRepository @Inject constructor(
             // Get project to find the file path
             val project = projectDao.getProjectById(projectId) ?: return@withContext
 
-            // Delete project folder and all its contents
-            // (video, audio, thumbnail, any exports)
-            val projectDir = File(context.filesDir, "projects/$projectId")
-            if (projectDir.exists()) {
-                projectDir.deleteRecursively()
-                Log.i(TAG, "Deleted project files: ${projectDir.absolutePath}")
-            }
-
-            // Delete from database
+            // Delete from database FIRST
             // Room's CASCADE will automatically delete all segments + words
             projectDao.deleteProject(project)
             Log.i(TAG, "Deleted project from DB: $projectId")
+
+            // Delete project folder and all its contents
+            // (video, audio, thumbnail, any exports)
+            try {
+                val projectDir = File(context.filesDir, "projects/$projectId")
+                if (projectDir.exists()) {
+                    projectDir.deleteRecursively()
+                    Log.i(TAG, "Deleted project files: ${projectDir.absolutePath}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete project files", e)
+            }
         }
     }
 

@@ -50,9 +50,9 @@ class TranscriptionService : Service() {
                     notification, 
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 )
-            } catch (_: Exception) {
-                // Fallback if missing permission or type
-                startForeground(NOTIFICATION_ID, notification)
+            } catch (e: Exception) {
+                // Ignore fallback to prevent fatal crashes
+                e.printStackTrace()
             }
         } else {
             startForeground(NOTIFICATION_ID, notification)

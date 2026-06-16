@@ -38,6 +38,8 @@ class ModelManagerViewModel @Inject constructor(
     ModelManagerUiState(availableModels = modelRepository.getAvailableModels())
 ) {
 
+    private val downloadJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
+
     init {
         viewModelScope.launch {
             modelRepository.getActiveModel().collect { activeModel ->
@@ -57,7 +59,7 @@ class ModelManagerViewModel @Inject constructor(
                 }
             }
             is ModelManagerUiEvent.StartDownload -> {
-                viewModelScope.launch {
+                val job = viewModelScope.launch {
                     modelRepository.downloadModel(event.modelId).collect { state ->
                         setState {
                             val newMap = downloadStates.toMutableMap()
@@ -69,8 +71,11 @@ class ModelManagerViewModel @Inject constructor(
                         }
                     }
                 }
+                downloadJobs[event.modelId] = job
             }
             is ModelManagerUiEvent.DeleteModel -> {
+                downloadJobs[event.modelId]?.cancel()
+                downloadJobs.remove(event.modelId)
                 viewModelScope.launch {
                     modelRepository.deleteModel(event.modelId)
                     setState {

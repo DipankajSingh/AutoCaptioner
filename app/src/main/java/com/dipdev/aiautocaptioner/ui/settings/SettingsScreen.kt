@@ -226,7 +226,11 @@ fun SettingsScreen(
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW,
                         com.dipdev.aiautocaptioner.AppLinks.PRIVACY_POLICY.toUri())
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        android.widget.Toast.makeText(context, "No browser installed", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
 
@@ -238,7 +242,11 @@ fun SettingsScreen(
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW,
                         com.dipdev.aiautocaptioner.AppLinks.TERMS_OF_SERVICE.toUri())
-                    context.startActivity(intent)
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        android.widget.Toast.makeText(context, "No browser installed", android.widget.Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         }

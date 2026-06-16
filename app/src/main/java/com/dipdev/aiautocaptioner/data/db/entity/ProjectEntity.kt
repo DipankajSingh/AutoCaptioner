@@ -3,9 +3,22 @@ package com.dipdev.aiautocaptioner.data.db.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+import androidx.room.ForeignKey
+
 // @Entity tells Room: "create a table for this data class"
 // tableName is what the actual SQL table will be called
-@Entity(tableName = "projects")
+@Entity(
+    tableName = "projects",
+    foreignKeys = [
+        ForeignKey(
+            entity = CaptionStyleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["activeStyleId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [androidx.room.Index(value = ["activeStyleId"])]
+)
 data class ProjectEntity(
 
     // @PrimaryKey = unique identifier for each row

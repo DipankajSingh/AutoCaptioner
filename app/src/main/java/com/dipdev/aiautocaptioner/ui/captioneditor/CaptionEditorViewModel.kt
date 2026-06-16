@@ -57,12 +57,27 @@ class CaptionEditorViewModel @Inject constructor(
     private val captionRepository: CaptionRepository
 ) : BaseViewModel<CaptionEditorUiState, CaptionEditorUiEvent, CaptionEditorUiEffect>(CaptionEditorUiState()) {
 
+    private var wordsJob: kotlinx.coroutines.Job? = null
+
     override fun handleEvent(event: CaptionEditorUiEvent) {
         when (event) {
             is CaptionEditorUiEvent.LoadProject -> loadProject(event.projectId)
             is CaptionEditorUiEvent.ToggleSegmentExpanded -> {
+                val newExpandedId = if (uiState.value.expandedSegmentId == event.segmentId) null else event.segmentId
                 setState {
-                    copy(expandedSegmentId = if (expandedSegmentId == event.segmentId) null else event.segmentId)
+                    copy(expandedSegmentId = newExpandedId)
+                }
+                wordsJob?.cancel()
+                if (newExpandedId != null) {
+                    wordsJob = viewModelScope.launch {
+                        captionRepository.getWordsForSegment(newExpandedId).collect { words ->
+                            setState {
+                                val newMap = wordsMap.toMutableMap()
+                                newMap[newExpandedId] = words
+                                copy(wordsMap = newMap)
+                            }
+                        }
+                    }
                 }
             }
             is CaptionEditorUiEvent.UpdateSearchQuery -> {
@@ -115,9 +130,8 @@ class CaptionEditorViewModel @Inject constructor(
             }
 
             launch {
-                captionRepository.getAllWordsForProjectFlow(projectId).collect { words ->
-                    setState { copy(wordsMap = words.groupBy { it.segmentId }) }
-                }
+                val words = captionRepository.getAllWordsForProject(projectId)
+                setState { copy(wordsMap = words.groupBy { it.segmentId }) }
             }
         }
     }

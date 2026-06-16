@@ -54,6 +54,7 @@ object CaptionRenderer {
         val maxL    = if (style.maxLines <= 0) 999 else style.maxLines
         val lines   = visible.chunked(maxW).take(maxL)
 
+        canvas.save()
         canvas.clipRect(0f, 0f, videoWidth.toFloat(), videoHeight.toFloat())
         val totalH = lines.size * lineH + padY * 2f
         val startY = (videoHeight * style.positionY) - totalH / 2f
@@ -120,6 +121,7 @@ object CaptionRenderer {
             }
             lineYP2 += lineH
         }
+        canvas.restore()
     }
 
     // ── Word draw ─────────────────────────────────────────────────────────────

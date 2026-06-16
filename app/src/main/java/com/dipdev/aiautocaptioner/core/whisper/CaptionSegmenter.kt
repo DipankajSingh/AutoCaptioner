@@ -132,7 +132,7 @@ object CaptionSegmenter {
                 // Try to find a sentence boundary near the middle
                 for (j in 0 until words.size - 1) {
                     val wordText = words[j].word
-                    if (wordText.endsWith(".") || wordText.endsWith("!") || wordText.endsWith("?")) {
+                    if (wordText.matches(Regex(".*[.!?][\"')\\]]*$"))) {
                         val distance = kotlin.math.abs(j - mid)
                         if (distance < minDistance) {
                             minDistance = distance

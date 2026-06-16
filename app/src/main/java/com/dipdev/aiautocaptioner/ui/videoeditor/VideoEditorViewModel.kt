@@ -15,6 +15,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import kotlinx.coroutines.launch
@@ -93,13 +95,11 @@ class VideoEditorViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(uiState, uiState) { state, _ -> state }
-                .collect { state ->
-                    val showThumbs = state.showTimelineThumbnails
-                    val currentClips = state.clips
-
+            uiState.map { Pair(it.clips, it.showTimelineThumbnails) }
+                .distinctUntilChanged()
+                .collect { (currentClips, showThumbs) ->
                     if (showThumbs && originalVideoPath.isNotEmpty()) {
-                        val newMap = state.clipThumbnails.toMutableMap()
+                        val newMap = currentState.clipThumbnails.toMutableMap()
                         
                         // We generate a few thumbnails per clip (e.g. 5)
                         for (clip in currentClips) {
@@ -117,10 +117,14 @@ class VideoEditorViewModel @Inject constructor(
                         
                         // Cleanup old clips
                         val currentIds = currentClips.map { it.id }.toSet()
-                        newMap.keys.retainAll(currentIds)
+                        val removedKeys = newMap.keys - currentIds
+                        removedKeys.forEach { key ->
+                            newMap.remove(key)?.forEach { it.recycle() }
+                        }
                         
                         setState { copy(clipThumbnails = newMap) }
-                    } else if (state.clipThumbnails.isNotEmpty()) {
+                    } else if (currentState.clipThumbnails.isNotEmpty()) {
+                        currentState.clipThumbnails.values.flatten().forEach { it.recycle() }
                         setState { copy(clipThumbnails = emptyMap()) }
                     }
                 }
@@ -150,8 +154,9 @@ class VideoEditorViewModel @Inject constructor(
             val project = projectRepository.getProjectById(projectId)
             if (project != null) {
                 var durationMs = 0L
+                var retriever: MediaMetadataRetriever? = null
                 try {
-                    val retriever = MediaMetadataRetriever()
+                    retriever = MediaMetadataRetriever()
                     if (project.workingVideoPath.startsWith("content://") || project.workingVideoPath.startsWith("file://")) {
                         retriever.setDataSource(context, android.net.Uri.parse(project.workingVideoPath))
                     } else {
@@ -159,9 +164,10 @@ class VideoEditorViewModel @Inject constructor(
                     }
                     val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                     durationMs = durationStr?.toLongOrNull() ?: 0L
-                    retriever.release()
                 } catch (e: Exception) {
                     e.printStackTrace()
+                } finally {
+                    retriever?.release()
                 }
                 originalDurationMs = durationMs
                 originalVideoPath = project.workingVideoPath
@@ -354,6 +360,7 @@ class VideoEditorViewModel @Inject constructor(
                             exportResult: ExportResult,
                             exportException: ExportException
                         ) {
+                            tempOutputFile.delete()
                             setState { copy(step = VideoEditorUiStep.Error(exportException.message ?: "Unknown error during trim")) }
                         }
                     })
