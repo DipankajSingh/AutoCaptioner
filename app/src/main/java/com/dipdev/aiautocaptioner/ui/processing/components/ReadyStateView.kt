@@ -155,7 +155,7 @@ fun ReadyStateView(
                     text = if (isSelectedModelDownloaded) "Generate" else "Download & Generate",
                     onClick = { selectedModelId?.let { onDownloadAndProcess(it) } },
                     enabled = selectedModelId != null,
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
                 )
             }
         }

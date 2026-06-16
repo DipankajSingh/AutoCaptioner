@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -60,6 +61,7 @@ import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +99,55 @@ fun CaptionEditorScreen(
 
     val context = LocalContext.current
 
+    val videoPath = project?.workingVideoPath
+    val player = remember(videoPath) {
+        if (videoPath != null) {
+            androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+                setMediaItem(androidx.media3.common.MediaItem.fromUri(videoPath))
+                prepare()
+                playWhenReady = false
+            }
+        } else null
+    }
+
+    androidx.compose.runtime.DisposableEffect(player) {
+        onDispose {
+            player?.release()
+        }
+    }
+
+    var currentPositionMs by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(player) {
+        if (player == null) return@LaunchedEffect
+        while (true) {
+            currentPositionMs = player.currentPosition
+            if (player.isPlaying) {
+                androidx.compose.runtime.withFrameMillis { }
+            } else {
+                kotlinx.coroutines.delay(200.milliseconds)
+            }
+        }
+    }
+
+    val activeSegmentIndex by remember(filteredSegments) {
+        androidx.compose.runtime.derivedStateOf {
+            filteredSegments.indexOfFirst { segment ->
+                currentPositionMs in segment.startTimeMs..segment.endTimeMs
+            }
+        }
+    }
+
+    val activeSegment = if (activeSegmentIndex >= 0) filteredSegments[activeSegmentIndex] else null
+
+    LaunchedEffect(activeSegmentIndex) {
+        if (activeSegmentIndex >= 0 && player?.isPlaying == true) {
+            coroutineScope.launch {
+                listState.animateScrollToItem(activeSegmentIndex + 1)
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.srtContentToShare.collect { content ->
             val srtFile = java.io.File(context.cacheDir, "captions_$projectId.srt")
@@ -117,7 +168,9 @@ fun CaptionEditorScreen(
                 title = {
                     Text(
                         text = project?.title ?: "Caption Editor",
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -168,6 +221,18 @@ fun CaptionEditorScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (player != null) {
+                com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard(
+                    player = player,
+                    showControls = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = viewModel::updateSearchQuery,
@@ -215,11 +280,13 @@ fun CaptionEditorScreen(
                     items(filteredSegments, key = { it.id }) { segment ->
                         val words = wordsMap[segment.id] ?: emptyList()
                         val isExpanded = expandedSegmentId == segment.id
+                        val isActive = segment.id == activeSegment?.id
 
                         SegmentCard(
                             segment = segment,
                             words = words,
                             isExpanded = isExpanded,
+                            isActive = isActive,
                             onToggleExpand = { viewModel.toggleSegmentExpanded(segment.id) },
                             onSaveText = { newText ->
                                 viewModel.saveSegmentText(segment, newText)
@@ -299,13 +366,21 @@ private fun SegmentCard(
     segment: CaptionSegmentEntity,
     words: List<CaptionWordEntity>,
     isExpanded: Boolean,
+    isActive: Boolean = false,
     onToggleExpand: () -> Unit,
     onSaveText: (String) -> Unit,          // called only on focus-lost, not every keystroke
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
+    val cardColor = if (isActive) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+    } else {
+        androidx.compose.ui.graphics.Color.Unspecified
+    }
+
     GlassmorphicCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        color = cardColor
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
 
@@ -334,8 +409,13 @@ private fun SegmentCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             if (isExpanded) {
-                // We use remember with segment.id AND segment.text to initialize it correctly if DB changes underneath us
-                var text by remember(segment.id, segment.text) { mutableStateOf(segment.text) }
+                // Prioritize local text state while expanded to prevent typing wipeout from delayed DB updates
+                var text by remember(segment.id) { mutableStateOf(segment.text) }
+
+                LaunchedEffect(text) {
+                    kotlinx.coroutines.delay(500)
+                    onSaveText(text)
+                }
 
                 BasicTextField(
                     value = text,
@@ -344,11 +424,7 @@ private fun SegmentCard(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(4.dp)) // Flattened shape
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(10.dp)
-                        .onFocusChanged { state ->
-                            // Commit to DB only when the field loses focus
-                            if (!state.isFocused) onSaveText(text)
-                        },
+                        .padding(10.dp),
                     textStyle = TextStyle(
                         fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurface

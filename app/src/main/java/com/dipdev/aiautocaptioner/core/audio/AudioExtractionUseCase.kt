@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 class AudioExtractionUseCase @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
@@ -20,7 +21,7 @@ class AudioExtractionUseCase @Inject constructor(
 
             try {
                 if (videoPath.startsWith("content://") || videoPath.startsWith("file://")) {
-                    extractor.setDataSource(context, android.net.Uri.parse(videoPath), null)
+                    extractor.setDataSource(context, videoPath.toUri(), null)
                 } else {
                     extractor.setDataSource(videoPath)
                 }
@@ -40,7 +41,7 @@ class AudioExtractionUseCase @Inject constructor(
                 }
                 extractor.selectTrack(audioTrackIndex)
 
-                val mime = audioFormat?.getString(MediaFormat.KEY_MIME)!!
+                val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
                 codec = MediaCodec.createDecoderByType(mime)
                 codec.configure(audioFormat, null, null, 0)
                 codec.start()
@@ -65,7 +66,8 @@ class AudioExtractionUseCase @Inject constructor(
                         }
                     }
 
-                    val outputBufferId = codec.dequeueOutputBuffer(info, 10000)
+                    val outputBufferId = codec.
+                    dequeueOutputBuffer(info, 10000)
                     if (outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         audioFormat = codec.outputFormat
                     } else if (outputBufferId >= 0) {

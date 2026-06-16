@@ -8,16 +8,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
+import com.dipdev.aiautocaptioner.core.whisper.CaptionSegmenter
 import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
-import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine.WordTimestamp
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
-import com.dipdev.aiautocaptioner.core.whisper.CaptionSegmenter
-import com.dipdev.aiautocaptioner.data.repository.TranscriptionSegment
 import com.dipdev.aiautocaptioner.service.TranscriptionService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 // ════════════════════════════════════════════════════════════════════════════════
 // Processing Steps — represents the current state of the processing pipeline
@@ -146,7 +145,7 @@ class ProcessingViewModel @Inject constructor(
         dripJob = viewModelScope.launch {
             for (segment in _segmentBuffer) {
                 _streamedSegments.value += segment
-                delay(SEGMENT_DRIP_DELAY_MS)
+                delay(SEGMENT_DRIP_DELAY_MS.milliseconds)
             }
         }
     }
@@ -455,7 +454,7 @@ class ProcessingViewModel @Inject constructor(
                 _step.value = ProcessingStep.Done
 
                 // Auto-navigate after a brief success animation
-                delay(2000)
+                delay(2000.milliseconds)
                 _navigateToStyleEditor.tryEmit(Unit)
 
             } catch (e: kotlinx.coroutines.CancellationException) {

@@ -88,37 +88,16 @@ class CaptionEditorViewModel @Inject constructor(
         viewModelScope.launch {
             captionRepository.updateSegment(segment.copy(text = trimmed))
 
-            val newWordsList = if (trimmed.isEmpty()) listOf(" ") else trimmed.split(Regex("\\s+")).filter { it.isNotBlank() }
             val oldWordsList = _wordsMap.value[segment.id] ?: emptyList()
-
-            if (newWordsList.size == oldWordsList.size) {
-                // Same token count → just update strings, preserving timing/emphasis
-                val updatedEntities = oldWordsList.zip(newWordsList) { entity, newWord ->
-                    entity.copy(word = newWord)
-                }
-                captionRepository.updateWords(updatedEntities)
-            } else {
-                // Word count changed → redistribute time linearly
-                val duration = segment.endTimeMs - segment.startTimeMs
-                val timePerWord = if (newWordsList.isNotEmpty()) duration / newWordsList.size else 0L
-
-                val newEntities = newWordsList.mapIndexed { index, word ->
-                    val matchingOldWord = oldWordsList.find { it.word == word }
-                    CaptionWordEntity(
-                        id = java.util.UUID.randomUUID().toString(),
-                        projectId = segment.projectId,
-                        segmentId = segment.id,
-                        word = word,
-                        index = index,
-                        startTimeMs = segment.startTimeMs + (timePerWord * index),
-                        endTimeMs = segment.startTimeMs + (timePerWord * (index + 1)),
-                        confidence = 1.0f,
-                        isEmphasized = matchingOldWord?.isEmphasized ?: false,
-                        emphasisType = matchingOldWord?.emphasisType ?: EmphasisType.NONE
-                    )
-                }
-                captionRepository.replaceWordsForSegment(segment.id, newEntities)
-            }
+            val newEntities = CaptionAlignmentUtils.alignWords(
+                oldWords = oldWordsList,
+                newText = trimmed,
+                segmentId = segment.id,
+                projectId = segment.projectId,
+                segmentStartTimeMs = segment.startTimeMs,
+                segmentEndTimeMs = segment.endTimeMs
+            )
+            captionRepository.replaceWordsForSegment(segment.id, newEntities)
         }
     }
 

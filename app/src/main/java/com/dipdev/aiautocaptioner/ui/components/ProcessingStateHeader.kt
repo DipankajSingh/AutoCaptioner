@@ -16,7 +16,13 @@ fun ProcessingStateHeader(
     title: String,
     subtitle: String? = null
 ) {
-    Text(text = title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    Text(
+        text = title,
+        fontSize = 20.sp,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+    )
     if (subtitle != null) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
