@@ -11,17 +11,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private val LANGUAGES = listOf(
+    "auto" to "Auto-detect",
     "en"   to "English",
     "hi"   to "Hindi",
     "es"   to "Spanish",
     "fr"   to "French",
     "de"   to "German",
-    "zh"   to "Chinese",
+    "zh"   to "Chinese (Simplified)",
+    "zh-TW" to "Chinese (Traditional)",
+    "yue"  to "Cantonese",
     "ja"   to "Japanese",
+    "ko"   to "Korean",
+    "it"   to "Italian",
     "ar"   to "Arabic",
-    "pt"   to "Portuguese",
     "ru"   to "Russian",
-    "auto" to "Auto-detect"
+    "pt"   to "Portuguese",
+    "ta"   to "Tamil",
+    "te"   to "Telugu",
+    "nl"   to "Dutch",
+    "tr"   to "Turkish",
+    "pl"   to "Polish",
+    "vi"   to "Vietnamese",
+    "th"   to "Thai",
+    "id"   to "Indonesian",
+    "ms"   to "Malay"
 )
 
 /**
@@ -29,8 +42,9 @@ private val LANGUAGES = listOf(
  *
  * @param selectedLanguage   Currently selected language code (e.g. "en").
  * @param onLanguageSelected Called with the new code when the user picks one.
- * @param isMultilingual     When false (English-only model), only "English" is shown
- *                           and the selection is forced to "en".
+ * @param allowedLanguages   List of language codes supported by the active model.
+ *                           If the list contains "multilingual", all languages are shown.
+ *                           Otherwise, only the explicitly allowed languages are shown.
  * @param modifier           Applied to the outer [Column].
  */
 @Composable
@@ -38,17 +52,23 @@ fun LanguageDropdown(
     modifier: Modifier = Modifier,
     selectedLanguage: String,
     onLanguageSelected: (String) -> Unit,
-    isMultilingual: Boolean = true,
-
+    allowedLanguages: List<String> = listOf("multilingual")
 ) {
-    // When an English-only model is active, force the selection to "en"
-    LaunchedEffect(isMultilingual) {
-        if (!isMultilingual && selectedLanguage != "en") {
-            onLanguageSelected("en")
+    val isMultilingual = allowedLanguages.contains("multilingual")
+
+    // Force selection to the model's supported language if current selection is invalid
+    LaunchedEffect(allowedLanguages) {
+        if (!isMultilingual && !allowedLanguages.contains(selectedLanguage)) {
+            val fallback = allowedLanguages.firstOrNull { it != "auto" } ?: "en"
+            onLanguageSelected(fallback)
         }
     }
 
-    val visibleLanguages = if (isMultilingual) LANGUAGES else LANGUAGES.filter { it.first == "en" }
+    val visibleLanguages = if (isMultilingual) {
+        LANGUAGES
+    } else {
+        LANGUAGES.filter { allowedLanguages.contains(it.first) || it.first == "auto" }
+    }
 
     var expanded by remember { mutableStateOf(false) }
     val displayName = visibleLanguages.find { it.first == selectedLanguage }?.second
@@ -64,13 +84,15 @@ fun LanguageDropdown(
         )
         Box {
             OutlinedButton(
-                onClick  = { if (isMultilingual) expanded = true },
+                onClick  = { if (visibleLanguages.size > 1) expanded = true },
                 modifier = Modifier.fillMaxWidth(),
                 shape    = RoundedCornerShape(10.dp),
-                enabled  = isMultilingual
+                enabled  = visibleLanguages.size > 1
             ) {
                 Text(displayName, modifier = Modifier.weight(1f))
-                Text("▾", fontSize = 14.sp)
+                if (visibleLanguages.size > 1) {
+                    Text("▾", fontSize = 14.sp)
+                }
             }
             DropdownMenu(
                 expanded          = expanded,
@@ -95,11 +117,12 @@ fun LanguageDropdown(
             }
         }
 
-        // Helper text shown only for English-only models
+        // Helper text shown only for single-language models
         if (!isMultilingual) {
             Spacer(modifier = Modifier.height(4.dp))
+            val modelLangName = visibleLanguages.firstOrNull { it.first != "auto" }?.second ?: "Specific"
             Text(
-                text     = "English-only model active",
+                text     = "$modelLangName-only model active",
                 fontSize = 11.sp,
                 color    = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )

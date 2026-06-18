@@ -2,8 +2,8 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   // Inject environment variables
-  const playStoreLink = import.meta.env.VITE_PLAY_STORE_LINK;
-  const contactEmail = import.meta.env.VITE_CONTACT_EMAIL;
+  const playStoreLink = import.meta.env.VITE_PLAY_STORE_LINK || '#';
+  const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'support@example.com';
 
   const heroCtaBtn = document.getElementById('hero-cta-btn');
   const navCtaBtn = document.getElementById('nav-cta');
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     anchor.addEventListener('click', function (e) {
       const targetId = this.getAttribute('href');
       if(targetId === '#') return;
-      const targetElement = document.querySelector(targetId);
+      const targetElement = document.getElementById(targetId.substring(1));
       if(targetElement) {
         e.preventDefault();
         targetElement.scrollIntoView({
@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (captionWords.length > 0) {
     let currentIndex = 0;
     setInterval(() => {
+      if (document.hidden) return; // Pause when tab is inactive
+      
       // Remove active class from current word
       captionWords[currentIndex].classList.remove('active');
       

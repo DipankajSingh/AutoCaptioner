@@ -9,8 +9,7 @@ object CaptionUtils {
 
     fun buildTimedWords(
         seg: CaptionSegmentEntity,
-        rawWords: List<CaptionWordEntity>?,
-        posMs: Long
+        rawWords: List<CaptionWordEntity>?
     ): List<CaptionAnimator.TimedWord> {
         if (!rawWords.isNullOrEmpty()) {
             return rawWords.map { w ->
@@ -18,8 +17,8 @@ object CaptionUtils {
                     text         = w.word,
                     startTimeMs  = w.startTimeMs,
                     endTimeMs    = w.endTimeMs,
-                    isActive     = posMs in w.startTimeMs..w.endTimeMs,
-                    isPast       = posMs > w.endTimeMs,
+                    isActive     = false,
+                    isPast       = false,
                     isEmphasized = w.isEmphasized,
                     emphasisType = w.emphasisType
                 )
@@ -31,7 +30,7 @@ object CaptionUtils {
         return words.mapIndexed { i, w ->
             val s = seg.startTimeMs + i * tpw
             val e = s + tpw
-            CaptionAnimator.TimedWord(w, s, e, posMs in s..e, posMs > e, false, EmphasisType.NONE)
+            CaptionAnimator.TimedWord(w, s, e, false, false, false, EmphasisType.NONE)
         }
     }
 

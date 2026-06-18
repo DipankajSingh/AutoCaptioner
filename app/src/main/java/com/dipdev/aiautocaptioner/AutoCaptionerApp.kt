@@ -23,7 +23,9 @@ class AiAutoCaptioner : Application() {
     private fun initRevenueCat() {
         val apiKey = Firebase.remoteConfig.getString("revenuecat_api_key")
         if (apiKey != "disabled" && apiKey.isNotBlank()) {
-            Purchases.logLevel = LogLevel.DEBUG
+            if (BuildConfig.DEBUG) {
+                Purchases.logLevel = LogLevel.DEBUG
+            }
             Purchases.configure(
                 PurchasesConfiguration.Builder(this, apiKey)
                     .build()

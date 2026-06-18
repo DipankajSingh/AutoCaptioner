@@ -58,12 +58,13 @@ class DeviceCapabilityUseCase @Inject constructor(
         val totalRamMb = getTotalRamMb()
         return when {
             language != "en" -> when {
-                totalRamMb >= 3000 -> "small"
-                else -> "base"
+                totalRamMb >= 6000 -> "small"
+                totalRamMb >= 4000 -> "base"
+                else -> "tiny"
             }
             else -> when {
-                totalRamMb >= 3000 -> "small.en"
-                totalRamMb >= 1500 -> "base.en"
+                totalRamMb >= 6000 -> "small.en"
+                totalRamMb >= 4000 -> "base.en"
                 else -> "tiny.en"
             }
         }

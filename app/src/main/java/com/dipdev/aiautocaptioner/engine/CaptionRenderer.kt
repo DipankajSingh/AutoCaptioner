@@ -20,6 +20,12 @@ object CaptionRenderer {
     private val tempWordRect = RectF()
     private val tempLineRect = RectF()
 
+    private var cachedSegmentId: String? = null
+    private var cachedStyleId: String? = null
+    private var cachedWords: List<TimedWord> = emptyList()
+    private var cachedVisibleWords: List<TimedWord> = emptyList()
+    private var cachedLayouts: List<Triple<List<TimedWord>, Float, Float>> = emptyList()
+
     fun draw(
         canvas: Canvas,
         currentPositionMs: Long,
@@ -38,8 +44,19 @@ object CaptionRenderer {
         CaptionPaints.configure(style, baseScale)
 
         // ── Build TimedWord list ──────────────────────────────────────────────
-        val allWords: List<TimedWord> = CaptionUtils.buildTimedWords(seg, rawWords, currentPositionMs)
-        if (allWords.isEmpty()) return
+        if (cachedSegmentId != seg.id || cachedStyleId != style.id) {
+            cachedSegmentId = seg.id
+            cachedStyleId = style.id
+            cachedWords = CaptionUtils.buildTimedWords(seg, rawWords)
+            cachedVisibleWords = emptyList() // force rebuild
+        }
+        
+        if (cachedWords.isEmpty()) return
+
+        for (w in cachedWords) {
+            w.isActive = currentPositionMs in w.startTimeMs..w.endTimeMs
+            w.isPast = currentPositionMs > w.endTimeMs
+        }
 
         // ── Metrics & constants ───────────────────────────────────────────────
         val fm      = CaptionPaints.text.fontMetrics
@@ -49,18 +66,15 @@ object CaptionRenderer {
         val corner  = style.backgroundCornerRadius * baseScale
         val spaceW  = CaptionPaints.text.measureText(" ")
 
-        val visible = CaptionAnimator.filterVisible(allWords, style.displayMode, currentPositionMs, animMs)
-        val maxW    = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
-        val maxL    = if (style.maxLines <= 0) 999 else style.maxLines
-        val lines   = visible.chunked(maxW).take(maxL)
+        val visible = CaptionAnimator.filterVisible(cachedWords, style.displayMode, currentPositionMs, animMs)
+        
+        if (visible != cachedVisibleWords) {
+            cachedVisibleWords = visible
+            val maxW    = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
+            val maxL    = if (style.maxLines <= 0) 999 else style.maxLines
+            val lines   = visible.chunked(maxW).take(maxL)
 
-        canvas.save()
-        canvas.clipRect(0f, 0f, videoWidth.toFloat(), videoHeight.toFloat())
-        val totalH = lines.size * lineH + padY * 2f
-        val startY = (videoHeight * style.positionY) - totalH / 2f
-
-        val lineLayouts: List<Triple<List<TimedWord>, Float, Float>> =
-            lines.map { words ->
+            cachedLayouts = lines.map { words ->
                 val lineW = words.sumOf { w ->
                     (CaptionPaints.text.measureText(CaptionUtils.sanitize(w.text, style)) + spaceW).toDouble()
                 }.toFloat() - spaceW
@@ -71,6 +85,14 @@ object CaptionRenderer {
                 }
                 Triple(words, x, lineW)
             }
+        }
+
+        val lineLayouts = cachedLayouts
+
+        canvas.save()
+        canvas.clipRect(0f, 0f, videoWidth.toFloat(), videoHeight.toFloat())
+        val totalH = lineLayouts.size * lineH + padY * 2f
+        val startY = (videoHeight * style.positionY) - totalH / 2f
 
 
         // Pass 1: Background pill, Outlines, Shadows

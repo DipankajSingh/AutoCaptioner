@@ -303,7 +303,7 @@ class CaptionRepository @Inject constructor(
                     )
 
                     styleDao.insertDefaultStyles(defaults)
-                    Log.i(TAG, "Initialized \${defaults.size} default styles")
+                    Log.i(TAG, "Initialized ${defaults.size} default styles")
                 }
             }
         }

@@ -51,8 +51,10 @@ class TranscriptionService : Service() {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 )
             } catch (e: Exception) {
-                // Ignore fallback to prevent fatal crashes
+                // Foreground start failed, stop service to prevent ANR/Crash
                 e.printStackTrace()
+                stopSelf()
+                return START_NOT_STICKY
             }
         } else {
             startForeground(NOTIFICATION_ID, notification)

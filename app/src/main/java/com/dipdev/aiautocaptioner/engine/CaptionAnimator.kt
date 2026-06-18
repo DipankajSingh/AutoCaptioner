@@ -22,8 +22,8 @@ object CaptionAnimator {
         val text: String,
         val startTimeMs: Long,
         val endTimeMs: Long,
-        val isActive: Boolean,
-        val isPast: Boolean,
+        var isActive: Boolean,
+        var isPast: Boolean,
         val isEmphasized: Boolean,
         val emphasisType: EmphasisType
     )

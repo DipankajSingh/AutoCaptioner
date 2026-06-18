@@ -71,7 +71,7 @@ fun ReadyStateView(
                 LanguageDropdown(
                     selectedLanguage = selectedLanguage,
                     onLanguageSelected = onLanguageSelected,
-                    isMultilingual = activeModel?.isMultilingual ?: true
+                    allowedLanguages = activeModel?.languages ?: listOf("multilingual")
                 )
 
                 if (selectedLanguage != "en") {
