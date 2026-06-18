@@ -18,15 +18,17 @@ class AiAutoCaptioner : Application() {
     override fun onCreate() {
         super.onCreate()
         initFirebase()
-        initRevenueCat()
     }
 
     private fun initRevenueCat() {
-        Purchases.logLevel = LogLevel.DEBUG
-        Purchases.configure(
-            PurchasesConfiguration.Builder(this, "test_GTLdsaEjNvvBCJkIemFTKrOoHzA")
-                .build()
-        )
+        val apiKey = Firebase.remoteConfig.getString("revenuecat_api_key")
+        if (apiKey != "disabled" && apiKey.isNotBlank()) {
+            Purchases.logLevel = LogLevel.DEBUG
+            Purchases.configure(
+                PurchasesConfiguration.Builder(this, apiKey)
+                    .build()
+            )
+        }
     }
 
     private fun initFirebase() {
@@ -52,7 +54,9 @@ class AiAutoCaptioner : Application() {
             minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
-        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
+        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults).addOnCompleteListener {
+            initRevenueCat()
+        }
 
         // Fetch and activate in the background. New values take effect on next launch.
         remoteConfig.fetchAndActivate()

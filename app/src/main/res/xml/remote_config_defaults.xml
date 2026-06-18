@@ -12,4 +12,12 @@
         <key>developer_website_url</key>
         <value>https://dipdevlabs.example.com</value>
     </entry>
+    <entry>
+        <key>revenuecat_api_key</key>
+        <value>disabled</value>
+    </entry>
+    <entry>
+        <key>is_premium_unlocked_for_testing</key>
+        <value>true</value>
+    </entry>
 </defaultsMap>
