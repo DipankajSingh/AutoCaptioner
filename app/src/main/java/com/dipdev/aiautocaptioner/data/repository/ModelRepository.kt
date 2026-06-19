@@ -187,11 +187,6 @@ class ModelRepository @Inject constructor(
             }
 
             val body = response.body
-            if (body == null) {
-                response.close()
-                emit(DownloadState.Error("Empty response body from server."))
-                return@flow
-            }
 
             val isPartial = response.code == 206
             if (!isPartial && downloadedBytes > 0) {

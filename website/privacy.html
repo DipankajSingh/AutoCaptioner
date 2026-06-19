@@ -134,7 +134,7 @@
         </div>
         <div class="footer-contact">
           <h4>Contact</h4>
-          <a href="#" id="policy-contact-link"></a>
+          <a href="#" id="footer-contact-link-privacy"></a>
         </div>
       </div>
         <div class="footer-bottom text-center">
@@ -144,12 +144,15 @@
 
     <script type="module">
       document.addEventListener('DOMContentLoaded', () => {
-        const contactEmail = import.meta.env.VITE_CONTACT_EMAIL;
-        const policyContactLink = document.getElementById('policy-contact-link');
-        if (policyContactLink && contactEmail) {
-          policyContactLink.href = `mailto:${contactEmail}`;
-          policyContactLink.textContent = contactEmail;
-        }
+        const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'support@autocaptioner.com';
+        const ids = ['policy-contact-link', 'footer-contact-link-privacy'];
+        ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.href = `mailto:${contactEmail}`;
+            el.textContent = contactEmail;
+          }
+        });
       });
     </script>
   </body>

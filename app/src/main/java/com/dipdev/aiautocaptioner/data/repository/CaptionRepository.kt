@@ -328,7 +328,10 @@ class CaptionRepository @Inject constructor(
         val minutes = (timeMs % 3600000) / 60000
         val seconds = (timeMs % 60000) / 1000
         val millis = timeMs % 1000
-        return String.format("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
+        // Use Locale.US to guarantee ASCII digits — on Arabic/Persian locales
+        // String.format() produces locale-specific digits (٠١٢٣) which break
+        // every SRT parser.
+        return String.format(java.util.Locale.US, "%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
     }
 }
 

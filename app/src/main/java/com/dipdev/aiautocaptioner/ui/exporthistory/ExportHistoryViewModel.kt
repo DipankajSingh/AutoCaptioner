@@ -119,7 +119,10 @@ class ExportHistoryViewModel @Inject constructor(
             } else {
                 val srtContent = captionRepository.buildSrtContent(export.projectId)
                 val srtFile = File(context.cacheDir, "export_${export.id}.srt")
-                srtFile.writeText(srtContent)
+                // Explicitly use UTF-8 — the platform default charset can be
+                // ISO-8859-1 on some devices/vendors, which corrupts Arabic,
+                // CJK, Devanagari, and other non-Latin scripts.
+                srtFile.writeText(srtContent, Charsets.UTF_8)
                 srtFile
             }
         }

@@ -54,6 +54,8 @@ object CaptionPaints {
             textAlign     = Paint.Align.LEFT
             letterSpacing = style.letterSpacing
             this.style    = Paint.Style.FILL
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
+            textLocale    = java.util.Locale.ROOT
             clearShadowLayer()
         }
 
@@ -66,6 +68,8 @@ object CaptionPaints {
             strokeJoin    = Paint.Join.ROUND
             textAlign     = Paint.Align.LEFT
             letterSpacing = style.letterSpacing
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
+            textLocale    = java.util.Locale.ROOT
             clearShadowLayer()
         }
 
@@ -82,6 +86,8 @@ object CaptionPaints {
             this.style    = Paint.Style.FILL
             textAlign     = Paint.Align.LEFT
             letterSpacing = style.letterSpacing
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
+            textLocale    = java.util.Locale.ROOT
             clearShadowLayer()
         }
     }

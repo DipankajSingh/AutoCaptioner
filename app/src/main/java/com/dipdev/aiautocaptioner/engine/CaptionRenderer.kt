@@ -14,6 +14,19 @@ import androidx.core.graphics.withTranslation
 // Thin Canvas draw orchestrator. All animation math lives in [CaptionAnimator];
 // all Paint objects live in [CaptionPaints]. This file only does layout and
 // drawing calls — nothing else.
+//
+// RTL support
+// ───────────
+// When a segment's text is detected as RTL (Arabic, Hebrew, etc.) the renderer:
+//   1. Flips the alignment defaults — START aligns to the right edge, END to
+//      the left edge (matching natural reading-start for RTL scripts).
+//   2. Advances x right-to-left within each line, so the first-spoken word
+//      lands at the rightmost position (correct for RTL reading order).
+//   3. Reverses the karaoke fill-clip direction, so it progresses right→left.
+//
+// Individual glyphs are shaped and rendered correctly by Android's HarfBuzz
+// text stack regardless of our positioning, so no additional work is needed
+// at the character level.
 // ─────────────────────────────────────────────────────────────────────────────
 object CaptionRenderer {
 
@@ -25,6 +38,8 @@ object CaptionRenderer {
     private var cachedWords: List<TimedWord> = emptyList()
     private var cachedVisibleWords: List<TimedWord> = emptyList()
     private var cachedLayouts: List<Triple<List<TimedWord>, Float, Float>> = emptyList()
+    /** Whether the current segment's text reads right-to-left. */
+    private var cachedIsRtl: Boolean = false
 
     fun draw(
         canvas: Canvas,
@@ -48,9 +63,10 @@ object CaptionRenderer {
             cachedSegmentId = seg.id
             cachedStyleId = style.id
             cachedWords = CaptionUtils.buildTimedWords(seg, rawWords)
+            cachedIsRtl = CaptionUtils.isRtl(seg.text)
             cachedVisibleWords = emptyList() // force rebuild
         }
-        
+
         if (cachedWords.isEmpty()) return
 
         for (w in cachedWords) {
@@ -64,10 +80,13 @@ object CaptionRenderer {
         val padX    = style.backgroundPaddingH * baseScale
         val padY    = style.backgroundPaddingV * baseScale
         val corner  = style.backgroundCornerRadius * baseScale
+        // For RTL, the inter-word space is measured the same way; spaces in
+        // Arabic/Hebrew still need a visual gap between word tokens.
         val spaceW  = CaptionPaints.text.measureText(" ")
+        val isRtl   = cachedIsRtl
 
         val visible = CaptionAnimator.filterVisible(cachedWords, style.displayMode, currentPositionMs, animMs)
-        
+
         if (visible != cachedVisibleWords) {
             cachedVisibleWords = visible
             val maxW    = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
@@ -78,10 +97,13 @@ object CaptionRenderer {
                 val lineW = words.sumOf { w ->
                     (CaptionPaints.text.measureText(CaptionUtils.sanitize(w.text, style)) + spaceW).toDouble()
                 }.toFloat() - spaceW
+
+                // For RTL scripts, START (reading-start) is the right edge and
+                // END (reading-end) is the left edge — the opposite of LTR.
                 val x = when (style.alignment) {
                     TextAlignment.CENTER -> (videoWidth - lineW) / 2f
-                    TextAlignment.START  -> videoWidth * 0.08f
-                    TextAlignment.END    -> videoWidth * 0.92f - lineW
+                    TextAlignment.START  -> if (isRtl) videoWidth * 0.92f - lineW else videoWidth * 0.08f
+                    TextAlignment.END    -> if (isRtl) videoWidth * 0.08f           else videoWidth * 0.92f - lineW
                 }
                 Triple(words, x, lineW)
             }
@@ -95,18 +117,25 @@ object CaptionRenderer {
         val startY = (videoHeight * style.positionY) - totalH / 2f
 
 
-        // Pass 1: Background pill, Outlines, Shadows
+        // Pass 1: Background pills, Outlines, Shadows
         var lineYP1 = startY
         for ((lineWords, lineStartX, lineWidth) in lineLayouts) {
-            var x = lineStartX
             val lineTop = lineYP1 + fm.top
             val lineBot = lineYP1 + fm.bottom
-            drawLineBackground(canvas, style, x, lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
+            drawLineBackground(canvas, style, lineStartX, lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
+
+            // RTL: start x at the right edge and advance left.
+            // LTR: start x at the left edge and advance right.
+            var x = if (isRtl) lineStartX + lineWidth else lineStartX
 
             for (w in lineWords) {
-                val txt = CaptionUtils.sanitize(w.text, style)
+                val txt   = CaptionUtils.sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
-                val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
+                val xfm   = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
+
+                // For RTL, move x left by wordW before drawing so that x is
+                // always the LEFT edge of the current word (Paint.Align.LEFT).
+                if (isRtl) x -= wordW
 
                 // Draw per-word background pill
                 if (style.backgroundOpacity > 0f && style.backgroundType == BackgroundType.PER_WORD) {
@@ -118,8 +147,11 @@ object CaptionRenderer {
                     }
                 }
 
-                drawWord(canvas, txt, x, lineYP1, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = true)
-                x += wordW + spaceW
+                drawWord(canvas, txt, x, lineYP1, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = true, isRtl = isRtl)
+
+                // Advance: LTR adds word+space; RTL already moved left by wordW,
+                // so only subtract the inter-word space.
+                if (isRtl) x -= spaceW else x += wordW + spaceW
             }
             lineYP1 += lineH
         }
@@ -130,16 +162,21 @@ object CaptionRenderer {
 
         // Pass 2: Text Fills and Overlays
         var lineYP2 = startY
-        for ((lineWords, lineStartX, _) in lineLayouts) {
-            var x = lineStartX
+        for ((lineWords, lineStartX, lineWidth) in lineLayouts) {
             val lineTop = lineYP2 + fm.top
             val lineBot = lineYP2 + fm.bottom
+            var x = if (isRtl) lineStartX + lineWidth else lineStartX
+
             for (w in lineWords) {
-                val txt = CaptionUtils.sanitize(w.text, style)
+                val txt   = CaptionUtils.sanitize(w.text, style)
                 val wordW = CaptionPaints.text.measureText(txt)
-                val xfm = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
-                drawWord(canvas, txt, x, lineYP2, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = false)
-                x += wordW + spaceW
+                val xfm   = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
+
+                if (isRtl) x -= wordW
+
+                drawWord(canvas, txt, x, lineYP2, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = false, isRtl = isRtl)
+
+                if (isRtl) x -= spaceW else x += wordW + spaceW
             }
             lineYP2 += lineH
         }
@@ -159,7 +196,8 @@ object CaptionRenderer {
         w: TimedWord,
         baseScale: Float,
         padX: Float, padY: Float, corner: Float,
-        isBgPass: Boolean
+        isBgPass: Boolean,
+        isRtl: Boolean = false
     ) {
         val cx = x + wordW / 2f
         val cy = y + (lineBot - lineTop) / 2f + lineTop
@@ -215,12 +253,22 @@ object CaptionRenderer {
                 KaraokeHighlightMode.COLOR_CHANGE -> {
                     if (style.displayMode == DisplayMode.KARAOKE_FILL ||
                         style.karaokeHighlightMode == KaraokeHighlightMode.FILL_LEFT_RIGHT) {
-                        val dur    = (w.endTimeMs - w.startTimeMs).coerceAtLeast(1L)
-                        val fillP  = ((posMs - w.startTimeMs).toFloat() / dur).coerceIn(0f, 1f)
-                        canvas.withClip(x, lineTop, x + wordW * fillP, lineBot) {
-                            CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
-                            drawText(txt, x, y, CaptionPaints.highlight)
-                            CaptionPaints.highlight.alpha = 255
+                        val dur   = (w.endTimeMs - w.startTimeMs).coerceAtLeast(1L)
+                        val fillP = ((posMs - w.startTimeMs).toFloat() / dur).coerceIn(0f, 1f)
+                        // RTL: fill progresses right→left (natural reading direction).
+                        // LTR: fill progresses left→right.
+                        if (isRtl) {
+                            canvas.withClip(x + wordW * (1f - fillP), lineTop, x + wordW, lineBot) {
+                                CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
+                                drawText(txt, x, y, CaptionPaints.highlight)
+                                CaptionPaints.highlight.alpha = 255
+                            }
+                        } else {
+                            canvas.withClip(x, lineTop, x + wordW * fillP, lineBot) {
+                                CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
+                                drawText(txt, x, y, CaptionPaints.highlight)
+                                CaptionPaints.highlight.alpha = 255
+                            }
                         }
                     }
                 }
@@ -265,4 +313,3 @@ object CaptionRenderer {
     }
 
 }
-
