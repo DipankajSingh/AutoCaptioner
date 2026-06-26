@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import kotlin.math.PI
 import kotlin.math.abs
@@ -77,12 +78,7 @@ private const val DOT_ALPHA_DEPTH_SCALE = 0.75f
 /** Alpha threshold — skip dots dimmer than this */
 private const val ALPHA_CUTOFF = 0.015f
 
-// ── Colours (front → back) ──────────────────────────────────────────────
-private val COLOR_FRONT       = Color(0xFFF5F0E8) // bright white
-private val COLOR_FRONT_MID   = Color(0xFFE8C170) // warm gold
-private val COLOR_MID         = Color(0xFFA78BFA) // soft lavender
-private val COLOR_BACK_MID    = Color(0xFF5B8DEF) // medium blue
-private val COLOR_BACK        = Color(0xFF2D3A8C) // deep indigo
+// ── Colours resolved from MaterialTheme inside the composable (see below) ──
 
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -123,6 +119,13 @@ fun ParticleWave(
         animationSpec = tween(600),
         label = "page"
     )
+
+    // ── Colours (front → back) — resolved here so Canvas can capture them ──
+    val colorFront    = MaterialTheme.colorScheme.primary.copy(alpha = 1f)      // brightest — full primary
+    val colorFrontMid = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)   // primary, slightly dim
+    val colorMid      = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)   // mid-depth shade
+    val colorBackMid  = MaterialTheme.colorScheme.surface                       // deep surface
+    val colorBack     = MaterialTheme.colorScheme.background                    // deepest — background
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val w = size.width
@@ -182,10 +185,10 @@ fun ParticleWave(
                 if (alpha < ALPHA_CUTOFF) continue
 
                 val color = when {
-                    depthNorm > 0.75f -> lerpColor(COLOR_FRONT_MID, COLOR_FRONT, (depthNorm - 0.75f) / 0.25f)
-                    depthNorm > 0.5f  -> lerpColor(COLOR_MID, COLOR_FRONT_MID, (depthNorm - 0.5f) / 0.25f)
-                    depthNorm > 0.25f -> lerpColor(COLOR_BACK_MID, COLOR_MID, (depthNorm - 0.25f) / 0.25f)
-                    else -> lerpColor(COLOR_BACK, COLOR_BACK_MID, depthNorm / 0.25f)
+                    depthNorm > 0.75f -> lerpColor(colorFrontMid, colorFront, (depthNorm - 0.75f) / 0.25f)
+                    depthNorm > 0.5f  -> lerpColor(colorMid, colorFrontMid, (depthNorm - 0.5f) / 0.25f)
+                    depthNorm > 0.25f -> lerpColor(colorBackMid, colorMid, (depthNorm - 0.25f) / 0.25f)
+                    else -> lerpColor(colorBack, colorBackMid, depthNorm / 0.25f)
                 }
 
                 drawCircle(

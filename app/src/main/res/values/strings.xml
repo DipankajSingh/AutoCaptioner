@@ -1,11 +1,12 @@
 <resources>
     <string name="app_name">Auto Captioner</string>
-    <string name="onboarding_title_1">Lightning Fast.\n100% Private.</string>
-    <string name="onboarding_desc_1">Generate accurate captions completely on your device. No servers, no waiting.</string>
-    <string name="onboarding_title_2">Style It\nYour Way.</string>
-    <string name="onboarding_desc_2">Edit text, fonts, colors, and animations to make your videos pop.</string>
-    <string name="onboarding_title_3">Ready for\nSocials.</string>
-    <string name="onboarding_desc_3">Export your auto-captioned videos in seconds, ready for TikTok, Reels, or Shorts.</string>
+    <string name="onboarding_tagline">Your words. Perfectly timed.</string>
+    <string name="onboarding_title_1">Fast. Private.\nNo Internet.</string>
+    <string name="onboarding_desc_1">On-device AI generates accurate captions directly on your phone. No data leaves. No servers. No waiting.</string>
+    <string name="onboarding_title_2">Make It\nYours.</string>
+    <string name="onboarding_desc_2">Choose from presets or go deep — custom fonts, colors, animations, and highlight styles per word.</string>
+    <string name="onboarding_title_3">Export in\nSeconds.</string>
+    <string name="onboarding_desc_3">Burn captions into your video or grab the SRT file. Ready for TikTok, Reels, and Shorts in one tap.</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_legal_prefix">By clicking Get Started, you agree to our\n</string>
     <string name="onboarding_terms_conditions">Terms &amp; Conditions</string>

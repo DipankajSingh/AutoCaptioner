@@ -3,7 +3,7 @@ package com.dipdev.aiautocaptioner.ui.onboarding
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.widget.Toast
-import androidx.annotation.RawRes
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -18,27 +18,28 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,7 +50,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -62,11 +65,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import kotlinx.coroutines.launch
@@ -74,24 +72,24 @@ import kotlinx.coroutines.launch
 data class OnboardingPage(
     @StringRes val titleRes: Int,
     @StringRes val descriptionRes: Int,
-    @RawRes val animationRes: Int
+    @DrawableRes val screenshotRes: Int
 )
 
 val pages = listOf(
     OnboardingPage(
         titleRes = R.string.onboarding_title_1,
         descriptionRes = R.string.onboarding_desc_1,
-        animationRes = R.raw.onboarding_1
+        screenshotRes = R.drawable.onboarding_screenshot_1
     ),
     OnboardingPage(
         titleRes = R.string.onboarding_title_2,
         descriptionRes = R.string.onboarding_desc_2,
-        animationRes = R.raw.onboarding_2
+        screenshotRes = R.drawable.onboarding_screenshot_2
     ),
     OnboardingPage(
         titleRes = R.string.onboarding_title_3,
         descriptionRes = R.string.onboarding_desc_3,
-        animationRes = R.raw.onboarding_3
+        screenshotRes = R.drawable.onboarding_screenshot_3
     )
 )
 
@@ -113,21 +111,7 @@ fun OnboardingScreen(
         // Particle wave background animation
         ParticleWave(currentPage = pagerState.currentPage)
 
-        // Vignettes for better text/button contrast
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .align(Alignment.TopCenter)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        // Bottom vignette for better text/button contrast
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,14 +130,6 @@ fun OnboardingScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            OnboardingTopBar(
-                isLastPage = isLastPage,
-                onSkipClick = {
-                    viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
-                    onFinish()
-                }
-            )
-
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -181,16 +157,27 @@ fun OnboardingScreen(
                 }
             )
         }
+
+        // Overlay top bar for Skip button
+        OnboardingTopBar(
+            isLastPage = isLastPage,
+            onSkipClick = {
+                viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
+                onFinish()
+            },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
 @Composable
 fun OnboardingTopBar(
     isLastPage: Boolean,
-    onSkipClick: () -> Unit
+    onSkipClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(top = 32.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
             .height(48.dp),
@@ -215,68 +202,126 @@ fun OnboardingTopBar(
 }
 
 @Composable
-fun PagerScreen(onBoardingPage: OnboardingPage) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(onBoardingPage.animationRes))
-    val progress by animateLottieCompositionAsState(
-        composition = composition,
-        iterations = LottieConstants.IterateForever
-    )
-
+fun PagerScreen(
+    onBoardingPage: OnboardingPage,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp),
+        modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
+        // Image at the very top, full width, ~55% of available height
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
-            contentAlignment = Alignment.Center
+                .fillMaxHeight(0.55f)
         ) {
-            LottieAnimation(
-                composition = composition,
-                progress = { progress },
+            Image(
+                painter = painterResource(id = onBoardingPage.screenshotRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop, // Stretch to whole width, crop height
+                modifier = Modifier.fillMaxSize(),
+                alignment = Alignment.BottomCenter
+            )
+
+            // Top shadow (swapped from bottom)
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(32.dp)
+                    .fillMaxHeight(0.5f)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            // Bottom shadow (swapped from top)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.35f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+
+            // Brand Logo & Name
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 40.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                BrandHeroSection()
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Text Content at the bottom
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(onBoardingPage.titleRes),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 38.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(onBoardingPage.descriptionRes),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
             )
         }
 
-        // Glassmorphism Card for Text
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .padding(bottom = 16.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-            shadowElevation = 0.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(onBoardingPage.titleRes),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 38.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = stringResource(onBoardingPage.descriptionRes),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
-                )
-            }
-        }
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+fun BrandHeroSection() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher_img),
+            contentDescription = "AutoCaptioner logo",
+            modifier = Modifier.size(46.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = "AutoCaptioner",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 32.sp
+            )
+        )
     }
 }
 
@@ -291,7 +336,7 @@ fun OnboardingBottomBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .padding(bottom = 48.dp)
+            .padding(bottom = 32.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -306,7 +351,7 @@ fun OnboardingBottomBar(
                 repeat(pages.size) { iteration ->
                     val isCurrent = pagerState.currentPage == iteration
                     val color by animateColorAsState(
-                        targetValue = if (isCurrent) MaterialTheme.colorScheme.primary 
+                        targetValue = if (isCurrent) MaterialTheme.colorScheme.primary
                                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                         label = "color"
                     )
@@ -325,13 +370,21 @@ fun OnboardingBottomBar(
                 }
             }
 
-            // Animated Button
-            Button(
-                onClick = onNextClick,
-                shape = RoundedCornerShape(50),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 14.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            // Gradient + Glow CTA Button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
+                            )
+                        )
+                    )
+                    .clickable(onClick = onNextClick)
+                    .padding(horizontal = 28.dp, vertical = 14.dp),
+                contentAlignment = Alignment.Center
             ) {
                 AnimatedContent(
                     targetState = isLastPage,
@@ -342,7 +395,8 @@ fun OnboardingBottomBar(
                     label = "buttonText"
                 ) { targetIsLast ->
                     Text(
-                        text = if (targetIsLast) stringResource(R.string.onboarding_get_started) else stringResource(R.string.onboarding_next),
+                        text = if (targetIsLast) stringResource(R.string.onboarding_get_started)
+                               else stringResource(R.string.onboarding_next),
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
@@ -351,69 +405,64 @@ fun OnboardingBottomBar(
             }
         }
 
-        // Legal Text space allocation
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 24.dp)
-                .height(48.dp)
+        // Legal Text that only takes space on the last page
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isLastPage,
+            enter = slideInVertically(initialOffsetY = { 20 }) + fadeIn(animationSpec = tween(500)),
+            exit = fadeOut(animationSpec = tween(200)),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isLastPage,
-                enter = slideInVertically(initialOffsetY = { 20 }) + fadeIn(animationSpec = tween(500)),
-                exit = fadeOut(animationSpec = tween(200)),
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                val context = LocalContext.current
-                val linkStyle = SpanStyle(
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                val legalPrefix = stringResource(R.string.onboarding_legal_prefix)
-                val termsConditions = stringResource(R.string.onboarding_terms_conditions)
-                val legalAnd = stringResource(R.string.onboarding_legal_and)
-                val privacyPolicy = stringResource(R.string.onboarding_privacy_policy)
+            val context = LocalContext.current
+            val linkStyle = SpanStyle(
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            val legalPrefix = stringResource(R.string.onboarding_legal_prefix)
+            val termsConditions = stringResource(R.string.onboarding_terms_conditions)
+            val legalAnd = stringResource(R.string.onboarding_legal_and)
+            val privacyPolicy = stringResource(R.string.onboarding_privacy_policy)
 
-                val annotatedString = buildAnnotatedString {
-                    append(legalPrefix)
-                    pushLink(LinkAnnotation.Clickable(
-                        tag = "TERMS",
-                        linkInteractionListener = {
-                            try {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.TERMS_OF_SERVICE.toUri()))
-                            } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(context, "No browser installed", Toast.LENGTH_SHORT).show()
-                            }
+            val annotatedString = buildAnnotatedString {
+                append(legalPrefix)
+                pushLink(LinkAnnotation.Clickable(
+                    tag = "TERMS",
+                    linkInteractionListener = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.TERMS_OF_SERVICE.toUri()))
+                        } catch (e: ActivityNotFoundException) {
+                            Toast.makeText(context, "No browser installed", Toast.LENGTH_SHORT).show()
                         }
-                    ))
-                    withStyle(linkStyle) { append(termsConditions) }
-                    pop()
-                    append(legalAnd)
-                    pushLink(LinkAnnotation.Clickable(
-                        tag = "PRIVACY",
-                        linkInteractionListener = {
-                            try {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.PRIVACY_POLICY.toUri()))
-                            } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(context, "No browser installed", Toast.LENGTH_SHORT).show()
-                            }
+                    }
+                ))
+                withStyle(linkStyle) { append(termsConditions) }
+                pop()
+                append(legalAnd)
+                pushLink(LinkAnnotation.Clickable(
+                    tag = "PRIVACY",
+                    linkInteractionListener = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.PRIVACY_POLICY.toUri()))
+                        } catch (e: ActivityNotFoundException) {
+                            Toast.makeText(context, "No browser installed", Toast.LENGTH_SHORT).show()
                         }
-                    ))
-                    withStyle(linkStyle) { append(privacyPolicy) }
-                    pop()
-                }
-
-                Text(
-                    text = annotatedString,
-                    style = TextStyle(
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    }
+                ))
+                withStyle(linkStyle) { append(privacyPolicy) }
+                pop()
             }
+
+            Text(
+                text = annotatedString,
+                style = TextStyle(
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp)
+            )
         }
     }
 }
