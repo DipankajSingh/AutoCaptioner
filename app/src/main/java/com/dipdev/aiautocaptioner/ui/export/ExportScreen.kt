@@ -2,6 +2,9 @@ package com.dipdev.aiautocaptioner.ui.export
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -30,11 +34,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,7 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import com.airbnb.lottie.compose.LottieAnimation
@@ -58,9 +64,12 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
-import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
+import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
+import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import com.dipdev.aiautocaptioner.ui.theme.AccentYellow
+import com.dipdev.aiautocaptioner.ui.theme.EmeraldPrimary
+import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import androidx.core.net.toUri
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -137,6 +146,7 @@ fun ExportScreen(
         viewModel.setEvent(ExportUiEvent.PrepareExport(projectId))
     }
 
+    CompositionLocalProvider(LocalAccentColor provides AccentYellow) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -172,9 +182,49 @@ fun ExportScreen(
                 is ExportState.Success,
                 is ExportState.SavedToGallery -> {
 
-                    if (exportState is ExportState.Success || exportState is ExportState.SavedToGallery) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                    // Yellow success banner
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        AccentYellow.copy(alpha = 0.18f),
+                                        AccentYellow.copy(alpha = 0.05f)
+                                    )
+                                )
+                            )
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = AccentYellow,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = when (exportState) {
+                                    is ExportState.Success -> "Export Complete!"
+                                    is ExportState.SavedToGallery -> "Saved to Gallery!"
+                                    else -> "Previously Exported"
+                                },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = AccentYellow
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Export complete",
+                        modifier = Modifier.size(64.dp),
+                        tint = EmeraldPrimary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
                         text = when (exportState) {
@@ -184,7 +234,7 @@ fun ExportScreen(
                         },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = EmeraldPrimary
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -319,7 +369,7 @@ fun ExportScreen(
                             text = String.format("~%.1f MB", estimatedSizeMB),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = AccentYellow
                         )
                     }
 
@@ -365,7 +415,7 @@ fun ExportScreen(
                         LinearProgressIndicator(
                             progress = { animatedProgress },
                             modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = AccentYellow,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
@@ -375,7 +425,7 @@ fun ExportScreen(
                     Text(
                         text = "${(progress * 100).toInt()}%",
                         fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = AccentYellow
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     AppOutlinedButton(
@@ -434,36 +484,44 @@ fun ExportScreen(
                         onClick = onNavigateBack
                     ) { Text("Go Back", maxLines = 1) }
                 }
-            }
-        }
-    }
-}
-}
+            } // end when
+        } // end inner Column
+        } // end outer Column
+    } // end Scaffold content
+    } // end CompositionLocalProvider
+} // end ExportScreen
+
 
 @Composable
-private fun <T> SegmentedSelector(
+fun <T> SegmentedSelector(
     title: String,
     options: List<Pair<T, String>>,
     selected: T,
     onSelect: (T) -> Unit
 ) {
-    Text(
-        title,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Start
-    )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.fillMaxWidth())
+    Spacer(Modifier.height(6.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { (value, label) ->
-            androidx.compose.material3.FilterChip(
-                selected = selected == value,
+            val isSelected = selected == value
+            Surface(
                 onClick = { onSelect(value) },
-                label = { Text(label) }
-            )
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                color = if (isSelected) AccentYellow.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isSelected) BorderStroke(1.5.dp, AccentYellow) else null
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier
+                        .padding(vertical = 10.dp)
+                        .fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) AccentYellow else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

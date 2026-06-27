@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,33 +37,37 @@ fun GlassmorphicCard(
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    val isGlassEnabled = LocalGlassmorphismEnabled.current
+    val glassmorphismEnabled = LocalGlassmorphismEnabled.current
+    val isLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
 
-    val baseBgColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.surface
-    
-    val bgColor = if (isGlassEnabled) {
-        baseBgColor.copy(alpha = 0.5f)
+    if (isLightTheme || !glassmorphismEnabled) {
+        // In light themes or when glassmorphism is disabled, render as a plain card
+        Card(
+            modifier = if (onClick != null) modifier.clickable { onClick() } else modifier,
+            shape = shape,
+            colors = CardDefaults.cardColors(
+                containerColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            content = { content() }
+        )
     } else {
-        baseBgColor
-    }
+        val baseBgColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.surface
+        val bgColor = baseBgColor.copy(alpha = 0.5f)
+        val borderColor = Color.White.copy(alpha = 0.1f)
 
-    val borderColor = if (isGlassEnabled) {
-        Color.White.copy(alpha = 0.1f)
-    } else {
-        Color.Transparent
-    }
+        var baseModifier = modifier
+            .clip(shape)
+            .background(bgColor)
+            .border(1.dp, borderColor, shape)
 
-    var baseModifier = modifier
-        .clip(shape)
-        .background(bgColor)
-        .border(1.dp, borderColor, shape)
-        
-    if (onClick != null) {
-        baseModifier = baseModifier.clickable { onClick() }
-    }
+        if (onClick != null) {
+            baseModifier = baseModifier.clickable { onClick() }
+        }
 
-    Box(modifier = baseModifier) {
-        content()
+        Box(modifier = baseModifier) {
+            content()
+        }
     }
 }
 
@@ -83,14 +90,22 @@ fun GradientPrimaryButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(if (enabled) gradient else Brush.linearGradient(listOf(Color.Gray, Color.Gray)))
+            .background(
+                if (enabled) gradient
+                else Brush.linearGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.outlineVariant,
+                        MaterialTheme.colorScheme.outlineVariant
+                    )
+                )
+            )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(paddingValues),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = if (enabled) MaterialTheme.colorScheme.onPrimary else Color.LightGray,
+            color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         )
     }

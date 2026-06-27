@@ -13,16 +13,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Palette
@@ -41,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -53,6 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -89,25 +96,27 @@ fun PresetChip(
 
 @Composable
 fun BottomTabItem(
-    name: String, 
-    icon: ImageVector, 
-    selected: Boolean, 
+    name: String,
+    icon: ImageVector,
+    selected: Boolean,
     isPremiumLocked: Boolean = false,
+    selectedTint: Color = MaterialTheme.colorScheme.primary,
     onClick: () -> Unit
 ) {
-    val tint by androidx.compose.animation.animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-    val scale by androidx.compose.animation.core.animateFloatAsState(if (selected) 1.1f else 1.0f)
+    val tint by androidx.compose.animation.animateColorAsState(
+        targetValue = if (selected) selectedTint else MaterialTheme.colorScheme.onSurface,
+        label = "tabTint"
+    )
 
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally, 
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clickable(
-                interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null,
                 onClick = onClick
             )
             .padding(8.dp)
-            .graphicsLayer(scaleX = scale, scaleY = scale)
     ) {
         Box {
             Icon(icon, contentDescription = name, tint = tint)
@@ -120,9 +129,14 @@ fun BottomTabItem(
                 )
             }
         }
-        if (selected) {
-            Text(name, fontSize = 10.sp, color = tint, fontWeight = FontWeight.Bold)
-        }
+        Text(name, fontSize = 10.sp, color = tint, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        Box(
+            modifier = Modifier
+                .height(2.dp)
+                .width(20.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (selected) tint else Color.Transparent)
+        )
     }
 }
 
@@ -140,10 +154,10 @@ fun StyleEditorBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS) { onTabSelected(StyleTab.PRESETS) }
-        BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium) { onTabSelected(StyleTab.TEXT) }
-        BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium) { onTabSelected(StyleTab.COLOR) }
-        BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium) { onTabSelected(StyleTab.ANIMATION) }
+        BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS, selectedTint = MaterialTheme.colorScheme.primary) { onTabSelected(StyleTab.PRESETS) }
+        BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentBlue) { onTabSelected(StyleTab.TEXT) }
+        BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentViolet) { onTabSelected(StyleTab.COLOR) }
+        BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
     }
 }
 
@@ -152,7 +166,8 @@ fun PresetsTab(
     styles: List<CaptionStyleEntity>,
     activeStyle: CaptionStyleEntity?,
     onPresetSelected: (CaptionStyleEntity) -> Unit,
-    onPresetLongClicked: (CaptionStyleEntity) -> Unit = {}
+    onPresetLongClicked: (CaptionStyleEntity) -> Unit = {},
+    onAddPreset: () -> Unit = {}
 ) {
     if (styles.isNotEmpty()) {
         LazyRow(
@@ -167,6 +182,23 @@ fun PresetsTab(
                     onClick = { onPresetSelected(style) },
                     onLongClick = { onPresetLongClicked(style) }
                 )
+            }
+            item {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.clickable { onAddPreset() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Save Preset", modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Save", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             }
         }
     }
@@ -192,6 +224,10 @@ fun PremiumSlider(
         }
     }
     
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val fillColor = MaterialTheme.colorScheme.primary
+    val thumbColor = MaterialTheme.colorScheme.primary
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -222,24 +258,24 @@ fun PremiumSlider(
         val cornerRadius = CornerRadius(trackHeight / 2f)
         val cy = size.height / 2f
 
-        // Track
+        // Track background
         drawRoundRect(
-            color = Color.DarkGray.copy(alpha = 0.5f),
+            color = trackColor,
             size = Size(width = size.width, height = trackHeight),
             topLeft = Offset(0f, cy - trackHeight / 2f),
             cornerRadius = cornerRadius
         )
         // Fill
         drawRoundRect(
-            color = Color.White,
+            color = fillColor,
             size = Size(width = size.width * internalRatio, height = trackHeight),
             topLeft = Offset(0f, cy - trackHeight / 2f),
             cornerRadius = cornerRadius
         )
         // Thumb
         drawCircle(
-            color = Color.White,
-            radius = 12.dp.toPx(),
+            color = thumbColor,
+            radius = 14.dp.toPx(),
             center = Offset(size.width * internalRatio, cy)
         )
     }

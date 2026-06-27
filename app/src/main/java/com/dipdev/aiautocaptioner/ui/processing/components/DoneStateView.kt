@@ -1,7 +1,9 @@
 package com.dipdev.aiautocaptioner.ui.processing.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -11,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
@@ -53,12 +56,19 @@ fun DoneStateView(
         )
 
         if (segmentCount > 0) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "$segmentCount segments created",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = AccentCyan.copy(alpha = 0.15f)
+            ) {
+                Text(
+                    text = "$segmentCount segments",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AccentCyan,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

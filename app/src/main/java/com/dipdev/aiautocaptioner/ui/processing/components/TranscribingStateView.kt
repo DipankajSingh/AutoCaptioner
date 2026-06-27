@@ -29,6 +29,7 @@ import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
+import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 
 @Composable
 fun TranscribingStateView(
@@ -104,7 +105,8 @@ fun TranscribingStateView(
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 2.dp,
-                            strokeCap = StrokeCap.Round
+                            strokeCap = StrokeCap.Round,
+                            color = AccentCyan
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -146,7 +148,7 @@ fun TranscribingStateView(
                             val isRecent = globalIndex >= total - 3
 
                             val targetColor = if (isRecent) {
-                                MaterialTheme.colorScheme.primary
+                                AccentCyan
                             } else {
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             }

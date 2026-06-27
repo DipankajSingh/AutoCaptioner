@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,11 +50,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.ProjectStatusChip
 import com.dipdev.aiautocaptioner.ui.components.RenameDialog
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import java.io.File
 
 @Composable
@@ -86,9 +89,24 @@ fun ProjectCard(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth()
         ) {
+            // Left accent strip
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)
+                    )
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(16.dp)
+            ) {
             // Title at the very top
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -274,6 +292,34 @@ fun ProjectCard(
                 }
             }
 
+            // Quick actions row
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = {
+                    val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
+                    onShareVideo(videoToShare)
+                }) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Share", style = MaterialTheme.typography.labelMedium)
+                }
+                TextButton(
+                    onClick = { showDeleteConfirm = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = AccentRose)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Delete", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+
             // Delete Confirmation Dialog
             if (showDeleteConfirm) {
                 AlertDialog(
@@ -298,7 +344,8 @@ fun ProjectCard(
                     }
                 )
             }
-        }
+            } // end Column
+        } // end Row
     }
 }
 

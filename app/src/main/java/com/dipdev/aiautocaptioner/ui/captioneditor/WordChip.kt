@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 
 /**
  * A container for a flow-like layout of [WordChip]s.
@@ -44,16 +45,14 @@ fun WordChip(
     onLongPress: () -> Unit
 ) {
     val bgColor = if (word.isEmphasized)
-        MaterialTheme.colorScheme.primaryContainer
+        AccentBlue.copy(alpha = 0.18f)
     else
         MaterialTheme.colorScheme.surfaceVariant
 
     val textColor = if (word.isEmphasized)
-        MaterialTheme.colorScheme.primary
+        AccentBlue
     else
         MaterialTheme.colorScheme.onSurface
-
-
 
     Surface(
         shape = RoundedCornerShape(4.dp), // Flattened shape

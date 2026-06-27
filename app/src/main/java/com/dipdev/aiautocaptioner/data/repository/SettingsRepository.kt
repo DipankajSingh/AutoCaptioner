@@ -26,6 +26,7 @@ class SettingsRepository @Inject constructor(
     private val THEME_KEY = stringPreferencesKey("primary_color_theme")
     private val GLASSMORPHISM_KEY = booleanPreferencesKey("glassmorphism_enabled")
     private val SHOW_TIMELINE_THUMBNAILS_KEY = booleanPreferencesKey("show_timeline_thumbnails")
+    private val LIGHT_THEME_KEY = booleanPreferencesKey("use_light_theme")
     
     private val EXPORT_RESOLUTION_KEY = intPreferencesKey("export_resolution")
     private val EXPORT_FPS_KEY = intPreferencesKey("export_fps")
@@ -38,6 +39,10 @@ class SettingsRepository @Inject constructor(
         } catch (_: Exception) {
             AppTheme.EMERALD
         }
+    }.distinctUntilChanged()
+
+    val lightThemeFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[LIGHT_THEME_KEY] ?: false
     }.distinctUntilChanged()
 
     val glassmorphismFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -58,6 +63,10 @@ class SettingsRepository @Inject constructor(
 
     val exportQualityFlow: Flow<Int> = dataStore.data.map { prefs ->
         prefs[EXPORT_QUALITY_KEY] ?: 1
+    }
+
+    suspend fun setLightTheme(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[LIGHT_THEME_KEY] = enabled }
     }
 
     suspend fun setTheme(theme: AppTheme) {

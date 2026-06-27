@@ -25,7 +25,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 data class MainUiState(
     val startDestination: String? = null,
     val appTheme: AppTheme = AppTheme.EMERALD,
-    val glassmorphismEnabled: Boolean = true
+    val glassmorphismEnabled: Boolean = true,
+    val useLightTheme: Boolean = false
 ) : UiState
 
 sealed interface MainUiEvent : UiEvent
@@ -44,11 +45,12 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 settingsRepository.themeFlow,
-                settingsRepository.glassmorphismFlow
-            ) { theme, glass ->
-                theme to glass
-            }.distinctUntilChanged().collect { (theme, glass) ->
-                setState { copy(appTheme = theme, glassmorphismEnabled = glass) }
+                settingsRepository.glassmorphismFlow,
+                settingsRepository.lightThemeFlow
+            ) { theme, glass, light ->
+                Triple(theme, glass, light)
+            }.distinctUntilChanged().collect { (theme, glass, light) ->
+                setState { copy(appTheme = theme, glassmorphismEnabled = glass, useLightTheme = light) }
             }
         }
     }

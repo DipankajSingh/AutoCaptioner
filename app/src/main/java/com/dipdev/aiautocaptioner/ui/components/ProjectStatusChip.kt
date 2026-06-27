@@ -11,26 +11,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
+import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.theme.EmeraldPrimary
 
 /**
  * A small coloured chip showing the current [ProjectStatus].
- * Used in [HomeScreen]'s project cards.
+ * Semantic colour coding:
+ *   - Processing states → Cyan
+ *   - Complete / ready states → Emerald (brand primary)
+ *   - Error states → Rose
+ *   - Neutral states → onSurfaceVariant
  */
 @Composable
 fun ProjectStatusChip(status: ProjectStatus) {
     val (label, color) = when (status) {
-        ProjectStatus.IMPORTED          -> "Imported"       to MaterialTheme.colorScheme.onSurfaceVariant
-        ProjectStatus.READY_FOR_PROCESSING -> "Ready for AI" to MaterialTheme.colorScheme.primary
-        ProjectStatus.EXTRACTING_AUDIO  -> "Extracting…"    to MaterialTheme.colorScheme.tertiary
-        ProjectStatus.TRANSCRIBING      -> "Transcribing…"  to MaterialTheme.colorScheme.tertiary
-        ProjectStatus.TRANSCRIBED       -> "Ready"          to MaterialTheme.colorScheme.primary
-        ProjectStatus.EXPORTED          -> "Exported"       to MaterialTheme.colorScheme.secondary
+        ProjectStatus.IMPORTED               -> "Imported"      to MaterialTheme.colorScheme.onSurfaceVariant
+        ProjectStatus.READY_FOR_PROCESSING   -> "Ready for AI"  to EmeraldPrimary
+        ProjectStatus.EXTRACTING_AUDIO       -> "Extracting…"   to AccentCyan
+        ProjectStatus.TRANSCRIBING           -> "Transcribing…" to AccentCyan
+        ProjectStatus.TRANSCRIBED            -> "Ready"         to EmeraldPrimary
+        ProjectStatus.EXPORTED               -> "Exported"      to EmeraldPrimary
     }
     Surface(
-        color        = color.copy(alpha = 0.25f),
-        shape        = RoundedCornerShape(12.dp), // More rounded corners
+        color           = color.copy(alpha = 0.15f),
+        shape           = RoundedCornerShape(12.dp),
         shadowElevation = 0.dp,
-        tonalElevation = 0.dp
+        tonalElevation  = 0.dp
     ) {
         Text(
             text       = label,

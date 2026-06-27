@@ -64,9 +64,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.theme.AutoCaptionerTheme
 import kotlinx.coroutines.launch
 
 data class OnboardingPage(
@@ -103,6 +104,9 @@ fun OnboardingScreen(
     val scope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == pages.size - 1
 
+    // Always render onboarding in dark mode — the ParticleWave background
+    // and vignette gradients are designed for dark surfaces.
+    AutoCaptionerTheme(useLightTheme = false) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -167,7 +171,8 @@ fun OnboardingScreen(
             },
             modifier = Modifier.align(Alignment.TopCenter)
         )
-    }
+    } // end Box
+    } // end AutoCaptionerTheme
 }
 
 @Composable

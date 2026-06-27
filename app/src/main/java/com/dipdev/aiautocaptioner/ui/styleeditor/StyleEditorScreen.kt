@@ -1,19 +1,25 @@
 package com.dipdev.aiautocaptioner.ui.styleeditor
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Redo
@@ -21,6 +27,8 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,17 +47,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
+import com.dipdev.aiautocaptioner.ui.paywall.CustomPaywallDialog
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.AnimationTab
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.ColorTab
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.TextTab
-import com.dipdev.aiautocaptioner.ui.paywall.CustomPaywallDialog
-import androidx.compose.ui.platform.LocalContext
-import android.app.Activity
+import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 
 @Composable
 fun StyleEditorScreen(
@@ -206,59 +216,75 @@ fun StyleEditorScreen(
     }
 
     // MAIN LAYOUT
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF121212))) {
-        
+    CompositionLocalProvider(LocalAccentColor provides AccentViolet) {
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+
         // 1. TOP APP BAR
         Surface(
-            color = Color(0xFF1E1E1E),
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 4.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 8.dp)
-                    .windowInsetsPadding(WindowInsets.statusBars),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Back
                 IconButton(onClick = {
                     viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
                     onNavigateBack()
                 }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { viewModel.setEvent(StyleEditorUiEvent.Undo) },
-                        enabled = canUndo
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (canUndo) Color.White else Color.Gray)
-                    }
-                    IconButton(
-                        onClick = { viewModel.setEvent(StyleEditorUiEvent.Redo) },
-                        enabled = canRedo
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Redo, "Redo", tint = if (canRedo) Color.White else Color.Gray)
-                    }
-                    IconButton(onClick = { showPresetDialog = true }) {
-                        Icon(Icons.Default.Save, "Save Preset", tint = Color.White)
-                    }
-                    IconButton(onClick = onNavigateToCaptionEditor) {
-                        Icon(Icons.Default.ClosedCaption, "Edit Captions", tint = Color.White)
-                    }
-                    IconButton(
-                        onClick = {
-                            if (project?.hasVisitedCaptionEditor == false) {
-                                showExportWarning = true
-                            } else {
-                                viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
-                                onNavigateToExport()
-                            }
+                Spacer(Modifier.weight(1f))
+
+                // Undo
+                IconButton(
+                    onClick = { viewModel.setEvent(StyleEditorUiEvent.Undo) },
+                    enabled = canUndo
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Undo, "Undo",
+                        tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+                // Redo
+                IconButton(
+                    onClick = { viewModel.setEvent(StyleEditorUiEvent.Redo) },
+                    enabled = canRedo
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Redo, "Redo",
+                        tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+                // Save preset
+                IconButton(onClick = { showPresetDialog = true }) {
+                    Icon(Icons.Default.Save, "Save Preset", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                // Caption editor
+                IconButton(onClick = onNavigateToCaptionEditor) {
+                    Icon(Icons.Default.ClosedCaption, "Edit Captions", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                // Export — prominent labeled button
+                Button(
+                    onClick = {
+                        if (project?.hasVisitedCaptionEditor == false) showExportWarning = true
+                        else {
+                            viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
+                            onNavigateToExport()
                         }
-                    ) {
-                        Icon(Icons.Default.FileDownload, "Export Video", tint = MaterialTheme.colorScheme.primary)
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Export", style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -268,7 +294,7 @@ fun StyleEditorScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f) // Takes all remaining space dynamically
-                .background(Color.Black), // Blends with video
+                .background(Color(0xFF000000)), // Intentional black for video letterboxing
             contentAlignment = Alignment.Center
         ) {
             activeStyle?.let { style ->
@@ -294,7 +320,7 @@ fun StyleEditorScreen(
         // 3. BOTTOM PANEL
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF1E1E1E),
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 16.dp
         ) {
             Column(
@@ -330,7 +356,8 @@ fun StyleEditorScreen(
                                     styles = styles,
                                     activeStyle = activeStyle,
                                     onPresetSelected = { viewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
-                                    onPresetLongClicked = { if (!it.isDefault) presetToDelete = it }
+                                    onPresetLongClicked = { if (!it.isDefault) presetToDelete = it },
+                                    onAddPreset = { showPresetDialog = true }
                                 )
                             }
                             StyleTab.TEXT -> {
@@ -376,4 +403,5 @@ fun StyleEditorScreen(
             }
         }
     }
+    } // CompositionLocalProvider
 }

@@ -57,6 +57,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import com.dipdev.aiautocaptioner.ui.theme.AccentYellow
 import kotlinx.coroutines.delay
 
 @Composable
@@ -208,7 +212,7 @@ fun CustomPaywallDialog(
                             icon = Icons.Default.HighQuality,
                             title = "4K Resolution Export",
                             subtitle = "Crystal-clear videos for every platform",
-                            accentColor = primaryColor,
+                            accentColor = AccentYellow,
                             textPrimary = textPrimary,
                             textSecondary = textSecondary
                         )
@@ -217,7 +221,7 @@ fun CustomPaywallDialog(
                             icon = Icons.Default.Animation,
                             title = "All Premium Styles",
                             subtitle = "Karaoke, Elastic, Typewriter & more",
-                            accentColor = primaryColor,
+                            accentColor = AccentViolet,
                             textPrimary = textPrimary,
                             textSecondary = textSecondary
                         )
@@ -226,7 +230,16 @@ fun CustomPaywallDialog(
                             icon = Icons.Default.Lock,
                             title = "Lifetime Access",
                             subtitle = "No subscriptions. No recurring fees.",
-                            accentColor = primaryColor,
+                            accentColor = AccentRose,
+                            textPrimary = textPrimary,
+                            textSecondary = textSecondary
+                        )
+                        HorizontalDivider(color = cardBorder, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                        PaywallFeatureRow(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "Karaoke & Word Highlight",
+                            subtitle = "Words light up as they're spoken",
+                            accentColor = AccentCyan,
                             textPrimary = textPrimary,
                             textSecondary = textSecondary
                         )
@@ -313,6 +326,16 @@ fun CustomPaywallDialog(
                         )
                     }
 
+                    // Trust badges row
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Text("🔒 Secure", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
+                        Text("♻️ Restore", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
+                        Text("📵 Offline AI", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
+                    }
                     Text(
                         text = "Payment processed securely by Google Play",
                         style = MaterialTheme.typography.labelSmall,

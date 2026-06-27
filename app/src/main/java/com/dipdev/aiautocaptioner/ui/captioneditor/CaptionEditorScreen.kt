@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -46,13 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
@@ -60,6 +65,8 @@ import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -163,6 +170,7 @@ fun CaptionEditorScreen(
         }
     }
 
+    CompositionLocalProvider(LocalAccentColor provides AccentBlue) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -181,7 +189,7 @@ fun CaptionEditorScreen(
                 },
                 actions = {
                     TextButton(onClick = { showJumpDialog = true }) {
-                        Text("Jump", color = MaterialTheme.colorScheme.primary)
+                        Text("Jump", color = AccentBlue)
                     }
                     IconButton(
                         onClick = { viewModel.setEvent(CaptionEditorUiEvent.Retranscribe(projectId)) }
@@ -210,7 +218,11 @@ fun CaptionEditorScreen(
                 }
                 AppPrimaryButton(
                     onClick = { viewModel.setEvent(CaptionEditorUiEvent.ShareSrt(projectId)) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentBlue,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("Export SRT", maxLines = 1)
                 }
@@ -301,6 +313,7 @@ fun CaptionEditorScreen(
             }
         }
     }
+    } // end CompositionLocalProvider
 
     if (showJumpDialog) {
         AlertDialog(
@@ -373,7 +386,7 @@ private fun SegmentCard(
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
     val cardColor = if (isActive) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        AccentBlue.copy(alpha = 0.12f)
     } else {
         androidx.compose.ui.graphics.Color.Unspecified
     }
@@ -383,7 +396,20 @@ private fun SegmentCard(
         shape = RoundedCornerShape(8.dp),
         color = cardColor
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Blue left-border accent strip for the active / playing segment
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(
+                            AccentBlue,
+                            RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
+                        )
+                )
+            }
+        Column(modifier = Modifier.weight(1f).padding(12.dp)) {
 
             // Header row — timestamp + expand toggle
             Row(
@@ -396,7 +422,7 @@ private fun SegmentCard(
                 Text(
                     text = "${formatMs(segment.startTimeMs)} → ${formatMs(segment.endTimeMs)}",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = AccentBlue,
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
@@ -471,5 +497,6 @@ private fun SegmentCard(
                 )
             }
         }
+        } // end Row
     }
 }

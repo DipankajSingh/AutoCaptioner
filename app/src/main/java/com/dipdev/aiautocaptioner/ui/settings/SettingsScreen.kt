@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import androidx.compose.foundation.background
 
@@ -36,6 +36,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentTheme = uiState.theme
     val isGlassmorphism = uiState.glassmorphism
+    val isLightTheme = uiState.isLightTheme
     val showTimelineThumbnails = uiState.showTimelineThumbnails
     val context = LocalContext.current
 
@@ -113,6 +114,31 @@ fun SettingsScreen(
                 Switch(
                     checked = isGlassmorphism,
                     onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetGlassmorphism(it)) }
+                )
+            }
+
+            // Light Theme Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = "Light Theme",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "Switch between dark and light appearance",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = isLightTheme,
+                    onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetLightTheme(it)) }
                 )
             }
 

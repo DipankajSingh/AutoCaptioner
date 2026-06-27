@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.model.Clip
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -158,9 +159,15 @@ fun VideoTimelineView(
         }
     }
 
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val outlineColor = MaterialTheme.colorScheme.outline
+
     Box(
         modifier = modifier
-            .background(Color.Black)
+            .background(surfaceColor)
             .onGloballyPositioned { coordinates ->
                 boxWidthPx = coordinates.size.width
             }
@@ -228,40 +235,34 @@ fun VideoTimelineView(
                 // Ruler
                 val safeTotalWidthPx = maxOf(1f, totalEditedMs * pixelsPerMs)
                 val totalWidthDp = with(density) { safeTotalWidthPx.toDp() }
-                Canvas(modifier = Modifier.width(totalWidthDp).height(30.dp)) {
+                Canvas(modifier = Modifier.width(totalWidthDp).height(40.dp)) {
                     val durationSec = totalEditedMs / 1000
                     for (i in 0..durationSec) {
                         val x = i * 1000 * pixelsPerMs
-                        // Main tick mark
                         drawLine(
-                            color = Color.Gray,
-                            start = Offset(x, size.height - 15f),
+                            color = onSurfaceColor.copy(alpha = 0.7f),
+                            start = Offset(x, 0f),
                             end = Offset(x, size.height),
                             strokeWidth = 2f
                         )
-                        // Intermediate tick marks every 200ms
                         for (j in 1..4) {
                             val subX = x + (j * 200 * pixelsPerMs)
                             if (subX <= size.width) {
                                 drawLine(
-                                    color = Color.DarkGray,
-                                    start = Offset(subX, size.height - 8f),
+                                    color = onSurfaceColor.copy(alpha = 0.25f),
+                                    start = Offset(subX, size.height - 10f),
                                     end = Offset(subX, size.height),
                                     strokeWidth = 1f
                                 )
                             }
                         }
-                        // Draw timestamp every second if zoomed in, or every 5 seconds if zoomed out
                         if (zoomLevel >= 1f || i % 5 == 0L || durationSec < 10) {
                             val timeText = String.format("%02d:%02d", i / 60, i % 60)
                             val layoutResult = textMeasurer.measure(
                                 text = timeText,
-                                style = TextStyle(color = Color.LightGray, fontSize = 10.sp)
+                                style = TextStyle(color = AccentAmber, fontSize = 10.sp)
                             )
-                            drawText(
-                                textLayoutResult = layoutResult,
-                                topLeft = Offset(x + 4f, size.height - 30f)
-                            )
+                            drawText(textLayoutResult = layoutResult, topLeft = Offset(x + 4f, 4f))
                         }
                     }
                 }
@@ -292,10 +293,10 @@ fun VideoTimelineView(
                                 .offset { IntOffset(currentDragOffset.toInt(), 0) }
                                 .padding(horizontal = 1.dp) // slight gap between clips
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color.DarkGray)
+                                .background(surfaceVariantColor)
                                 .border(
                                     width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black,
+                                    color = if (isSelected) AccentAmber else outlineColor.copy(alpha = 0.5f),
                                     shape = RoundedCornerShape(4.dp)
                                 )
                                 .pointerInput(clip.id, clipWidthPx) {
@@ -347,13 +348,35 @@ fun VideoTimelineView(
     Spacer(modifier = Modifier.width(halfWidthDp))
 } // end Scrollable Timeline Track Row
 
-        // Fixed Playhead
+        // Fixed Playhead — amber triangle needle
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .width(2.dp)
                 .fillMaxHeight()
-                .background(Color.Red)
-        )
+        ) {
+            // Triangle handle at top
+            Canvas(
+                modifier = Modifier
+                    .width(14.dp)
+                    .height(10.dp)
+                    .align(Alignment.TopCenter)
+            ) {
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(size.width / 2f, size.height)
+                    lineTo(0f, 0f)
+                    lineTo(size.width, 0f)
+                    close()
+                }
+                drawPath(path, color = AccentAmber)
+            }
+            // The needle line
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .fillMaxHeight()
+                    .background(AccentAmber)
+                    .align(Alignment.Center)
+            )
+        }
     } // end Box
 } // end function
