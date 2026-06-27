@@ -258,6 +258,12 @@ fun CustomPaywallDialog(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
+                            text = "₹499",
+                            style = MaterialTheme.typography.labelMedium.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough),
+                            color = textSecondary.copy(alpha = 0.7f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
                             text = "₹99",
                             fontWeight = FontWeight.Black,
                             fontSize = 20.sp,

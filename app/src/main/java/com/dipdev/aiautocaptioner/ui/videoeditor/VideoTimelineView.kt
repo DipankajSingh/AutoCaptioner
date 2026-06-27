@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,7 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -268,7 +272,16 @@ fun VideoTimelineView(
                 }
                 
                 // Clips Row
-                Row(modifier = Modifier.fillMaxHeight()) {
+                if (clips.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Tap the video to trim and split",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    Row(modifier = Modifier.fillMaxHeight()) {
                     clips.forEachIndexed { index, clip ->
                         androidx.compose.runtime.key(clip.id) {
                             val durationMs = clip.endTrimMs - clip.startTrimMs
@@ -291,6 +304,15 @@ fun VideoTimelineView(
                                 .fillMaxHeight()
                                 .zIndex(if (isBeingDragged) 1f else 0f)
                                 .offset { IntOffset(currentDragOffset.toInt(), 0) }
+                                .graphicsLayer {
+                                    if (isBeingDragged) {
+                                        scaleX = 1.05f
+                                        scaleY = 1.05f
+                                        shadowElevation = 8.dp.toPx()
+                                        shape = RoundedCornerShape(4.dp)
+                                        this.clip = true
+                                    }
+                                }
                                 .padding(horizontal = 1.dp) // slight gap between clips
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(surfaceVariantColor)
@@ -338,9 +360,60 @@ fun VideoTimelineView(
                                     }
                                 }
                             }
+                            
+                            // Dark overlay for readability
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
+                            
+                            // Selected Overlay
+                            if (isSelected) {
+                                Box(modifier = Modifier.fillMaxSize().background(AccentAmber.copy(alpha = 0.1f)))
+                            }
+
+                            // Drag Grip
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                repeat(3) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(2.dp)
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(1.dp))
+                                            .background(Color.White.copy(alpha = 0.8f))
+                                    )
+                                }
+                            }
+                            
+                            // Name Label
+                            Text(
+                                text = "Clip ${index + 1}",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(start = 12.dp, bottom = 4.dp)
+                            )
+                            
+                            // Dashed gap line indicator if there's a gap from previous clip
+                            if (index > 0 && clips[index].startTrimMs > clips[index - 1].endTrimMs + 100) {
+                                Canvas(modifier = Modifier.fillMaxHeight().width(2.dp).align(Alignment.CenterStart)) {
+                                    drawLine(
+                                        color = AccentAmber,
+                                        start = Offset(0f, 0f),
+                                        end = Offset(0f, size.height),
+                                        strokeWidth = 4f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                    )
+                                }
+                            }
+
                         } // end clip Box
                     } // end key(clip.id)
                 } // end clips.forEachIndexed
+                } // end else branch
             } // end Clips Row
     } // end Column
 
