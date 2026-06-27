@@ -92,6 +92,7 @@ ksp {
 
 dependencies {
 
+    implementation("nl.dionsegijn:konfetti-compose:2.0.4")
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.foundation.layout)
     // -------------------------------------------------------

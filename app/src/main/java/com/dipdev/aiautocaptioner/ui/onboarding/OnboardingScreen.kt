@@ -43,7 +43,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +64,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import nl.dionsegijn.konfetti.compose.KonfettiView
+import nl.dionsegijn.konfetti.core.Party
+import nl.dionsegijn.konfetti.core.Position
+import nl.dionsegijn.konfetti.core.emitter.Emitter
+import java.util.concurrent.TimeUnit
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -69,6 +76,7 @@ import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AutoCaptionerTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 data class OnboardingPage(
     @StringRes val titleRes: Int,
@@ -103,6 +111,16 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == pages.size - 1
+
+    var showConfetti by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    LaunchedEffect(showConfetti) {
+        if (showConfetti) {
+            viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
+            delay(1500) // Let confetti explode for 1.5s before navigating
+            onFinish()
+        }
+    }
 
     // Always render onboarding in dark mode — the ParticleWave background
     // and vignette gradients are designed for dark surfaces.
@@ -148,8 +166,7 @@ fun OnboardingScreen(
                 isLastPage = isLastPage,
                 onNextClick = {
                     if (isLastPage) {
-                        viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
-                        onFinish()
+                        if (!showConfetti) showConfetti = true
                     } else {
                         scope.launch {
                             pagerState.animateScrollToPage(
@@ -171,6 +188,23 @@ fun OnboardingScreen(
             },
             modifier = Modifier.align(Alignment.TopCenter)
         )
+
+        if (showConfetti) {
+            KonfettiView(
+                modifier = Modifier.fillMaxSize(),
+                parties = listOf(
+                    Party(
+                        speed = 0f,
+                        maxSpeed = 30f,
+                        damping = 0.9f,
+                        spread = 360,
+                        colors = listOf(0xFFF59E0B.toInt(), 0xFF3B82F6.toInt(), 0xFF8B5CF6.toInt(), 0xFF10B981.toInt()),
+                        emitter = Emitter(duration = 100, TimeUnit.MILLISECONDS).max(100),
+                        position = Position.Relative(0.5, 0.3)
+                    )
+                )
+            )
+        }
     } // end Box
     } // end AutoCaptionerTheme
 }

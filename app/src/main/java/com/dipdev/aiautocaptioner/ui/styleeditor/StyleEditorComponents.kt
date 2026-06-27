@@ -60,6 +60,12 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.ui.draw.scale
+import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
+import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -70,10 +76,44 @@ fun PresetChip(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "preset_preview")
+    
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (style.emphasisAnimation == AnimationType.SCALE_POP || style.emphasisAnimation == AnimationType.BOUNCE) 1.15f else 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val highlightColor = MaterialTheme.colorScheme.primary
+    val animColor by infiniteTransition.animateColor(
+        initialValue = baseColor,
+        targetValue = if (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.LINE_HIGHLIGHT) highlightColor else baseColor,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(800),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "color"
+    )
+
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = if (style.wordEnterAnimation == AnimationType.FADE || style.displayMode == DisplayMode.TYPEWRITER) 0.3f else 1f,
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(800),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        contentColor = animColor,
         shadowElevation = if (isSelected) 4.dp else 1.dp,
         modifier = Modifier.combinedClickable(
             onClick = onClick,
@@ -88,7 +128,9 @@ fun PresetChip(
             Text(
                 text = style.name,
                 fontSize = 16.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = animColor.copy(alpha = alpha),
+                modifier = Modifier.scale(scale)
             )
         }
     }
