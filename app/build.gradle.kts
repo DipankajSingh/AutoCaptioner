@@ -13,12 +13,12 @@ plugins {
 
 android {
     namespace = "com.dipdev.aiautocaptioner"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.dipdev.aiautocaptioner"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 9
         versionName = "1.9"
 
@@ -92,7 +92,7 @@ ksp {
 
 dependencies {
 
-    implementation("nl.dionsegijn:konfetti-compose:2.0.4")
+    implementation(libs.konfetti.compose)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.foundation.layout)
     // -------------------------------------------------------
@@ -111,7 +111,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.text.google.fonts)
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.compose.material.icons.extended)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
