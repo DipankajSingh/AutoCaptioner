@@ -17,17 +17,15 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 data class SettingsUiState(
-    val theme: AppTheme = AppTheme.EMERALD,
+    val theme: AppTheme = AppTheme.DEEP_SPACE,
     val glassmorphism: Boolean = true,
-    val showTimelineThumbnails: Boolean = false,
-    val isLightTheme: Boolean = false
+    val showTimelineThumbnails: Boolean = false
 ) : UiState
 
 sealed interface SettingsUiEvent : UiEvent {
     data class SetTheme(val theme: AppTheme) : SettingsUiEvent
     data class SetGlassmorphism(val enabled: Boolean) : SettingsUiEvent
     data class SetShowTimelineThumbnails(val enabled: Boolean) : SettingsUiEvent
-    data class SetLightTheme(val enabled: Boolean) : SettingsUiEvent
 }
 
 sealed interface SettingsUiEffect : UiEffect
@@ -42,10 +40,9 @@ class SettingsViewModel @Inject constructor(
             combine(
                 settingsRepository.themeFlow,
                 settingsRepository.glassmorphismFlow,
-                settingsRepository.showTimelineThumbnailsFlow,
-                settingsRepository.lightThemeFlow
-            ) { theme, glass, thumb, light ->
-                SettingsUiState(theme, glass, thumb, light)
+                settingsRepository.showTimelineThumbnailsFlow
+            ) { theme, glass, thumb ->
+                SettingsUiState(theme, glass, thumb)
             }.distinctUntilChanged().collect { state ->
                 setState { state }
             }
@@ -63,9 +60,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiEvent.SetShowTimelineThumbnails -> {
                 viewModelScope.launch { settingsRepository.setShowTimelineThumbnails(event.enabled) }
             }
-            is SettingsUiEvent.SetLightTheme -> {
-                viewModelScope.launch { settingsRepository.setLightTheme(event.enabled) }
-            }
+
         }
     }
 }

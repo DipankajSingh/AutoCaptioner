@@ -58,7 +58,7 @@ import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.AnimationTab
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.ColorTab
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.TextTab
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
-import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
+import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 
 @Composable
 fun StyleEditorScreen(
@@ -216,7 +216,7 @@ fun StyleEditorScreen(
     }
 
     // MAIN LAYOUT
-    CompositionLocalProvider(LocalAccentColor provides AccentViolet) {
+    ScreenThemeProvider(accentColor = AccentViolet) {
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
 
         // 1. TOP APP BAR
@@ -403,5 +403,5 @@ fun StyleEditorScreen(
             }
         }
     }
-    } // CompositionLocalProvider
+    } // ScreenThemeProvider
 }

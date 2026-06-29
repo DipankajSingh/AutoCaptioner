@@ -60,6 +60,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -167,7 +168,7 @@ fun BottomTabItem(
                     Icons.Default.AutoAwesome,
                     contentDescription = "PRO",
                     modifier = Modifier.size(10.dp).align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp),
-                    tint = Color(0xFFF6A90A)
+                    tint = LocalAccentColor.current
                 )
             }
         }

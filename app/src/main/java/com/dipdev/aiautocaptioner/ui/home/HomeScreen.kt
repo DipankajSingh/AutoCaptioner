@@ -43,6 +43,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,8 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -158,8 +161,9 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
+    ScreenThemeProvider(accentColor = AccentBlue) {
+        Scaffold(
+            topBar = {
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp
@@ -457,7 +461,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth(0.9f)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF000000))
+                            .background(MaterialTheme.colorScheme.background)
                     ) {
                         VideoPlayerCard(
                             path = currentPreviewPath,
@@ -470,5 +474,6 @@ fun HomeScreen(
         } // end of Column
         } // end of outer Box (padding)
     } // end of Scaffold content box
+    } // end of ScreenThemeProvider
 } // end of HomeScreen
 

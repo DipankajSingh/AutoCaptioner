@@ -67,9 +67,10 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
-import com.dipdev.aiautocaptioner.ui.theme.AccentYellow
-import com.dipdev.aiautocaptioner.ui.theme.EmeraldPrimary
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
+import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import androidx.core.net.toUri
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -146,7 +147,7 @@ fun ExportScreen(
         viewModel.setEvent(ExportUiEvent.PrepareExport(projectId))
     }
 
-    CompositionLocalProvider(LocalAccentColor provides AccentYellow) {
+    ScreenThemeProvider(accentColor = AccentAmber) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -189,8 +190,8 @@ fun ExportScreen(
                             .background(
                                 Brush.horizontalGradient(
                                     listOf(
-                                        AccentYellow.copy(alpha = 0.18f),
-                                        AccentYellow.copy(alpha = 0.05f)
+                                        AccentAmber.copy(alpha = 0.18f),
+                                        AccentAmber.copy(alpha = 0.05f)
                                     )
                                 )
                             )
@@ -201,7 +202,7 @@ fun ExportScreen(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = AccentYellow,
+                                tint = LocalAccentColor.current,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(8.dp))
@@ -213,7 +214,7 @@ fun ExportScreen(
                                 },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = AccentYellow
+                                color = LocalAccentColor.current
                             )
                         }
                     }
@@ -222,7 +223,7 @@ fun ExportScreen(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = "Export complete",
                         modifier = Modifier.size(64.dp),
-                        tint = EmeraldPrimary
+                        tint = LocalAccentColor.current
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -234,7 +235,7 @@ fun ExportScreen(
                         },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldPrimary
+                        color = LocalAccentColor.current
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -369,7 +370,7 @@ fun ExportScreen(
                             text = String.format("~%.1f MB", estimatedSizeMB),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AccentYellow
+                            color = LocalAccentColor.current
                         )
                     }
 
@@ -415,7 +416,7 @@ fun ExportScreen(
                         LinearProgressIndicator(
                             progress = { animatedProgress },
                             modifier = Modifier.fillMaxSize(),
-                            color = AccentYellow,
+                            color = LocalAccentColor.current,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
@@ -425,7 +426,7 @@ fun ExportScreen(
                     Text(
                         text = "${(progress * 100).toInt()}%",
                         fontSize = 14.sp,
-                        color = AccentYellow
+                        color = LocalAccentColor.current
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     AppOutlinedButton(
@@ -488,7 +489,7 @@ fun ExportScreen(
         } // end inner Column
         } // end outer Column
     } // end Scaffold content
-    } // end CompositionLocalProvider
+    } // end ScreenThemeProvider
 } // end ExportScreen
 
 
@@ -508,8 +509,8 @@ fun <T> SegmentedSelector(
                 onClick = { onSelect(value) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(10.dp),
-                color = if (isSelected) AccentYellow.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                border = if (isSelected) BorderStroke(1.5.dp, AccentYellow) else null
+                color = if (isSelected) LocalAccentColor.current.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isSelected) BorderStroke(1.5.dp, LocalAccentColor.current) else null
             ) {
                 Text(
                     text = label,
@@ -519,7 +520,7 @@ fun <T> SegmentedSelector(
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) AccentYellow else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSelected) LocalAccentColor.current else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

@@ -60,7 +60,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
-import com.dipdev.aiautocaptioner.ui.theme.AccentYellow
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import kotlinx.coroutines.delay
 
 @Composable
@@ -212,7 +212,7 @@ fun CustomPaywallDialog(
                             icon = Icons.Default.HighQuality,
                             title = "4K Resolution Export",
                             subtitle = "Crystal-clear videos for every platform",
-                            accentColor = AccentYellow,
+                            accentColor = AccentAmber,
                             textPrimary = textPrimary,
                             textSecondary = textSecondary
                         )

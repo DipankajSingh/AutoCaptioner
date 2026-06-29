@@ -13,10 +13,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 enum class AppTheme(val displayName: String) {
-    EMERALD("Emerald Gradient"),
-    FLAT_GREEN("Flat Green"),
-    PURPLE("Purple Neon"),
-    BLUE("Ocean Blue")
+    DEEP_SPACE("Deep Space"),
+    TRUE_BLACK("True Black"),
+    MATTE_DARK("Matte Dark")
 }
 
 @Singleton
@@ -26,23 +25,18 @@ class SettingsRepository @Inject constructor(
     private val THEME_KEY = stringPreferencesKey("primary_color_theme")
     private val GLASSMORPHISM_KEY = booleanPreferencesKey("glassmorphism_enabled")
     private val SHOW_TIMELINE_THUMBNAILS_KEY = booleanPreferencesKey("show_timeline_thumbnails")
-    private val LIGHT_THEME_KEY = booleanPreferencesKey("use_light_theme")
     
     private val EXPORT_RESOLUTION_KEY = intPreferencesKey("export_resolution")
     private val EXPORT_FPS_KEY = intPreferencesKey("export_fps")
     private val EXPORT_QUALITY_KEY = intPreferencesKey("export_quality")
 
     val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
-        val themeName = prefs[THEME_KEY] ?: AppTheme.EMERALD.name
+        val themeName = prefs[THEME_KEY] ?: AppTheme.DEEP_SPACE.name
         try {
             AppTheme.valueOf(themeName)
         } catch (_: Exception) {
-            AppTheme.EMERALD
+            AppTheme.DEEP_SPACE
         }
-    }.distinctUntilChanged()
-
-    val lightThemeFlow: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[LIGHT_THEME_KEY] ?: false
     }.distinctUntilChanged()
 
     val glassmorphismFlow: Flow<Boolean> = dataStore.data.map { prefs ->
@@ -65,9 +59,7 @@ class SettingsRepository @Inject constructor(
         prefs[EXPORT_QUALITY_KEY] ?: 1
     }
 
-    suspend fun setLightTheme(enabled: Boolean) {
-        dataStore.edit { prefs -> prefs[LIGHT_THEME_KEY] = enabled }
-    }
+
 
     suspend fun setTheme(theme: AppTheme) {
         dataStore.edit { prefs ->

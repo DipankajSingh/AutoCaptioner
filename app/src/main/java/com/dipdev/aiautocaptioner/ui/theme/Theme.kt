@@ -3,7 +3,6 @@ package com.dipdev.aiautocaptioner.ui.theme
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -14,71 +13,50 @@ import androidx.core.view.WindowCompat
 import com.dipdev.aiautocaptioner.data.repository.AppTheme
 
 val LocalGlassmorphismEnabled = staticCompositionLocalOf { true }
-val LocalAppTheme = staticCompositionLocalOf { AppTheme.EMERALD }
+val LocalAppTheme = staticCompositionLocalOf { AppTheme.DEEP_SPACE }
 
 @Composable
 fun AutoCaptionerTheme(
-    appTheme: AppTheme = AppTheme.EMERALD,
-    useLightTheme: Boolean = false,
+    appTheme: AppTheme = AppTheme.DEEP_SPACE,
     glassmorphismEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val primaryColor = when (appTheme) {
-        AppTheme.EMERALD    -> if (useLightTheme) EmeraldPrimaryDark else EmeraldPrimary
-        AppTheme.FLAT_GREEN -> if (useLightTheme) FlatGreenDark else FlatGreenPrimary
-        AppTheme.PURPLE     -> if (useLightTheme) PurpleDark else PurplePrimary
-        AppTheme.BLUE       -> if (useLightTheme) BlueDark else BluePrimary
+    val backgroundColors = when (appTheme) {
+        AppTheme.DEEP_SPACE -> Triple(DeepSpaceBackground, DeepSpaceSurface, DeepSpaceSurfaceVariant)
+        AppTheme.TRUE_BLACK -> Triple(TrueBlackBackground, TrueBlackSurface, TrueBlackSurfaceVariant)
+        AppTheme.MATTE_DARK -> Triple(MatteDarkBackground, MatteDarkSurface, MatteDarkSurfaceVariant)
     }
 
-    val colorScheme = if (useLightTheme) {
-        lightColorScheme(
-            primary            = primaryColor,
-            onPrimary          = Color.White,
-            primaryContainer   = primaryColor.copy(alpha = 0.12f),
-            onPrimaryContainer = primaryColor,
-            secondary          = LightSurfaceVariant,
-            onSecondary        = LightTextPrimary,
-            tertiary           = primaryColor,
-            onTertiary         = Color.White,
-            background         = LightBackground,
-            onBackground       = LightTextPrimary,
-            surface            = LightSurface,
-            onSurface          = LightTextPrimary,
-            surfaceVariant     = LightSurfaceVariant,
-            onSurfaceVariant   = LightTextSecondary,
-            outline            = LightOutline,
-            error              = AccentRose,
-            onError            = Color.White,
-        )
-    } else {
-        darkColorScheme(
-            primary            = primaryColor,
-            onPrimary          = PremiumBackground,
-            primaryContainer   = primaryColor.copy(alpha = 0.15f),
-            onPrimaryContainer = primaryColor,
-            secondary          = PremiumSurfaceVariant,
-            onSecondary        = TextPrimary,
-            tertiary           = primaryColor,
-            onTertiary         = PremiumBackground,
-            background         = PremiumBackground,
-            onBackground       = TextPrimary,
-            surface            = PremiumSurface,
-            onSurface          = TextPrimary,
-            surfaceVariant     = PremiumSurfaceVariant,
-            onSurfaceVariant   = TextSecondary,
-            outline            = Color(0xFF3F3F46),
-            error              = AccentRose,
-            onError            = Color.White,
-        )
-    }
+    val (bgColor, surfaceColor, surfaceVariantColor) = backgroundColors
+
+    // Primary will just be AccentBlue as a fallback, but the UI should use semantic colors directly
+    val colorScheme = darkColorScheme(
+        primary            = AccentBlue,
+        onPrimary          = Color.White,
+        primaryContainer   = AccentBlue.copy(alpha = 0.15f),
+        onPrimaryContainer = AccentBlue,
+        secondary          = surfaceVariantColor,
+        onSecondary        = TextPrimary,
+        tertiary           = AccentViolet,
+        onTertiary         = Color.White,
+        background         = bgColor,
+        onBackground       = TextPrimary,
+        surface            = surfaceColor,
+        onSurface          = TextPrimary,
+        surfaceVariant     = surfaceVariantColor,
+        onSurfaceVariant   = TextSecondary,
+        outline            = OutlineColor,
+        error              = AccentRose,
+        onError            = Color.White,
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = useLightTheme
-            controller.isAppearanceLightNavigationBars = useLightTheme
+            controller.isAppearanceLightStatusBars = false
+            controller.isAppearanceLightNavigationBars = false
         }
     }
 
@@ -90,6 +68,26 @@ fun AutoCaptionerTheme(
             colorScheme = colorScheme,
             typography  = Typography,
             content     = content
+        )
+    }
+}
+
+@Composable
+fun ScreenThemeProvider(
+    accentColor: Color,
+    content: @Composable () -> Unit
+) {
+    val currentColorScheme = MaterialTheme.colorScheme
+    val newColorScheme = currentColorScheme.copy(
+        primary = accentColor,
+        primaryContainer = accentColor.copy(alpha = 0.15f),
+        onPrimaryContainer = accentColor,
+    )
+    CompositionLocalProvider(LocalAccentColor provides accentColor) {
+        MaterialTheme(
+            colorScheme = newColorScheme,
+            typography = MaterialTheme.typography,
+            content = content
         )
     }
 }

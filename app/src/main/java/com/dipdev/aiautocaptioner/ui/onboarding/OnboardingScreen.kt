@@ -113,7 +113,7 @@ fun OnboardingScreen(
 
     // Always render onboarding in dark mode — the ParticleWave background
     // and vignette gradients are designed for dark surfaces.
-    AutoCaptionerTheme(useLightTheme = false) {
+    AutoCaptionerTheme {
     Box(
         modifier = Modifier
             .fillMaxSize()

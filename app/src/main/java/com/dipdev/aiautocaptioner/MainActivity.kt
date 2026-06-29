@@ -40,11 +40,9 @@ class MainActivity : ComponentActivity() {
             val uiState by mainViewModel.uiState.collectAsState()
             val appTheme = uiState.appTheme
             val glassmorphismEnabled = uiState.glassmorphismEnabled
-            val useLightTheme = uiState.useLightTheme
 
             AutoCaptionerTheme(
                 appTheme = appTheme,
-                useLightTheme = useLightTheme,
                 glassmorphismEnabled = glassmorphismEnabled
             ) {
                 Surface(

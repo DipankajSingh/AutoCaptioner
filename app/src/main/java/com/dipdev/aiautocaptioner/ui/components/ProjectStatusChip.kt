@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import com.dipdev.aiautocaptioner.ui.theme.EmeraldPrimary
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 
 /**
  * A small coloured chip showing the current [ProjectStatus].
@@ -27,11 +27,11 @@ import com.dipdev.aiautocaptioner.ui.theme.EmeraldPrimary
 fun ProjectStatusChip(status: ProjectStatus) {
     val (label, color) = when (status) {
         ProjectStatus.IMPORTED               -> "Imported"      to MaterialTheme.colorScheme.onSurfaceVariant
-        ProjectStatus.READY_FOR_PROCESSING   -> "Ready for AI"  to EmeraldPrimary
+        ProjectStatus.READY_FOR_PROCESSING   -> "Ready for AI"  to AccentBlue
         ProjectStatus.EXTRACTING_AUDIO       -> "Extracting…"   to AccentCyan
         ProjectStatus.TRANSCRIBING           -> "Transcribing…" to AccentCyan
-        ProjectStatus.TRANSCRIBED            -> "Ready"         to EmeraldPrimary
-        ProjectStatus.EXPORTED               -> "Exported"      to EmeraldPrimary
+        ProjectStatus.TRANSCRIBED            -> "Ready"         to AccentBlue
+        ProjectStatus.EXPORTED               -> "Exported"      to AccentBlue
     }
     Surface(
         color           = color.copy(alpha = 0.15f),

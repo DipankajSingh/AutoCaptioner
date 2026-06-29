@@ -26,6 +26,8 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import androidx.compose.foundation.background
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,10 +38,10 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentTheme = uiState.theme
     val isGlassmorphism = uiState.glassmorphism
-    val isLightTheme = uiState.isLightTheme
     val showTimelineThumbnails = uiState.showTimelineThumbnails
     val context = LocalContext.current
 
+    ScreenThemeProvider(accentColor = AccentBlue) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -117,31 +119,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Light Theme Toggle
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(
-                        text = "Light Theme",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "Switch between dark and light appearance",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = isLightTheme,
-                    onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetLightTheme(it)) }
-                )
-            }
-
             // Timeline Thumbnails Toggle
             Row(
                 modifier = Modifier
@@ -171,7 +148,7 @@ fun SettingsScreen(
 
             // Theme Selection
             Text(
-                text = "Primary Color Theme",
+                text = "Background Theme",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -310,6 +287,7 @@ fun SettingsScreen(
                 }
             )
         }
+    }
     }
 }
 

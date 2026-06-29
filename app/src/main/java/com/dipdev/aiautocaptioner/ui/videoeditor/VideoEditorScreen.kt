@@ -80,9 +80,11 @@ import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import com.dipdev.aiautocaptioner.ui.theme.EmeraldPrimary
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
+import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.Locale
@@ -98,7 +100,7 @@ fun VideoEditorScreen(
     onNavigateBack: () -> Unit,
     viewModel: VideoEditorViewModel = hiltViewModel()
 ) {
-    CompositionLocalProvider(LocalAccentColor provides AccentAmber) {
+    ScreenThemeProvider(accentColor = AccentCyan) {
         VideoEditorScreenContent(
             projectId = projectId,
             onNavigateToProcessing = onNavigateToProcessing,
@@ -292,13 +294,10 @@ private fun VideoEditorScreenContent(
                                 else onNavigateToProcessing()
                             },
                             shape = RoundedCornerShape(50),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = EmeraldPrimary,
-                                contentColor = Color.White
-                            ),
-                            modifier = Modifier.padding(end = 4.dp)
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.padding(end = 4.dp).height(32.dp)
                         ) {
-                            Text("Generate Captions", style = MaterialTheme.typography.labelMedium)
+                            Text("Captions", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
