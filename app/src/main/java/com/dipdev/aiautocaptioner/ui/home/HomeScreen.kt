@@ -2,8 +2,10 @@ package com.dipdev.aiautocaptioner.ui.home
 
 
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,9 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -68,13 +68,12 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
-import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import android.os.Build
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -178,13 +177,19 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Image(
-                            painter = painterResource(id = R.mipmap.ic_launcher_round),
-                            contentDescription = null,
+                        Box(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                        )
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_launcher_img),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                         Text(
                             text = "AutoCaptioner",
                             style = MaterialTheme.typography.titleMedium,
@@ -425,7 +430,7 @@ fun HomeScreen(
             if (importState is ImportState.Error) {
                 val message = (importState as ImportState.Error).message
                 LaunchedEffect(importState) {
-                    kotlinx.coroutines.delay(3000)
+                    kotlinx.coroutines.delay(3000.milliseconds)
                     viewModel.resetImportState()
                 }
                 Snackbar(

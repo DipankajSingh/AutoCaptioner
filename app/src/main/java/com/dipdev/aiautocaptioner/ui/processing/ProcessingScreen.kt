@@ -38,7 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.ui.processing.components.*
 
