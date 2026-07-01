@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import InstructionalPlaceholder from './InstructionalPlaceholder';
 
-const FeatureNode = ({ stepNum, title, textPrompt, imagePrompt, reverse }) => {
+const FeatureNode = ({ stepNum, title, text, imagePrompt, reverse }) => {
   return (
     <motion.div 
       initial={{ opacity: 0.2, y: 30 }}
@@ -13,9 +13,9 @@ const FeatureNode = ({ stepNum, title, textPrompt, imagePrompt, reverse }) => {
     >
       <div className="w-full md:w-[45%]">
         <h2 className="text-3xl font-bold mb-4">{stepNum}. {title}</h2>
-        <InstructionalPlaceholder minHeight="100px" className="p-4 text-xs font-normal bg-transparent">
-          {textPrompt}
-        </InstructionalPlaceholder>
+        <p className="text-lg text-textSecondary leading-relaxed bg-transparent">
+          {text}
+        </p>
       </div>
       <div className="w-full md:w-[45%] bg-glassSurface border border-glassBorder rounded-3xl p-6 relative overflow-hidden backdrop-blur-md">
         <div className="absolute inset-0 rounded-3xl p-[1px] bg-gradient-to-br from-white/10 to-transparent pointer-events-none" style={{ mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'exclude' }}></div>
@@ -50,20 +50,20 @@ export default function Scrollytelling() {
           <FeatureNode 
             stepNum={1}
             title="Select Your Video"
-            textPrompt="Provide the exact copywriting text for step 1 explaining video selection and format support."
+            text="Pick any video from your gallery. Whether it's a short social media clip or a longer vlog, AutoCaptioner seamlessly imports your media without uploading a single byte to the cloud."
             imagePrompt="Provide a high-res screenshot of the gallery/selection screen in the app. Replace this div with an <img> tag."
           />
           <FeatureNode 
             stepNum={2}
             title="100% Private AI Analysis"
-            textPrompt="Provide copywriting explaining the on-device Whisper model and privacy benefits."
-            imagePrompt="Provide a stylized illustration or screenshot showing the transcription loading/processing state. Replace this div."
+            text="Powered by state-of-the-art OpenAI Whisper models running completely on your device. It transcribes audio with incredible accuracy locally, guaranteeing absolute privacy and zero data usage."
+            imagePrompt="Provide a stylized illustration or screenshot showing the transcription loading/processing state (model manager). Replace this div."
             reverse
           />
           <FeatureNode 
             stepNum={3}
             title="Style & Export"
-            textPrompt="Provide copywriting explaining customization options (colors, fonts) and fast exporting."
+            text="Customize the look of your captions to match your brand. Adjust colors, fonts, and positioning, then export your perfectly captioned video directly to your camera roll in seconds."
             imagePrompt="Provide a screenshot of the Style Editor screen highlighting the color picker. Replace this div."
           />
         </div>
