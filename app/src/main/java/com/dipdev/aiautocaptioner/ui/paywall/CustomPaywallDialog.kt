@@ -340,7 +340,7 @@ fun CustomPaywallDialog(
                     ) {
                         Text("🔒 Secure", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
                         Text("♻️ Restore", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
-                        Text("📵 Offline AI", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
+                        Text("📱 On-Device AI", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
                     }
                     Text(
                         text = "Payment processed securely by Google Play",

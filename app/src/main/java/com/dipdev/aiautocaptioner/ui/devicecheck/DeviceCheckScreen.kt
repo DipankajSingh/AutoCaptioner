@@ -55,7 +55,7 @@ fun DeviceCheckScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Downloaded once, works forever offline.",
+            text = "Downloaded once, processes entirely on-device.",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
