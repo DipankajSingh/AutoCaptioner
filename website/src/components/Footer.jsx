@@ -15,8 +15,9 @@ export default function Footer() {
           <a href="mailto:support@autocaptioner.com" className="hover:text-accentBlue transition-colors">Contact (Please Be Nice)</a>
         </div>
       </div>
-      <div className="container mx-auto px-8 mt-8 text-center text-xs text-textSecondary/60">
-        &copy; {new Date().getFullYear()} AutoCaptioner. Built with ☕ and paranoia.
+      <div className="container mx-auto px-8 mt-8 flex flex-col md:flex-row justify-between items-center text-xs text-textSecondary/60 gap-4">
+        <span>&copy; {new Date().getFullYear()} AutoCaptioner. Built with ☕ and paranoia.</span>
+        <span className="font-semibold text-textSecondary/80">A product of DipDev Labs</span>
       </div>
     </footer>
   );
