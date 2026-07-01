@@ -15,7 +15,7 @@
     <title>AutoCaptioner | Secure On-Device Video Captioning</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
@@ -24,8 +24,9 @@
         <a href="#" class="logo">AutoCaptioner</a>
         <nav class="nav-links">
           <a href="#features">Features</a>
-          <a href="/privacy.html">Privacy Policy</a>
-          <a href="#" class="btn btn-outline" id="nav-cta">Get the App</a>
+          <a href="/privacy.html">Privacy</a>
+          <a href="/terms.html">Terms</a>
+          <a href="#download" class="btn btn-outline" id="nav-cta">Get the App</a>
         </nav>
       </div>
     </header>
@@ -34,22 +35,30 @@
       <!-- Hero Section -->
       <section class="hero" id="home">
         <div class="container hero-container">
-          <div class="hero-content">
+          <div class="hero-content reveal">
             <h1 class="hero-title">Video Captions, <span class="highlight">Processed On-Device</span>.</h1>
             <p class="hero-subtitle">
-              Generate perfectly synced, highly accurate captions for your videos directly on your device. Powered by AI, designed for absolute privacy.
+              Generate perfectly synced, highly accurate captions for your videos directly on your Android device. Powered by AI, designed for absolute privacy.
             </p>
             <div class="hero-cta">
-              <a href="#" class="btn btn-primary" id="hero-cta-btn">Download on Google Play</a>
+              <a href="#download" class="btn btn-primary" id="hero-cta-btn">Download on Google Play</a>
             </div>
           </div>
-          <div class="hero-image-wrapper">
+          
+          <div class="hero-image-wrapper reveal">
             <div class="placeholder-device">
               <div class="placeholder-screen">
-                 <div class="caption-preview-box">
-                    <span class="caption-word active">AutoCaptioner</span>
-                    <span class="caption-word">is</span>
-                    <span class="caption-word">amazing!</span>
+                 <!-- CSS Animated Background (Pseudo Video) -->
+                 <div class="video-bg"></div>
+                 
+                 <!-- Animated Captions Area -->
+                 <div class="caption-preview-box" id="caption-box">
+                    <span class="caption-word">Create</span>
+                    <span class="caption-word">stunning</span>
+                    <span class="caption-word">captions</span>
+                    <span class="caption-word">locally</span>
+                    <span class="caption-word">and</span>
+                    <span class="caption-word">securely.</span>
                  </div>
               </div>
             </div>
@@ -60,28 +69,28 @@
       <!-- Features Section -->
       <section class="features" id="features">
         <div class="container">
-          <div class="section-header">
+          <div class="section-header reveal">
             <h2>Why Choose AutoCaptioner?</h2>
-            <p>Built with privacy and performance in mind.</p>
+            <p>Built with uncompromising privacy and breathtaking performance.</p>
           </div>
           <div class="features-grid">
             
-            <div class="feature-card">
+            <div class="feature-card reveal">
               <div class="feature-icon">⚡</div>
               <h3>Lightning Fast. 100% Private.</h3>
-              <p>Generate accurate captions completely on your device. No servers, no waiting. Experience whisper-level accuracy with absolute privacy.</p>
+              <p>Generate accurate captions completely on your device. No servers, no waiting, no data leaks. Experience whisper-level accuracy securely.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal">
               <div class="feature-icon">🎨</div>
               <h3>Style It Your Way</h3>
-              <p>Make your captions pop! Edit text, fonts, colors, and animations to perfectly match your brand and aesthetic right inside the app.</p>
+              <p>Make your captions pop! Edit text, fonts, colors, and add dynamic animations to perfectly match your brand's unique aesthetic.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card reveal">
               <div class="feature-icon">📱</div>
               <h3>Ready for Socials</h3>
-              <p>Export your auto-captioned videos in seconds, perfectly formatted and ready to be posted on TikTok, Reels, or Shorts.</p>
+              <p>Export your auto-captioned videos in seconds, perfectly formatted and ready to be posted directly to TikTok, Reels, or Shorts.</p>
             </div>
 
           </div>
@@ -89,10 +98,10 @@
       </section>
       
       <!-- CTA Section -->
-      <section class="bottom-cta">
-        <div class="container text-center">
+      <section class="bottom-cta" id="download">
+        <div class="container text-center reveal">
           <h2>Ready to caption your videos?</h2>
-          <p>Join our closed beta today and experience private AI captioning.</p>
+          <p>Join our closed beta today and experience private, on-device AI captioning.</p>
           <a href="#" class="btn btn-primary btn-large mt-4" id="footer-cta-btn">Get Started Now</a>
         </div>
       </section>
@@ -101,7 +110,7 @@
     <footer class="footer">
       <div class="container footer-container">
         <div class="footer-brand">
-          <h3>AutoCaptioner</h3>
+          <a href="#" class="logo">AutoCaptioner</a>
           <p>Secure, on-device AI captioning.</p>
         </div>
         <div class="footer-links">
@@ -111,10 +120,10 @@
         </div>
         <div class="footer-contact">
           <h4>Contact</h4>
-          <a href="#" id="footer-contact-link"></a>
+          <a href="mailto:support@dipdevlabs.com" id="footer-contact-link">support@dipdevlabs.com</a>
         </div>
       </div>
-        <div class="footer-bottom text-center">
+      <div class="footer-bottom text-center">
         <p>&copy; 2026 DipDev Labs. All rights reserved.</p>
       </div>
     </footer>
