@@ -50,20 +50,20 @@ export default function Scrollytelling() {
           <FeatureNode 
             stepNum={1}
             title="Select Your Video"
-            text="Pick any video from your gallery. Whether it's a short social media clip or a longer vlog, AutoCaptioner seamlessly imports your media without uploading a single byte to the cloud."
+            text="Pick any video from your gallery. Whether it's a cinematic masterpiece or a chaotic 3AM rant about pizza, AutoCaptioner imports it instantly without uploading a single byte to the internet."
             imagePrompt="Provide a high-res screenshot of the gallery/selection screen in the app. Replace this div with an <img> tag."
           />
           <FeatureNode 
             stepNum={2}
-            title="100% Private AI Analysis"
-            text="Powered by state-of-the-art OpenAI Whisper models running completely on your device. It transcribes audio with incredible accuracy locally, guaranteeing absolute privacy and zero data usage."
+            title="Mind-Reading AI (Not Really)"
+            text="Our on-device Whisper models listen to your audio and transcribe it with terrifying accuracy. It happens entirely locally, so your battery might notice, but the NSA won't."
             imagePrompt="Provide a stylized illustration or screenshot showing the transcription loading/processing state (model manager). Replace this div."
             reverse
           />
           <FeatureNode 
             stepNum={3}
-            title="Style & Export"
-            text="Customize the look of your captions to match your brand. Adjust colors, fonts, and positioning, then export your perfectly captioned video directly to your camera roll in seconds."
+            title="Make it Pop"
+            text="Adjust colors, fonts, and positioning so your captions look less 'boring default' and more 'I hire a professional editor.' Export it straight to your camera roll before your coffee gets cold."
             imagePrompt="Provide a screenshot of the Style Editor screen highlighting the color picker. Replace this div."
           />
         </div>

@@ -9,11 +9,11 @@ export default function Hero() {
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight">
             Video Captions,<br />
             <span className="bg-gradient-to-br from-textPrimary via-textPrimary to-accentBlue bg-clip-text text-transparent">
-              Processed On-Device.
+              Minus the Creepy Cloud.
             </span>
           </h1>
           <p className="mt-6 mb-10 text-lg md:text-2xl text-textSecondary max-w-[600px] mx-auto">
-            Generate perfectly synced, highly accurate captions directly on your Android device. Driven by AI, designed for absolute privacy. No cloud required.
+            Generate perfectly synced captions directly on your Android. Because your awkward outtakes belong to you, not some server farm in Nevada.
           </p>
           <div>
             <a href="#download" className="btn btn-primary">Download on Google Play</a>

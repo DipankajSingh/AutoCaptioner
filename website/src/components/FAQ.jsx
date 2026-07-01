@@ -35,23 +35,23 @@ export default function FAQ() {
   return (
     <section className="py-32" id="faq">
       <div className="container mx-auto px-8 max-w-[800px]">
-        <h2 className="text-4xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+        <h2 className="text-4xl font-bold text-center mb-12">Frequently Asked (And Slightly Panicked) Questions</h2>
         <div>
           <AccordionItem 
             question="Do I need an internet connection to generate captions?" 
-            answer="No! AutoCaptioner runs OpenAI's Whisper AI models directly on your device. Once the app and language models are downloaded, you can generate highly accurate captions completely offline." 
+            answer="Nope! AutoCaptioner runs OpenAI's Whisper AI directly on your device. Once you've downloaded the language pack, you could literally generate captions from the middle of the Sahara Desert. (Though we question your priorities if you're doing that)." 
           />
           <AccordionItem 
             question="Are my videos uploaded to the cloud?" 
-            answer="Never. Because all processing is done locally via on-device machine learning, your videos and audio never leave your phone. Your data remains 100% private." 
+            answer="Never. We don't want to see your 45 failed attempts at the latest TikTok dance. All processing is strictly local, so your awkward outtakes remain your secret." 
           />
           <AccordionItem 
             question="What languages are supported?" 
-            answer="AutoCaptioner supports multiple languages through downloadable Whisper models. You can easily manage and download the specific language packs you need right inside the app." 
+            answer="Basically, if humans speak it, we probably have a model for it. You can download various language packs inside the app, turning your phone into a tiny, very fast UN translator." 
           />
           <AccordionItem 
-            question="Can I customize the look of the captions?" 
-            answer="Yes. The app includes a built-in style editor that allows you to change fonts, text colors, background colors, and the positioning of the captions on the video." 
+            question="Is it going to melt my phone?" 
+            answer="AI is heavy stuff, but our app is incredibly optimized. Your phone might get a little warm if you're transcribing a 3-hour podcast, but it definitely won't melt. We promise." 
           />
         </div>
       </div>
