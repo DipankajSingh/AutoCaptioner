@@ -19,13 +19,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 data class SettingsUiState(
     val theme: AppTheme = AppTheme.DEEP_SPACE,
     val glassmorphism: Boolean = true,
-    val showTimelineThumbnails: Boolean = false
+    val showTimelineThumbnails: Boolean = false,
+    val telemetryEnabled: Boolean = true
 ) : UiState
 
 sealed interface SettingsUiEvent : UiEvent {
     data class SetTheme(val theme: AppTheme) : SettingsUiEvent
     data class SetGlassmorphism(val enabled: Boolean) : SettingsUiEvent
     data class SetShowTimelineThumbnails(val enabled: Boolean) : SettingsUiEvent
+    data class SetTelemetryEnabled(val enabled: Boolean) : SettingsUiEvent
 }
 
 sealed interface SettingsUiEffect : UiEffect
@@ -40,9 +42,10 @@ class SettingsViewModel @Inject constructor(
             combine(
                 settingsRepository.themeFlow,
                 settingsRepository.glassmorphismFlow,
-                settingsRepository.showTimelineThumbnailsFlow
-            ) { theme, glass, thumb ->
-                SettingsUiState(theme, glass, thumb)
+                settingsRepository.showTimelineThumbnailsFlow,
+                settingsRepository.telemetryEnabledFlow
+            ) { theme, glass, thumb, telemetry ->
+                SettingsUiState(theme, glass, thumb, telemetry)
             }.distinctUntilChanged().collect { state ->
                 setState { state }
             }
@@ -59,6 +62,9 @@ class SettingsViewModel @Inject constructor(
             }
             is SettingsUiEvent.SetShowTimelineThumbnails -> {
                 viewModelScope.launch { settingsRepository.setShowTimelineThumbnails(event.enabled) }
+            }
+            is SettingsUiEvent.SetTelemetryEnabled -> {
+                viewModelScope.launch { settingsRepository.setTelemetryEnabled(event.enabled) }
             }
 
         }

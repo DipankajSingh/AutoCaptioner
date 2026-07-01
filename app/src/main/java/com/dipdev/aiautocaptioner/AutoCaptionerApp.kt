@@ -11,9 +11,20 @@ import dagger.hilt.android.HiltAndroidApp
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltAndroidApp
 class AiAutoCaptioner : Application() {
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
@@ -36,8 +47,7 @@ class AiAutoCaptioner : Application() {
     private fun initFirebase() {
 
         // ── Crashlytics ────────────────────────────────────────────────────
-        // Enable crash collection. Set to false for debug builds to avoid
-        // polluting the dashboard with development crashes.
+        // Initially set based on debug flag, then observed from settings
         Firebase.crashlytics.isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG
 
         // ── Analytics ─────────────────────────────────────────────────────
@@ -47,6 +57,17 @@ class AiAutoCaptioner : Application() {
         // ── Performance Monitoring ─────────────────────────────────────────
         // Collects startup time, screen render performance, network traces.
         Firebase.performance.isPerformanceCollectionEnabled = !BuildConfig.DEBUG
+
+        // Observe user settings to override default behavior
+        applicationScope.launch {
+            settingsRepository.telemetryEnabledFlow.collect { isEnabled ->
+                // Do not enable telemetry in debug builds even if user toggled it
+                val shouldEnable = isEnabled && !BuildConfig.DEBUG
+                Firebase.crashlytics.isCrashlyticsCollectionEnabled = shouldEnable
+                Firebase.analytics.setAnalyticsCollectionEnabled(shouldEnable)
+                Firebase.performance.isPerformanceCollectionEnabled = shouldEnable
+            }
+        }
 
         // ── Remote Config ─────────────────────────────────────────────────
         val remoteConfig = Firebase.remoteConfig

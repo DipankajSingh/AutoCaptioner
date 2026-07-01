@@ -25,6 +25,7 @@ class SettingsRepository @Inject constructor(
     private val THEME_KEY = stringPreferencesKey("primary_color_theme")
     private val GLASSMORPHISM_KEY = booleanPreferencesKey("glassmorphism_enabled")
     private val SHOW_TIMELINE_THUMBNAILS_KEY = booleanPreferencesKey("show_timeline_thumbnails")
+    private val TELEMETRY_ENABLED_KEY = booleanPreferencesKey("telemetry_enabled")
     
     private val EXPORT_RESOLUTION_KEY = intPreferencesKey("export_resolution")
     private val EXPORT_FPS_KEY = intPreferencesKey("export_fps")
@@ -45,6 +46,10 @@ class SettingsRepository @Inject constructor(
 
     val showTimelineThumbnailsFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[SHOW_TIMELINE_THUMBNAILS_KEY] ?: false
+    }.distinctUntilChanged()
+
+    val telemetryEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[TELEMETRY_ENABLED_KEY] ?: true // Default to true
     }.distinctUntilChanged()
 
     val exportResolutionFlow: Flow<Int> = dataStore.data.map { prefs ->
@@ -76,6 +81,12 @@ class SettingsRepository @Inject constructor(
     suspend fun setShowTimelineThumbnails(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[SHOW_TIMELINE_THUMBNAILS_KEY] = enabled
+        }
+    }
+
+    suspend fun setTelemetryEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[TELEMETRY_ENABLED_KEY] = enabled
         }
     }
 

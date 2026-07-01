@@ -39,6 +39,7 @@ fun SettingsScreen(
     val currentTheme = uiState.theme
     val isGlassmorphism = uiState.glassmorphism
     val showTimelineThumbnails = uiState.showTimelineThumbnails
+    val telemetryEnabled = uiState.telemetryEnabled
     val context = LocalContext.current
 
     ScreenThemeProvider(accentColor = AccentBlue) {
@@ -217,11 +218,38 @@ fun SettingsScreen(
 
             // Legal Section
             Text(
-                text = "Data & Legal",
+                text = "Data & Privacy",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Telemetry Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = "Share Analytics & Crash Data",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "Help us improve AutoCaptioner by sharing anonymous usage and crash reports via Firebase. No media is ever sent.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = telemetryEnabled,
+                    onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetTelemetryEnabled(it)) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Foreground Service / Data Sync Disclosure
             Row(
