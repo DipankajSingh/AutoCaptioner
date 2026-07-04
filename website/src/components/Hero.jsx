@@ -7,13 +7,13 @@ export default function Hero() {
       <div className="container mx-auto px-8 flex flex-col items-center gap-16 relative z-10">
         <div className="max-w-[800px]">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight">
-            Video Captions,<br />
+            Viral Video Captions,<br />
             <span className="bg-gradient-to-br from-textPrimary via-textPrimary to-accentBlue bg-clip-text text-transparent">
-              Minus the Creepy Cloud.
+              Generated Automatically.
             </span>
           </h1>
           <p className="mt-6 mb-10 text-lg md:text-2xl text-textSecondary max-w-[600px] mx-auto">
-            Generate perfectly synced captions directly on your Android. Because your awkward outtakes belong to you, not some server farm in Nevada.
+            Get those engaging, word-by-word animated captions for your TikToks and Reels in seconds. Fast, free, and 100% offline with zero watermarks.
           </p>
           <div>
             <a href="#download" className="btn btn-primary">Download on Google Play</a>

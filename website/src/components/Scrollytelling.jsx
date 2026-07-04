@@ -55,15 +55,15 @@ export default function Scrollytelling() {
           />
           <FeatureNode 
             stepNum={2}
-            title="Mind-Reading AI (Not Really)"
-            text="Our on-device Whisper models listen to your audio and transcribe it with terrifying accuracy. It happens entirely locally, so your battery might notice, but the NSA won't."
+            title="Instant, Accurate Auto Captions"
+            text="Our on-device Whisper models listen to your audio and transcribe it automatically with terrifying accuracy. No need to upload massive video files to the cloud—it all happens instantly on your phone."
             imagePrompt="Provide a stylized illustration or screenshot showing the transcription loading/processing state (model manager). Replace this div."
             reverse
           />
           <FeatureNode 
             stepNum={3}
-            title="Make it Pop"
-            text="Adjust colors, fonts, and positioning so your captions look less 'boring default' and more 'I hire a professional editor.' Export it straight to your camera roll before your coffee gets cold."
+            title="Make it Pop (TikTok Style)"
+            text="Adjust colors, fonts, and positioning to get that viral 'Alex Hormozi' look. Create dynamic, color-changing text that highlights words as you speak, and export it straight to your camera roll with absolutely zero watermarks."
             imagePrompt="Provide a screenshot of the Style Editor screen highlighting the color picker. Replace this div."
           />
         </div>

@@ -42,6 +42,14 @@ export default function FAQ() {
             answer="Nope! AutoCaptioner runs OpenAI's Whisper AI directly on your device. Once you've downloaded the language pack, you could literally generate captions from the middle of the Sahara Desert. (Though we question your priorities if you're doing that)." 
           />
           <AccordionItem 
+            question="Does this add a watermark to my video?" 
+            answer="No, it's 100% watermark-free. You shouldn't have to pay to remove an ugly logo from your own hard work." 
+          />
+          <AccordionItem 
+            question="Can I make captions that look like TikTok or Alex Hormozi videos?" 
+            answer="Yes! Our Style Editor lets you create highly engaging word-by-word animations and color pop effects that are currently dominating social media feeds." 
+          />
+          <AccordionItem 
             question="Are my videos uploaded to the cloud?" 
             answer="Never. We don't want to see your 45 failed attempts at the latest TikTok dance. All processing is strictly local, so your awkward outtakes remain your secret." 
           />
