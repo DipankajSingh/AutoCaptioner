@@ -147,35 +147,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Theme Selection
-            Text(
-                text = "Background Theme",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            AppTheme.entries.forEach { themeOption ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.setEvent(SettingsUiEvent.SetTheme(themeOption)) }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (themeOption == currentTheme),
-                        onClick = { viewModel.setEvent(SettingsUiEvent.SetTheme(themeOption)) }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = themeOption.displayName,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
             // About Section
             Text(
                 text = "About",

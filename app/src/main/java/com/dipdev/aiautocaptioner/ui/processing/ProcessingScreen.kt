@@ -15,17 +15,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -35,12 +43,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dipdev.aiautocaptioner.ui.processing.components.*
+import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
+import com.dipdev.aiautocaptioner.ui.processing.components.CancelProcessDialog
+import com.dipdev.aiautocaptioner.ui.processing.components.CancelledView
+import com.dipdev.aiautocaptioner.ui.processing.components.CancellingView
+import com.dipdev.aiautocaptioner.ui.processing.components.DownloadingStateView
+import com.dipdev.aiautocaptioner.ui.processing.components.ErrorView
+import com.dipdev.aiautocaptioner.ui.processing.components.ExtractingAudioView
+import com.dipdev.aiautocaptioner.ui.processing.components.LoadingModelView
+import com.dipdev.aiautocaptioner.ui.processing.components.ModelPickerCard
+import com.dipdev.aiautocaptioner.ui.processing.components.SafetyCheckDialogs
+import com.dipdev.aiautocaptioner.ui.processing.components.SavingView
+import com.dipdev.aiautocaptioner.ui.processing.components.TranscribingStateView
 
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,13 +77,8 @@ fun ProcessingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val step = uiState.step
-    val selectedLanguage = uiState.selectedLanguage
-    val translateToEnglish = uiState.translateToEnglish
-    val activeModel = uiState.activeModel
-    val workingVideoPath = uiState.workingVideoPath
     val streamedSegments = uiState.streamedSegments
     val safetyCheck = uiState.safetyCheck
-    val segmentCount = uiState.segmentCount
 
     LaunchedEffect(projectId) {
         viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId))
@@ -130,9 +147,7 @@ fun ProcessingScreen(
                 (fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.96f))
                     .togetherWith(fadeOut(tween(300)))
             },
-            contentKey = { 
-                if (it is ProcessingStep.Idle || it is ProcessingStep.Ready || it is ProcessingStep.SetupAI) "ready" else it::class.simpleName 
-            },
+            contentKey = { it::class.simpleName },
             label = "processing_step",
             modifier = Modifier
                 .fillMaxSize()
@@ -140,23 +155,13 @@ fun ProcessingScreen(
                 .padding(bottom = 24.dp)
         ) { currentStep ->
             when (currentStep) {
-                is ProcessingStep.Idle,
-                is ProcessingStep.Ready,
-                is ProcessingStep.SetupAI -> {
-                    ReadyStateView(
-                        step = currentStep,
-                        workingVideoPath = workingVideoPath,
-                        selectedLanguage = selectedLanguage,
-                        translateToEnglish = translateToEnglish,
-                        activeModel = activeModel,
-                        onLanguageSelected = { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(it)) },
-                        onToggleTranslation = { viewModel.setEvent(ProcessingUiEvent.ToggleTranslation(it)) },
-                        onShowModelPicker = { viewModel.setEvent(ProcessingUiEvent.ShowModelPicker) },
-                        onShowModelSetup = { viewModel.setEvent(ProcessingUiEvent.ShowModelSetup) },
-                        onStartProcessing = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
-                        onCancelModelSetup = { viewModel.setEvent(ProcessingUiEvent.CancelModelSetup) },
-                        onDownloadAndProcess = { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
-                    )
+                // Idle / Loading — show nothing (splash screen holds)
+                is ProcessingStep.Idle -> {}
+
+                // SetupAI — model picker bottom sheet shown inline below
+                is ProcessingStep.SetupAI,
+                is ProcessingStep.Ready -> {
+                    // Empty body; SetupAI sheet is shown as a bottom sheet overlay
                 }
                 is ProcessingStep.DownloadingModel -> {
                     DownloadingStateView(step = currentStep)
@@ -178,12 +183,7 @@ fun ProcessingScreen(
                     SavingView()
                 }
                 is ProcessingStep.Done -> {
-                    DoneStateView(
-                        segmentCount = segmentCount,
-                        onNavigateToStyleEditor = onNavigateToStyleEditor,
-                        onNavigateToCaptionEditor = onNavigateToCaptionEditor,
-                        onRegenerate = { viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId)) }
-                    )
+                    // Navigation handled by LaunchedEffect collecting uiEffect
                 }
                 is ProcessingStep.Cancelling -> {
                     CancellingView()
@@ -205,6 +205,65 @@ fun ProcessingScreen(
         }
     }
     } // end CompositionLocalProvider
+
+    // SetupAI bottom sheet — shown when no model is downloaded yet
+    if (step is ProcessingStep.SetupAI) {
+        var selectedModelId by remember { mutableStateOf(step.recommendedModelId) }
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        ModalBottomSheet(
+            onDismissRequest = onCancel,
+            sheetState = sheetState,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.75f)
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = "Choose your AI model",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Text(
+                    text = "Required for transcription. Downloaded once, runs offline.",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    items(step.models) { model ->
+                        ModelPickerCard(
+                            model = model,
+                            isRecommended = model.id == step.recommendedModelId,
+                            isSelected = model.id == selectedModelId,
+                            onClick = { selectedModelId = model.id }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                val selectedModel = step.models.find { it.id == selectedModelId }
+                val isDownloaded = selectedModel?.isDownloaded == true
+
+                GradientPrimaryButton(
+                    text = if (isDownloaded) "Generate Captions" else "Download & Generate",
+                    onClick = { selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) } },
+                    enabled = selectedModelId != null,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                )
+            }
+        }
+    }
 
     SafetyCheckDialogs(
         safetyCheck = safetyCheck,

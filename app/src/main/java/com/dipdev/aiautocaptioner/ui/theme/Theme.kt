@@ -13,19 +13,15 @@ import androidx.core.view.WindowCompat
 import com.dipdev.aiautocaptioner.data.repository.AppTheme
 
 val LocalGlassmorphismEnabled = staticCompositionLocalOf { true }
-val LocalAppTheme = staticCompositionLocalOf { AppTheme.DEEP_SPACE }
+val LocalAppTheme = staticCompositionLocalOf { AppTheme.TRUE_BLACK }
 
 @Composable
 fun AutoCaptionerTheme(
-    appTheme: AppTheme = AppTheme.DEEP_SPACE,
+    appTheme: AppTheme = AppTheme.TRUE_BLACK,
     glassmorphismEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val backgroundColors = when (appTheme) {
-        AppTheme.DEEP_SPACE -> Triple(DeepSpaceBackground, DeepSpaceSurface, DeepSpaceSurfaceVariant)
-        AppTheme.TRUE_BLACK -> Triple(TrueBlackBackground, TrueBlackSurface, TrueBlackSurfaceVariant)
-        AppTheme.MATTE_DARK -> Triple(MatteDarkBackground, MatteDarkSurface, MatteDarkSurfaceVariant)
-    }
+    val backgroundColors = Triple(TrueBlackBackground, TrueBlackSurface, TrueBlackSurfaceVariant)
 
     val (bgColor, surfaceColor, surfaceVariantColor) = backgroundColors
 

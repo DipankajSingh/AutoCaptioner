@@ -94,16 +94,9 @@ static void android_whisper_progress_callback(struct whisper_context * /*ctx*/, 
     if (!cb->listener || !cb->onProgress) return;
 
     JNIEnv * env = nullptr;
-    jint rc = cb->jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-    if (rc == JNI_OK) {
+    if (cb->jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
         env->CallVoidMethod(cb->listener, cb->onProgress, (jint)progress);
         env->ExceptionClear();
-    } else if (rc == JNI_EDETACHED) {
-        if (cb->jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
-            env->CallVoidMethod(cb->listener, cb->onProgress, (jint)progress);
-            env->ExceptionClear();
-            cb->jvm->DetachCurrentThread();
-        }
     }
 }
 
@@ -113,12 +106,7 @@ static void android_whisper_new_segment_callback(struct whisper_context * /*ctx*
     if (!cb->listener || !cb->onSegment) return;
 
     JNIEnv * env = nullptr;
-    bool did_attach = false;
-    jint rc = cb->jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-    if (rc == JNI_EDETACHED) {
-        if (cb->jvm->AttachCurrentThread(&env, nullptr) != JNI_OK) return;
-        did_attach = true;
-    } else if (rc != JNI_OK) {
+    if (cb->jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return;
     }
 
@@ -138,10 +126,6 @@ static void android_whisper_new_segment_callback(struct whisper_context * /*ctx*
             env->ExceptionClear();
             env->DeleteLocalRef(jtext);
         }
-    }
-
-    if (did_attach) {
-        cb->jvm->DetachCurrentThread();
     }
 }
 

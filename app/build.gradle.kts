@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.firebase.perf)
+    alias(libs.plugins.room)
 }
 
 
@@ -28,8 +29,11 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++17")
-                abiFilters("arm64-v8a")
             }
+        }
+        
+        ndk {
+            abiFilters.add("arm64-v8a")
         }
     }
 
@@ -70,9 +74,6 @@ android {
 
     // Allow FFmpeg Kit packaging
     packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
@@ -86,8 +87,8 @@ kotlin {
     }
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
@@ -119,6 +120,15 @@ dependencies {
     // Navigation
     // -------------------------------------------------------
     implementation(libs.androidx.navigation.compose)
+
+    // -------------------------------------------------------
+    // CameraX
+    // -------------------------------------------------------
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.video)
+    implementation(libs.androidx.camera.view)
 
     // -------------------------------------------------------
     // Lifecycle + ViewModel

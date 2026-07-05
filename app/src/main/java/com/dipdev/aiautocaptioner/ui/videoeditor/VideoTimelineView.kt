@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.model.Clip
+import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -71,6 +73,10 @@ fun VideoTimelineView(
     selectedClipId: String?,
     onClipSelected: (String) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
+    overlays: List<ImageOverlayEntity> = emptyList(),
+    selectedOverlayId: String? = null,
+    onOverlaySelected: (String) -> Unit = {},
+    onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
@@ -273,7 +279,7 @@ fun VideoTimelineView(
                 
                 // Clips Row
                 if (clips.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
                             text = "Tap the video to trim and split",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -281,7 +287,7 @@ fun VideoTimelineView(
                         )
                     }
                 } else {
-                    Row(modifier = Modifier.fillMaxHeight()) {
+                    Row(modifier = Modifier.weight(1f)) {
                     clips.forEachIndexed { index, clip ->
                         androidx.compose.runtime.key(clip.id) {
                             val durationMs = clip.endTrimMs - clip.startTrimMs
@@ -415,6 +421,111 @@ fun VideoTimelineView(
                 } // end clips.forEachIndexed
                 } // end else branch
             } // end Clips Row
+
+            // Divider
+            Spacer(
+                modifier = Modifier
+                    .width(totalWidthDp)
+                    .height(1.dp)
+                    .background(outlineColor.copy(alpha = 0.5f))
+            )
+
+            // Overlays Row
+            Box(
+                modifier = Modifier
+                    .height(50.dp)
+                    .width(totalWidthDp)
+            ) {
+                overlays.forEach { overlay ->
+                    val currentOverlay by rememberUpdatedState(overlay)
+                    val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
+                    val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
+                    val currentEndTimeMs by rememberUpdatedState(endTimeMs)
+
+                    val durationMs = maxOf(0L, endTimeMs - startTimeMs)
+                    if (durationMs > 0) {
+                        val overlayWidthPx = durationMs * pixelsPerMs
+                        val overlayOffsetXPx = startTimeMs * pixelsPerMs
+                        val overlayWidthDp = with(density) { overlayWidthPx.toDp() }
+                        val overlayOffsetXDp = with(density) { overlayOffsetXPx.toDp() }
+
+                        val isSelectedOverlay = overlay.id == selectedOverlayId
+
+                        Box(
+                            modifier = Modifier
+                                .offset(x = overlayOffsetXDp)
+                                .width(overlayWidthDp)
+                                .fillMaxHeight()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isSelectedOverlay) AccentAmber.copy(alpha = 0.5f) else primaryColor.copy(alpha = 0.3f))
+                                .border(
+                                    width = if (isSelectedOverlay) 2.dp else 1.dp,
+                                    color = if (isSelectedOverlay) AccentAmber else primaryColor.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .pointerInput(overlay.id) {
+                                    var dragType = 0
+                                    var accumulatedDeltaX = 0f
+                                    detectDragGestures(
+                                        onDragStart = { offset ->
+                                            onOverlaySelected(currentOverlay.id)
+                                            val edgeWidth = 20.dp.toPx()
+                                            dragType = when {
+                                                offset.x <= edgeWidth -> 1
+                                                offset.x >= size.width - edgeWidth -> 2
+                                                else -> 3
+                                            }
+                                            accumulatedDeltaX = 0f
+                                            onDragStateChange(true)
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            accumulatedDeltaX += dragAmount.x
+                                            val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
+                                            if (deltaMs != 0L) {
+                                                accumulatedDeltaX -= (deltaMs * pixelsPerMs)
+                                                val oStart = currentOverlay.startTimeMs
+                                                val oEnd = currentEndTimeMs
+                                                when (dragType) {
+                                                    1 -> {
+                                                        val newStart = (oStart + deltaMs).coerceIn(0L, oEnd - 100L)
+                                                        onOverlayTimingChanged(currentOverlay.id, newStart, currentOverlay.endTimeMs)
+                                                    }
+                                                    2 -> {
+                                                        val newEnd = (oEnd + deltaMs).coerceIn(oStart + 100L, totalEditedMs)
+                                                        onOverlayTimingChanged(currentOverlay.id, oStart, if (currentOverlay.endTimeMs == Long.MAX_VALUE) Long.MAX_VALUE else newEnd)
+                                                    }
+                                                    3 -> {
+                                                        val dur = oEnd - oStart
+                                                        val newStart = (oStart + deltaMs).coerceIn(0L, totalEditedMs - dur)
+                                                        val newEnd = newStart + dur
+                                                        val finalEnd = if (currentOverlay.endTimeMs == Long.MAX_VALUE) Long.MAX_VALUE else newEnd
+                                                        onOverlayTimingChanged(currentOverlay.id, newStart, finalEnd)
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            dragType = 0
+                                            onDragStateChange(false)
+                                        },
+                                        onDragCancel = {
+                                            dragType = 0
+                                            onDragStateChange(false)
+                                        }
+                                    )
+                                }
+                                .clickable { onOverlaySelected(currentOverlay.id) }
+                        ) {
+                            if (isSelectedOverlay) {
+                                Box(modifier = Modifier.align(Alignment.CenterStart).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
+                                Box(modifier = Modifier.align(Alignment.CenterEnd).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
+                            }
+                        }
+                    }
+                }
+            } // end Overlays Row
     } // end Column
 
     // End Padding

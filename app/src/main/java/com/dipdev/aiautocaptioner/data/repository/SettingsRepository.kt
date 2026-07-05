@@ -13,9 +13,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 enum class AppTheme(val displayName: String) {
-    DEEP_SPACE("Deep Space"),
-    TRUE_BLACK("True Black"),
-    MATTE_DARK("Matte Dark")
+    TRUE_BLACK("True Black")
 }
 
 @Singleton
@@ -31,12 +29,16 @@ class SettingsRepository @Inject constructor(
     private val EXPORT_FPS_KEY = intPreferencesKey("export_fps")
     private val EXPORT_QUALITY_KEY = intPreferencesKey("export_quality")
 
+    // Last-used transcription language settings
+    private val LAST_LANGUAGE_KEY = stringPreferencesKey("last_transcription_language")
+    private val LAST_TRANSLATE_KEY = booleanPreferencesKey("last_translate_to_english")
+
     val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
-        val themeName = prefs[THEME_KEY] ?: AppTheme.DEEP_SPACE.name
+        val themeName = prefs[THEME_KEY] ?: AppTheme.TRUE_BLACK.name
         try {
             AppTheme.valueOf(themeName)
         } catch (_: Exception) {
-            AppTheme.DEEP_SPACE
+            AppTheme.TRUE_BLACK
         }
     }.distinctUntilChanged()
 
@@ -95,6 +97,21 @@ class SettingsRepository @Inject constructor(
             prefs[EXPORT_RESOLUTION_KEY] = resolution
             prefs[EXPORT_FPS_KEY] = fps
             prefs[EXPORT_QUALITY_KEY] = quality
+        }
+    }
+
+    val lastLanguageFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[LAST_LANGUAGE_KEY] ?: "en"
+    }.distinctUntilChanged()
+
+    val lastTranslateFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[LAST_TRANSLATE_KEY] ?: false
+    }.distinctUntilChanged()
+
+    suspend fun saveLastLanguageSettings(language: String, translateToEnglish: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[LAST_LANGUAGE_KEY] = language
+            prefs[LAST_TRANSLATE_KEY] = translateToEnglish
         }
     }
 }

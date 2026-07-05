@@ -17,6 +17,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.util.UUID
+import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import kotlinx.coroutines.launch
@@ -48,7 +57,9 @@ data class VideoEditorUiState(
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val clipThumbnails: Map<String, List<Bitmap>> = emptyMap(),
-    val showTimelineThumbnails: Boolean = false
+    val showTimelineThumbnails: Boolean = false,
+    val selectedLanguage: String = "en",
+    val translateToEnglish: Boolean = false
 ) : UiState
 
 sealed class VideoEditorUiEvent : UiEvent {
@@ -63,6 +74,11 @@ sealed class VideoEditorUiEvent : UiEvent {
     data object ApplyEdits : VideoEditorUiEvent()
     data object Cancel : VideoEditorUiEvent()
     data object DeleteProject : VideoEditorUiEvent()
+    data class SaveLanguage(val language: String, val translateToEnglish: Boolean) : VideoEditorUiEvent()
+    data class AddOverlay(val uri: String) : VideoEditorUiEvent()
+    data class UpdateOverlay(val overlay: ImageOverlayEntity) : VideoEditorUiEvent()
+    data class DeleteOverlay(val overlayId: String) : VideoEditorUiEvent()
+    data class SelectOverlay(val overlayId: String?) : VideoEditorUiEvent()
 }
 
 sealed class VideoEditorUiEffect : UiEffect {
@@ -74,10 +90,28 @@ sealed class VideoEditorUiEffect : UiEffect {
 class VideoEditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
-    settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val overlayRepository: OverlayRepository
 ) : BaseViewModel<VideoEditorUiState, VideoEditorUiEvent, VideoEditorUiEffect>(VideoEditorUiState()) {
 
     private var currentProjectId: String? = null
+    private val projectIdFlow = MutableStateFlow<String?>(null)
+    
+    private val _selectedOverlayId = MutableStateFlow<String?>(null)
+    val selectedOverlayId = _selectedOverlayId.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val overlays: StateFlow<List<ImageOverlayEntity>> = projectIdFlow
+        .flatMapLatest { id ->
+            if (id != null) overlayRepository.getOverlaysForProject(id)
+            else flowOf(emptyList())
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     private var transformer: Transformer? = null
 
     private var originalDurationMs: Long = 0L
@@ -91,6 +125,16 @@ class VideoEditorViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.showTimelineThumbnailsFlow.collect { showThumbs ->
                 setState { copy(showTimelineThumbnails = showThumbs) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.lastLanguageFlow.collect { lang ->
+                setState { copy(selectedLanguage = lang) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.lastTranslateFlow.collect { translate ->
+                setState { copy(translateToEnglish = translate) }
             }
         }
 
@@ -144,6 +188,11 @@ class VideoEditorViewModel @Inject constructor(
             is VideoEditorUiEvent.ApplyEdits -> applyEdits()
             is VideoEditorUiEvent.Cancel -> cancel()
             is VideoEditorUiEvent.DeleteProject -> deleteProject()
+            is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
+            is VideoEditorUiEvent.AddOverlay -> addOverlay(event.uri)
+            is VideoEditorUiEvent.UpdateOverlay -> updateOverlay(event.overlay)
+            is VideoEditorUiEvent.DeleteOverlay -> deleteOverlay(event.overlayId)
+            is VideoEditorUiEvent.SelectOverlay -> selectOverlay(event.overlayId)
         }
     }
 
@@ -151,6 +200,7 @@ class VideoEditorViewModel @Inject constructor(
         viewModelScope.launch {
             setState { copy(step = VideoEditorUiStep.Loading) }
             currentProjectId = projectId
+            projectIdFlow.value = projectId
             val project = projectRepository.getProjectById(projectId)
             if (project != null) {
                 var durationMs = 0L
@@ -405,6 +455,45 @@ class VideoEditorViewModel @Inject constructor(
             }
             setEffect(VideoEditorUiEffect.ProjectDeleted)
         }
+    }
+
+    private fun saveLanguage(language: String, translateToEnglish: Boolean) {
+        setState { copy(selectedLanguage = language, translateToEnglish = translateToEnglish) }
+        viewModelScope.launch {
+            settingsRepository.saveLastLanguageSettings(language, translateToEnglish)
+        }
+    }
+
+    private fun addOverlay(uri: String) {
+        val projectId = currentProjectId ?: return
+        viewModelScope.launch {
+            val overlay = ImageOverlayEntity(
+                id = UUID.randomUUID().toString(),
+                projectId = projectId,
+                imageUri = uri,
+                createdAt = System.currentTimeMillis()
+            )
+            overlayRepository.addOverlay(overlay)
+        }
+    }
+
+    private fun updateOverlay(overlay: ImageOverlayEntity) {
+        viewModelScope.launch {
+            overlayRepository.updateOverlay(overlay)
+        }
+    }
+
+    private fun deleteOverlay(overlayId: String) {
+        viewModelScope.launch {
+            overlayRepository.deleteOverlay(overlayId)
+            if (_selectedOverlayId.value == overlayId) {
+                _selectedOverlayId.value = null
+            }
+        }
+    }
+
+    private fun selectOverlay(overlayId: String?) {
+        _selectedOverlayId.value = overlayId
     }
 
     @OptIn(UnstableApi::class)

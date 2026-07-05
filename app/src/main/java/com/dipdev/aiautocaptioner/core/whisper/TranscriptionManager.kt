@@ -11,13 +11,14 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
-import com.dipdev.aiautocaptioner.service.TranscriptionService
+
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 import com.dipdev.aiautocaptioner.ui.processing.StreamedSegment
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +45,7 @@ class TranscriptionManager @Inject constructor(
         private const val TAG = "TranscriptionManager"
     }
 
-    private val managerScope = CoroutineScope(Dispatchers.IO)
+    private val managerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _step = MutableStateFlow<ProcessingStep>(ProcessingStep.Idle)
     val step: StateFlow<ProcessingStep> = _step.asStateFlow()
@@ -58,6 +59,28 @@ class TranscriptionManager @Inject constructor(
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L
 
+    private fun updateNotification(text: String?) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (text == null) {
+            notificationManager.cancel(101)
+            return
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                "transcription_channel", "Transcription", android.app.NotificationManager.IMPORTANCE_LOW
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
+        val notification = androidx.core.app.NotificationCompat.Builder(context, "transcription_channel")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("AutoCaptioner Processing")
+            .setContentText(text)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
+        notificationManager.notify(101, notification)
+    }
+
     fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean) {
         if (activeJob?.isActive == true) return
         isCancelled = false
@@ -67,14 +90,13 @@ class TranscriptionManager @Inject constructor(
         activeJob = managerScope.launch {
             try {
                 // Ensure service is started to host the notification
-                ContextCompat.startForegroundService(context, Intent(context, TranscriptionService::class.java))
 
                 val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found")
 
                 // Step 1: Download model if needed
                 if (!model.isDownloaded) {
                     _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
-                    TranscriptionService.updateProgress("Downloading ${model.displayName}...")
+                    updateNotification("Downloading ${model.displayName}...")
                     
                     var downloadSuccess = false
                     modelRepository.downloadModel(modelId).collect { state ->
@@ -86,7 +108,7 @@ class TranscriptionManager @Inject constructor(
                                     downloadedBytes = state.downloadedBytes,
                                     totalBytes = state.totalBytes
                                 )
-                                TranscriptionService.updateProgress("Downloading model... ${state.progress}%")
+                                updateNotification("Downloading model... ${state.progress}%")
                             }
                             is DownloadState.Complete -> {
                                 downloadSuccess = true
@@ -110,7 +132,7 @@ class TranscriptionManager @Inject constructor(
                 Log.e(TAG, "Error: ${e.message}", e)
                 crashReporter.recordException(e)
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
-                context.stopService(Intent(context, TranscriptionService::class.java))
+                updateNotification(null)
             }
         }
     }
@@ -125,17 +147,17 @@ class TranscriptionManager @Inject constructor(
 
         if (project.status == ProjectStatus.TRANSCRIBED || project.status == ProjectStatus.EXPORTED) {
             _step.value = ProcessingStep.Done
-            context.stopService(Intent(context, TranscriptionService::class.java))
+            updateNotification(null)
             return
         }
 
         _step.value = ProcessingStep.ExtractingAudio
-        TranscriptionService.updateProgress("Extracting audio...")
+        updateNotification("Extracting audio...")
         projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
         projectRepository.updateProject(project.copy(transcriptionLanguage = language))
 
         _step.value = ProcessingStep.LoadingModel
-        TranscriptionService.updateProgress("Loading AI model...")
+        updateNotification("Loading AI model...")
         val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
             modelRepository.getModelFile(model.id)
         }
@@ -155,12 +177,9 @@ class TranscriptionManager @Inject constructor(
         _step.value = ProcessingStep.Transcribing(0f)
         projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
-        val pcmSamples = withContext(Dispatchers.IO) {
-            audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
-        }
+        val pcmSamples = audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
 
-        val allWords = withContext(Dispatchers.IO) {
-            whisperEngine.transcribeWithWordTimestamps(
+        val allWords = whisperEngine.transcribeWithWordTimestamps(
                 samples = pcmSamples,
                 language = language,
                 translateToEnglish = translateToEnglish,
@@ -174,7 +193,7 @@ class TranscriptionManager @Inject constructor(
                         (remainingMs / 1000).toInt().coerceAtLeast(1)
                     } else null
                     _step.value = ProcessingStep.Transcribing(progressFraction, etaSecs)
-                    TranscriptionService.updateProgress("Transcribing video... ${percent}%")
+                    updateNotification("Transcribing video... ${percent}%")
                 },
                 onSegmentDecoded = { text, startMs, endMs ->
                     if (isCancelled) throw kotlinx.coroutines.CancellationException("Cancelled by user")
@@ -184,7 +203,6 @@ class TranscriptionManager @Inject constructor(
                     }
                 }
             )
-        }
 
         if (isCancelled) return
 
@@ -193,7 +211,7 @@ class TranscriptionManager @Inject constructor(
         }
 
         _step.value = ProcessingStep.Saving
-        TranscriptionService.updateProgress("Saving transcription...")
+        updateNotification("Saving transcription...")
         
         val finalSegments = CaptionSegmenter.buildFinalSegments(allWords)
 
@@ -204,7 +222,7 @@ class TranscriptionManager @Inject constructor(
         _step.value = ProcessingStep.Done
         
         delay(2000.milliseconds)
-        context.stopService(Intent(context, TranscriptionService::class.java))
+        updateNotification(null)
     }
 
     private fun startDripFeed() {
@@ -237,7 +255,7 @@ class TranscriptionManager @Inject constructor(
         activeJob = null
         managerScope.launch(Dispatchers.IO) {
             whisperEngine.release()
-            context.stopService(Intent(context, TranscriptionService::class.java))
+            updateNotification(null)
             _step.value = ProcessingStep.Cancelled
         }
     }

@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 data class MainUiState(
     val startDestination: String? = null,
-    val appTheme: AppTheme = AppTheme.DEEP_SPACE,
+    val appTheme: AppTheme = AppTheme.TRUE_BLACK,
     val glassmorphismEnabled: Boolean = true
 ) : UiState
 

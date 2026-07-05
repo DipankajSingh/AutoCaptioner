@@ -15,6 +15,8 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
+import com.dipdev.aiautocaptioner.data.db.dao.ImageOverlayDao
+import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 
 // @Database tells Room: "this class is the main database definition"
 // entities = all tables in this database
@@ -29,9 +31,10 @@ import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
         CaptionSegmentEntity::class,
         CaptionWordEntity::class,
         CaptionStyleEntity::class,
-        ExportedFileEntity::class
+        ExportedFileEntity::class,
+        ImageOverlayEntity::class
     ],
-    version = 8,
+    version = 10,
     exportSchema = false,
     autoMigrations = []
 )
@@ -50,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun captionWordDao(): CaptionWordDao
     abstract fun captionStyleDao(): CaptionStyleDao
     abstract fun exportedFileDao(): ExportedFileDao
+    abstract fun imageOverlayDao(): ImageOverlayDao
 
     companion object {
         /** Add exportedVideoPath column (nullable, default NULL) */
@@ -123,6 +127,37 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE `projects`")
                 db.execSQL("ALTER TABLE `projects_new` RENAME TO `projects`")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_projects_activeStyleId` ON `projects` (`activeStyleId`)")
+            }
+        }
+
+        /** Add facelessBackgroundType and facelessBackgroundValue columns */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE projects ADD COLUMN facelessBackgroundType TEXT")
+                db.execSQL("ALTER TABLE projects ADD COLUMN facelessBackgroundValue TEXT")
+            }
+        }
+
+        /** Add image_overlays table */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `image_overlays` (
+                        `id` TEXT NOT NULL,
+                        `projectId` TEXT NOT NULL,
+                        `imageUri` TEXT NOT NULL,
+                        `positionX` REAL NOT NULL,
+                        `positionY` REAL NOT NULL,
+                        `scaleX` REAL NOT NULL,
+                        `scaleY` REAL NOT NULL,
+                        `startTimeMs` INTEGER NOT NULL,
+                        `endTimeMs` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`projectId`) REFERENCES `projects`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_image_overlays_projectId` ON `image_overlays` (`projectId`)")
             }
         }
     }

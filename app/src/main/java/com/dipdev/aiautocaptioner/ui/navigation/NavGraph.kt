@@ -16,6 +16,7 @@ import com.dipdev.aiautocaptioner.ui.onboarding.OnboardingScreen
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorScreen
+import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
 
 @Composable
 fun NavGraph(
@@ -71,6 +72,7 @@ fun NavGraph(
 
         composable(Screen.Home.route) {
             HomeScreen(
+                onNavigateToSmartRecorder = { navController.navigate(Screen.SmartRecorder.route) },
                 onNavigateToVideoEditor = { projectId ->
                     navController.navigate(Screen.VideoEditor.createRoute(projectId))
                 },
@@ -130,7 +132,7 @@ fun NavGraph(
             ProcessingScreen(
                 projectId = projectId,
                 onNavigateToStyleEditor = {
-                    navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
+                    navController.navigate(Screen.StyleEditor.createRoute(projectId, fromProcessing = true)) {
                         popUpTo(Screen.Processing.route) { inclusive = true }
                     }
                 },
@@ -172,18 +174,29 @@ fun NavGraph(
         composable(
             route = Screen.StyleEditor.route,
             arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType }
+                navArgument("projectId") { type = NavType.StringType },
+                navArgument("fromProcessing") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            val fromProcessing = backStackEntry.arguments?.getBoolean("fromProcessing") ?: false
             StyleEditorScreen(
                 projectId = projectId,
+                fromProcessing = fromProcessing,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId))
                 },
                 onNavigateToExport = {
                     navController.navigate(Screen.Export.createRoute(projectId))
+                },
+                onNavigateToProcessing = {
+                    navController.navigate(Screen.Processing.createRoute(projectId)) {
+                        popUpTo(Screen.StyleEditor.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -222,6 +235,13 @@ fun NavGraph(
                     }
                 },
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.SmartRecorder.route) {
+            SmartRecorderScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onVideoReady = { uri -> /* handled later */ }
             )
         }
     }

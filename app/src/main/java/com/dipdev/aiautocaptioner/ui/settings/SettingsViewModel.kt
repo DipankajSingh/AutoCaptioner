@@ -17,14 +17,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 data class SettingsUiState(
-    val theme: AppTheme = AppTheme.DEEP_SPACE,
+    val theme: AppTheme = AppTheme.TRUE_BLACK,
     val glassmorphism: Boolean = true,
     val showTimelineThumbnails: Boolean = false,
     val telemetryEnabled: Boolean = true
 ) : UiState
 
 sealed interface SettingsUiEvent : UiEvent {
-    data class SetTheme(val theme: AppTheme) : SettingsUiEvent
     data class SetGlassmorphism(val enabled: Boolean) : SettingsUiEvent
     data class SetShowTimelineThumbnails(val enabled: Boolean) : SettingsUiEvent
     data class SetTelemetryEnabled(val enabled: Boolean) : SettingsUiEvent
@@ -54,9 +53,6 @@ class SettingsViewModel @Inject constructor(
 
     override fun handleEvent(event: SettingsUiEvent) {
         when (event) {
-            is SettingsUiEvent.SetTheme -> {
-                viewModelScope.launch { settingsRepository.setTheme(event.theme) }
-            }
             is SettingsUiEvent.SetGlassmorphism -> {
                 viewModelScope.launch { settingsRepository.setGlassmorphismEnabled(event.enabled) }
             }

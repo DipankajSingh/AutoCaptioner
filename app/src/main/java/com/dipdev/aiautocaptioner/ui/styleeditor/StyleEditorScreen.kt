@@ -26,9 +26,13 @@ import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +57,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
+import com.dipdev.aiautocaptioner.ui.components.InAppToast
 import com.dipdev.aiautocaptioner.ui.paywall.CustomPaywallDialog
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.AnimationTab
 import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.ColorTab
@@ -63,9 +68,11 @@ import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 @Composable
 fun StyleEditorScreen(
     projectId: String,
+    fromProcessing: Boolean = false,
     onNavigateBack: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
     onNavigateToExport: () -> Unit,
+    onNavigateToProcessing: () -> Unit = {},
     viewModel: StyleEditorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -82,6 +89,9 @@ fun StyleEditorScreen(
     var presetToDelete by remember { mutableStateOf<CaptionStyleEntity?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
     var pendingPremiumTab by remember { mutableStateOf<StyleTab?>(null) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+    // Show toast once on first entry from processing
+    var toastTriggered by remember { mutableStateOf(fromProcessing) }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -269,6 +279,27 @@ fun StyleEditorScreen(
                 IconButton(onClick = onNavigateToCaptionEditor) {
                     Icon(Icons.Default.ClosedCaption, "Edit Captions", tint = MaterialTheme.colorScheme.onSurface)
                 }
+                // Overflow menu (Re-transcribe)
+                Box {
+                    IconButton(onClick = { showOverflowMenu = true }) {
+                        Icon(Icons.Default.MoreVert, "More options", tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                    DropdownMenu(
+                        expanded = showOverflowMenu,
+                        onDismissRequest = { showOverflowMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Re-transcribe") },
+                            onClick = {
+                                showOverflowMenu = false
+                                onNavigateToProcessing()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                            }
+                        )
+                    }
+                }
                 // Export — prominent labeled button
                 Button(
                     onClick = {
@@ -404,4 +435,11 @@ fun StyleEditorScreen(
         }
     }
     } // ScreenThemeProvider
+
+    // In-app toast — shown once when navigated from processing pipeline
+    InAppToast(
+        message = "Captions ready! Tap Export when you're done styling.",
+        visible = toastTriggered,
+        onDismiss = { toastTriggered = false }
+    )
 }

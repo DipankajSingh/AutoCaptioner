@@ -96,7 +96,10 @@ data class ProjectEntity(
     val transcriptionLanguage: String? = "en",
 
     // Tracks which model generated the current captions
-    val transcribedWithModelId: String? = null
+    val transcribedWithModelId: String? = null,
+
+    val facelessBackgroundType: String? = null,
+    val facelessBackgroundValue: String? = null
 )
 
 // Represents where the project is in the processing pipeline

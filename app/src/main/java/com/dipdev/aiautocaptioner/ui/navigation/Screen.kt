@@ -62,8 +62,9 @@ sealed class Screen(val route: String) {
     }
 
     // Style editor — font, color, animation settings
-    data object StyleEditor : Screen("style_editor/{projectId}") {
-        fun createRoute(projectId: String) = "style_editor/$projectId"
+    data object StyleEditor : Screen("style_editor/{projectId}?fromProcessing={fromProcessing}") {
+        fun createRoute(projectId: String, fromProcessing: Boolean = false) =
+            "style_editor/$projectId?fromProcessing=$fromProcessing"
     }
 
     // Export — FFmpeg / Media3 burns captions into video
@@ -72,4 +73,7 @@ sealed class Screen(val route: String) {
             return "export/$projectId"
         }
     }
+
+    // Smart Recorder
+    data object SmartRecorder : Screen("smart_recorder")
 }

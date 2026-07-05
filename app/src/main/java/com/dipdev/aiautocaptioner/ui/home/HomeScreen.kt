@@ -24,11 +24,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,16 +61,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import com.airbnb.lottie.compose.rememberLottieDynamicProperties
+import com.airbnb.lottie.compose.rememberLottieDynamicProperty
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import androidx.compose.ui.graphics.toArgb
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
@@ -81,6 +92,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
+    onNavigateToSmartRecorder: () -> Unit,
     onNavigateToVideoEditor: (String) -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToEditor: (String) -> Unit,
@@ -145,19 +157,32 @@ fun HomeScreen(
         }
     }
 
-    // Video picker launcher
+    // Advanced import picker → VideoEditor
     val videoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.importVideo(it) }
     }
 
+    // Quick Generate picker → Processing directly (no trimming)
+    val quickPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.importVideoQuick(it) }
+    }
+
     // Navigate when import succeeds
     LaunchedEffect(importState) {
-        if (importState is ImportState.Success) {
-            val projectId = (importState as ImportState.Success).projectId
-            viewModel.resetImportState()
-            onNavigateToVideoEditor(projectId)
+        when (val state = importState) {
+            is ImportState.Success -> {
+                viewModel.resetImportState()
+                onNavigateToVideoEditor(state.projectId)
+            }
+            is ImportState.QuickSuccess -> {
+                viewModel.resetImportState()
+                onNavigateToProcessing(state.projectId)
+            }
+            else -> {}
         }
     }
 
@@ -234,19 +259,127 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            if(projects.isNotEmpty()){
+            if (projects.isNotEmpty()) {
+                // Speed dial FAB
+                var speedDialExpanded by remember { mutableStateOf(false) }
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                // Mini FABs — visible when expanded
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = speedDialExpanded,
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it },
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it }
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Record Video
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            androidx.compose.material3.Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                shadowElevation = 2.dp
+                            ) {
+                                Text(
+                                    "Record Video",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+                            androidx.compose.material3.SmallFloatingActionButton(
+                                onClick = {
+                                    speedDialExpanded = false
+                                    onNavigateToSmartRecorder()
+                                },
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            ) {
+                                Icon(Icons.Default.Videocam, contentDescription = "Record Video", tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                            }
+                        }
+                        // Quick Generate
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            androidx.compose.material3.Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                shadowElevation = 2.dp
+                            ) {
+                                Text(
+                                    "Quick Caption",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+                            androidx.compose.material3.SmallFloatingActionButton(
+                                onClick = {
+                                    speedDialExpanded = false
+                                    quickPicker.launch("video/*")
+                                },
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ) {
+                                Icon(Icons.Default.Bolt, contentDescription = "Quick Caption")
+                            }
+                        }
+                        // Advanced Import
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            androidx.compose.material3.Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                shadowElevation = 2.dp
+                            ) {
+                                Text(
+                                    "Import & Edit",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+                            androidx.compose.material3.SmallFloatingActionButton(
+                                onClick = {
+                                    speedDialExpanded = false
+                                    videoPicker.launch("video/*")
+                                },
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Icon(Icons.Default.ContentCut, contentDescription = "Import & Edit", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                        }
+                    }
+                }
+
+                // Main FAB
                 ExtendedFloatingActionButton(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    onClick = { videoPicker.launch("video/*") },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Import New Video", fontWeight = FontWeight.Bold) },
+                    onClick = { speedDialExpanded = !speedDialExpanded },
+                    icon = {
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = speedDialExpanded,
+                            label = "fabIcon"
+                        ) { expanded ->
+                            if (expanded) Icon(Icons.Default.Close, null)
+                            else Icon(Icons.Default.Add, null)
+                        }
+                    },
+                    text = { Text(if (speedDialExpanded) "Close" else "+ Create", fontWeight = FontWeight.Bold) },
                     shape = RoundedCornerShape(16.dp),
                     elevation = FloatingActionButtonDefaults.elevation(
                         defaultElevation = 8.dp,
                         pressedElevation = 4.dp
                     )
                 )
+                }
             }
         }
     ) { padding ->
@@ -308,9 +441,9 @@ fun HomeScreen(
                     LottieAnimation(
                         composition = composition,
                         iterations = LottieConstants.IterateForever,
-                        modifier = Modifier.size(200.dp)
+                        modifier = Modifier.size(160.dp)
                     )
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(16.dp))
                     Text(
                         "No projects yet",
                         style = MaterialTheme.typography.headlineSmall,
@@ -319,23 +452,69 @@ fun HomeScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Import a video to auto-generate captions",
+                        "Choose how you want to start your first video",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(32.dp))
-                    Button(
-                        onClick = { videoPicker.launch("video/*") },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f)
-                            .height(52.dp)
+
+                    androidx.compose.material3.Card(
+                        onClick = { quickPicker.launch("video/*") },
+                        modifier = Modifier.fillMaxWidth().semantics {
+                            contentDescription = "Start 1-Tap Captions"
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Import a Video", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text("1-Tap Captions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text("Let AI do the heavy lifting instantly.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    androidx.compose.material3.Card(
+                        onClick = { videoPicker.launch("video/*") },
+                        modifier = Modifier.fillMaxWidth().semantics {
+                            contentDescription = "Start Advanced Studio"
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.ContentCut, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text("Advanced Studio", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text("Trim video and configure setup manually.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                            }
+                        }
                     }
                 }
             } else {
@@ -406,7 +585,8 @@ fun HomeScreen(
                                     // Handle missing activity gracefully
                                 }
                             },
-                            onNavigateToHistory = { onNavigateToHistory(projectWithExports.project.id) }
+                            onNavigateToHistory = { onNavigateToHistory(projectWithExports.project.id) },
+                            onRetranscribe = { onNavigateToProcessing(projectWithExports.project.id) }
                         )
                     }
                 }

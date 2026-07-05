@@ -14,7 +14,8 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
-import com.dipdev.aiautocaptioner.service.TranscriptionService
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
+
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
@@ -113,6 +114,7 @@ class ProcessingViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val captionRepository: CaptionRepository,
     private val modelRepository: ModelRepository,
+    private val settingsRepository: SettingsRepository,
     private val crashReporter: CrashReporter,
     private val deviceCapabilityUseCase: com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase,
     private val transcriptionManager: com.dipdev.aiautocaptioner.core.whisper.TranscriptionManager
@@ -130,13 +132,25 @@ class ProcessingViewModel @Inject constructor(
                 setState { copy(activeModel = model) }
             }
         }
+
+        viewModelScope.launch {
+            settingsRepository.lastLanguageFlow.collect { lang ->
+                setState { copy(selectedLanguage = lang) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.lastTranslateFlow.collect { translate ->
+                setState { copy(translateToEnglish = translate) }
+            }
+        }
         
         viewModelScope.launch {
             transcriptionManager.step.collect { step ->
                 if (step !is ProcessingStep.Idle) {
                     setState { copy(step = step) }
                     if (step is ProcessingStep.Done) {
-                        delay(2000.milliseconds)
+                        // No delay — navigate immediately; StyleEditor shows in-app toast
                         setEffect(ProcessingUiEffect.NavigateToStyleEditor)
                         transcriptionManager.clearState()
                     }
@@ -173,26 +187,32 @@ class ProcessingViewModel @Inject constructor(
     private fun prepareForProject(projectId: String) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
-            setState { 
-                copy(
-                    workingVideoPath = project?.workingVideoPath,
-                    selectedLanguage = project?.transcriptionLanguage ?: "en",
-                    step = if (project?.status == ProjectStatus.TRANSCRIBED || project?.status == ProjectStatus.EXPORTED) {
-                        ProcessingStep.Done
-                    } else {
-                        ProcessingStep.Ready
-                    }
-                )
+            val isAlreadyDone = project?.status == ProjectStatus.TRANSCRIBED ||
+                                project?.status == ProjectStatus.EXPORTED
+            setState { copy(workingVideoPath = project?.workingVideoPath) }
+
+            if (isAlreadyDone) {
+                // Project already transcribed — go straight to style editor
+                setEffect(ProcessingUiEffect.NavigateToStyleEditor)
+                return@launch
+            }
+
+            val activeModel = currentState.activeModel
+            if (activeModel != null) {
+                // Model ready — start immediately with saved language
+                startProcessing(projectId)
+            } else {
+                // First run — show model setup sheet
+                showModelSetup()
             }
         }
     }
 
     private fun selectLanguage(language: String) {
-        setState { 
-            copy(
-                selectedLanguage = language,
-                translateToEnglish = if (language == "en") false else translateToEnglish
-            ) 
+        val translate = if (language == "en") false else currentState.translateToEnglish
+        setState { copy(selectedLanguage = language, translateToEnglish = translate) }
+        viewModelScope.launch {
+            settingsRepository.saveLastLanguageSettings(language, translate)
         }
     }
 

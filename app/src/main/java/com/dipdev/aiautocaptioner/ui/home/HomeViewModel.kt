@@ -59,9 +59,21 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _importState.value = ImportState.Loading
             val result = projectRepository.importVideo(uri)
-            _importState.value = result.fold(ImportState::Success) { e -> 
-                ImportState.Error(e.message ?: "Import failed") 
-            }
+            _importState.value = result.fold(
+                { projectId -> ImportState.Success(projectId) },
+                { e -> ImportState.Error(e.message ?: "Import failed") }
+            )
+        }
+    }
+
+    fun importVideoQuick(uri: Uri) {
+        viewModelScope.launch {
+            _importState.value = ImportState.Loading
+            val result = projectRepository.importVideo(uri)
+            _importState.value = result.fold(
+                { projectId -> ImportState.QuickSuccess(projectId) },
+                { e -> ImportState.Error(e.message ?: "Import failed") }
+            )
         }
     }
 
@@ -91,6 +103,7 @@ class HomeViewModel @Inject constructor(
 sealed class ImportState {
     data object Idle : ImportState()
     data object Loading : ImportState()
-    data class Success(val projectId: String) : ImportState()
+    data class Success(val projectId: String) : ImportState()           // → VideoEditor
+    data class QuickSuccess(val projectId: String) : ImportState()      // → Processing directly
     data class Error(val message: String) : ImportState()
 }

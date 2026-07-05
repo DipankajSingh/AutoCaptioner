@@ -17,9 +17,14 @@ import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
+import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.engine.CaptionOverlayEffect
+import com.dipdev.aiautocaptioner.engine.ImageOverlayEffect
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.media3.effect.TextureOverlay
 import java.util.UUID
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,6 +84,7 @@ class ExportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
     private val captionRepository: CaptionRepository,
+    private val overlayRepository: OverlayRepository,
     private val exportedFileDao: ExportedFileDao,
     private val crashReporter: CrashReporter,
     private val settingsRepository: SettingsRepository,
@@ -157,17 +163,46 @@ class ExportViewModel @Inject constructor(
                 val wordsList = captionRepository.getAllWordsForProject(projectId)
                 val wordsMap = wordsList.groupBy { it.segmentId }
 
+                val overlays = overlayRepository.getOverlaysOnce(projectId)
+                val imageOverlayEffects = overlays.mapNotNull { overlay ->
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(Uri.parse(overlay.imageUri))
+                        val bitmap = BitmapFactory.decodeStream(inputStream)
+                        inputStream?.close()
+                        if (bitmap != null) {
+                            ImageOverlayEffect(
+                                bitmap = bitmap,
+                                positionX = overlay.positionX,
+                                positionY = overlay.positionY,
+                                scaleX = overlay.scaleX,
+                                scaleY = overlay.scaleY,
+                                startTimeMs = overlay.startTimeMs,
+                                endTimeMs = overlay.endTimeMs
+                            )
+                        } else {
+                            null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
                 val isPortrait = project.videoRotation == 90 || project.videoRotation == 270
                 val displayWidth  = if (isPortrait) project.videoHeight else project.videoWidth
                 val displayHeight = if (isPortrait) project.videoWidth  else project.videoHeight
 
-                val overlay = CaptionOverlayEffect(
+                val captionOverlayEffect = CaptionOverlayEffect(
                     segments = segments,
                     wordsMap = wordsMap,
                     style = activeStyle,
                     videoWidth = displayWidth,
                     videoHeight = displayHeight
                 )
+
+                val textureOverlays = ImmutableList.builder<TextureOverlay>()
+                    .addAll(imageOverlayEffects)
+                    .add(captionOverlayEffect)
+                    .build()
 
                 val moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
                     ?: context.filesDir.also { File(it, "exports").mkdirs() }
@@ -177,7 +212,7 @@ class ExportViewModel @Inject constructor(
                 setState { copy(outputPath = outFile.absolutePath) }
 
                 val videoEffects: List<androidx.media3.common.Effect> =
-                    listOf(OverlayEffect(ImmutableList.of<androidx.media3.effect.TextureOverlay>(overlay)))
+                    listOf(OverlayEffect(textureOverlays))
                 val audioProcessors: List<androidx.media3.common.audio.AudioProcessor> = emptyList()
                 val effects = androidx.media3.transformer.Effects(audioProcessors, videoEffects)
 

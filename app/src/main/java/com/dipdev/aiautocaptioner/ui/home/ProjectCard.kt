@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +49,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -67,7 +70,8 @@ fun ProjectCard(
     onDuplicate: () -> Unit,
     onPlayVideo: (String) -> Unit,
     onShareVideo: (String) -> Unit,
-    onNavigateToHistory: () -> Unit
+    onNavigateToHistory: () -> Unit,
+    onRetranscribe: () -> Unit = {}
 ) {
     val project = projectWithExports.project
     val exports = projectWithExports.exportedFiles
@@ -86,7 +90,10 @@ fun ProjectCard(
     }
 
     GlassmorphicCard(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable(
+            onClick = onClick,
+            onClickLabel = "Open project ${project.title}"
+        ),
         shape = RoundedCornerShape(20.dp)
     ) {
         Row(
@@ -154,6 +161,11 @@ fun ProjectCard(
                             leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
                         )
                         DropdownMenuItem(
+                            text = { Text("Re-transcribe") },
+                            onClick = { showMenu = false; onRetranscribe() },
+                            leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = { showMenu = false; showDeleteConfirm = true },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
@@ -189,7 +201,10 @@ fun ProjectCard(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.3f))
-                            .clickable { onPlayVideo(videoToPlay) },
+                            .clickable(
+                                onClick = { onPlayVideo(videoToPlay) },
+                                onClickLabel = "Play original video"
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -238,7 +253,10 @@ fun ProjectCard(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onNavigateToHistory() }.padding(4.dp)
+                        modifier = Modifier.clickable(
+                            onClick = onNavigateToHistory,
+                            onClickLabel = "See all exported videos"
+                        ).padding(4.dp)
                     )
                 }
                 LazyRow(
@@ -254,7 +272,10 @@ fun ProjectCard(
                                     .size(width = 80.dp, height = 100.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .clickable { export.videoFilePath?.let { onPlayVideo(it) } }
+                                    .clickable(
+                                        onClick = { export.videoFilePath?.let { onPlayVideo(it) } },
+                                        onClickLabel = "Play exported video ${index + 1}"
+                                    )
                             ) {
                                 project.thumbnailPath?.let { path ->
                                     AsyncImage(

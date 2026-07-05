@@ -8,6 +8,7 @@ import com.dipdev.aiautocaptioner.data.db.dao.CaptionStyleDao
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionWordDao
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.dao.ProjectDao
+import com.dipdev.aiautocaptioner.data.db.dao.ImageOverlayDao
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.RoomDatabase
 import dagger.Module
@@ -40,7 +41,9 @@ object DatabaseModule {
         AppDatabase.MIGRATION_4_5,
         AppDatabase.MIGRATION_5_6,
         AppDatabase.MIGRATION_6_7,
-        AppDatabase.MIGRATION_7_8
+        AppDatabase.MIGRATION_7_8,
+        AppDatabase.MIGRATION_8_9,
+        AppDatabase.MIGRATION_9_10
     ).build()
 
     @Provides
@@ -62,4 +65,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideExportedFileDao(db: AppDatabase): ExportedFileDao = db.exportedFileDao()
+
+    @Provides
+    @Singleton
+    fun provideImageOverlayDao(db: AppDatabase): ImageOverlayDao = db.imageOverlayDao()
 }

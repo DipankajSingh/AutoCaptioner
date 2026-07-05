@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Remove
@@ -67,9 +68,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
@@ -78,6 +86,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
+import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
@@ -126,6 +135,8 @@ private fun VideoEditorScreenContent(
     val hasEdits = uiState.hasEdits
     val canUndo = uiState.canUndo
     val canRedo = uiState.canRedo
+    val selectedLanguage = uiState.selectedLanguage
+    val translateToEnglish = uiState.translateToEnglish
 
     var showBackDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -133,6 +144,7 @@ private fun VideoEditorScreenContent(
     var zoomLevel by remember { mutableFloatStateOf(1f) }
     var timelineHeight by remember { mutableStateOf(180.dp) }
     val density = androidx.compose.ui.platform.LocalDensity.current
+
 
     val context = LocalContext.current
     val player = remember {
@@ -404,6 +416,8 @@ private fun VideoEditorScreenContent(
                                 showControls = false
                             )
 
+
+
                             // Play/pause tap overlay
                             Box(
                                 modifier = Modifier
@@ -445,6 +459,88 @@ private fun VideoEditorScreenContent(
                                             tint = AccentAmber.copy(alpha = iconAlpha),
                                             modifier = Modifier.size(32.dp)
                                         )
+                                    }
+                                }
+                            }
+
+                            // Floating collapsible language panel (bottom-right of video)
+                            var langPanelExpanded by remember { mutableStateOf(false) }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(12.dp)
+                            ) {
+                                androidx.compose.animation.AnimatedContent(
+                                    targetState = langPanelExpanded,
+                                    label = "langPanel"
+                                ) { expanded ->
+                                    if (expanded) {
+                                        androidx.compose.material3.Surface(
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                                            shadowElevation = 8.dp,
+                                            modifier = Modifier.width(220.dp)
+                                        ) {
+                                            androidx.compose.foundation.layout.Column(
+                                                modifier = Modifier.padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        "Language",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                                    )
+                                                    androidx.compose.material3.IconButton(
+                                                        onClick = { langPanelExpanded = false },
+                                                        modifier = Modifier.size(24.dp)
+                                                    ) {
+                                                        Icon(Icons.Outlined.Close, null, modifier = Modifier.size(16.dp))
+                                                    }
+                                                }
+                                                LanguageDropdown(
+                                                    selectedLanguage = selectedLanguage,
+                                                    onLanguageSelected = { lang ->
+                                                        viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, if (lang == "en") false else translateToEnglish))
+                                                    },
+                                                    allowedLanguages = listOf("multilingual")
+                                                )
+                                                if (selectedLanguage != "en") {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text("Translate to EN", style = MaterialTheme.typography.labelSmall)
+                                                        androidx.compose.material3.Switch(
+                                                            checked = translateToEnglish,
+                                                            onCheckedChange = { v ->
+                                                                viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(selectedLanguage, v))
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Collapsed pill showing current language
+                                        androidx.compose.material3.Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                            shadowElevation = 4.dp,
+                                            onClick = { langPanelExpanded = true }
+                                        ) {
+                                            Text(
+                                                text = selectedLanguage.uppercase(),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
