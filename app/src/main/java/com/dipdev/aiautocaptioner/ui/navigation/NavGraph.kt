@@ -17,6 +17,7 @@ import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun NavGraph(
@@ -70,7 +71,21 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.Home.route) {
+        composable(Screen.Home.route) { backStackEntry ->
+            val homeViewModel: com.dipdev.aiautocaptioner.ui.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+
+            // Observe URI passed back from SmartRecorder and import it
+            val recordedUri = backStackEntry.savedStateHandle
+                .getStateFlow<String?>("recorded_video_uri", null)
+                .collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(recordedUri.value) {
+                val uriString = recordedUri.value
+                if (!uriString.isNullOrBlank()) {
+                    backStackEntry.savedStateHandle.remove<String>("recorded_video_uri")
+                    homeViewModel.importVideo(android.net.Uri.parse(uriString))
+                }
+            }
+
             HomeScreen(
                 onNavigateToSmartRecorder = { navController.navigate(Screen.SmartRecorder.route) },
                 onNavigateToVideoEditor = { projectId ->
@@ -85,13 +100,13 @@ fun NavGraph(
                 onNavigateToModelManager = {
                     navController.navigate(Screen.ModelManager.route)
                 },
-
-                onNavigateToSettings = { // Pass to settings if HomeScreen supports it, or handle it via a top bar
+                onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
                 onNavigateToHistory = { projectId ->
                     navController.navigate(Screen.ExportHistory.createRoute(projectId))
-                }
+                },
+                viewModel = homeViewModel
             )
         }
 
@@ -241,7 +256,13 @@ fun NavGraph(
         composable(Screen.SmartRecorder.route) {
             SmartRecorderScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onVideoReady = { uri -> /* handled later */ }
+                onVideoReady = { uri ->
+                    // Pass the recorded video URI back to HomeScreen so it can import it
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("recorded_video_uri", uri.toString())
+                    navController.popBackStack()
+                }
             )
         }
     }

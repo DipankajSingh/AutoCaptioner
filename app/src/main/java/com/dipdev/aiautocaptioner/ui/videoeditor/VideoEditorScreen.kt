@@ -613,20 +613,7 @@ private fun VideoEditorScreenContent(
                         )
 
                         Box(modifier = Modifier.fillMaxWidth().height(timelineHeight)) {
-                            VideoTimelineView(
-                                clips = clips,
-                                mergedClips = mergedClips,
-                                clipThumbnails = clipThumbnails,
-                                selectedClipId = selectedClipId,
-                                onClipSelected = { selectedClipId = it },
-                                onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
-                                onDragStateChange = { isDragging = it },
-                                zoomLevel = zoomLevel,
-                                player = player,
-                                modifier = Modifier.fillMaxSize().padding(top = 16.dp)
-                            )
-                            
-                            // Drag handle
+                            // Drag handle at top
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -648,7 +635,10 @@ private fun VideoEditorScreenContent(
                                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
                                 )
                             }
-                            
+
+                            val overlays by viewModel.overlays.collectAsStateWithLifecycle()
+                            val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
+
                             VideoTimelineView(
                                 clips = clips,
                                 mergedClips = mergedClips,
@@ -656,10 +646,17 @@ private fun VideoEditorScreenContent(
                                 selectedClipId = selectedClipId,
                                 onClipSelected = { selectedClipId = it },
                                 onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
+                                overlays = overlays,
+                                selectedOverlayId = selectedOverlayId,
+                                onOverlaySelected = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
+                                onOverlayTimingChanged = { id, startMs, endMs ->
+                                    val overlay = overlays.find { it.id == id } ?: return@VideoTimelineView
+                                    viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(overlay.copy(startTimeMs = startMs, endTimeMs = endMs)))
+                                },
                                 onDragStateChange = { isDragging = it },
                                 zoomLevel = zoomLevel,
                                 player = player,
-                                modifier = Modifier.fillMaxSize().padding(top = 16.dp)
+                                modifier = Modifier.fillMaxSize().padding(top = 24.dp)
                             )
                         }
 

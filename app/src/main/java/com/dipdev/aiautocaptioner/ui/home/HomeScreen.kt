@@ -259,9 +259,8 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            if (projects.isNotEmpty()) {
-                // Speed dial FAB
-                var speedDialExpanded by remember { mutableStateOf(false) }
+            // Speed dial FAB — always visible so new users can record too
+            var speedDialExpanded by remember { mutableStateOf(false) }
 
                 Column(
                     horizontalAlignment = Alignment.End,
@@ -380,7 +379,6 @@ fun HomeScreen(
                     )
                 )
                 }
-            }
         }
     ) { padding ->
 
@@ -458,6 +456,37 @@ fun HomeScreen(
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(32.dp))
+
+                    // Record Video card
+                    androidx.compose.material3.Card(
+                        onClick = { onNavigateToSmartRecorder() },
+                        modifier = Modifier.fillMaxWidth().semantics {
+                            contentDescription = "Record Video"
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Videocam, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary)
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Column {
+                                Text("Record Video", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                Text("Record with your camera or go faceless.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
 
                     androidx.compose.material3.Card(
                         onClick = { quickPicker.launch("video/*") },

@@ -8,12 +8,14 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.engine.FacelessVideoRecorder
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
 
 enum class RecordingMode {
     CAMERA, FACELESS
@@ -29,7 +31,8 @@ sealed class BackgroundState {
     data class Gradient(val colors: List<Color>) : BackgroundState()
 }
 
-class SmartRecorderViewModel : ViewModel() {
+@HiltViewModel
+class SmartRecorderViewModel @Inject constructor() : ViewModel() {
     private val _recordingMode = MutableStateFlow(RecordingMode.CAMERA)
     val recordingMode = _recordingMode.asStateFlow()
 
