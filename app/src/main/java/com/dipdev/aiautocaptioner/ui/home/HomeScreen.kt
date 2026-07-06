@@ -94,7 +94,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    onNavigateToSmartRecorder: () -> Unit,
+    onNavigateToSmartRecorder: (String) -> Unit,
     onNavigateToVideoEditor: (String) -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToEditor: (String) -> Unit,
@@ -274,7 +274,7 @@ fun HomeScreen(
                             label = "Record Video",
                             color = MaterialTheme.colorScheme.tertiaryContainer,
                             onColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                            onClick = { onNavigateToSmartRecorder() }
+                            onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
                         ),
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
                             icon = Icons.Default.Bolt,
@@ -379,7 +379,7 @@ fun HomeScreen(
 
                     // Record Video card
                     androidx.compose.material3.Card(
-                        onClick = { onNavigateToSmartRecorder() },
+                        onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) },
                         modifier = Modifier.fillMaxWidth().semantics {
                             contentDescription = "Record Video"
                         },

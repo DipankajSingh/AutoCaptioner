@@ -14,6 +14,7 @@ import android.media.MediaMuxer
 import android.media.MediaRecorder
 import android.util.Log
 import android.view.Surface
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
@@ -59,6 +60,10 @@ class FacelessVideoRecorder {
     fun start(
         backgroundBitmap: Bitmap?,
         backgroundColor: Int?,
+        gradientColors: List<Int>?,
+        scale: Float = 1f,
+        offsetX: Float = 0f,
+        offsetY: Float = 0f,
         outputFile: File,
         onComplete: (File) -> Unit,
         onError: (Exception) -> Unit,
@@ -110,7 +115,7 @@ class FacelessVideoRecorder {
             audioRecord?.startRecording()
 
             // Start threads
-            videoJob = scope.launch { videoDrawLoop(backgroundBitmap, backgroundColor) }
+            videoJob = scope.launch { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
             videoEncoderJob = scope.launch { videoEncodeLoop() }
             audioJob = scope.launch { audioEncodeLoop() }
 
@@ -135,22 +140,53 @@ class FacelessVideoRecorder {
         }
     }
 
-    private fun videoDrawLoop(bitmap: Bitmap?, color: Int?) {
+    private fun videoDrawLoop(bitmap: Bitmap?, color: Int?, gradientColors: List<Int>?, scale: Float = 1f, offsetX: Float = 0f, offsetY: Float = 0f) {
         val frameDurationMs = 1000L / VIDEO_FPS
-        val rect = Rect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT)
+        val rect = android.graphics.Rect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT)
         var frameCount = 0L
+        
+        var gradientPaint: android.graphics.Paint? = null
+        if (gradientColors != null && gradientColors.size >= 2) {
+            gradientPaint = android.graphics.Paint().apply {
+                shader = android.graphics.LinearGradient(
+                    0f, 0f, 0f, VIDEO_HEIGHT.toFloat(),
+                    gradientColors.toIntArray(),
+                    null,
+                    android.graphics.Shader.TileMode.CLAMP
+                )
+            }
+        }
+        
+        val bitmapMatrix = android.graphics.Matrix()
+        if (bitmap != null) {
+            // Replicate ContentScale.Fit logic:
+            val scaleX = VIDEO_WIDTH.toFloat() / bitmap.width
+            val scaleY = VIDEO_HEIGHT.toFloat() / bitmap.height
+            val baseScale = Math.min(scaleX, scaleY)
+            val dx = (VIDEO_WIDTH - bitmap.width * baseScale) / 2f
+            val dy = (VIDEO_HEIGHT - bitmap.height * baseScale) / 2f
+            
+            bitmapMatrix.postScale(baseScale, baseScale)
+            bitmapMatrix.postTranslate(dx, dy)
+            
+            // Apply user transform (scale originates from center in UI)
+            bitmapMatrix.postScale(scale, scale, VIDEO_WIDTH / 2f, VIDEO_HEIGHT / 2f)
+            bitmapMatrix.postTranslate(offsetX, offsetY)
+        }
+        
         try {
             while (isRecording.get()) {
                 val startTime = System.currentTimeMillis()
                 
                 val canvas = inputSurface?.lockCanvas(null)
                 if (canvas != null) {
+                    canvas.drawColor(android.graphics.Color.BLACK) // base background
                     if (bitmap != null) {
-                        canvas.drawBitmap(bitmap, null, rect, null)
+                        canvas.drawBitmap(bitmap, bitmapMatrix, null)
+                    } else if (gradientPaint != null) {
+                        canvas.drawRect(rect, gradientPaint)
                     } else if (color != null) {
                         canvas.drawColor(color)
-                    } else {
-                        canvas.drawColor(Color.BLACK)
                     }
                     inputSurface?.unlockCanvasAndPost(canvas)
                 }
@@ -164,6 +200,7 @@ class FacelessVideoRecorder {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Video draw error", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
 
@@ -207,6 +244,7 @@ class FacelessVideoRecorder {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Video encode error", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
 
@@ -214,6 +252,7 @@ class FacelessVideoRecorder {
         val bufferInfo = MediaCodec.BufferInfo()
         val audioBuffer = ByteArray(4096)
         var audioPts = 0L
+        var audioPtsUsBase = -1L
         
         try {
             var eosReceived = false
@@ -239,7 +278,10 @@ class FacelessVideoRecorder {
                             onAmplitudeCallback?.invoke(amplitude)
 
                             inputBuffer?.put(audioBuffer, 0, readBytes)
-                            val ptsUs = audioPts * 1000000L / (44100L * 2L)
+                            if (audioPtsUsBase < 0L) {
+                                audioPtsUsBase = System.nanoTime() / 1000L
+                            }
+                            val ptsUs = audioPtsUsBase + (audioPts * 1000000L / (44100L * 2L))
                             audioCodec?.queueInputBuffer(inputBufferIndex, 0, readBytes, ptsUs, 0)
                             audioPts += readBytes
                         } else {
@@ -287,6 +329,7 @@ class FacelessVideoRecorder {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Audio encode error", e)
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
 

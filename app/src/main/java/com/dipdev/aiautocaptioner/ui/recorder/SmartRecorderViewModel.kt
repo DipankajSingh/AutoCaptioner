@@ -18,6 +18,7 @@ import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.engine.FacelessVideoRecorder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -34,14 +35,25 @@ enum class RecordingState {
 
 sealed class BackgroundState {
     data class SolidColor(val color: Color) : BackgroundState()
-    data class ImageBitmap(val bitmap: Bitmap) : BackgroundState()
+    data class ImageBitmap(
+        val bitmap: Bitmap,
+        val scale: Float = 1f,
+        val offsetX: Float = 0f,
+        val offsetY: Float = 0f
+    ) : BackgroundState()
     data class Gradient(val colors: List<Color>) : BackgroundState()
 }
 
 
 data class SmartRecorderState(
     val recordingMode: RecordingMode = RecordingMode.CAMERA,
-    val selectedBackground: BackgroundState = BackgroundState.SolidColor(Color.Black),
+    val selectedBackground: BackgroundState = BackgroundState.Gradient(
+        listOf(
+            Color(0xFF4158D0.toInt()), 
+            Color(0xFFC850C0.toInt()), 
+            Color(0xFFFFCC70.toInt())
+        )
+    ),
     val recordingState: RecordingState = RecordingState.IDLE,
     val elapsedSeconds: Int = 0,
     val finishedProjectId: String? = null,
@@ -58,8 +70,13 @@ data class SmartRecorderState(
 @HiltViewModel
 class SmartRecorderViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val projectRepository: ProjectRepository
-) : BaseViewModel<SmartRecorderState, UiEvent, UiEffect>(SmartRecorderState()) {
+    private val projectRepository: ProjectRepository,
+    savedStateHandle: SavedStateHandle
+) : BaseViewModel<SmartRecorderState, UiEvent, UiEffect>(
+    SmartRecorderState(
+        recordingMode = if (savedStateHandle.get<String>("mode") == "FACELESS") RecordingMode.FACELESS else RecordingMode.CAMERA
+    )
+) {
 
 
 
@@ -72,13 +89,7 @@ class SmartRecorderViewModel @Inject constructor(
     override fun handleEvent(event: UiEvent) {}
 
     init {
-        viewModelScope.launch {
-            settingsRepository.lastRecordingModeFlow.collect { modeStr ->
-                if (currentState.recordingState == RecordingState.IDLE) {
-                    setState { copy(recordingMode = if (modeStr == "FACELESS") RecordingMode.FACELESS else RecordingMode.CAMERA) }
-                }
-            }
-        }
+        // No longer restoring mode asynchronously to prevent flicker
     }
 
     fun setRecordingMode(mode: RecordingMode) {
@@ -87,6 +98,13 @@ class SmartRecorderViewModel @Inject constructor(
             viewModelScope.launch {
                 settingsRepository.setLastRecordingMode(mode.name)
             }
+        }
+    }
+
+    fun updateImageTransform(scale: Float, offsetX: Float, offsetY: Float) {
+        val currentBg = currentState.selectedBackground
+        if (currentBg is BackgroundState.ImageBitmap) {
+            setState { copy(selectedBackground = currentBg.copy(scale = scale, offsetX = offsetX, offsetY = offsetY)) }
         }
     }
 
@@ -144,7 +162,11 @@ class SmartRecorderViewModel @Inject constructor(
 
             val bgState = currentState.selectedBackground
             val bitmap = (bgState as? BackgroundState.ImageBitmap)?.bitmap
+            val scale = (bgState as? BackgroundState.ImageBitmap)?.scale ?: 1f
+            val offsetX = (bgState as? BackgroundState.ImageBitmap)?.offsetX ?: 0f
+            val offsetY = (bgState as? BackgroundState.ImageBitmap)?.offsetY ?: 0f
             val color = (bgState as? BackgroundState.SolidColor)?.color?.toArgb()
+            val gradientColors = (bgState as? BackgroundState.Gradient)?.colors?.map { it.toArgb() }
             
             val bgType = if (bgState is BackgroundState.ImageBitmap) "image" else "color"
             val bgValue = color?.toString() ?: "" // Simple representation
@@ -155,6 +177,10 @@ class SmartRecorderViewModel @Inject constructor(
             facelessRecorder?.start(
                 backgroundBitmap = bitmap,
                 backgroundColor = color,
+                gradientColors = gradientColors,
+                scale = scale,
+                offsetX = offsetX,
+                offsetY = offsetY,
                 outputFile = outputFile,
                 onComplete = { file ->
                     finalizeRecording(projectId, file, bgType, bgValue)

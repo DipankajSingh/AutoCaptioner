@@ -182,27 +182,16 @@ fun SmartRecorderContent(
                 )
             }
         } else {
-            val bgModifier = Modifier.fillMaxSize()
-            when (val bg = selectedBackground) {
-                is BackgroundState.SolidColor -> Box(modifier = bgModifier.background(bg.color))
-                is BackgroundState.Gradient -> Box(modifier = bgModifier.background(Brush.linearGradient(bg.colors)))
-                is BackgroundState.ImageBitmap -> {
-                    androidx.compose.foundation.Image(
-                        bitmap = bg.bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = bgModifier,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
+            SmartRecorderFacelessPreview(
+                selectedBackground = selectedBackground,
+                micGranted = micGranted,
+                isRecording = recordingState == RecordingState.RECORDING,
+                onRequestMic = onRequestMic,
+                onOpenSettings = onOpenSettings,
+                onTransformUpdate = { scale, offsetX, offsetY ->
+                    viewModel.updateImageTransform(scale, offsetX, offsetY)
                 }
-            }
-
-            if (!micGranted) {
-                PermissionOverlay(
-                    message = "Microphone access is required for Faceless Mode.",
-                    onRequest = onRequestMic,
-                    onOpenSettings = onOpenSettings
-                )
-            }
+            )
         }
 
         // --- 2. Overlays (Grid, Visualizer, Teleprompter, Countdown) ---
@@ -210,9 +199,6 @@ fun SmartRecorderContent(
             GridOverlay()
         }
 
-        if (mode == RecordingMode.FACELESS && recordingState == RecordingState.RECORDING) {
-            AudioVisualizerOverlay(amplitude = audioAmplitude)
-        }
 
         if (showTeleprompter) {
             TeleprompterOverlay(
@@ -361,14 +347,14 @@ fun SmartRecorderContent(
         ) {
             if (recordingState == RecordingState.IDLE) {
                 // Mode Selector
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.padding(bottom = 24.dp)) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.padding(bottom = 24.dp).width(300.dp)) {
                     SegmentedButton(
                         selected = mode == RecordingMode.CAMERA,
                         onClick = { viewModel.setRecordingMode(RecordingMode.CAMERA) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         icon = {} // Disable default checkmark to prevent text clipping
                     ) {
-                        Text("📷 Camera")
+                        Text("📷 Camera", fontSize = 14.sp, maxLines = 1)
                     }
                     SegmentedButton(
                         selected = mode == RecordingMode.FACELESS,
@@ -376,8 +362,14 @@ fun SmartRecorderContent(
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         icon = {} // Disable default checkmark to prevent text clipping
                     ) {
-                        Text("🎭 Faceless")
+                        Text("🎭 Faceless", fontSize = 14.sp, maxLines = 1)
                     }
+                }
+            }
+
+            if (mode == RecordingMode.FACELESS && recordingState == RecordingState.RECORDING) {
+                Box(modifier = Modifier.padding(bottom = 24.dp).height(32.dp).width(100.dp)) {
+                    AudioVisualizerOverlay(amplitude = audioAmplitude)
                 }
             }
 
@@ -442,193 +434,5 @@ fun SmartRecorderContent(
             onDismissRequest = { showBgPicker = false },
             onBackgroundSelected = { viewModel.setSelectedBackground(it) }
         )
-    }
-}
-
-@Composable
-fun SidebarButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    text: String,
-    isActive: Boolean = false,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-            indication = null,
-            onClick = onClick
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(if (isActive) AccentCyan else Color.Black.copy(alpha = 0.4f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = text,
-                tint = Color.White
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = text,
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall
-        )
-    }
-}
-
-@Composable
-fun GridOverlay() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        // Vertical lines
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(w / 3, 0f), Offset(w / 3, h), strokeWidth = 2f)
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(w * 2 / 3, 0f), Offset(w * 2 / 3, h), strokeWidth = 2f)
-        // Horizontal lines
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(0f, h / 3), Offset(w, h / 3), strokeWidth = 2f)
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(0f, h * 2 / 3), Offset(w, h * 2 / 3), strokeWidth = 2f)
-    }
-}
-
-@Composable
-fun TeleprompterOverlay(
-    text: String,
-    onTextChanged: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        color = Color.Black.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier
-    ) {
-        TextField(
-            value = text,
-            onValueChange = onTextChanged,
-            placeholder = { Text("Paste your script here...", color = Color.White.copy(alpha = 0.5f)) },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = AccentCyan,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp),
-            modifier = Modifier.fillMaxSize()
-        )
-    }
-}
-
-@Composable
-fun AudioVisualizerOverlay(amplitude: Float) {
-    // 5 bars that scale based on amplitude + some random jitter
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val barCount = 5
-        for (i in 0 until barCount) {
-            val randomFactor = remember { mutableStateOf(1f) }
-            LaunchedEffect(amplitude) {
-                randomFactor.value = Random.nextFloat() * 0.5f + 0.5f
-            }
-            // Base height + amplitude * scaling * random
-            val safeAmplitude = if (amplitude.isNaN()) 0f else amplitude.coerceIn(0f, 1f)
-            val addedHeight = (safeAmplitude * 200f * randomFactor.value).dp
-            val height = 40.dp + addedHeight
-            
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .width(16.dp)
-                    .height(height)
-                    .clip(CircleShape)
-                    .background(AccentCyan)
-            )
-        }
-    }
-}
-
-@Composable
-fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isRecording) 1.15f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Outer ring
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = AccentCyan.copy(alpha = if (isRecording) 0.8f else 0.4f),
-                radius = size.width / 2 * scale,
-                style = Stroke(width = 8f)
-            )
-        }
-        
-        // Inner circle
-        Box(
-            modifier = Modifier
-                .size(if (isRecording) 40.dp else 64.dp)
-                .clip(if (isRecording) RoundedCornerShape(8.dp) else CircleShape)
-                .background(AccentRose)
-        )
-    }
-}
-
-@Composable
-fun PermissionOverlay(
-    message: String,
-    onRequest: () -> Unit,
-    onOpenSettings: () -> Unit
-) {
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.nothing))
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.8f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier.size(150.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(message, color = Color.White)
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onRequest) {
-                Text("Grant Permission")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onOpenSettings) {
-                Text("Open Settings", color = Color.White)
-            }
-        }
     }
 }

@@ -69,6 +69,7 @@ import com.dipdev.aiautocaptioner.ui.processing.components.TranscribingStateView
 @Composable
 fun ProcessingScreen(
     projectId: String,
+    forceModelPicker: Boolean = false,
     onNavigateToStyleEditor: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
     onNavigateToVideoEditor: () -> Unit,
@@ -80,8 +81,8 @@ fun ProcessingScreen(
     val streamedSegments = uiState.streamedSegments
     val safetyCheck = uiState.safetyCheck
 
-    LaunchedEffect(projectId) {
-        viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId))
+    LaunchedEffect(projectId, forceModelPicker) {
+        viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId, forceModelPicker))
     }
 
     LaunchedEffect(Unit) {
@@ -112,7 +113,6 @@ fun ProcessingScreen(
         )
     }
 
-    CompositionLocalProvider(LocalAccentColor provides AccentCyan) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -124,17 +124,17 @@ fun ProcessingScreen(
         ) {
             IconButton(
                 onClick = { if (isProcessing) showCancelDialog = true else onCancel() },
-                modifier = Modifier.background(AccentCyan.copy(alpha = 0.15f), CircleShape)
+                modifier = Modifier.background(LocalAccentColor.current.copy(alpha = 0.15f), CircleShape)
             ) {
-                Icon(imageVector = Icons.Outlined.Close, contentDescription = "Back to Home", tint = AccentCyan)
+                Icon(imageVector = Icons.Outlined.Close, contentDescription = "Back to Home", tint = LocalAccentColor.current)
             }
             
             if (!isProcessing) {
                 IconButton(
                     onClick = onNavigateToVideoEditor,
-                    modifier = Modifier.background(AccentCyan.copy(alpha = 0.15f), CircleShape)
+                    modifier = Modifier.background(LocalAccentColor.current.copy(alpha = 0.15f), CircleShape)
                 ) {
-                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit the video", tint = AccentCyan)
+                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit the video", tint = LocalAccentColor.current)
                 }
             } else {
                 Spacer(modifier = Modifier.size(48.dp))
@@ -204,7 +204,7 @@ fun ProcessingScreen(
             }
         }
     }
-    } // end CompositionLocalProvider
+    // end Column
 
     // SetupAI bottom sheet — shown when no model is downloaded yet
     if (step is ProcessingStep.SetupAI) {

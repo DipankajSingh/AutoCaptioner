@@ -52,8 +52,8 @@ sealed class Screen(val route: String) {
 
     // Processing screen — extract audio + transcribe
     // Takes projectId as argument so it knows which project to process
-    data object Processing : Screen("processing/{projectId}") {
-        fun createRoute(projectId: String) = "processing/$projectId"
+    data object Processing : Screen("processing/{projectId}?forceModelPicker={forceModelPicker}") {
+        fun createRoute(projectId: String, forceModelPicker: Boolean = false) = "processing/$projectId?forceModelPicker=$forceModelPicker"
     }
 
     // Caption editor — fix words, adjust timing, mark emphasis
@@ -75,5 +75,7 @@ sealed class Screen(val route: String) {
     }
 
     // Smart Recorder
-    data object SmartRecorder : Screen("smart_recorder")
+    data object SmartRecorder : Screen("smart_recorder/{mode}") {
+        fun createRoute(mode: String) = "smart_recorder/$mode"
+    }
 }

@@ -90,7 +90,7 @@ data class ProcessingUiState(
 ) : UiState
 
 sealed class ProcessingUiEvent : UiEvent {
-    data class PrepareForProject(val projectId: String) : ProcessingUiEvent()
+    data class PrepareForProject(val projectId: String, val forceModelPicker: Boolean = false) : ProcessingUiEvent()
     data class SelectLanguage(val language: String) : ProcessingUiEvent()
     data class ToggleTranslation(val enabled: Boolean) : ProcessingUiEvent()
     data object ShowModelSetup : ProcessingUiEvent()
@@ -167,7 +167,7 @@ class ProcessingViewModel @Inject constructor(
 
     override fun handleEvent(event: ProcessingUiEvent) {
         when (event) {
-            is ProcessingUiEvent.PrepareForProject -> prepareForProject(event.projectId)
+            is ProcessingUiEvent.PrepareForProject -> prepareForProject(event.projectId, event.forceModelPicker)
             is ProcessingUiEvent.SelectLanguage -> selectLanguage(event.language)
             is ProcessingUiEvent.ToggleTranslation -> setState { copy(translateToEnglish = event.enabled) }
             is ProcessingUiEvent.ShowModelSetup -> showModelSetup()
@@ -184,20 +184,25 @@ class ProcessingViewModel @Inject constructor(
 
 
 
-    private fun prepareForProject(projectId: String) {
+    private fun prepareForProject(projectId: String, forceModelPicker: Boolean) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
             val isAlreadyDone = project?.status == ProjectStatus.TRANSCRIBED ||
                                 project?.status == ProjectStatus.EXPORTED
             setState { copy(workingVideoPath = project?.workingVideoPath) }
 
-            if (isAlreadyDone) {
+            if (isAlreadyDone && !forceModelPicker) {
                 // Project already transcribed — go straight to style editor
                 setEffect(ProcessingUiEffect.NavigateToStyleEditor)
                 return@launch
             }
+            
+            if (forceModelPicker) {
+                showModelPicker()
+                return@launch
+            }
 
-            val activeModel = currentState.activeModel
+            val activeModel = modelRepository.getActiveModel().first()
             if (activeModel != null) {
                 // Model ready — start immediately with saved language
                 startProcessing(projectId)

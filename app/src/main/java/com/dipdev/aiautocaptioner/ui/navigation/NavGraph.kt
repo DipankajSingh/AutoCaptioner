@@ -18,7 +18,7 @@ import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun NavGraph(
@@ -76,7 +76,7 @@ fun NavGraph(
             val homeViewModel: com.dipdev.aiautocaptioner.ui.home.HomeViewModel = hiltViewModel()
 
             HomeScreen(
-                onNavigateToSmartRecorder = { navController.navigate(Screen.SmartRecorder.route) },
+                onNavigateToSmartRecorder = { mode -> navController.navigate(Screen.SmartRecorder.createRoute(mode)) },
                 onNavigateToVideoEditor = { projectId ->
                     navController.navigate(Screen.VideoEditor.createRoute(projectId))
                 },
@@ -129,12 +129,18 @@ fun NavGraph(
         composable(
             route = Screen.Processing.route,
             arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType }
+                navArgument("projectId") { type = NavType.StringType },
+                navArgument("forceModelPicker") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            val forceModelPicker = backStackEntry.arguments?.getBoolean("forceModelPicker") ?: false
             ProcessingScreen(
                 projectId = projectId,
+                forceModelPicker = forceModelPicker,
                 onNavigateToStyleEditor = {
                     navController.navigate(Screen.StyleEditor.createRoute(projectId, fromProcessing = true)) {
                         popUpTo(Screen.Processing.route) { inclusive = true }
@@ -198,7 +204,7 @@ fun NavGraph(
                     navController.navigate(Screen.Export.createRoute(projectId))
                 },
                 onNavigateToProcessing = {
-                    navController.navigate(Screen.Processing.createRoute(projectId)) {
+                    navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true)) {
                         popUpTo(Screen.StyleEditor.route) { inclusive = true }
                     }
                 }
@@ -242,7 +248,12 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.SmartRecorder.route) {
+        composable(
+            route = Screen.SmartRecorder.route,
+            arguments = listOf(
+                navArgument("mode") { type = NavType.StringType }
+            )
+        ) {
             SmartRecorderScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onVideoReady = { projectId ->
