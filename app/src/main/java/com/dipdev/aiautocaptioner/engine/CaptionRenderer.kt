@@ -7,6 +7,10 @@ import com.dipdev.aiautocaptioner.engine.CaptionAnimator.TimedWord
 import com.dipdev.aiautocaptioner.engine.CaptionAnimator.WordTransform
 import androidx.core.graphics.withClip
 import androidx.core.graphics.withTranslation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CaptionRenderer
@@ -37,7 +41,12 @@ object CaptionRenderer {
     private var cachedStyleId: String? = null
     private var cachedWords: List<TimedWord> = emptyList()
     private var cachedVisibleWords: List<TimedWord> = emptyList()
-    private var cachedLayouts: List<Triple<List<TimedWord>, Float, Float>> = emptyList()
+
+    data class WordLayout(val word: TimedWord, val txt: String, val wordW: Float)
+    data class LineLayout(val words: List<WordLayout>, val lineStartX: Float, val lineWidth: Float)
+
+    private var cachedLayouts: List<LineLayout> = emptyList()
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     /** Whether the current segment's text reads right-to-left. */
     private var cachedIsRtl: Boolean = false
 
@@ -93,23 +102,39 @@ object CaptionRenderer {
             val maxL    = if (style.maxLines <= 0) 999 else style.maxLines
             val lines   = visible.chunked(maxW).take(maxL)
 
-            cachedLayouts = lines.map { words ->
-                val lineW = words.sumOf { w ->
-                    (CaptionPaints.text.measureText(CaptionUtils.sanitize(w.text, style)) + spaceW).toDouble()
-                }.toFloat() - spaceW
+            val currentSpaceW = spaceW
+            val currentIsRtl = isRtl
+            val currentAlign = style.alignment
+            
+            scope.launch {
+                val newLayouts = lines.map { words ->
+                    val wordLayouts = words.map { w ->
+                        val txt = CaptionUtils.sanitize(w.text, style)
+                        val wordW = CaptionPaints.text.measureText(txt)
+                        WordLayout(w, txt, wordW)
+                    }
+                    val lineW = wordLayouts.sumOf { (it.wordW + currentSpaceW).toDouble() }.toFloat() - currentSpaceW
 
-                // For RTL scripts, START (reading-start) is the right edge and
-                // END (reading-end) is the left edge — the opposite of LTR.
-                val x = when (style.alignment) {
-                    TextAlignment.CENTER -> (videoWidth - lineW) / 2f
-                    TextAlignment.START  -> if (isRtl) videoWidth * 0.92f - lineW else videoWidth * 0.08f
-                    TextAlignment.END    -> if (isRtl) videoWidth * 0.08f           else videoWidth * 0.92f - lineW
+                    val x = when (currentAlign) {
+                        TextAlignment.CENTER -> (videoWidth - lineW) / 2f
+                        TextAlignment.START  -> if (currentIsRtl) videoWidth * 0.92f - lineW else videoWidth * 0.08f
+                        TextAlignment.END    -> if (currentIsRtl) videoWidth * 0.08f           else videoWidth * 0.92f - lineW
+                    }
+                    LineLayout(wordLayouts, x, lineW)
                 }
-                Triple(words, x, lineW)
+                cachedLayouts = newLayouts
             }
         }
 
         val lineLayouts = cachedLayouts
+
+        // Pre-compute word transforms to avoid redundant math
+        val transforms = mutableMapOf<TimedWord, WordTransform>()
+        for (line in lineLayouts) {
+            for (wl in line.words) {
+                transforms[wl.word] = CaptionAnimator.computeWordTransform(currentPositionMs, wl.word, style, animMs)
+            }
+        }
 
         canvas.save()
         canvas.clipRect(0f, 0f, videoWidth.toFloat(), videoHeight.toFloat())
@@ -119,27 +144,25 @@ object CaptionRenderer {
 
         // Pass 1: Background pills, Outlines, Shadows
         var lineYP1 = startY
-        for ((lineWords, lineStartX, lineWidth) in lineLayouts) {
+        for (line in lineLayouts) {
             val lineTop = lineYP1 + fm.top
             val lineBot = lineYP1 + fm.bottom
-            drawLineBackground(canvas, style, lineStartX, lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
+            drawLineBackground(canvas, style, line.lineStartX, line.lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
 
             // RTL: start x at the right edge and advance left.
             // LTR: start x at the left edge and advance right.
-            var x = if (isRtl) lineStartX + lineWidth else lineStartX
+            var x = if (isRtl) line.lineStartX + line.lineWidth else line.lineStartX
 
-            for (w in lineWords) {
-                val txt   = CaptionUtils.sanitize(w.text, style)
-                val wordW = CaptionPaints.text.measureText(txt)
-                val xfm   = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
+            for (wl in line.words) {
+                val xfm = transforms[wl.word] ?: continue
 
                 // For RTL, move x left by wordW before drawing so that x is
                 // always the LEFT edge of the current word (Paint.Align.LEFT).
-                if (isRtl) x -= wordW
+                if (isRtl) x -= wl.wordW
 
                 // Draw per-word background pill
                 if (style.backgroundOpacity > 0f && style.backgroundType == BackgroundType.PER_WORD) {
-                    tempWordRect.set(x - padX / 2f, lineTop - padY, x + wordW + padX / 2f, lineBot + padY)
+                    tempWordRect.set(x - padX / 2f, lineTop - padY, x + wl.wordW + padX / 2f, lineBot + padY)
                     canvas.withTranslation(xfm.translateX, xfm.translateY) {
                         CaptionPaints.bg.alpha = (CaptionPaints.bg.alpha * xfm.alpha).toInt()
                         drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
@@ -147,11 +170,11 @@ object CaptionRenderer {
                     }
                 }
 
-                drawWord(canvas, txt, x, lineYP1, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = true, isRtl = isRtl)
+                drawWord(canvas, wl.txt, x, lineYP1, lineTop, lineBot, wl.wordW, xfm, style, currentPositionMs, wl.word, baseScale, padX, padY, corner, isBgPass = true, isRtl = isRtl)
 
                 // Advance: LTR adds word+space; RTL already moved left by wordW,
                 // so only subtract the inter-word space.
-                if (isRtl) x -= spaceW else x += wordW + spaceW
+                if (isRtl) x -= spaceW else x += wl.wordW + spaceW
             }
             lineYP1 += lineH
         }
@@ -162,21 +185,19 @@ object CaptionRenderer {
 
         // Pass 2: Text Fills and Overlays
         var lineYP2 = startY
-        for ((lineWords, lineStartX, lineWidth) in lineLayouts) {
+        for (line in lineLayouts) {
             val lineTop = lineYP2 + fm.top
             val lineBot = lineYP2 + fm.bottom
-            var x = if (isRtl) lineStartX + lineWidth else lineStartX
+            var x = if (isRtl) line.lineStartX + line.lineWidth else line.lineStartX
 
-            for (w in lineWords) {
-                val txt   = CaptionUtils.sanitize(w.text, style)
-                val wordW = CaptionPaints.text.measureText(txt)
-                val xfm   = CaptionAnimator.computeWordTransform(currentPositionMs, w, style, animMs)
+            for (wl in line.words) {
+                val xfm = transforms[wl.word] ?: continue
 
-                if (isRtl) x -= wordW
+                if (isRtl) x -= wl.wordW
 
-                drawWord(canvas, txt, x, lineYP2, lineTop, lineBot, wordW, xfm, style, currentPositionMs, w, baseScale, padX, padY, corner, isBgPass = false, isRtl = isRtl)
+                drawWord(canvas, wl.txt, x, lineYP2, lineTop, lineBot, wl.wordW, xfm, style, currentPositionMs, wl.word, baseScale, padX, padY, corner, isBgPass = false, isRtl = isRtl)
 
-                if (isRtl) x -= spaceW else x += wordW + spaceW
+                if (isRtl) x -= spaceW else x += wl.wordW + spaceW
             }
             lineYP2 += lineH
         }
@@ -211,13 +232,12 @@ object CaptionRenderer {
         }
 
         // TYPEWRITER clip or standard draw
-        val drawTxt = if (style.wordEnterAnimation == AnimationType.TYPEWRITER ||
+        val charsToDraw = if (style.wordEnterAnimation == AnimationType.TYPEWRITER ||
                           style.displayMode == DisplayMode.TYPEWRITER) {
-            val chars = kotlin.math.ceil(txt.length * xfm.clipFraction).toInt().coerceIn(0, txt.length)
-            txt.take(chars)
-        } else txt
+            kotlin.math.ceil(txt.length * xfm.clipFraction).toInt().coerceIn(0, txt.length)
+        } else txt.length
 
-        if (drawTxt.isEmpty() && xfm.alpha < 0.01f) return
+        if (charsToDraw == 0 && xfm.alpha < 0.01f) return
 
         canvas.withTranslation(cx, cy) {
             // Pivot transforms on word center
@@ -230,16 +250,16 @@ object CaptionRenderer {
             if (isBgPass) {
                 if (style.outlineWidth > 0f) {
                     CaptionPaints.outline.alpha = a
-                    drawText(drawTxt, x, y, CaptionPaints.outline)
+                    drawText(txt, 0, charsToDraw, x, y, CaptionPaints.outline)
                 } else if (style.shadowRadius > 0f) {
                     CaptionPaints.text.color = fillColor
                     CaptionPaints.text.alpha = a
-                    drawText(drawTxt, x, y, CaptionPaints.text)
+                    drawText(txt, 0, charsToDraw, x, y, CaptionPaints.text)
                 }
             } else {
                 CaptionPaints.text.color = fillColor
                 CaptionPaints.text.alpha = a
-                drawText(drawTxt, x, y, CaptionPaints.text)
+                drawText(txt, 0, charsToDraw, x, y, CaptionPaints.text)
                 CaptionPaints.text.alpha = 255
                 CaptionPaints.outline.alpha = 255
             }
@@ -260,13 +280,13 @@ object CaptionRenderer {
                         if (isRtl) {
                             canvas.withClip(x + wordW * (1f - fillP), lineTop, x + wordW, lineBot) {
                                 CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
-                                drawText(txt, x, y, CaptionPaints.highlight)
+                                drawText(txt, 0, charsToDraw, x, y, CaptionPaints.highlight)
                                 CaptionPaints.highlight.alpha = 255
                             }
                         } else {
                             canvas.withClip(x, lineTop, x + wordW * fillP, lineBot) {
                                 CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
-                                drawText(txt, x, y, CaptionPaints.highlight)
+                                drawText(txt, 0, charsToDraw, x, y, CaptionPaints.highlight)
                                 CaptionPaints.highlight.alpha = 255
                             }
                         }

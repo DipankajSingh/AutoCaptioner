@@ -40,7 +40,7 @@ class ExportHistoryViewModel @Inject constructor(
     private val mediaManager: MediaManager
 ) : BaseViewModel<ExportHistoryState, UiEvent, UiEffect>(ExportHistoryState()) {
 
-    val exports: StateFlow<List<ExportedFileEntity>> = uiState.map { it.exports }.stateInDefault(viewModelScope, currentState.exports)
+
 
     override fun handleEvent(event: UiEvent) {}
 

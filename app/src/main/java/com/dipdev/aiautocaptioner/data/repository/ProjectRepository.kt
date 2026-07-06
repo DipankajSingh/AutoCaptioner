@@ -235,8 +235,7 @@ class ProjectRepository @Inject constructor(
 
     // ---- Update working video path ----
     suspend fun updateWorkingVideoPath(projectId: String, videoPath: String) {
-        val project = projectDao.getProjectById(projectId) ?: return
-        projectDao.updateProject(project.copy(workingVideoPath = videoPath, updatedAt = System.currentTimeMillis()))
+        projectDao.updateWorkingVideoPath(projectId, videoPath)
     }
 
     // ---- Update visited caption editor flag ----
@@ -251,10 +250,7 @@ class ProjectRepository @Inject constructor(
 
     // ---- Rename project ----
     suspend fun renameProject(projectId: String, newTitle: String) {
-        val project = projectDao.getProjectById(projectId) ?: return
-        projectDao.updateProject(
-            project.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis())
-        )
+        projectDao.renameProject(projectId, newTitle.trim())
         Log.i(TAG, "Project renamed to: $newTitle")
     }
 

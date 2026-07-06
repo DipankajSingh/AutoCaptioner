@@ -26,6 +26,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
+import com.dipdev.aiautocaptioner.ui.components.SimpleAppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,23 +39,12 @@ fun ModelManagerScreen(
     val activeModel = uiState.activeModel
     val downloadStates = uiState.downloadStates
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(Color.Transparent),
-                title = { Text("AI Models", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    SimpleAppScaffold(
+        title = "AI Models",
+        onNavigateBack = onNavigateBack
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

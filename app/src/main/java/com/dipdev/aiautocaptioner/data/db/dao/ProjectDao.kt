@@ -55,19 +55,24 @@ interface ProjectDao {
         updatedAt: Long = System.currentTimeMillis()
     )
 
-    // Update the audio path once extraction is complete
-    @Query("UPDATE projects SET audioPath = :audioPath WHERE id = :projectId")
-    suspend fun updateAudioPath(projectId: String, audioPath: String)
+    // Update working video path
+    @Query("UPDATE projects SET workingVideoPath = :workingVideoPath, updatedAt = :updatedAt WHERE id = :projectId")
+    suspend fun updateWorkingVideoPath(
+        projectId: String,
+        workingVideoPath: String,
+        updatedAt: Long = System.currentTimeMillis()
+    )
 
-    // Update thumbnail path once we've extracted the first frame
-    @Query("UPDATE projects SET thumbnailPath = :thumbnailPath WHERE id = :projectId")
-    suspend fun updateThumbnailPath(projectId: String, thumbnailPath: String)
+    // Rename project
+    @Query("UPDATE projects SET title = :title, updatedAt = :updatedAt WHERE id = :projectId")
+    suspend fun renameProject(
+        projectId: String,
+        title: String,
+        updatedAt: Long = System.currentTimeMillis()
+    )
 
     // Update the hasVisitedCaptionEditor flag
     @Query("UPDATE projects SET hasVisitedCaptionEditor = :hasVisited WHERE id = :projectId")
     suspend fun updateVisitedCaptionEditor(projectId: String, hasVisited: Boolean)
 
-    // Delete all projects — used in settings "clear all data"
-    @Query("DELETE FROM projects")
-    suspend fun deleteAllProjects()
 }

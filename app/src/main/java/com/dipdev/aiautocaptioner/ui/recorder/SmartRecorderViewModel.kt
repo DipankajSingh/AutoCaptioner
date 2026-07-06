@@ -61,35 +61,7 @@ class SmartRecorderViewModel @Inject constructor(
     private val projectRepository: ProjectRepository
 ) : BaseViewModel<SmartRecorderState, UiEvent, UiEffect>(SmartRecorderState()) {
 
-    val recordingMode: StateFlow<RecordingMode> = uiState.map { it.recordingMode }.stateInDefault(viewModelScope, currentState.recordingMode)
 
-    val selectedBackground: StateFlow<BackgroundState> = uiState.map { it.selectedBackground }.stateInDefault(viewModelScope, currentState.selectedBackground)
-
-    val recordingState: StateFlow<RecordingState> = uiState.map { it.recordingState }.stateInDefault(viewModelScope, currentState.recordingState)
-
-    val elapsedSeconds: StateFlow<Int> = uiState.map { it.elapsedSeconds }.stateInDefault(viewModelScope, currentState.elapsedSeconds)
-
-    // Emits the finalized projectId when recording is fully complete
-    val finishedProjectId: StateFlow<String?> = uiState.map { it.finishedProjectId }.stateInDefault(viewModelScope, currentState.finishedProjectId)
-    
-    // State for Mute button in Camera mode
-    val isAudioMuted: StateFlow<Boolean> = uiState.map { it.isAudioMuted }.stateInDefault(viewModelScope, currentState.isAudioMuted)
-
-    // New Creator Tools States
-    val showGrid: StateFlow<Boolean> = uiState.map { it.showGrid }.stateInDefault(viewModelScope, currentState.showGrid)
-
-    private val _countdownTimer = MutableStateFlow(0) // 0, 3, 10
-    val countdownTimer = _countdownTimer.asStateFlow()
-
-    val showTeleprompter: StateFlow<Boolean> = uiState.map { it.showTeleprompter }.stateInDefault(viewModelScope, currentState.showTeleprompter)
-
-    val teleprompterText: StateFlow<String> = uiState.map { it.teleprompterText }.stateInDefault(viewModelScope, currentState.teleprompterText)
-
-    val audioAmplitude: StateFlow<Float> = uiState.map { it.audioAmplitude }.stateInDefault(viewModelScope, currentState.audioAmplitude)
-
-    val isCountdownActive: StateFlow<Boolean> = uiState.map { it.isCountdownActive }.stateInDefault(viewModelScope, currentState.isCountdownActive)
-
-    val countdownRemaining: StateFlow<Int> = uiState.map { it.countdownRemaining }.stateInDefault(viewModelScope, currentState.countdownRemaining)
 
     private var facelessRecorder: FacelessVideoRecorder? = null
     private var timerJob: Job? = null

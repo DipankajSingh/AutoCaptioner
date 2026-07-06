@@ -17,6 +17,11 @@ import android.view.Surface
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class FacelessVideoRecorder {
 
@@ -35,9 +40,10 @@ class FacelessVideoRecorder {
     private var videoTrackIndex = -1
     private var audioTrackIndex = -1
 
-    private var videoThread: Thread? = null
-    private var audioThread: Thread? = null
-    private var videoEncoderThread: Thread? = null
+    private var videoJob: Job? = null
+    private var audioJob: Job? = null
+    private var videoEncoderJob: Job? = null
+    private val scope = CoroutineScope(Dispatchers.Default)
 
     private val VIDEO_WIDTH = 1080
     private val VIDEO_HEIGHT = 1920
@@ -104,13 +110,9 @@ class FacelessVideoRecorder {
             audioRecord?.startRecording()
 
             // Start threads
-            videoThread = Thread { videoDrawLoop(backgroundBitmap, backgroundColor) }
-            videoEncoderThread = Thread { videoEncodeLoop() }
-            audioThread = Thread { audioEncodeLoop() }
-
-            videoThread?.start()
-            videoEncoderThread?.start()
-            audioThread?.start()
+            videoJob = scope.launch { videoDrawLoop(backgroundBitmap, backgroundColor) }
+            videoEncoderJob = scope.launch { videoEncodeLoop() }
+            audioJob = scope.launch { audioEncodeLoop() }
 
         } catch (e: Exception) {
             isRecording.set(false)
@@ -123,14 +125,14 @@ class FacelessVideoRecorder {
         if (!isRecording.get()) return
         isRecording.set(false)
         
-        Thread {
-            try { videoThread?.join(1000) } catch (e: Exception) {}
-            try { videoEncoderThread?.join(2000) } catch (e: Exception) {}
-            try { audioThread?.join(2000) } catch (e: Exception) {}
+        scope.launch {
+            withTimeoutOrNull(1000) { videoJob?.join() }
+            withTimeoutOrNull(2000) { videoEncoderJob?.join() }
+            withTimeoutOrNull(2000) { audioJob?.join() }
 
             releaseResources()
             outputFile?.let { onCompleteCallback?.invoke(it) }
-        }.start()
+        }
     }
 
     private fun videoDrawLoop(bitmap: Bitmap?, color: Int?) {

@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,13 +39,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.airbnb.lottie.compose.LottieAnimation
@@ -105,20 +107,21 @@ fun SmartRecorderContent(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val mode by viewModel.recordingMode.collectAsState()
-    val recordingState by viewModel.recordingState.collectAsState()
-    val elapsedSeconds by viewModel.elapsedSeconds.collectAsState()
-    val selectedBackground by viewModel.selectedBackground.collectAsState()
-    val finishedProjectId by viewModel.finishedProjectId.collectAsState()
-    val isAudioMuted by viewModel.isAudioMuted.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val mode = uiState.recordingMode
+    val recordingState = uiState.recordingState
+    val elapsedSeconds = uiState.elapsedSeconds
+    val selectedBackground = uiState.selectedBackground
+    val finishedProjectId = uiState.finishedProjectId
+    val isAudioMuted = uiState.isAudioMuted
 
-    val showGrid by viewModel.showGrid.collectAsState()
-    val countdownTimer by viewModel.countdownTimer.collectAsState()
-    val showTeleprompter by viewModel.showTeleprompter.collectAsState()
-    val teleprompterText by viewModel.teleprompterText.collectAsState()
-    val audioAmplitude by viewModel.audioAmplitude.collectAsState()
-    val isCountdownActive by viewModel.isCountdownActive.collectAsState()
-    val countdownRemaining by viewModel.countdownRemaining.collectAsState()
+    val showGrid = uiState.showGrid
+    val countdownTimer = uiState.countdownTimer
+    val showTeleprompter = uiState.showTeleprompter
+    val teleprompterText = uiState.teleprompterText
+    val audioAmplitude = uiState.audioAmplitude
+    val isCountdownActive = uiState.isCountdownActive
+    val countdownRemaining = uiState.countdownRemaining
 
     var showBgPicker by remember { mutableStateOf(false) }
     var flashEnabled by remember { mutableStateOf(false) }
@@ -278,7 +281,7 @@ fun SmartRecorderContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SidebarButton(
-                icon = Icons.Default.Subject,
+                icon = Icons.AutoMirrored.Filled.Subject,
                 text = "Script",
                 isActive = showTeleprompter,
                 onClick = { viewModel.toggleTeleprompter() }

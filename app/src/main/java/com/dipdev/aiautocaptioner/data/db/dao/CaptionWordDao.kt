@@ -23,17 +23,6 @@ interface CaptionWordDao {
     // Observe all words for a project, used by StyleEditor to group words by segment
     @Query("SELECT * FROM caption_words WHERE projectId = :projectId ORDER BY startTimeMs ASC")
     fun getAllWordsForProjectFlow(projectId: String): Flow<List<CaptionWordEntity>>
-    // Find the specific word that should be highlighted at a given timestamp
-    // Used during preview to find the active karaoke word
-    // Example: at time=1250ms, find the word where 1000ms <= start <= 1250ms <= end
-    @Query("""
-        SELECT * FROM caption_words 
-        WHERE projectId = :projectId 
-        AND startTimeMs <= :currentTimeMs 
-        AND endTimeMs >= :currentTimeMs 
-        LIMIT 1
-    """)
-    suspend fun getActiveWordAtTime(projectId: String, currentTimeMs: Long): CaptionWordEntity?
 
     // Insert all words from transcription at once
     // Whisper returns hundreds of words — batch insert is much faster

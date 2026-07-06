@@ -15,6 +15,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -166,5 +168,51 @@ fun ModelStat(label: String, value: String) {
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary
         )
+    }
+}
+
+@Composable
+fun FullScreenStateContainer(
+    graphicContent: @Composable () -> Unit,
+    textContent: @Composable () -> Unit,
+    actionContent: @Composable () -> Unit
+) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+    ) {
+        graphicContent()
+        textContent()
+        actionContent()
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleAppScaffold(
+    title: String,
+    onNavigateBack: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    androidx.compose.material3.Scaffold(
+        topBar = {
+            androidx.compose.material3.TopAppBar(
+                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(Color.Transparent),
+                title = { Text(title, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    androidx.compose.material3.IconButton(onClick = onNavigateBack) {
+                        androidx.compose.material3.Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            content()
+        }
     }
 }

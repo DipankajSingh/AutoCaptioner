@@ -49,9 +49,11 @@ class AudioExtractionUseCase @Inject constructor(
                 val info = MediaCodec.BufferInfo()
                 var isEOS = false
                 
-                val tempFile = java.io.File.createTempFile("extracted_audio", ".pcm", context.cacheDir)
-                val dos = java.io.DataOutputStream(java.io.BufferedOutputStream(java.io.FileOutputStream(tempFile)))
+                val floatArrays = ArrayList<FloatArray>()
                 var totalFloatsWritten = 0
+                
+                // Hoisted buffers
+                var pcmBytes = ByteArray(0)
 
                 while (true) {
                     kotlinx.coroutines.yield()
@@ -76,8 +78,10 @@ class AudioExtractionUseCase @Inject constructor(
                     } else if (outputBufferId >= 0) {
                         if (info.size > 0) {
                             val outputBuffer = codec.getOutputBuffer(outputBufferId)!!
-                            val pcmBytes = ByteArray(info.size)
-                            outputBuffer.get(pcmBytes)
+                            if (pcmBytes.size < info.size) {
+                                pcmBytes = ByteArray(info.size)
+                            }
+                            outputBuffer.get(pcmBytes, 0, info.size)
                             outputBuffer.clear()
                             
                             val pcmEncoding = if (audioFormat?.containsKey(MediaFormat.KEY_PCM_ENCODING) == true) {
@@ -86,14 +90,14 @@ class AudioExtractionUseCase @Inject constructor(
                                 android.media.AudioFormat.ENCODING_PCM_16BIT
                             }
 
-                            val byteBuffer = ByteBuffer.wrap(pcmBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                            val byteBuffer = ByteBuffer.wrap(pcmBytes, 0, info.size).order(java.nio.ByteOrder.LITTLE_ENDIAN)
                             val floatArray = when (pcmEncoding) {
                                 android.media.AudioFormat.ENCODING_PCM_FLOAT -> {
                                     val fb = byteBuffer.asFloatBuffer()
                                     FloatArray(fb.remaining()).also { fb.get(it) }
                                 }
                                 android.media.AudioFormat.ENCODING_PCM_8BIT -> {
-                                    FloatArray(pcmBytes.size) { i -> (pcmBytes[i].toInt() - 128) / 128.0f }
+                                    FloatArray(info.size) { i -> (pcmBytes[i].toInt() - 128) / 128.0f }
                                 }
                                 else -> {
                                     val sb = byteBuffer.asShortBuffer()
@@ -112,9 +116,7 @@ class AudioExtractionUseCase @Inject constructor(
                                 floatArray
                             }
                             
-                            for (f in monoFloats) {
-                                dos.writeFloat(f)
-                            }
+                            floatArrays.add(monoFloats)
                             totalFloatsWritten += monoFloats.size
                         }
                         codec.releaseOutputBuffer(outputBufferId, false)
@@ -123,17 +125,14 @@ class AudioExtractionUseCase @Inject constructor(
                         }
                     }
                 }
-                
-                dos.close()
 
                 val sampleRate = audioFormat?.getInteger(MediaFormat.KEY_SAMPLE_RATE) ?: 16000
                 var finalFloats = FloatArray(totalFloatsWritten)
-                val dis = java.io.DataInputStream(java.io.BufferedInputStream(java.io.FileInputStream(tempFile)))
-                for (i in 0 until totalFloatsWritten) {
-                    finalFloats[i] = dis.readFloat()
+                var offset = 0
+                for (arr in floatArrays) {
+                    System.arraycopy(arr, 0, finalFloats, offset, arr.size)
+                    offset += arr.size
                 }
-                dis.close()
-                tempFile.delete()
 
                 if (sampleRate != 16000) {
                     finalFloats = resampleTo16kLinear(finalFloats, sampleRate)

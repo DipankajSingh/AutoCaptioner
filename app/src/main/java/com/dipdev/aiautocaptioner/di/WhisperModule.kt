@@ -12,7 +12,6 @@ import javax.inject.Singleton
 object WhisperModule {
 
     @Provides
-    @Singleton
     fun provideAvailableModels(): List<WhisperModel> = listOf(
         WhisperModel(
             id = "tiny.en",

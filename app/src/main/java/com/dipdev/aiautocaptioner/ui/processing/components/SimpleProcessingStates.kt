@@ -17,126 +17,134 @@ import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.AudioWaveformAnimation
 import com.dipdev.aiautocaptioner.ui.components.ProcessingStateHeader
+import com.dipdev.aiautocaptioner.ui.components.FullScreenStateContainer
 
 @Composable
 fun ExtractingAudioView(onCancel: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        AudioWaveformAnimation(modifier = Modifier.size(120.dp))
-        Spacer(modifier = Modifier.height(32.dp))
-        ProcessingStateHeader(
-            title = "Extracting Audio",
-            subtitle = "Pulling audio track from your video..."
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-        AppOutlinedButton(onClick = onCancel) {
-            Text("Cancel", maxLines = 1)
+    FullScreenStateContainer(
+        graphicContent = {
+            AudioWaveformAnimation(modifier = Modifier.size(120.dp))
+        },
+        textContent = {
+            Spacer(modifier = Modifier.height(32.dp))
+            ProcessingStateHeader(
+                title = "Extracting Audio",
+                subtitle = "Pulling audio track from your video..."
+            )
+        },
+        actionContent = {
+            Spacer(modifier = Modifier.height(32.dp))
+            AppOutlinedButton(onClick = onCancel) {
+                Text("Cancel", maxLines = 1)
+            }
         }
-    }
+    )
 }
 
 @Composable
 fun LoadingModelView() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularProgressIndicator(
-            color = AccentCyan,
-            modifier = Modifier.size(48.dp),
-            strokeCap = StrokeCap.Round
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        ProcessingStateHeader(
-            title = "Loading AI Model",
-            subtitle = "Loading Whisper model into memory..."
-        )
-    }
+    FullScreenStateContainer(
+        graphicContent = {
+            CircularProgressIndicator(
+                color = AccentCyan,
+                modifier = Modifier.size(48.dp),
+                strokeCap = StrokeCap.Round
+            )
+        },
+        textContent = {
+            Spacer(modifier = Modifier.height(24.dp))
+            ProcessingStateHeader(
+                title = "Loading AI Model",
+                subtitle = "Loading Whisper model into memory..."
+            )
+        },
+        actionContent = {}
+    )
 }
 
 @Composable
 fun SavingView() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularProgressIndicator(
-            color = AccentCyan,
-            modifier = Modifier.size(48.dp),
-            strokeCap = StrokeCap.Round
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        ProcessingStateHeader(title = "Saving Captions")
-    }
+    FullScreenStateContainer(
+        graphicContent = {
+            CircularProgressIndicator(
+                color = AccentCyan,
+                modifier = Modifier.size(48.dp),
+                strokeCap = StrokeCap.Round
+            )
+        },
+        textContent = {
+            Spacer(modifier = Modifier.height(24.dp))
+            ProcessingStateHeader(title = "Saving Captions")
+        },
+        actionContent = {}
+    )
 }
 
 @Composable
 fun CancellingView() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Spacer(modifier = Modifier.height(24.dp))
-        ProcessingStateHeader(
-            title = "Cancelling",
-            subtitle = "Stopping AI processing..."
-        )
-    }
+    FullScreenStateContainer(
+        graphicContent = {},
+        textContent = {
+            Spacer(modifier = Modifier.height(24.dp))
+            ProcessingStateHeader(
+                title = "Cancelling",
+                subtitle = "Stopping AI processing..."
+            )
+        },
+        actionContent = {}
+    )
 }
 
 @Composable
 fun CancelledView(onRetry: () -> Unit, onGoBack: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        ProcessingStateHeader(
-            title = "Cancelled",
-            subtitle = "Transcription was stopped."
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        AppPrimaryButton(onClick = onRetry) {
-            Text("Try Again", maxLines = 1)
+    FullScreenStateContainer(
+        graphicContent = {},
+        textContent = {
+            ProcessingStateHeader(
+                title = "Cancelled",
+                subtitle = "Transcription was stopped."
+            )
+        },
+        actionContent = {
+            Spacer(modifier = Modifier.height(24.dp))
+            AppPrimaryButton(onClick = onRetry) {
+                Text("Try Again", maxLines = 1)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            AppOutlinedButton(onClick = onGoBack) {
+                Text("Go Back", maxLines = 1)
+            }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        AppOutlinedButton(onClick = onGoBack) {
-            Text("Go Back", maxLines = 1)
-        }
-    }
+    )
 }
 
 @Composable
 fun ErrorView(message: String, onRetry: () -> Unit, onGoBack: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.Warning,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        ProcessingStateHeader(
-            title = "Processing Failed",
-            subtitle = message
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        AppPrimaryButton(onClick = onRetry) {
-            Text("Retry", maxLines = 1)
+    FullScreenStateContainer(
+        graphicContent = {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(64.dp)
+            )
+        },
+        textContent = {
+            Spacer(modifier = Modifier.height(16.dp))
+            ProcessingStateHeader(
+                title = "Processing Failed",
+                subtitle = message
+            )
+        },
+        actionContent = {
+            Spacer(modifier = Modifier.height(24.dp))
+            AppPrimaryButton(onClick = onRetry) {
+                Text("Retry", maxLines = 1)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            AppOutlinedButton(onClick = onGoBack) {
+                Text("Go Back", maxLines = 1)
+            }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        AppOutlinedButton(onClick = onGoBack) {
-            Text("Go Back", maxLines = 1)
-        }
-    }
+    )
 }

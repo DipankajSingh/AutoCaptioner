@@ -46,6 +46,7 @@ import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.dipdev.aiautocaptioner.ui.components.SimpleAppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,26 +55,19 @@ fun ExportHistoryScreen(
     onNavigateBack: () -> Unit,
     viewModel: ExportHistoryViewModel = hiltViewModel()
 ) {
-    val exports by viewModel.exports.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val exports = uiState.exports
 
     LaunchedEffect(projectId) {
         viewModel.loadExports(projectId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Export History", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    SimpleAppScaffold(
+        title = "Export History",
+        onNavigateBack = onNavigateBack
+    ) {
         if (exports.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 EmptyState(
                     title = "No exports yet.",
                     subtitle = "Your exported videos will appear here",
@@ -83,7 +77,7 @@ fun ExportHistoryScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {

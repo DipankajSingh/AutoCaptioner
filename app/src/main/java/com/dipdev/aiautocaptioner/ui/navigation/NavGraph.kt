@@ -18,6 +18,7 @@ import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun NavGraph(
@@ -72,7 +73,7 @@ fun NavGraph(
         }
 
         composable(Screen.Home.route) { backStackEntry ->
-            val homeViewModel: com.dipdev.aiautocaptioner.ui.home.HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            val homeViewModel: com.dipdev.aiautocaptioner.ui.home.HomeViewModel = hiltViewModel()
 
             HomeScreen(
                 onNavigateToSmartRecorder = { navController.navigate(Screen.SmartRecorder.route) },

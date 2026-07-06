@@ -104,10 +104,11 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
 
-    val projects by viewModel.projects.collectAsStateWithLifecycle()
-    val activeModel by viewModel.activeModel.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val projects = uiState.projects
+    val activeModel = uiState.activeModel
     val context = LocalContext.current
-    val importState by viewModel.importState.collectAsStateWithLifecycle()
+    val importState = uiState.importState
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
 
@@ -302,7 +303,7 @@ fun HomeScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Temporary fetch and display of Remote Config
-                val announcement by viewModel.announcementMessage.collectAsStateWithLifecycle()
+                val announcement = uiState.announcementMessage
 
                 if (announcement.isNotBlank()) {
                     var dismissed by remember(announcement) { mutableStateOf(false) }

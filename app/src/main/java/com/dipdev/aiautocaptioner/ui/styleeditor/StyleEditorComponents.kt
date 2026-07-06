@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +68,33 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.ui.draw.scale
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
+
+@Composable
+fun SubToolButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(onClick = onClick) { Icon(icon, label) }
+        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+fun LabeledPremiumSlider(
+    label: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
+        Text(label, fontSize = 12.sp, modifier = Modifier.width(64.dp))
+        PremiumSlider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -379,6 +407,9 @@ fun AdvancedColorPicker(
         }
 
         // Hue Ribbon Slider
+        val rainbow = listOf(
+            Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red
+        )
         Canvas(modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
@@ -397,9 +428,6 @@ fun AdvancedColorPicker(
                 }
             }
         ) {
-            val rainbow = listOf(
-                Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red
-            )
             drawRoundRect(Brush.horizontalGradient(rainbow), cornerRadius = CornerRadius(size.height / 2f))
             
             drawCircle(

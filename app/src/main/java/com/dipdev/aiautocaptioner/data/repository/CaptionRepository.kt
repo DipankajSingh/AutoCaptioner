@@ -288,17 +288,15 @@ class CaptionRepository @Inject constructor(
     }
 
     suspend fun buildSrtContent(projectId: String): String {
-        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val segmentsList = getSegmentsOnce(projectId)
-            val sb = java.lang.StringBuilder()
-            segmentsList.forEachIndexed { index, segment ->
-                sb.append(index + 1).append("\n")
-                sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
-                val text = segment.text.ifBlank { " " }
-                sb.append(text).append("\n\n")
-            }
-            sb.toString()
+        val segmentsList = getSegmentsOnce(projectId)
+        val sb = java.lang.StringBuilder()
+        segmentsList.forEachIndexed { index, segment ->
+            sb.append(index + 1).append("\n")
+            sb.append(formatSrtTime(segment.startTimeMs)).append(" --> ").append(formatSrtTime(segment.endTimeMs)).append("\n")
+            val text = segment.text.ifBlank { " " }
+            sb.append(text).append("\n\n")
         }
+        return sb.toString()
     }
 
     private fun formatSrtTime(timeMs: Long): String {

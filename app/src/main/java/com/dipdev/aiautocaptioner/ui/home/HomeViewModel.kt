@@ -23,7 +23,9 @@ import javax.inject.Inject
 
 data class HomeState(
     val importState: ImportState = ImportState.Idle,
-    val announcementMessage: String = ""
+    val announcementMessage: String = "",
+    val projects: List<ProjectWithExportedFiles>? = null,
+    val activeModel: com.dipdev.aiautocaptioner.data.model.WhisperModel? = null
 ) : UiState
 
 @HiltViewModel
@@ -32,24 +34,22 @@ class HomeViewModel @Inject constructor(
     modelRepository: ModelRepository
 ) : BaseViewModel<HomeState, UiEvent, UiEffect>(HomeState()) {
 
-    val projects: StateFlow<List<ProjectWithExportedFiles>?> = 
-        (projectRepository.getProjectsWithExportedFiles() as kotlinx.coroutines.flow.Flow<List<ProjectWithExportedFiles>?>)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
 
-    val activeModel = modelRepository.getActiveModel()
-        .stateInDefault(scope = viewModelScope, initialValue = null)
-
-    val importState: StateFlow<ImportState> = uiState.map { it.importState }.stateInDefault(viewModelScope, currentState.importState)
-    val announcementMessage: StateFlow<String> = uiState.map { it.announcementMessage }.stateInDefault(viewModelScope, currentState.announcementMessage)
 
     override fun handleEvent(event: UiEvent) {}
 
     init {
         fetchAnnouncement()
+        viewModelScope.launch {
+            projectRepository.getProjectsWithExportedFiles().collect { p ->
+                setState { copy(projects = p) }
+            }
+        }
+        viewModelScope.launch {
+            modelRepository.getActiveModel().collect { m ->
+                setState { copy(activeModel = m) }
+            }
+        }
     }
 
     private fun fetchAnnouncement() {

@@ -28,6 +28,7 @@ import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import androidx.compose.foundation.background
 import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
+import com.dipdev.aiautocaptioner.ui.components.SimpleAppScaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,25 +44,16 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     ScreenThemeProvider(accentColor = AccentBlue) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+        SimpleAppScaffold(
+            title = "Settings",
+            onNavigateBack = onNavigateBack
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
             Text(
                 text = "Appearance",
                 style = MaterialTheme.typography.titleLarge,

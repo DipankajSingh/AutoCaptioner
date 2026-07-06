@@ -24,6 +24,8 @@ import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.styleeditor.AdvancedColorPicker
 import com.dipdev.aiautocaptioner.ui.styleeditor.PremiumSlider
+import com.dipdev.aiautocaptioner.ui.styleeditor.SubToolButton
+import com.dipdev.aiautocaptioner.ui.styleeditor.LabeledPremiumSlider
 
 enum class ColorSubTool { TEXT, HIGHLIGHT, OUTLINE, BACKGROUND, BG_COLOR, PAD_H, PAD_V, CORNER }
 
@@ -54,54 +56,14 @@ fun ColorTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.TEXT }) { Icon(Icons.Default.FormatColorText, "Text Color") }
-                    Text("Text", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.OUTLINE }) { Icon(Icons.Default.BorderColor, "Outline") }
-                    Text("Outline", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.HIGHLIGHT }) { Icon(Icons.Default.Highlight, "Highlight") }
-                    Text("Highlight", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.BACKGROUND }) { Icon(Icons.Default.FormatColorFill, "Bg Style") }
-                    Text("Bg Style", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.BG_COLOR }) { Icon(Icons.Default.Palette, "Bg Color") }
-                    Text("Bg Color", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.PAD_H }) { Icon(Icons.Default.AlignHorizontalCenter, "Padding H") }
-                    Text("Pad H", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.PAD_V }) { Icon(Icons.Default.AlignVerticalCenter, "Padding V") }
-                    Text("Pad V", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = ColorSubTool.CORNER }) { Icon(Icons.Default.RoundedCorner, "Corner Radius") }
-                    Text("Corners", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            item { SubToolButton(Icons.Default.FormatColorText, "Text") { activeTool = ColorSubTool.TEXT } }
+            item { SubToolButton(Icons.Default.BorderColor, "Outline") { activeTool = ColorSubTool.OUTLINE } }
+            item { SubToolButton(Icons.Default.Highlight, "Highlight") { activeTool = ColorSubTool.HIGHLIGHT } }
+            item { SubToolButton(Icons.Default.FormatColorFill, "Bg Style") { activeTool = ColorSubTool.BACKGROUND } }
+            item { SubToolButton(Icons.Default.Palette, "Bg Color") { activeTool = ColorSubTool.BG_COLOR } }
+            item { SubToolButton(Icons.Default.AlignHorizontalCenter, "Pad H") { activeTool = ColorSubTool.PAD_H } }
+            item { SubToolButton(Icons.Default.AlignVerticalCenter, "Pad V") { activeTool = ColorSubTool.PAD_V } }
+            item { SubToolButton(Icons.Default.RoundedCorner, "Corners") { activeTool = ColorSubTool.CORNER } }
         }
     }
 
@@ -132,12 +94,12 @@ fun ColorTab(
                             }
                             ColorSubTool.OUTLINE -> {
                                 Column {
-                                    Text("Width", fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                                    PremiumSlider(
+                                    LabeledPremiumSlider(
+                                        label = "Width",
                                         value = style.outlineWidth,
                                         onValueChange = onOutlineWidthChange,
                                         valueRange = 0f..10f,
-                                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                                        modifier = Modifier.padding(bottom = 16.dp)
                                     )
                                     AdvancedColorPicker(initialColor = style.outlineColor, onColorChanged = onOutlineColorChange)
                                 }
@@ -160,12 +122,12 @@ fun ColorTab(
                                         }
                                     }
                                     if (style.backgroundType != BackgroundType.NONE) {
-                                        Text("Opacity", fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                                        PremiumSlider(
+                                        LabeledPremiumSlider(
+                                            label = "Opacity",
                                             value = style.backgroundOpacity,
                                             onValueChange = onBackgroundOpacityChange,
                                             valueRange = 0f..1f,
-                                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                                            modifier = Modifier.padding(bottom = 16.dp)
                                         )
                                     }
                                 }
@@ -174,22 +136,28 @@ fun ColorTab(
                                 AdvancedColorPicker(initialColor = style.backgroundColor, onColorChanged = onBackgroundColorChange)
                             }
                             ColorSubTool.PAD_H -> {
-                                Column {
-                                    Text("Padding H: ${style.backgroundPaddingH.toInt()}", fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                                    PremiumSlider(style.backgroundPaddingH, onBackgroundPaddingHChange, 0f..40f, Modifier.fillMaxWidth())
-                                }
+                                LabeledPremiumSlider(
+                                    label = "Pad H",
+                                    value = style.backgroundPaddingH,
+                                    onValueChange = onBackgroundPaddingHChange,
+                                    valueRange = 0f..40f
+                                )
                             }
                             ColorSubTool.PAD_V -> {
-                                Column {
-                                    Text("Padding V: ${style.backgroundPaddingV.toInt()}", fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                                    PremiumSlider(style.backgroundPaddingV, onBackgroundPaddingVChange, 0f..40f, Modifier.fillMaxWidth())
-                                }
+                                LabeledPremiumSlider(
+                                    label = "Pad V",
+                                    value = style.backgroundPaddingV,
+                                    onValueChange = onBackgroundPaddingVChange,
+                                    valueRange = 0f..40f
+                                )
                             }
                             ColorSubTool.CORNER -> {
-                                Column {
-                                    Text("Corner Radius: ${style.backgroundCornerRadius.toInt()}", fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-                                    PremiumSlider(style.backgroundCornerRadius, onBackgroundCornerRadiusChange, 0f..60f, Modifier.fillMaxWidth())
-                                }
+                                LabeledPremiumSlider(
+                                    label = "Corners",
+                                    value = style.backgroundCornerRadius,
+                                    onValueChange = onBackgroundCornerRadiusChange,
+                                    valueRange = 0f..60f
+                                )
                             }
                             null -> {}
                         }

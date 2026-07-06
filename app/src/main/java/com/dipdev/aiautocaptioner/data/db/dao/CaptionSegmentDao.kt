@@ -32,8 +32,4 @@ interface CaptionSegmentDao {
     @Query("DELETE FROM caption_segments WHERE projectId = :projectId")
     suspend fun deleteSegmentsForProject(projectId: String)
 
-    // Count how many segments a project has
-    // Used to show progress: "Transcribed X segments"
-    @Query("SELECT COUNT(*) FROM caption_segments WHERE projectId = :projectId")
-    suspend fun getSegmentCount(projectId: String): Int
 }

@@ -30,7 +30,6 @@ abstract class AppModule {
 
     companion object {
         @Provides
-        @Singleton
         fun provideDataStore(
             @ApplicationContext context: Context
         ): DataStore<Preferences> = context.dataStore

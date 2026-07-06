@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
+import com.dipdev.aiautocaptioner.ui.components.FullScreenStateContainer
 
 @SuppressLint("DefaultLocale")
 @Composable
@@ -26,52 +27,51 @@ fun DownloadingStateView(step: ProcessingStep.DownloadingModel) {
         label = "download_progress"
     )
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier.size(120.dp),
-                strokeWidth = 6.dp,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                color = MaterialTheme.colorScheme.primary,
-                strokeCap = StrokeCap.Round
-            )
+    FullScreenStateContainer(
+        graphicContent = {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.size(120.dp),
+                    strokeWidth = 6.dp,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeCap = StrokeCap.Round
+                )
+                Text(
+                    text = "${step.progress}%",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        textContent = {
+            Spacer(modifier = Modifier.height(32.dp))
             Text(
-                text = "${step.progress}%",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                text = "Downloading ${step.modelName}",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
             )
-        }
+            Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
+            if (step.totalBytes > 0) {
+                Text(
+                    text = "${formatBytes(step.downloadedBytes)} / ${formatBytes(step.totalBytes)}",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
 
-        Text(
-            text = "Downloading ${step.modelName}",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (step.totalBytes > 0) {
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "${formatBytes(step.downloadedBytes)} / ${formatBytes(step.totalBytes)}",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                text = "One-time download · Keep app open",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "One-time download · Keep app open",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        )
-    }
+        },
+        actionContent = {}
+    )
 }
 
 @SuppressLint("DefaultLocale")

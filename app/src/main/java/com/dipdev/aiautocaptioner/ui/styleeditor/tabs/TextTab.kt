@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
 import com.dipdev.aiautocaptioner.ui.styleeditor.PremiumSlider
+import com.dipdev.aiautocaptioner.ui.styleeditor.SubToolButton
+import com.dipdev.aiautocaptioner.ui.styleeditor.LabeledPremiumSlider
 
 enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION, ITALIC, SPACING }
 
@@ -47,54 +49,14 @@ fun TextTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.SIZE }) { Icon(Icons.Default.FormatSize, "Size") }
-                    Text("Size", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.WEIGHT }) { Icon(Icons.Default.LineWeight, "Weight") }
-                    Text("Weight", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.ALIGNMENT }) { Icon(Icons.AutoMirrored.Filled.FormatAlignLeft, "Alignment") }
-                    Text("Align", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.WORDS_PER_LINE }) { Icon(Icons.Default.ViewHeadline, "Words per line") }
-                    Text("Words", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.MAX_LINES }) { Icon(Icons.Default.Menu, "Max Vertical Lines") }
-                    Text("Max Lines", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.PUNCTUATION }) { Icon(Icons.Default.TextFormat, "Punctuation") }
-                    Text("Symbols", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.ITALIC }) { Icon(Icons.Default.FormatItalic, "Italic") }
-                    Text("Italic", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = TextSubTool.SPACING }) { Icon(Icons.Default.SpaceBar, "Spacing") }
-                    Text("Spacing", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            item { SubToolButton(Icons.Default.FormatSize, "Size") { activeTool = TextSubTool.SIZE } }
+            item { SubToolButton(Icons.Default.LineWeight, "Weight") { activeTool = TextSubTool.WEIGHT } }
+            item { SubToolButton(Icons.AutoMirrored.Filled.FormatAlignLeft, "Align") { activeTool = TextSubTool.ALIGNMENT } }
+            item { SubToolButton(Icons.Default.ViewHeadline, "Words") { activeTool = TextSubTool.WORDS_PER_LINE } }
+            item { SubToolButton(Icons.Default.Menu, "Max Lines") { activeTool = TextSubTool.MAX_LINES } }
+            item { SubToolButton(Icons.Default.TextFormat, "Symbols") { activeTool = TextSubTool.PUNCTUATION } }
+            item { SubToolButton(Icons.Default.FormatItalic, "Italic") { activeTool = TextSubTool.ITALIC } }
+            item { SubToolButton(Icons.Default.SpaceBar, "Spacing") { activeTool = TextSubTool.SPACING } }
         }
     } else {
         Row(
@@ -105,8 +67,8 @@ fun TextTab(
         ) {
             when (activeTool) {
                 TextSubTool.SIZE -> {
-                    Text("Size", fontSize = 12.sp, modifier = Modifier.width(48.dp))
-                    PremiumSlider(
+                    LabeledPremiumSlider(
+                        label = "Size",
                         value = style.fontSize,
                         onValueChange = onFontSizeChange,
                         valueRange = 24f..96f,
@@ -114,8 +76,8 @@ fun TextTab(
                     )
                 }
                 TextSubTool.WORDS_PER_LINE -> {
-                    Text("Words", fontSize = 12.sp, modifier = Modifier.width(48.dp))
-                    PremiumSlider(
+                    LabeledPremiumSlider(
+                        label = "Words",
                         value = style.maxWordsPerLine.toFloat(),
                         onValueChange = { onMaxWordsChange(it.toInt()) },
                         valueRange = 1f..10f,
@@ -123,8 +85,8 @@ fun TextTab(
                     )
                 }
                 TextSubTool.MAX_LINES -> {
-                    Text("Lines", fontSize = 12.sp, modifier = Modifier.width(48.dp))
-                    PremiumSlider(
+                    LabeledPremiumSlider(
+                        label = "Lines",
                         value = style.maxLines.toFloat(),
                         onValueChange = { onMaxLinesChange(it.toInt()) },
                         valueRange = 1f..10f,
@@ -172,8 +134,8 @@ fun TextTab(
                     Spacer(modifier = Modifier.weight(1f))
                 }
                 TextSubTool.SPACING -> {
-                    Text("Spacing", fontSize = 12.sp, modifier = Modifier.width(64.dp))
-                    PremiumSlider(
+                    LabeledPremiumSlider(
+                        label = "Spacing",
                         value = style.letterSpacing,
                         onValueChange = onLetterSpacingChange,
                         valueRange = 0f..0.3f,

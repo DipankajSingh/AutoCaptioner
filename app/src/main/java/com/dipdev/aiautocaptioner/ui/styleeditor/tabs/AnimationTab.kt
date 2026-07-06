@@ -20,6 +20,8 @@ import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
+import com.dipdev.aiautocaptioner.ui.styleeditor.SubToolButton
+import com.dipdev.aiautocaptioner.ui.styleeditor.LabeledPremiumSlider
 
 enum class AnimSubTool { MODE, HIGHLIGHT, ENTER, SPEED }
 
@@ -42,30 +44,10 @@ fun AnimationTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = AnimSubTool.MODE }) { Icon(Icons.Default.Slideshow, "Display Mode") }
-                    Text("Display", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = AnimSubTool.HIGHLIGHT }) { Icon(Icons.AutoMirrored.Filled.StarHalf, "Karaoke Style") }
-                    Text("Karaoke", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = AnimSubTool.ENTER }) { Icon(Icons.Default.Animation, "Enter Animation") }
-                    Text("Animation", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { activeTool = AnimSubTool.SPEED }) { Icon(Icons.Default.Speed, "Anim Speed") }
-                    Text("Speed", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+            item { SubToolButton(Icons.Default.Slideshow, "Display") { activeTool = AnimSubTool.MODE } }
+            item { SubToolButton(Icons.AutoMirrored.Filled.StarHalf, "Karaoke") { activeTool = AnimSubTool.HIGHLIGHT } }
+            item { SubToolButton(Icons.Default.Animation, "Animation") { activeTool = AnimSubTool.ENTER } }
+            item { SubToolButton(Icons.Default.Speed, "Speed") { activeTool = AnimSubTool.SPEED } }
         }
     } else {
         Row(
@@ -122,20 +104,12 @@ fun AnimationTab(
                         }
                     }
                     AnimSubTool.SPEED -> {
-                        Column(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                "Speed: ${style.animationDurationMs} ms",
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            com.dipdev.aiautocaptioner.ui.styleeditor.PremiumSlider(
-                                value = style.animationDurationMs.toFloat(),
-                                onValueChange = { onAnimationDurationChange(it.toInt()) },
-                                valueRange = 50f..600f
-                            )
-                        }
+                        LabeledPremiumSlider(
+                            label = "Speed",
+                            value = style.animationDurationMs.toFloat(),
+                            onValueChange = { onAnimationDurationChange(it.toInt()) },
+                            valueRange = 50f..600f
+                        )
                     }
                     null -> {}
                 }
