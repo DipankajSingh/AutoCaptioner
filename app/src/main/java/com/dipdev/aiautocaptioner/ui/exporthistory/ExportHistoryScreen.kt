@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
+import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -72,10 +73,12 @@ fun ExportHistoryScreen(
         }
     ) { padding ->
         if (exports.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No exports yet.",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                EmptyState(
+                    title = "No exports yet.",
+                    subtitle = "Your exported videos will appear here",
+                    buttonText = "Go Back",
+                    onAction = onNavigateBack
                 )
             }
         } else {

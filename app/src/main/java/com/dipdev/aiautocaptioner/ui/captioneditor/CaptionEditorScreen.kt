@@ -38,6 +38,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -189,7 +191,7 @@ fun CaptionEditorScreen(
                 },
                 actions = {
                     TextButton(onClick = { showJumpDialog = true }) {
-                        Text("Jump", color = AccentBlue)
+                        Text(stringResource(R.string.caption_jump), color = AccentBlue)
                     }
                     IconButton(
                         onClick = { viewModel.setEvent(CaptionEditorUiEvent.Retranscribe(projectId)) }
@@ -214,7 +216,7 @@ fun CaptionEditorScreen(
                     onClick = onNavigateToStyleEditor,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Style Editor", maxLines = 1)
+                    Text(stringResource(R.string.caption_style_editor), maxLines = 1)
                 }
                 AppPrimaryButton(
                     onClick = { viewModel.setEvent(CaptionEditorUiEvent.ShareSrt(projectId)) },
@@ -252,7 +254,7 @@ fun CaptionEditorScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search segments...") },
+                placeholder = { Text(stringResource(R.string.caption_search_segments)) },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = "Search")
                 },
@@ -318,7 +320,7 @@ fun CaptionEditorScreen(
     if (showJumpDialog) {
         AlertDialog(
             onDismissRequest = { showJumpDialog = false },
-            title = { Text("Jump to Time") },
+            title = { Text(stringResource(R.string.caption_jump_time)) },
             text = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -327,7 +329,7 @@ fun CaptionEditorScreen(
                     OutlinedTextField(
                         value = jumpMinutes,
                         onValueChange = { if (it.length <= 3 && it.all { char -> char.isDigit() }) jumpMinutes = it },
-                        label = { Text("Min") },
+                        label = { Text(stringResource(R.string.caption_min)) },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                         singleLine = true
@@ -336,7 +338,7 @@ fun CaptionEditorScreen(
                     OutlinedTextField(
                         value = jumpSeconds,
                         onValueChange = { if (it.length <= 2 && it.all { char -> char.isDigit() }) jumpSeconds = it },
-                        label = { Text("Sec") },
+                        label = { Text(stringResource(R.string.caption_sec)) },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                         singleLine = true
@@ -363,12 +365,12 @@ fun CaptionEditorScreen(
                         showJumpDialog = false
                     }
                 ) {
-                    Text("Jump")
+                    Text(stringResource(R.string.caption_jump))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showJumpDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.caption_cancel))
                 }
             }
         )
@@ -477,7 +479,7 @@ private fun SegmentCard(
                 // Word chips with emphasis toggle
                 if (words.isNotEmpty()) {
                     Text(
-                        text = "Long press a word to mark emphasis:",
+                        text = stringResource(R.string.caption_word_emphasis_hint),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )

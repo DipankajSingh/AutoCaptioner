@@ -313,7 +313,7 @@ fun ExportScreen(
                             Text("Re-export", fontSize = 13.sp, softWrap = false )
                         }
 
-                        TextButton(onClick = onNavigateToHome, modifier = Modifier.weight(1f)) {
+                        AppPrimaryButton(onClick = onNavigateToHome, modifier = Modifier.weight(1f)) {
                             Text("Done")
                         }
                     }

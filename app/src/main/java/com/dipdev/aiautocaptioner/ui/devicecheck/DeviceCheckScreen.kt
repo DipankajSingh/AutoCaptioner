@@ -17,6 +17,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
+import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
+import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.ModelStat
 
 @Composable
@@ -113,18 +115,14 @@ fun DeviceCheckScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
+        AppPrimaryButton(
             onClick = {
                 val selected = models.find { it.id == selectedModelId }
                 if (selected != null) {
                     viewModel.setEvent(DeviceCheckUiEvent.CheckSafety(selected.sizeMb.toLong()))
                 }
             },
-            enabled = selectedModelId != null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(24.dp)
+            enabled = selectedModelId != null
         ) {
             Text(
                 text = "Download Selected Model",
@@ -144,7 +142,7 @@ fun DeviceCheckScreen(
                 title = { Text("Not enough storage") },
                 text = { Text("Not enough storage. Please free up space and try again.") },
                 confirmButton = {
-                    TextButton(onClick = {
+                    AppPrimaryButton(onClick = {
                         viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
                     }) {
                         Text("OK")
@@ -158,7 +156,7 @@ fun DeviceCheckScreen(
                 title = { Text("Cellular Data Warning") },
                 text = { Text("You are on mobile data. This download is around ${state.sizeMb} MB. Continue on mobile data?") },
                 confirmButton = {
-                    Button(onClick = {
+                    AppPrimaryButton(onClick = {
                         viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
                         selectedModelId?.let { onModelSelected(it) }
                     }) {
@@ -166,7 +164,7 @@ fun DeviceCheckScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) }) {
+                    AppOutlinedButton(onClick = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) }) {
                         Text("Cancel")
                     }
                 }

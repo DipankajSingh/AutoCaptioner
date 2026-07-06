@@ -11,4 +11,28 @@
     <string name="export_quality_high">High</string>
     <string name="export_estimated_size">Estimated File Size:</string>
     <string name="export_button">Export</string>
+
+    <string name="home_1_tap_captions">1-Tap Captions</string>
+    <string name="home_1_tap_desc">Let AI do the heavy lifting instantly.</string>
+    <string name="home_advanced_studio">Advanced Studio</string>
+    <string name="home_advanced_desc">Trim video and configure setup manually.</string>
+    <string name="home_record_video">Record Video</string>
+    <string name="home_record_desc">Record with your camera or go faceless.</string>
+    <string name="home_importing_video">Importing video...</string>
+    <string name="home_import_failed">Import failed: %s</string>
+    <string name="home_notification_title">Show Progress in Background?</string>
+    <string name="home_notification_desc">AutoCaptioner can show a progress bar in your notifications so you can track transcriptions even when the app is minimized. Would you like to enable this?</string>
+    <string name="home_enable">Enable</string>
+    <string name="home_not_now">Not Now</string>
+
+    <string name="caption_jump">Jump</string>
+    <string name="caption_style_editor">Style Editor</string>
+    <string name="caption_export_srt">Export SRT</string>
+    <string name="caption_search_segments">Search segments...</string>
+    <string name="caption_jump_time">Jump to Time</string>
+    <string name="caption_min">Min</string>
+    <string name="caption_sec">Sec</string>
+    <string name="caption_cancel">Cancel</string>
+
+    <string name="caption_word_emphasis_hint">Long press a word to mark emphasis:</string>
 </resources>

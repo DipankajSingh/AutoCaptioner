@@ -46,16 +46,17 @@ class FacelessVideoRecorder {
 
     private var onCompleteCallback: ((File) -> Unit)? = null
     private var onErrorCallback: ((Exception) -> Unit)? = null
+    private var onAmplitudeCallback: ((Float) -> Unit)? = null
     private var outputFile: File? = null
 
     @SuppressLint("MissingPermission")
     fun start(
-        context: android.content.Context,
         backgroundBitmap: Bitmap?,
         backgroundColor: Int?,
         outputFile: File,
         onComplete: (File) -> Unit,
-        onError: (Exception) -> Unit
+        onError: (Exception) -> Unit,
+        onAmplitude: ((Float) -> Unit)? = null
     ) {
         if (isRecording.getAndSet(true)) {
             onError(IllegalStateException("Already recording"))
@@ -64,6 +65,7 @@ class FacelessVideoRecorder {
 
         this.onCompleteCallback = onComplete
         this.onErrorCallback = onError
+        this.onAmplitudeCallback = onAmplitude
         this.outputFile = outputFile
 
         try {
@@ -166,7 +168,9 @@ class FacelessVideoRecorder {
     private fun videoEncodeLoop() {
         val bufferInfo = MediaCodec.BufferInfo()
         try {
-            while (isRecording.get() || videoTrackIndex < 0) {
+            var eosReceived = false
+            var stopTimeOut = 0
+            while (!eosReceived) {
                 val encoderStatus = videoCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: break
                 if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     val newFormat = videoCodec?.outputFormat ?: break
@@ -188,7 +192,15 @@ class FacelessVideoRecorder {
                         }
                     }
                     videoCodec?.releaseOutputBuffer(encoderStatus, false)
-                    if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break
+                    if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        eosReceived = true
+                        break
+                    }
+                } else if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                    if (!isRecording.get()) {
+                        stopTimeOut++
+                        if (stopTimeOut > 100) break // fail-safe (1 sec)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -202,24 +214,46 @@ class FacelessVideoRecorder {
         var audioPts = 0L
         
         try {
-            while (isRecording.get() || audioTrackIndex < 0) {
-                val inputBufferIndex = audioCodec?.dequeueInputBuffer(TIMEOUT_USEC) ?: -1
-                if (inputBufferIndex >= 0) {
-                    val inputBuffer = audioCodec?.getInputBuffer(inputBufferIndex)
-                    inputBuffer?.clear()
-                    
-                    val readBytes = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
-                    if (readBytes > 0) {
-                        inputBuffer?.put(audioBuffer, 0, readBytes)
-                        val ptsUs = audioPts * 1000000L / (44100L * 2L)
-                        audioCodec?.queueInputBuffer(inputBufferIndex, 0, readBytes, ptsUs, if (isRecording.get()) 0 else MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                        audioPts += readBytes
-                    } else {
-                        audioCodec?.queueInputBuffer(inputBufferIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            var eosReceived = false
+            var isEosSent = false
+            var stopTimeOut = 0
+            while (!eosReceived) {
+                if (!isEosSent) {
+                    val inputBufferIndex = audioCodec?.dequeueInputBuffer(TIMEOUT_USEC) ?: -1
+                    if (inputBufferIndex >= 0) {
+                        val inputBuffer = audioCodec?.getInputBuffer(inputBufferIndex)
+                        inputBuffer?.clear()
+                        
+                        val readBytes = if (isRecording.get()) audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0 else 0
+                        if (readBytes > 0) {
+                            var sum = 0.0
+                            for (i in 0 until readBytes step 2) {
+                                val sample = (audioBuffer[i].toInt() and 0xFF) or (audioBuffer[i+1].toInt() shl 8)
+                                val shortSample = sample.toShort()
+                                sum += shortSample * shortSample
+                            }
+                            val rms = Math.sqrt(sum / (readBytes / 2.0))
+                            val amplitude = if (rms.isNaN()) 0f else (rms / 32768.0).toFloat().coerceIn(0f, 1f)
+                            onAmplitudeCallback?.invoke(amplitude)
+
+                            inputBuffer?.put(audioBuffer, 0, readBytes)
+                            val ptsUs = audioPts * 1000000L / (44100L * 2L)
+                            audioCodec?.queueInputBuffer(inputBufferIndex, 0, readBytes, ptsUs, 0)
+                            audioPts += readBytes
+                        } else {
+                            audioCodec?.queueInputBuffer(inputBufferIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            isEosSent = true
+                        }
                     }
                 }
                 
                 var encoderStatus = audioCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: -1
+                if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                    if (isEosSent) {
+                        stopTimeOut++
+                        if (stopTimeOut > 100) break // fail-safe
+                    }
+                }
                 while (encoderStatus >= 0 || encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         val newFormat = audioCodec?.outputFormat ?: break
@@ -241,7 +275,10 @@ class FacelessVideoRecorder {
                             }
                         }
                         audioCodec?.releaseOutputBuffer(encoderStatus, false)
-                        if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) return
+                        if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                            eosReceived = true
+                            return
+                        }
                     }
                     encoderStatus = audioCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: -1
                 }
@@ -273,8 +310,8 @@ class FacelessVideoRecorder {
 
         if (isMuxerStarted) {
             try { muxer?.stop() } catch (e: Exception) {}
-            try { muxer?.release() } catch (e: Exception) {}
         }
+        try { muxer?.release() } catch (e: Exception) {}
         muxer = null
         isMuxerStarted = false
 

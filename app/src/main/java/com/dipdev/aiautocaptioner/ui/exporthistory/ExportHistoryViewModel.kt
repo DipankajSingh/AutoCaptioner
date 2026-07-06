@@ -7,17 +7,20 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -25,21 +28,26 @@ import java.io.FileInputStream
 import javax.inject.Inject
 import com.dipdev.aiautocaptioner.core.utils.MediaManager
 
+data class ExportHistoryState(
+    val exports: List<ExportedFileEntity> = emptyList()
+) : UiState
+
 @HiltViewModel
 class ExportHistoryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val exportedFileDao: ExportedFileDao,
     private val captionRepository: CaptionRepository,
     private val mediaManager: MediaManager
-) : ViewModel() {
+) : BaseViewModel<ExportHistoryState, UiEvent, UiEffect>(ExportHistoryState()) {
 
-    private val _exports = MutableStateFlow<List<ExportedFileEntity>>(emptyList())
-    val exports: StateFlow<List<ExportedFileEntity>> = _exports.asStateFlow()
+    val exports: StateFlow<List<ExportedFileEntity>> = uiState.map { it.exports }.stateInDefault(viewModelScope, currentState.exports)
+
+    override fun handleEvent(event: UiEvent) {}
 
     fun loadExports(projectId: String) {
         viewModelScope.launch {
             exportedFileDao.getExportsForProject(projectId).collect {
-                _exports.value = it
+                setState { copy(exports = it) }
             }
         }
     }

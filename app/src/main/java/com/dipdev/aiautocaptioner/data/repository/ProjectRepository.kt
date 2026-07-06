@@ -41,9 +41,7 @@ class ProjectRepository @Inject constructor(
 
     // ---- Get single project ----
     suspend fun getProjectById(projectId: String): ProjectEntity? =
-        withContext(Dispatchers.IO) {
-            projectDao.getProjectById(projectId)
-        }
+        projectDao.getProjectById(projectId)
 
     // ---- Import a video ----
     // This is the main entry point when user picks a video from gallery
@@ -160,45 +158,104 @@ class ProjectRepository @Inject constructor(
         }
     }
 
+    // ---- Create Project for Recording ----
+    suspend fun createEmptyProjectForRecording(): Pair<String, File> {
+        return withContext(Dispatchers.IO) {
+            val projectId = UUID.randomUUID().toString()
+            val projectDir = File(context.filesDir, "projects/$projectId")
+            projectDir.mkdirs()
+            val videoFile = File(projectDir, "original_video.mp4")
+            Pair(projectId, videoFile)
+        }
+    }
+
+    // ---- Finalize Recorded Video ----
+    suspend fun finalizeRecordedProject(projectId: String, videoFile: File, backgroundType: String? = null, backgroundValue: String? = null): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!videoFile.exists()) {
+                    return@withContext Result.failure(Exception("Recorded video file not found"))
+                }
+                val videoUri = Uri.fromFile(videoFile)
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(context, videoUri)
+
+                val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                val rotationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                
+                val durationMs = durationStr?.toLongOrNull() ?: 0L
+                val width = widthStr?.toIntOrNull() ?: 1080
+                val height = heightStr?.toIntOrNull() ?: 1920
+                val rotation = rotationStr?.toIntOrNull() ?: 0
+                val fps = 30f // Assuming 30fps for recordings
+
+                retriever.release()
+
+                val projectDir = videoFile.parentFile
+                val thumbnailFile = File(projectDir, "thumbnail.jpg")
+                extractThumbnail(videoUri, thumbnailFile)
+
+                val now = System.currentTimeMillis()
+                val project = ProjectEntity(
+                    id = projectId,
+                    title = "Recording ${System.currentTimeMillis()}",
+                    originalVideoUri = videoFile.absolutePath,
+                    workingVideoPath = videoFile.absolutePath,
+                    thumbnailPath = if (thumbnailFile.exists()) thumbnailFile.absolutePath else null,
+                    videoDurationMs = durationMs,
+                    videoWidth = width,
+                    videoHeight = height,
+                    videoRotation = rotation,
+                    videoFps = fps,
+                    status = ProjectStatus.IMPORTED,
+                    hasVisitedCaptionEditor = false,
+                    facelessBackgroundType = backgroundType,
+                    facelessBackgroundValue = backgroundValue,
+                    createdAt = now,
+                    updatedAt = now
+                )
+
+                projectDao.insertProject(project)
+                Result.success(projectId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to finalize recorded project", e)
+                crashReporter.recordException(e)
+                Result.failure(e)
+            }
+        }
+    }
+
     // ---- Update project status ----
     // Called at each step of the processing pipeline
     suspend fun updateStatus(projectId: String, status: ProjectStatus) {
-        withContext(Dispatchers.IO) {
-            projectDao.updateStatus(projectId, status)
-        }
+        projectDao.updateStatus(projectId, status)
     }
 
     // ---- Update working video path ----
     suspend fun updateWorkingVideoPath(projectId: String, videoPath: String) {
-        withContext(Dispatchers.IO) {
-            val project = projectDao.getProjectById(projectId) ?: return@withContext
-            projectDao.updateProject(project.copy(workingVideoPath = videoPath, updatedAt = System.currentTimeMillis()))
-        }
+        val project = projectDao.getProjectById(projectId) ?: return
+        projectDao.updateProject(project.copy(workingVideoPath = videoPath, updatedAt = System.currentTimeMillis()))
     }
 
     // ---- Update visited caption editor flag ----
     suspend fun updateVisitedCaptionEditor(projectId: String, hasVisited: Boolean = true) {
-        withContext(Dispatchers.IO) {
-            projectDao.updateVisitedCaptionEditor(projectId, hasVisited)
-        }
+        projectDao.updateVisitedCaptionEditor(projectId, hasVisited)
     }
 
     // ---- Update project complete entity ----
     suspend fun updateProject(project: ProjectEntity) {
-        withContext(Dispatchers.IO) {
-            projectDao.updateProject(project)
-        }
+        projectDao.updateProject(project)
     }
 
     // ---- Rename project ----
     suspend fun renameProject(projectId: String, newTitle: String) {
-        withContext(Dispatchers.IO) {
-            val project = projectDao.getProjectById(projectId) ?: return@withContext
-            projectDao.updateProject(
-                project.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis())
-            )
-            Log.i(TAG, "Project renamed to: $newTitle")
-        }
+        val project = projectDao.getProjectById(projectId) ?: return
+        projectDao.updateProject(
+            project.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis())
+        )
+        Log.i(TAG, "Project renamed to: $newTitle")
     }
 
     // ---- Delete project ----

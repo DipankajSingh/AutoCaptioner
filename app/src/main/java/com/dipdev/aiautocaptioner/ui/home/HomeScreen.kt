@@ -1,12 +1,14 @@
 package com.dipdev.aiautocaptioner.ui.home
 
 
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -130,8 +132,8 @@ fun HomeScreen(
                     showNotificationRationale = false
                     hasRequestedNotification = true
                 },
-                title = { Text("Show Progress in Background?") },
-                text = { Text("AutoCaptioner can show a progress bar in your notifications so you can track transcriptions even when the app is minimized. Would you like to enable this?") },
+                title = { Text(stringResource(R.string.home_notification_title)) },
+                text = { Text(stringResource(R.string.home_notification_desc)) },
                 confirmButton = {
                     androidx.compose.material3.TextButton(
                         onClick = {
@@ -140,7 +142,7 @@ fun HomeScreen(
                             notificationPermissionState.launchPermissionRequest()
                         }
                     ) {
-                        Text("Enable")
+                        Text(stringResource(R.string.home_enable))
                     }
                 },
                 dismissButton = {
@@ -150,7 +152,7 @@ fun HomeScreen(
                             hasRequestedNotification = true
                         }
                     ) {
-                        Text("Not Now")
+                        Text(stringResource(R.string.home_not_now))
                     }
                 }
             )
@@ -185,6 +187,8 @@ fun HomeScreen(
             else -> {}
         }
     }
+
+    var speedDialExpanded by remember { mutableStateOf(false) }
 
     ScreenThemeProvider(accentColor = AccentBlue) {
         Scaffold(
@@ -259,126 +263,35 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            // Speed dial FAB — always visible so new users can record too
-            var speedDialExpanded by remember { mutableStateOf(false) }
-
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                // Mini FABs — visible when expanded
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = speedDialExpanded,
-                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it },
-                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it }
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Record Video
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            androidx.compose.material3.Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                shadowElevation = 2.dp
-                            ) {
-                                Text(
-                                    "Record Video",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                            androidx.compose.material3.SmallFloatingActionButton(
-                                onClick = {
-                                    speedDialExpanded = false
-                                    onNavigateToSmartRecorder()
-                                },
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                            ) {
-                                Icon(Icons.Default.Videocam, contentDescription = "Record Video", tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                            }
-                        }
-                        // Quick Generate
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            androidx.compose.material3.Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                shadowElevation = 2.dp
-                            ) {
-                                Text(
-                                    "Quick Caption",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                            androidx.compose.material3.SmallFloatingActionButton(
-                                onClick = {
-                                    speedDialExpanded = false
-                                    quickPicker.launch("video/*")
-                                },
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ) {
-                                Icon(Icons.Default.Bolt, contentDescription = "Quick Caption")
-                            }
-                        }
-                        // Advanced Import
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            androidx.compose.material3.Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                shadowElevation = 2.dp
-                            ) {
-                                Text(
-                                    "Import & Edit",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                            androidx.compose.material3.SmallFloatingActionButton(
-                                onClick = {
-                                    speedDialExpanded = false
-                                    videoPicker.launch("video/*")
-                                },
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ) {
-                                Icon(Icons.Default.ContentCut, contentDescription = "Import & Edit", tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                            }
-                        }
-                    }
-                }
-
-                // Main FAB
-                ExtendedFloatingActionButton(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    onClick = { speedDialExpanded = !speedDialExpanded },
-                    icon = {
-                        androidx.compose.animation.AnimatedContent(
-                            targetState = speedDialExpanded,
-                            label = "fabIcon"
-                        ) { expanded ->
-                            if (expanded) Icon(Icons.Default.Close, null)
-                            else Icon(Icons.Default.Add, null)
-                        }
-                    },
-                    text = { Text(if (speedDialExpanded) "Close" else "+ Create", fontWeight = FontWeight.Bold) },
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 4.dp
+            if (projects?.isNotEmpty() == true) {
+                com.dipdev.aiautocaptioner.ui.components.SpeedDialFab(
+                    expanded = speedDialExpanded,
+                    onExpandedChange = { speedDialExpanded = it },
+                    items = listOf(
+                        com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
+                            icon = Icons.Default.Videocam,
+                            label = "Record Video",
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            onColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            onClick = { onNavigateToSmartRecorder() }
+                        ),
+                        com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
+                            icon = Icons.Default.Bolt,
+                            label = "1-Tap Captions",
+                            color = MaterialTheme.colorScheme.primary,
+                            onColor = MaterialTheme.colorScheme.onPrimary,
+                            onClick = { quickPicker.launch("video/*") }
+                        ),
+                        com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
+                            icon = Icons.Default.ContentCut,
+                            label = "Advanced Studio",
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            onColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            onClick = { videoPicker.launch("video/*") }
+                        )
                     )
                 )
-                }
+            }
         }
     ) { padding ->
 
@@ -427,7 +340,13 @@ fun HomeScreen(
                 }
                 
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (projects.isEmpty()) {
+            if (projects == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            } else if (projects!!.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -480,8 +399,8 @@ fun HomeScreen(
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                Text("Record Video", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                Text("Record with your camera or go faceless.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
+                                Text(stringResource(R.string.home_record_video), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                Text(stringResource(R.string.home_record_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
                             }
                         }
                     }
@@ -510,8 +429,8 @@ fun HomeScreen(
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                Text("1-Tap Captions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Text("Let AI do the heavy lifting instantly.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                                Text(stringResource(R.string.home_1_tap_captions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(stringResource(R.string.home_1_tap_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                             }
                         }
                     }
@@ -540,8 +459,8 @@ fun HomeScreen(
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
-                                Text("Advanced Studio", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                Text("Trim video and configure setup manually.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                                Text(stringResource(R.string.home_advanced_studio), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text(stringResource(R.string.home_advanced_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
                             }
                         }
                     }
@@ -553,7 +472,7 @@ fun HomeScreen(
                         start = 16.dp,
                         end = 16.dp,
                         top = 16.dp,
-                        bottom = 80.dp // space for FAB
+                        bottom = 100.dp // space for FAB
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -574,7 +493,7 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "${projects.size}",
+                                    text = "${projects!!.size}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
@@ -584,7 +503,7 @@ fun HomeScreen(
                         }
                     }
                     items(
-                        items = projects,
+                        items = projects!!,
                         key = { it.project.id }
                     ) { projectWithExports ->
                         ProjectCard(
@@ -634,7 +553,7 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth(0.6f)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Importing video...")
+                        Text(stringResource(R.string.home_importing_video))
                     }
                 }
             }
@@ -651,7 +570,7 @@ fun HomeScreen(
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
                 ) {
-                    Text("Import failed: $message")
+                    Text(stringResource(R.string.home_import_failed).format(message))
                 }
             }
             
@@ -681,6 +600,25 @@ fun HomeScreen(
             }
         } // end of Box(modifier = Modifier.weight(1f).fillMaxWidth())
         } // end of Column
+
+        // Scrim Overlay
+        androidx.compose.animation.AnimatedVisibility(
+            visible = speedDialExpanded,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = { speedDialExpanded = false }
+                    )
+            )
+        }
+
         } // end of outer Box (padding)
     } // end of Scaffold content box
     } // end of ScreenThemeProvider

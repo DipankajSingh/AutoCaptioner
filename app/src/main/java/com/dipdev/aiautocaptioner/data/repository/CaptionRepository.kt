@@ -38,9 +38,7 @@ class CaptionRepository @Inject constructor(
 
     // One-time read — used for export (don't need live updates during export)
     suspend fun getSegmentsOnce(projectId: String): List<CaptionSegmentEntity> =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            segmentDao.getSegmentsForProjectOnce(projectId)
-        }
+        segmentDao.getSegmentsForProjectOnce(projectId)
 
     // ---- Save transcription results ----
     // Called after Whisper finishes transcribing
@@ -87,13 +85,11 @@ class CaptionRepository @Inject constructor(
         }
 
         // Run all operations inside a single transaction to ensure atomicity
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            db.withTransaction {
-                // Delete segments — words are cleaned up automatically via ON DELETE CASCADE
-                segmentDao.deleteSegmentsForProject(projectId)
-                segmentDao.insertAll(segmentEntities)
-                wordDao.insertAll(wordEntities)
-            }
+        db.withTransaction {
+            // Delete segments — words are cleaned up automatically via ON DELETE CASCADE
+            segmentDao.deleteSegmentsForProject(projectId)
+            segmentDao.insertAll(segmentEntities)
+            wordDao.insertAll(wordEntities)
         }
 
         Log.i(TAG, "Saved ${segmentEntities.size} segments, ${wordEntities.size} words")
@@ -101,10 +97,8 @@ class CaptionRepository @Inject constructor(
 
     // ---- Update a segment after user edits it ----
     suspend fun updateSegment(segment: CaptionSegmentEntity) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            // Mark as edited so we know the user changed it
-            segmentDao.updateSegment(segment.copy(isEdited = true))
-        }
+        // Mark as edited so we know the user changed it
+        segmentDao.updateSegment(segment.copy(isEdited = true))
     }
 
 
@@ -119,9 +113,7 @@ class CaptionRepository @Inject constructor(
     // The preview screen keeps this list in memory and binary-searches
     // it 60 times per second to find the active word
     suspend fun getAllWordsForProject(projectId: String): List<CaptionWordEntity> =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            wordDao.getAllWordsForProject(projectId)
-        }
+        wordDao.getAllWordsForProject(projectId)
 
     // Observe all words for a project
     fun getAllWordsForProjectFlow(projectId: String): Flow<List<CaptionWordEntity>> =
@@ -132,17 +124,13 @@ class CaptionRepository @Inject constructor(
         isEmphasized: Boolean,
         emphasisType: EmphasisType = EmphasisType.BOUNCE
     ) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            wordDao.updateEmphasis(wordId, isEmphasized, emphasisType)
-        }
+        wordDao.updateEmphasis(wordId, isEmphasized, emphasisType)
     }
 
     suspend fun replaceWordsForSegment(segmentId: String, newWords: List<CaptionWordEntity>) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            db.withTransaction {
-                wordDao.deleteWordsForSegment(segmentId)
-                wordDao.insertAll(newWords)
-            }
+        db.withTransaction {
+            wordDao.deleteWordsForSegment(segmentId)
+            wordDao.insertAll(newWords)
         }
     }
 
@@ -150,9 +138,7 @@ class CaptionRepository @Inject constructor(
     // when the user edits a segment and the word count matches the original).
     // Uses @Update under the hood — does NOT insert new rows.
     suspend fun updateWords(words: List<CaptionWordEntity>) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            wordDao.updateWords(words)
-        }
+        wordDao.updateWords(words)
     }
 
     // ================================================================
@@ -165,35 +151,28 @@ class CaptionRepository @Inject constructor(
 
     // Get a specific style by ID
     suspend fun getStyleById(styleId: String): CaptionStyleEntity? =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            styleDao.getStyleById(styleId)
-        }
+        styleDao.getStyleById(styleId)
 
     // Save a new or modified style
     suspend fun saveStyle(style: CaptionStyleEntity) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            styleDao.insertStyle(style)
-            Log.i(TAG, "Saved style: ${style.name}")
-        }
+        styleDao.insertStyle(style)
+        Log.i(TAG, "Saved style: ${style.name}")
     }
 
     // Delete a user's custom style
     // We check isDefault here as a safety guard
     suspend fun deleteStyle(style: CaptionStyleEntity) {
-        withContext(kotlinx.coroutines.Dispatchers.IO) {
-            if (style.isDefault) {
-                Log.w(TAG, "Cannot delete default style: ${style.name}")
-            } else {
-                styleDao.deleteStyle(style)
-            }
+        if (style.isDefault) {
+            Log.w(TAG, "Cannot delete default style: ${style.name}")
+        } else {
+            styleDao.deleteStyle(style)
         }
     }
 
     // Insert built-in preset styles on first launch
     // Called from SplashScreen ViewModel
     suspend fun initializeDefaultStyles() {
-        withContext(kotlinx.coroutines.Dispatchers.IO) {
-            db.withTransaction {
+        db.withTransaction {
                 // Only insert if no default styles exist yet
                 if (styleDao.getDefaultStyleCount() == 0) {
                     val defaults = listOf(
@@ -306,7 +285,6 @@ class CaptionRepository @Inject constructor(
                     Log.i(TAG, "Initialized ${defaults.size} default styles")
                 }
             }
-        }
     }
 
     suspend fun buildSrtContent(projectId: String): String {

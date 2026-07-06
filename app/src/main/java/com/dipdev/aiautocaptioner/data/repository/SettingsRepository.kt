@@ -33,6 +33,8 @@ class SettingsRepository @Inject constructor(
     private val LAST_LANGUAGE_KEY = stringPreferencesKey("last_transcription_language")
     private val LAST_TRANSLATE_KEY = booleanPreferencesKey("last_translate_to_english")
 
+    private val LAST_RECORDING_MODE_KEY = stringPreferencesKey("last_recording_mode")
+
     val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
         val themeName = prefs[THEME_KEY] ?: AppTheme.TRUE_BLACK.name
         try {
@@ -66,7 +68,9 @@ class SettingsRepository @Inject constructor(
         prefs[EXPORT_QUALITY_KEY] ?: 1
     }
 
-
+    val lastRecordingModeFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[LAST_RECORDING_MODE_KEY] ?: "CAMERA"
+    }
 
     suspend fun setTheme(theme: AppTheme) {
         dataStore.edit { prefs ->
@@ -112,6 +116,12 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { prefs ->
             prefs[LAST_LANGUAGE_KEY] = language
             prefs[LAST_TRANSLATE_KEY] = translateToEnglish
+        }
+    }
+
+    suspend fun setLastRecordingMode(mode: String) {
+        dataStore.edit { prefs ->
+            prefs[LAST_RECORDING_MODE_KEY] = mode
         }
     }
 }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
+import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -41,13 +43,13 @@ fun RenameDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            AppPrimaryButton(
                 onClick  = { if (text.isNotBlank()) { onConfirm(text.trim()); onDismiss() } },
                 enabled  = text.isNotBlank()
             ) { Text("Rename") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            AppOutlinedButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
