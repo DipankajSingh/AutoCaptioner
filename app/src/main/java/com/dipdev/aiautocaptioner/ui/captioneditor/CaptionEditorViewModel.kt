@@ -94,7 +94,6 @@ class CaptionEditorViewModel @Inject constructor(
             is CaptionEditorUiEvent.ToggleWordEmphasis -> toggleWordEmphasis(event.word)
             is CaptionEditorUiEvent.Retranscribe -> {
                 viewModelScope.launch {
-                    projectRepository.updateStatus(event.projectId, ProjectStatus.IMPORTED)
                     setState { copy(retranscribeRequested = true) }
                 }
             }

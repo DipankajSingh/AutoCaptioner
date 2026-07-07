@@ -92,6 +92,7 @@ class ExportViewModel @Inject constructor(
 ) : BaseViewModel<ExportUiState, ExportUiEvent, ExportUiEffect>(ExportUiState()) {
 
     private var activeTransformer: Transformer? = null
+    private var currentOutFile: File? = null
 
     init {
         viewModelScope.launch {
@@ -135,7 +136,8 @@ class ExportViewModel @Inject constructor(
     private fun cancelExport() {
         activeTransformer?.cancel()
         activeTransformer = null
-        currentState.outputPath?.let { File(it).delete() }
+        currentOutFile?.delete()
+        currentOutFile = null
         setState { copy(exportState = ExportState.Cancelled) }
     }
 
@@ -204,11 +206,10 @@ class ExportViewModel @Inject constructor(
                     .add(captionOverlayEffect)
                     .build()
 
-                val moviesDir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-                    ?: context.filesDir.also { File(it, "exports").mkdirs() }
-                if (!moviesDir.exists()) moviesDir.mkdirs()
-
-                val outFile = File(moviesDir, "AutoCaptioner_${System.currentTimeMillis()}.mp4")
+                val outDir = File(context.filesDir, "exports")
+                if (!outDir.exists()) outDir.mkdirs()
+                val outFile = File(outDir, "export_${System.currentTimeMillis()}.mp4")
+                currentOutFile = outFile
                 setState { copy(outputPath = outFile.absolutePath) }
 
                 val videoEffects: List<androidx.media3.common.Effect> =
@@ -265,6 +266,8 @@ class ExportViewModel @Inject constructor(
                             exportException: ExportException
                         ) {
                             activeTransformer = null
+                            currentOutFile?.delete()
+                            currentOutFile = null
                             setState { copy(exportState = ExportState.Error(exportException.message ?: "Unknown Export Error")) }
                         }
                     })
@@ -320,7 +323,11 @@ class ExportViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        if (currentState.exportState == ExportState.Running) {
+            currentOutFile?.delete()
+        }
         activeTransformer?.cancel()
         activeTransformer = null
+        currentOutFile = null
     }
 }

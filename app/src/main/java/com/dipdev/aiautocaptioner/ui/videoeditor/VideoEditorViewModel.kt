@@ -79,6 +79,7 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class UpdateOverlay(val overlay: ImageOverlayEntity) : VideoEditorUiEvent()
     data class DeleteOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class SelectOverlay(val overlayId: String?) : VideoEditorUiEvent()
+    data class MoveOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
 }
 
 sealed class VideoEditorUiEffect : UiEffect {
@@ -113,6 +114,7 @@ class VideoEditorViewModel @Inject constructor(
         )
 
     private var transformer: Transformer? = null
+    private var tempOutputFile: java.io.File? = null
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
@@ -193,6 +195,7 @@ class VideoEditorViewModel @Inject constructor(
             is VideoEditorUiEvent.UpdateOverlay -> updateOverlay(event.overlay)
             is VideoEditorUiEvent.DeleteOverlay -> deleteOverlay(event.overlayId)
             is VideoEditorUiEvent.SelectOverlay -> selectOverlay(event.overlayId)
+            is VideoEditorUiEvent.MoveOverlayZ -> moveOverlayZ(event.overlayId, event.bringToFront)
         }
     }
 
@@ -377,7 +380,8 @@ class VideoEditorViewModel @Inject constructor(
             setState { copy(step = VideoEditorUiStep.Processing(0)) }
             
             try {
-                val tempOutputFile = com.dipdev.aiautocaptioner.core.utils.FileUtils.createTempVideoFile(context)
+                tempOutputFile = com.dipdev.aiautocaptioner.core.utils.FileUtils.createTempVideoFile(context)
+                val tempFile = tempOutputFile ?: return@launch
                 
                 val editedMediaItems = currentState.clips.map { clip ->
                     val mediaItem = MediaItem.Builder()
@@ -399,7 +403,7 @@ class VideoEditorViewModel @Inject constructor(
                     .addListener(object : Transformer.Listener {
                         override fun onCompleted(composition: Composition, exportResult: ExportResult) {
                             viewModelScope.launch {
-                                projectRepository.updateWorkingVideoPath(projectId, tempOutputFile.absolutePath)
+                                projectRepository.updateWorkingVideoPath(projectId, tempFile.absolutePath)
                                 projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
                                 setState { copy(step = VideoEditorUiStep.Success) }
                             }
@@ -410,13 +414,14 @@ class VideoEditorViewModel @Inject constructor(
                             exportResult: ExportResult,
                             exportException: ExportException
                         ) {
-                            tempOutputFile.delete()
+                            tempFile.delete()
+                            tempOutputFile = null
                             setState { copy(step = VideoEditorUiStep.Error(exportException.message ?: "Unknown error during trim")) }
                         }
                     })
                     .build()
                 
-                transformer?.start(composition, tempOutputFile.absolutePath)
+                transformer?.start(composition, tempFile.absolutePath)
                 
                 viewModelScope.launch {
                     val progressHolder = androidx.media3.transformer.ProgressHolder()
@@ -441,6 +446,8 @@ class VideoEditorViewModel @Inject constructor(
     private fun cancel() {
         transformer?.cancel()
         transformer = null
+        tempOutputFile?.delete()
+        tempOutputFile = null
         if (originalVideoPath.isNotEmpty()) {
             setState { copy(step = VideoEditorUiStep.Ready(originalDurationMs, originalVideoPath)) }
         } else {
@@ -466,14 +473,33 @@ class VideoEditorViewModel @Inject constructor(
 
     private fun addOverlay(uri: String) {
         val projectId = currentProjectId ?: return
-        viewModelScope.launch {
-            val overlay = ImageOverlayEntity(
-                id = UUID.randomUUID().toString(),
-                projectId = projectId,
-                imageUri = uri,
-                createdAt = System.currentTimeMillis()
-            )
-            overlayRepository.addOverlay(overlay)
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                // Copy to internal storage
+                val overlayDir = java.io.File(context.filesDir, "projects/$projectId/overlays")
+                if (!overlayDir.exists()) overlayDir.mkdirs()
+                
+                val destFile = java.io.File(overlayDir, "${UUID.randomUUID()}.jpg")
+                val inputStream = context.contentResolver.openInputStream(android.net.Uri.parse(uri))
+                val outputStream = java.io.FileOutputStream(destFile)
+                inputStream?.use { input ->
+                    outputStream.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                
+                val maxZ = overlays.value.maxOfOrNull { it.zOrder } ?: -1
+                val overlay = ImageOverlayEntity(
+                    id = UUID.randomUUID().toString(),
+                    projectId = projectId,
+                    imageUri = destFile.absolutePath,
+                    zOrder = maxZ + 1,
+                    createdAt = System.currentTimeMillis()
+                )
+                overlayRepository.addOverlay(overlay)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -484,8 +510,20 @@ class VideoEditorViewModel @Inject constructor(
     }
 
     private fun deleteOverlay(overlayId: String) {
-        viewModelScope.launch {
+        val overlay = overlays.value.find { it.id == overlayId }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             overlayRepository.deleteOverlay(overlayId)
+            
+            // Delete the file from storage
+            if (overlay != null && !overlay.imageUri.startsWith("content://")) {
+                try {
+                    val file = java.io.File(overlay.imageUri)
+                    if (file.exists()) file.delete()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            
             if (_selectedOverlayId.value == overlayId) {
                 _selectedOverlayId.value = null
             }
@@ -494,6 +532,29 @@ class VideoEditorViewModel @Inject constructor(
 
     private fun selectOverlay(overlayId: String?) {
         _selectedOverlayId.value = overlayId
+    }
+
+    private fun moveOverlayZ(overlayId: String, bringToFront: Boolean) {
+        viewModelScope.launch {
+            val currentList = overlays.value.sortedBy { it.zOrder }
+            val index = currentList.indexOfFirst { it.id == overlayId }
+            if (index == -1) return@launch
+            
+            val overlay = currentList[index]
+            if (bringToFront && index < currentList.size - 1) {
+                // Swap with the next one
+                val next = currentList[index + 1]
+                val currentZ = overlay.zOrder
+                overlayRepository.updateOverlay(overlay.copy(zOrder = next.zOrder))
+                overlayRepository.updateOverlay(next.copy(zOrder = currentZ))
+            } else if (!bringToFront && index > 0) {
+                // Swap with the previous one
+                val prev = currentList[index - 1]
+                val currentZ = overlay.zOrder
+                overlayRepository.updateOverlay(overlay.copy(zOrder = prev.zOrder))
+                overlayRepository.updateOverlay(prev.copy(zOrder = currentZ))
+            }
+        }
     }
 
     @OptIn(UnstableApi::class)

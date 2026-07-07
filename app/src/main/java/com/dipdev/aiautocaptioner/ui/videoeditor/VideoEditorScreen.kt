@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,10 +18,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ContentCut
@@ -137,6 +142,8 @@ private fun VideoEditorScreenContent(
     val canRedo = uiState.canRedo
     val selectedLanguage = uiState.selectedLanguage
     val translateToEnglish = uiState.translateToEnglish
+    val overlays by viewModel.overlays.collectAsStateWithLifecycle()
+    val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
 
     var showBackDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -145,6 +152,13 @@ private fun VideoEditorScreenContent(
     var timelineHeight by remember { mutableStateOf(180.dp) }
     val density = androidx.compose.ui.platform.LocalDensity.current
 
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            viewModel.setEvent(VideoEditorUiEvent.AddOverlay(it.toString()))
+        }
+    }
 
     val context = LocalContext.current
     val player = remember {
@@ -416,7 +430,78 @@ private fun VideoEditorScreenContent(
                                 showControls = false
                             )
 
-
+                            // Image Overlays Rendering
+                            
+                            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                                val canvasWidth = constraints.maxWidth.toFloat()
+                                val canvasHeight = constraints.maxHeight.toFloat()
+                                
+                                overlays.filter { currentTimelineMs in it.startTimeMs..it.endTimeMs }.forEach { overlay ->
+                                    val isSelected = overlay.id == selectedOverlayId
+                                    
+                                    var localScale by remember(overlay.id) { mutableFloatStateOf(overlay.scaleX) }
+                                    var localPosX by remember(overlay.id) { mutableFloatStateOf(overlay.positionX) }
+                                    var localPosY by remember(overlay.id) { mutableFloatStateOf(overlay.positionY) }
+                                    var lastTransformTime by remember(overlay.id) { androidx.compose.runtime.mutableLongStateOf(0L) }
+                                    
+                                    LaunchedEffect(overlay.scaleX, overlay.positionX, overlay.positionY) {
+                                        if (System.currentTimeMillis() - lastTransformTime > 500) {
+                                            localScale = overlay.scaleX
+                                            localPosX = overlay.positionX
+                                            localPosY = overlay.positionY
+                                        }
+                                    }
+                                    
+                                    LaunchedEffect(lastTransformTime) {
+                                        if (lastTransformTime > 0) {
+                                            kotlinx.coroutines.delay(300)
+                                            viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(
+                                                overlay.copy(
+                                                    scaleX = localScale,
+                                                    scaleY = localScale,
+                                                    positionX = localPosX,
+                                                    positionY = localPosY
+                                                )
+                                            ))
+                                        }
+                                    }
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.Center)
+                                            .graphicsLayer {
+                                                translationX = (localPosX - 0.5f) * canvasWidth
+                                                translationY = (localPosY - 0.5f) * canvasHeight
+                                                scaleX = localScale
+                                                scaleY = localScale
+                                            }
+                                            .border(
+                                                width = if (isSelected) 2.dp else 0.dp,
+                                                color = if (isSelected) AccentCyan else Color.Transparent
+                                            )
+                                            .pointerInput(overlay.id) {
+                                                detectTransformGestures { _, pan, zoom, _ ->
+                                                    localScale *= zoom
+                                                    localPosX += (pan.x / canvasWidth)
+                                                    localPosY += (pan.y / canvasHeight)
+                                                    lastTransformTime = System.currentTimeMillis()
+                                                }
+                                            }
+                                            .pointerInput(overlay.id + "_tap") {
+                                                detectTapGestures {
+                                                    viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(overlay.id))
+                                                }
+                                            }
+                                    ) {
+                                        AsyncImage(
+                                            model = overlay.imageUri,
+                                            contentDescription = "Image Overlay",
+                                            modifier = Modifier.widthIn(max = 200.dp).heightIn(max = 200.dp),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                                        )
+                                    }
+                                }
+                            }
 
                             // Play/pause tap overlay
                             Box(
@@ -636,9 +721,6 @@ private fun VideoEditorScreenContent(
                                 )
                             }
 
-                            val overlays by viewModel.overlays.collectAsStateWithLifecycle()
-                            val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
-
                             VideoTimelineView(
                                 clips = clips,
                                 mergedClips = mergedClips,
@@ -662,6 +744,53 @@ private fun VideoEditorScreenContent(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        val selectedOverlay = overlays.find { it.id == selectedOverlayId }
+                        if (selectedOverlay != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = { 
+                                        viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(
+                                            selectedOverlay.copy(startTimeMs = 0L, endTimeMs = Long.MAX_VALUE)
+                                        ))
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Text("Full Video", color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                
+                                IconButton(
+                                    onClick = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(selectedOverlay.id, bringToFront = false)) }
+                                ) {
+                                    Icon(Icons.Outlined.ArrowDownward, contentDescription = "Send to Back", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                
+                                IconButton(
+                                    onClick = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(selectedOverlay.id, bringToFront = true)) }
+                                ) {
+                                    Icon(Icons.Outlined.ArrowUpward, contentDescription = "Bring to Front", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                                
+                                Button(
+                                    onClick = { 
+                                        viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlay.id))
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                                ) {
+                                    Icon(Icons.Outlined.Delete, contentDescription = "Delete Overlay", tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         // New toolbar
                         VideoEditorToolbar(
                             canUndo = canUndo,
@@ -679,6 +808,9 @@ private fun VideoEditorScreenContent(
                                     viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
                                     selectedClipId = null
                                 }
+                            },
+                            onAddImage = {
+                                imagePickerLauncher.launch("image/*")
                             },
                             onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
                             onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) }
@@ -750,6 +882,7 @@ private fun VideoEditorToolbar(
     onSplit: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
+    onAddImage: () -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit
 ) {
@@ -780,6 +913,11 @@ private fun VideoEditorToolbar(
 
         // Group 2: Clip tools
         Row {
+            LabeledIconButton(
+                icon = Icons.Outlined.Image,
+                label = "+ Image",
+                onClick = onAddImage
+            )
             LabeledIconButton(
                 icon = Icons.Outlined.ContentCut,
                 label = "Split",

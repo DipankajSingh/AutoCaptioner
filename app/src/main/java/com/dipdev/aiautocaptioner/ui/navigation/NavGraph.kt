@@ -143,12 +143,12 @@ fun NavGraph(
                 forceModelPicker = forceModelPicker,
                 onNavigateToStyleEditor = {
                     navController.navigate(Screen.StyleEditor.createRoute(projectId, fromProcessing = true)) {
-                        popUpTo(Screen.Processing.route) { inclusive = true }
+                        popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
                 onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId)) {
-                        popUpTo(Screen.Processing.route) { inclusive = true }
+                        popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
                 onNavigateToVideoEditor = {
@@ -174,9 +174,7 @@ fun NavGraph(
                     }
                 },
                 onNavigateToProcessing = { pid ->
-                    navController.navigate(Screen.Processing.createRoute(pid)) {
-                        popUpTo(Screen.CaptionEditor.route) { inclusive = true }
-                    }
+                    navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true))
                 }
             )
         }
@@ -204,9 +202,7 @@ fun NavGraph(
                     navController.navigate(Screen.Export.createRoute(projectId))
                 },
                 onNavigateToProcessing = {
-                    navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true)) {
-                        popUpTo(Screen.StyleEditor.route) { inclusive = true }
-                    }
+                    navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true))
                 }
             )
         }

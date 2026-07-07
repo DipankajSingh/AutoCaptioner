@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false,
     autoMigrations = []
 )
@@ -158,6 +158,13 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_image_overlays_projectId` ON `image_overlays` (`projectId`)")
+            }
+        }
+
+        /** Add zOrder to image_overlays */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE image_overlays ADD COLUMN zOrder INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -20,9 +20,9 @@ interface ImageOverlayDao {
     @Query("DELETE FROM image_overlays WHERE id = :id")
     suspend fun deleteById(id: String)
 
-    @Query("SELECT * FROM image_overlays WHERE projectId = :projectId ORDER BY createdAt ASC")
+    @Query("SELECT * FROM image_overlays WHERE projectId = :projectId ORDER BY zOrder ASC")
     fun getOverlaysForProject(projectId: String): Flow<List<ImageOverlayEntity>>
 
-    @Query("SELECT * FROM image_overlays WHERE projectId = :projectId ORDER BY createdAt ASC")
+    @Query("SELECT * FROM image_overlays WHERE projectId = :projectId ORDER BY zOrder ASC")
     suspend fun getOverlaysForProjectOnce(projectId: String): List<ImageOverlayEntity>
 }

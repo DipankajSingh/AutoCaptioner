@@ -29,5 +29,6 @@ data class ImageOverlayEntity(
     val scaleY: Float = 1f,
     val startTimeMs: Long = 0L,
     val endTimeMs: Long = Long.MAX_VALUE,
+    val zOrder: Int = 0,
     val createdAt: Long
 )

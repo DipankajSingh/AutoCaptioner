@@ -58,6 +58,7 @@ class TranscriptionManager @Inject constructor(
     private var activeJob: Job? = null
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L
+    private var activeProjectId: String? = null
 
     private fun updateNotification(text: String?) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
@@ -83,6 +84,7 @@ class TranscriptionManager @Inject constructor(
 
     fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean) {
         if (activeJob?.isActive == true) return
+        activeProjectId = projectId
         isCancelled = false
         _streamedSegments.value = emptyList()
         _step.value = ProcessingStep.Idle
@@ -256,6 +258,11 @@ class TranscriptionManager @Inject constructor(
         managerScope.launch(Dispatchers.IO) {
             whisperEngine.release()
             updateNotification(null)
+            activeProjectId?.let { pid ->
+                val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
+                val status = if (hasCaptions) ProjectStatus.TRANSCRIBED else ProjectStatus.IMPORTED
+                projectRepository.updateStatus(pid, status)
+            }
             _step.value = ProcessingStep.Cancelled
         }
     }

@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.cancel
 
 class FacelessVideoRecorder {
 
@@ -137,6 +138,8 @@ class FacelessVideoRecorder {
 
             releaseResources()
             outputFile?.let { onCompleteCallback?.invoke(it) }
+            
+            scope.cancel() // Cancel the scope
         }
     }
 

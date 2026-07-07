@@ -131,6 +131,10 @@ class ExportHistoryViewModel @Inject constructor(
                 // ISO-8859-1 on some devices/vendors, which corrupts Arabic,
                 // CJK, Devanagari, and other non-Latin scripts.
                 srtFile.writeText(srtContent, Charsets.UTF_8)
+                
+                // Save it back to the database so it isn't orphaned
+                exportedFileDao.insertExportedFile(export.copy(srtFilePath = srtFile.absolutePath))
+                
                 srtFile
             }
         }

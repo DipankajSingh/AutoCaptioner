@@ -279,4 +279,9 @@ class SmartRecorderViewModel @Inject constructor(
         timerJob?.cancel()
         timerJob = null
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopFacelessRecording()
+    }
 }
