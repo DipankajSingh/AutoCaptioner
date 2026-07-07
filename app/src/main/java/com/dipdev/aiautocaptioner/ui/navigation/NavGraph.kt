@@ -240,7 +240,13 @@ fun NavGraph(
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCaptionEditor = {
+                    navController.navigate(Screen.CaptionEditor.createRoute(projectId))
+                },
+                onNavigateToExport = {
+                    navController.navigate(Screen.Export.createRoute(projectId))
+                }
             )
         }
 

@@ -59,6 +59,8 @@ import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import androidx.compose.runtime.withFrameMillis
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -68,7 +70,6 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun VideoTimelineView(
     clips: List<Clip>,
-    mergedClips: List<Clip>,
     clipThumbnails: Map<String, List<Bitmap>>,
     selectedClipId: String?,
     onClipSelected: (String) -> Unit,
@@ -77,9 +78,11 @@ fun VideoTimelineView(
     selectedOverlayId: String? = null,
     onOverlaySelected: (String) -> Unit = {},
     onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
+    onCaptionTap: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
+    currentTimelineMs: Long,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -143,7 +146,7 @@ fun VideoTimelineView(
                 }
                 if (scrolled) {
                     checkSwaps()
-                    delay(16)
+                    kotlinx.coroutines.delay(16)
                 } else {
                     break
                 }
@@ -151,21 +154,11 @@ fun VideoTimelineView(
         }
     }
 
-    // Sync playhead with video playback
-    LaunchedEffect(player, isDragging, pixelsPerMs, mergedClips) {
-        while (isActive) {
-            if (!isDragging && player.isPlaying) {
-                val windowIndex = player.currentMediaItemIndex
-                val posInWindow = player.currentPosition
-                var accumulated = 0L
-                for (i in 0 until windowIndex.coerceAtMost(mergedClips.size)) {
-                    accumulated += (mergedClips[i].endTrimMs - mergedClips[i].startTrimMs)
-                }
-                val currentPosMs = accumulated + posInWindow
-                val scrollOffset = (currentPosMs * pixelsPerMs).toInt()
-                scrollState.scrollTo(scrollOffset)
-            }
-            delay(16.milliseconds) // ~60fps
+    // Sync playhead with video playback using state
+    LaunchedEffect(currentTimelineMs, isDragging, pixelsPerMs) {
+        if (!isDragging && player.isPlaying) {
+            val scrollOffset = (currentTimelineMs * pixelsPerMs).toInt()
+            scrollState.scrollTo(scrollOffset)
         }
     }
 
@@ -277,7 +270,8 @@ fun VideoTimelineView(
                     }
                 }
                 
-                // Clips Row
+                // Track 1: Video
+                Text("Video", fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp))
                 if (clips.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
@@ -430,11 +424,13 @@ fun VideoTimelineView(
                     .background(outlineColor.copy(alpha = 0.5f))
             )
 
-            // Overlays Row
+            // Track 2: Caption
+            Text("Caption", fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp))
             Box(
                 modifier = Modifier
-                    .height(50.dp)
+                    .height(40.dp)
                     .width(totalWidthDp)
+                    .background(Color.DarkGray.copy(alpha = 0.1f))
             ) {
                 overlays.forEach { overlay ->
                     val currentOverlay by rememberUpdatedState(overlay)
@@ -516,7 +512,10 @@ fun VideoTimelineView(
                                         }
                                     )
                                 }
-                                .clickable { onOverlaySelected(currentOverlay.id) }
+                                .clickable { 
+                                    onOverlaySelected(currentOverlay.id)
+                                    onCaptionTap()
+                                }
                         ) {
                             if (isSelectedOverlay) {
                                 Box(modifier = Modifier.align(Alignment.CenterStart).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
@@ -525,7 +524,22 @@ fun VideoTimelineView(
                         }
                     }
                 }
-            } // end Overlays Row
+            } // end Caption Track
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Track 3: Audio
+            Text("Audio", fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp))
+            Box(
+                modifier = Modifier
+                    .height(40.dp)
+                    .width(totalWidthDp)
+                    .background(Color.DarkGray.copy(alpha = 0.1f))
+            ) {
+                // Audio waveforms will go here in the future
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            
     } // end Column
 
     // End Padding

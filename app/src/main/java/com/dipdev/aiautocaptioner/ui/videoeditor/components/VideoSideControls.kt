@@ -1,0 +1,89 @@
+package com.dipdev.aiautocaptioner.ui.videoeditor.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun VideoSideControls(
+    canUndo: Boolean,
+    canRedo: Boolean,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onAddImage: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Undo Button
+        SideControlButton(
+            icon = Icons.AutoMirrored.Outlined.Undo,
+            contentDescription = "Undo",
+            onClick = onUndo,
+            enabled = canUndo
+        )
+
+        // Redo Button
+        SideControlButton(
+            icon = Icons.AutoMirrored.Outlined.Redo,
+            contentDescription = "Redo",
+            onClick = onRedo,
+            enabled = canRedo
+        )
+
+        // Add Image Button
+        SideControlButton(
+            icon = Icons.Outlined.Image,
+            contentDescription = "Add Image",
+            onClick = onAddImage,
+            enabled = true
+        )
+    }
+}
+
+@Composable
+fun SideControlButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    tint: androidx.compose.ui.graphics.Color? = null,
+    containerColor: androidx.compose.ui.graphics.Color? = null
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(containerColor ?: MaterialTheme.colorScheme.surface.copy(alpha = 0.75f))
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint ?: if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}

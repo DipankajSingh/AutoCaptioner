@@ -21,6 +21,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -245,17 +246,26 @@ fun SmartRecorderContent(
         if (recordingState == RecordingState.RECORDING) {
             val minutes = elapsedSeconds / 60
             val seconds = elapsedSeconds % 60
-            Surface(
-                color = AccentRose.copy(alpha = 0.8f),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text(
-                    text = String.format("%02d:%02d", minutes, seconds),
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(AccentRose))
+                    Text(
+                        text = String.format("%02d:%02d", minutes, seconds),
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    )
+                }
             }
         }
 

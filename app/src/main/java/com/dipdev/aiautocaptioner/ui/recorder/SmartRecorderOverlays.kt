@@ -24,6 +24,9 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import kotlin.random.Random
+import androidx.compose.foundation.border
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun GridOverlay() {
@@ -46,25 +49,44 @@ fun TeleprompterOverlay(
     onTextChanged: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = Color.Black.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(16.dp),
+    Box(
         modifier = modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.Black.copy(alpha = 0.45f))
+            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+            .padding(16.dp)
     ) {
         TextField(
             value = text,
             onValueChange = onTextChanged,
-            placeholder = { Text("Paste your script here...", color = Color.White.copy(alpha = 0.5f)) },
+            placeholder = { 
+                Text(
+                    "Paste your script here...", 
+                    color = Color.White.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) 
+            },
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
                 focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
+                unfocusedTextColor = Color.White.copy(alpha = 0.95f),
                 cursorColor = AccentCyan,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp),
+            textStyle = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = 28.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 40.sp,
+                textAlign = TextAlign.Center,
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = Color.Black.copy(alpha = 0.8f),
+                    offset = Offset(2f, 2f),
+                    blurRadius = 4f
+                )
+            ),
             modifier = Modifier.fillMaxSize()
         )
     }

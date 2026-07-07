@@ -51,6 +51,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -94,16 +96,44 @@ import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
-import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.AudioToolbar
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.CompactTabItem
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.MiniScrubber
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.OverlayActionMenu
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.PlayPauseTapOverlay
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.TimerPill
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.VideoEditorToolbar
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.VideoOverlayRenderer
+import com.dipdev.aiautocaptioner.ui.videoeditor.components.VideoSideControls
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
+import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorViewModel
+import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorUiEvent
+import com.dipdev.aiautocaptioner.ui.styleeditor.StyleTab
+import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorBottomBar
+import com.dipdev.aiautocaptioner.ui.styleeditor.PresetsTab
+import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.TextTab
+import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.ColorTab
+import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.AnimationTab
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
+
+enum class EditorMode {
+    VIDEO, CAPTIONS, AUDIO
+}
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,14 +142,20 @@ fun VideoEditorScreen(
     projectId: String,
     onNavigateToProcessing: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: VideoEditorViewModel = hiltViewModel()
+    onNavigateToCaptionEditor: () -> Unit = {},
+    onNavigateToExport: () -> Unit = {},
+    viewModel: VideoEditorViewModel = hiltViewModel(),
+    styleViewModel: StyleEditorViewModel = hiltViewModel()
 ) {
     ScreenThemeProvider(accentColor = AccentCyan) {
         VideoEditorScreenContent(
             projectId = projectId,
             onNavigateToProcessing = onNavigateToProcessing,
             onNavigateBack = onNavigateBack,
-            viewModel = viewModel
+            onNavigateToCaptionEditor = onNavigateToCaptionEditor,
+            onNavigateToExport = onNavigateToExport,
+            viewModel = viewModel,
+            styleViewModel = styleViewModel
         )
     }
 }
@@ -131,7 +167,10 @@ private fun VideoEditorScreenContent(
     projectId: String,
     onNavigateToProcessing: () -> Unit,
     onNavigateBack: () -> Unit,
-    viewModel: VideoEditorViewModel
+    onNavigateToCaptionEditor: () -> Unit,
+    onNavigateToExport: () -> Unit,
+    viewModel: VideoEditorViewModel,
+    styleViewModel: StyleEditorViewModel
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val step = uiState.step
@@ -149,9 +188,18 @@ private fun VideoEditorScreenContent(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedClipId by remember { mutableStateOf<String?>(null) }
     var zoomLevel by remember { mutableFloatStateOf(1f) }
-    var timelineHeight by remember { mutableStateOf(180.dp) }
+    var timelineHeight by remember { mutableStateOf(240.dp) }
     val density = androidx.compose.ui.platform.LocalDensity.current
 
+    val styleUiState by styleViewModel.uiState.collectAsStateWithLifecycle()
+    val styles = styleUiState.styles
+    val activeStyle = styleUiState.activeStyle
+    val selectedTab = styleUiState.selectedTab
+    val isPremium = styleUiState.isPremium
+    
+    var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
+    var showMenu by remember { mutableStateOf(false) }
+    
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -182,6 +230,7 @@ private fun VideoEditorScreenContent(
 
     LaunchedEffect(projectId) {
         viewModel.setEvent(VideoEditorUiEvent.LoadProject(projectId))
+        styleViewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
     }
 
     LaunchedEffect(uiState) {
@@ -193,13 +242,12 @@ private fun VideoEditorScreenContent(
     // Keep track of dragging state to prevent video stutter during drag
     var isDragging by remember { mutableStateOf(false) }
 
-    // Track play/pause state polled at ~60fps
-    var isPlaying by remember { mutableStateOf(false) }
+    // Use ViewModel state for playback
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val currentTimelineMs by viewModel.currentTimelineMs.collectAsStateWithLifecycle()
+
     LaunchedEffect(player) {
-        while (isActive) {
-            isPlaying = player.isPlaying
-            delay(16.milliseconds)
-        }
+        viewModel.bindPlayer(player)
     }
 
     // Show/hide play-pause overlay icon
@@ -269,72 +317,45 @@ private fun VideoEditorScreenContent(
     }
 
     Scaffold(
-        topBar = {
-            // Custom top bar
+        bottomBar = {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
                 color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 4.dp,
-                tonalElevation = 0.dp
+                shadowElevation = 8.dp
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left: Close
-                    IconButton(onClick = {
-                        if (hasEdits) showBackDialog = true else onNavigateBack()
-                    }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Close,
-                            contentDescription = "Close"
-                        )
-                    }
-
-                    // Center: Title
-                    Text(
-                        text = "Video Editor",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                    CompactTabItem(
+                        icon = Icons.Outlined.Movie,
+                        label = "Video",
+                        selected = currentMode == EditorMode.VIDEO,
+                        onClick = { currentMode = EditorMode.VIDEO }
                     )
-
-                    // Right: Trash + Generate pill
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = {
-                            if (hasEdits) showDeleteDialog = true
-                            else viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
-                        }) {
-                            Icon(
-                                imageVector = Icons.Outlined.Delete,
-                                contentDescription = "Delete Project"
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Button(
-                            onClick = {
-                                if (hasEdits) viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
-                                else onNavigateToProcessing()
-                            },
-                            shape = RoundedCornerShape(50),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                            modifier = Modifier.padding(end = 4.dp).height(32.dp)
-                        ) {
-                            Text("Captions", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
+                    CompactTabItem(
+                        icon = Icons.Outlined.Subtitles,
+                        label = "Captions",
+                        selected = currentMode == EditorMode.CAPTIONS,
+                        onClick = { currentMode = EditorMode.CAPTIONS }
+                    )
+                    CompactTabItem(
+                        icon = Icons.Outlined.MusicNote,
+                        label = "Audio",
+                        selected = currentMode == EditorMode.AUDIO,
+                        onClick = { currentMode = EditorMode.AUDIO }
+                    )
                 }
             }
         }
     ) { paddingValues ->
-        Box(
+        androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            val maxTimelineHeight = maxHeight * 0.5f
             when (val state = step) {
                 is VideoEditorUiStep.Idle, is VideoEditorUiStep.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -376,9 +397,8 @@ private fun VideoEditorScreenContent(
                 }
                 is VideoEditorUiStep.Ready -> {
                     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
-                    var currentTimelineMs by remember { mutableLongStateOf(0L) }
 
-                    // Recompute mergedClips locally for the timer
+                    // Recompute mergedClips locally for the ExoPlayer playlist
                     val mergedClips = remember(clips) {
                         val list = mutableListOf<com.dipdev.aiautocaptioner.data.model.Clip>()
                         var current: com.dipdev.aiautocaptioner.data.model.Clip? = null
@@ -396,20 +416,6 @@ private fun VideoEditorScreenContent(
                         }
                         if (current != null) list.add(current)
                         list
-                    }
-
-                    // Sync timeline timer
-                    LaunchedEffect(player, mergedClips) {
-                        while (isActive) {
-                            val windowIndex = player.currentMediaItemIndex
-                            val posInWindow = player.currentPosition
-                            var accumulated = 0L
-                            for (i in 0 until windowIndex.coerceAtMost(mergedClips.size)) {
-                                accumulated += (mergedClips[i].endTrimMs - mergedClips[i].startTrimMs)
-                            }
-                            currentTimelineMs = accumulated + posInWindow
-                            kotlinx.coroutines.delay(16.milliseconds)
-                        }
                     }
 
                     Column(
@@ -431,130 +437,93 @@ private fun VideoEditorScreenContent(
                             )
 
                             // Image Overlays Rendering
-                            
-                            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                                val canvasWidth = constraints.maxWidth.toFloat()
-                                val canvasHeight = constraints.maxHeight.toFloat()
-                                
-                                overlays.filter { currentTimelineMs in it.startTimeMs..it.endTimeMs }.forEach { overlay ->
-                                    val isSelected = overlay.id == selectedOverlayId
-                                    
-                                    var localScale by remember(overlay.id) { mutableFloatStateOf(overlay.scaleX) }
-                                    var localPosX by remember(overlay.id) { mutableFloatStateOf(overlay.positionX) }
-                                    var localPosY by remember(overlay.id) { mutableFloatStateOf(overlay.positionY) }
-                                    var lastTransformTime by remember(overlay.id) { androidx.compose.runtime.mutableLongStateOf(0L) }
-                                    
-                                    LaunchedEffect(overlay.scaleX, overlay.positionX, overlay.positionY) {
-                                        if (System.currentTimeMillis() - lastTransformTime > 500) {
-                                            localScale = overlay.scaleX
-                                            localPosX = overlay.positionX
-                                            localPosY = overlay.positionY
-                                        }
-                                    }
-                                    
-                                    LaunchedEffect(lastTransformTime) {
-                                        if (lastTransformTime > 0) {
-                                            kotlinx.coroutines.delay(300)
-                                            viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(
-                                                overlay.copy(
-                                                    scaleX = localScale,
-                                                    scaleY = localScale,
-                                                    positionX = localPosX,
-                                                    positionY = localPosY
-                                                )
-                                            ))
-                                        }
-                                    }
-                                    
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.Center)
-                                            .graphicsLayer {
-                                                translationX = (localPosX - 0.5f) * canvasWidth
-                                                translationY = (localPosY - 0.5f) * canvasHeight
-                                                scaleX = localScale
-                                                scaleY = localScale
-                                            }
-                                            .border(
-                                                width = if (isSelected) 2.dp else 0.dp,
-                                                color = if (isSelected) AccentCyan else Color.Transparent
-                                            )
-                                            .pointerInput(overlay.id) {
-                                                detectTransformGestures { _, pan, zoom, _ ->
-                                                    localScale *= zoom
-                                                    localPosX += (pan.x / canvasWidth)
-                                                    localPosY += (pan.y / canvasHeight)
-                                                    lastTransformTime = System.currentTimeMillis()
-                                                }
-                                            }
-                                            .pointerInput(overlay.id + "_tap") {
-                                                detectTapGestures {
-                                                    viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(overlay.id))
-                                                }
-                                            }
-                                    ) {
-                                        AsyncImage(
-                                            model = overlay.imageUri,
-                                            contentDescription = "Image Overlay",
-                                            modifier = Modifier.widthIn(max = 200.dp).heightIn(max = 200.dp),
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                                        )
-                                    }
-                                }
-                            }
+                            VideoOverlayRenderer(
+                                overlays = overlays,
+                                currentTimelineMs = currentTimelineMs,
+                                selectedOverlayId = selectedOverlayId,
+                                onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
+                                onSelectOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) }
+                            )
 
                             // Play/pause tap overlay
-                            Box(
+                            PlayPauseTapOverlay(player = player)
+                            
+                            // Left controls (Close, Menu, Generate Captions)
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable(
-                                        indication = null,
-                                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                    ) {
-                                        if (player.isPlaying) player.pause() else player.play()
-                                        showPlayPauseIcon = true
-                                    },
-                                contentAlignment = Alignment.Center
+                                    .align(Alignment.TopStart)
+                                    .padding(top = 16.dp, start = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                // Auto-hide the play/pause icon after 1.5s
-                                LaunchedEffect(showPlayPauseIcon) {
-                                    if (showPlayPauseIcon) {
-                                        delay(1500)
-                                        showPlayPauseIcon = false
-                                    }
-                                }
-                                val iconAlpha by androidx.compose.animation.core.animateFloatAsState(
-                                    targetValue = if (showPlayPauseIcon) 1f else 0f,
-                                    animationSpec = androidx.compose.animation.core.tween(200),
-                                    label = "playPauseAlpha"
+                                com.dipdev.aiautocaptioner.ui.videoeditor.components.SideControlButton(
+                                    icon = Icons.Outlined.Close,
+                                    contentDescription = "Exit Editor",
+                                    onClick = {
+                                        if (hasEdits) showBackDialog = true else onNavigateBack()
+                                    },
+                                    enabled = true,
+                                    tint = Color.Red,
+                                    containerColor = Color.Red.copy(alpha = 0.15f)
                                 )
-                                if (iconAlpha > 0f) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .background(
-                                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f * iconAlpha),
-                                                shape = CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
+                                
+                                Box {
+                                    com.dipdev.aiautocaptioner.ui.videoeditor.components.SideControlButton(
+                                        icon = Icons.Default.Menu,
+                                        contentDescription = "Menu",
+                                        onClick = { showMenu = true },
+                                        enabled = true
+                                    )
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false }
                                     ) {
-                                        Icon(
-                                            imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
-                                            contentDescription = if (isPlaying) "Pause" else "Play",
-                                            tint = AccentAmber.copy(alpha = iconAlpha),
-                                            modifier = Modifier.size(32.dp)
+                                        DropdownMenuItem(
+                                            text = { Text("Export") },
+                                            onClick = {
+                                                showMenu = false
+                                                onNavigateToExport()
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Delete Project") },
+                                            onClick = {
+                                                showMenu = false
+                                                if (hasEdits) showDeleteDialog = true
+                                                else viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
+                                            }
                                         )
                                     }
                                 }
-                            }
 
-                            // Floating collapsible language panel (bottom-right of video)
+                                com.dipdev.aiautocaptioner.ui.videoeditor.components.SideControlButton(
+                                    icon = Icons.Outlined.Subtitles,
+                                    contentDescription = "Generate Captions",
+                                    onClick = {
+                                        if (hasEdits) viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
+                                        else onNavigateToProcessing()
+                                    },
+                                    enabled = true
+                                )
+                            }
+                            
+                            // Right controls (Undo, Redo, Add Image, Language)
                             var langPanelExpanded by remember { mutableStateOf(false) }
-                            Box(
+                            Column(
                                 modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(12.dp)
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 16.dp, end = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                VideoSideControls(
+                                    canUndo = canUndo,
+                                    canRedo = canRedo,
+                                    onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
+                                    onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
+                                    onAddImage = { imagePickerLauncher.launch("image/*") }
+                                )
+                                
                                 androidx.compose.animation.AnimatedContent(
                                     targetState = langPanelExpanded,
                                     label = "langPanel"
@@ -634,59 +603,21 @@ private fun VideoEditorScreenContent(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Timer Pill
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "${formatTime(currentTimelineMs)} / ${formatTime(totalEditedMs)}",
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
+                        TimerPill(
+                            currentTimelineMs = currentTimelineMs,
+                            totalEditedMs = totalEditedMs,
+                            formatTime = ::formatTime
+                        )
 
                         Spacer(modifier = Modifier.height(4.dp))
 
                         // Mini scrubber
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(32.dp)
-                                .padding(horizontal = 16.dp)
-                        ) {
-                            val scrubFraction = if (totalEditedMs > 0L) {
-                                (currentTimelineMs.toFloat() / totalEditedMs.toFloat()).coerceIn(0f, 1f)
-                            } else 0f
-
-                            Slider(
-                                value = scrubFraction,
-                                onValueChange = { fraction ->
-                                    val seekMs = (fraction * totalEditedMs).toLong()
-                                    // Seek player to the appropriate clip/position
-                                    var accumulated = 0L
-                                    var targetWindowIndex = 0
-                                    var targetPosInWindow = 0L
-                                    for (i in clips.indices) {
-                                        val clipDuration = clips[i].endTrimMs - clips[i].startTrimMs
-                                        if (seekMs >= accumulated && seekMs < accumulated + clipDuration) {
-                                            targetWindowIndex = i
-                                            targetPosInWindow = seekMs - accumulated
-                                            break
-                                        }
-                                        accumulated += clipDuration
-                                        targetWindowIndex = i
-                                        targetPosInWindow = clips[i].endTrimMs - clips[i].startTrimMs
-                                    }
-                                    player.seekTo(targetWindowIndex, targetPosInWindow)
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = AccentAmber,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                                    inactiveTrackColor = AccentAmber.copy(alpha = 0.3f)
-                                )
-                            )
-                        }
+                        MiniScrubber(
+                            currentTimelineMs = currentTimelineMs,
+                            totalEditedMs = totalEditedMs,
+                            clips = clips,
+                            player = player
+                        )
 
                         // Horizontal Separator
                         HorizontalDivider(
@@ -697,126 +628,190 @@ private fun VideoEditorScreenContent(
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
 
+                        // Unified Resizable Bottom Area
                         Box(modifier = Modifier.fillMaxWidth().height(timelineHeight)) {
-                            // Drag handle at top
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(24.dp)
-                                    .align(Alignment.TopCenter)
-                                    .pointerInput(Unit) {
-                                        detectVerticalDragGestures { _, dragAmount ->
-                                            val dragAmountDp = with(density) { dragAmount.toDp() }
-                                            timelineHeight = (timelineHeight - dragAmountDp).coerceIn(100.dp, 400.dp)
-                                        }
-                                    },
-                                contentAlignment = Alignment.TopCenter
-                            ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
+                                // Unified Drag handle at top
                                 Box(
                                     modifier = Modifier
-                                        .padding(top = 8.dp)
-                                        .width(40.dp)
-                                        .height(4.dp)
-                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
-                                )
+                                        .fillMaxWidth()
+                                        .height(24.dp)
+                                        .pointerInput(Unit) {
+                                            detectVerticalDragGestures { _, dragAmount ->
+                                                val dragAmountDp = with(density) { dragAmount.toDp() }
+                                                timelineHeight = (timelineHeight - dragAmountDp).coerceIn(200.dp, maxTimelineHeight)
+                                            }
+                                        },
+                                    contentAlignment = Alignment.TopCenter
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(top = 8.dp)
+                                            .width(40.dp)
+                                            .height(4.dp)
+                                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                                    )
+                                }
+
+                                if (currentMode != EditorMode.CAPTIONS) {
+                                    // Timeline takes remaining space
+                                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                                        VideoTimelineView(
+                                            clips = clips,
+                                            clipThumbnails = clipThumbnails,
+                                            selectedClipId = selectedClipId,
+                                            onClipSelected = { 
+                                                selectedClipId = it
+                                                currentMode = EditorMode.VIDEO 
+                                            },
+                                            onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
+                                            overlays = overlays,
+                                            selectedOverlayId = selectedOverlayId,
+                                            onOverlaySelected = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
+                                            onOverlayTimingChanged = { id, startMs, endMs ->
+                                                val overlay = overlays.find { it.id == id } ?: return@VideoTimelineView
+                                                viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(overlay.copy(startTimeMs = startMs, endTimeMs = endMs)))
+                                            },
+                                            onCaptionTap = { currentMode = EditorMode.CAPTIONS },
+                                            onDragStateChange = { isDragging = it },
+                                            zoomLevel = zoomLevel,
+                                            player = player,
+                                            currentTimelineMs = currentTimelineMs,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    val selectedOverlay = overlays.find { it.id == selectedOverlayId }
+                                    if (selectedOverlay != null) {
+                                        OverlayActionMenu(
+                                            selectedOverlay = selectedOverlay,
+                                            onFullVideo = {
+                                                viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(
+                                                    selectedOverlay.copy(startTimeMs = 0L, endTimeMs = Long.MAX_VALUE)
+                                                ))
+                                            },
+                                            onSendToBack = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(selectedOverlay.id, bringToFront = false)) },
+                                            onBringToFront = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(selectedOverlay.id, bringToFront = true)) },
+                                            onDelete = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlay.id)) }
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+
+                                    // Restored toolbar but much more compact
+                                    when (currentMode) {
+                                        EditorMode.VIDEO -> {
+                                            VideoEditorToolbar(
+                                                selectedClipId = selectedClipId,
+                                                zoomLevel = zoomLevel,
+                                                onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(currentTimelineMs)) },
+                                                onDuplicate = {
+                                                    selectedClipId?.let { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) }
+                                                },
+                                                onDelete = {
+                                                    selectedClipId?.let {
+                                                        viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
+                                                        selectedClipId = null
+                                                    }
+                                                },
+                                                onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
+                                                onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) }
+                                            )
+                                        }
+                                        EditorMode.AUDIO -> {
+                                            AudioToolbar()
+                                        }
+                                        else -> {}
+                                    }
+
+                                } else {
+                                    // Styling Tabs Area
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth().weight(1f),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shadowElevation = 16.dp
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text("Style Editor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                                            }
+                                            
+                                            StyleEditorBottomBar(
+                                                selectedTab = selectedTab,
+                                                isPremium = isPremium,
+                                                onTabSelected = { tab ->
+                                                    styleViewModel.setEvent(StyleEditorUiEvent.SelectTab(tab))
+                                                }
+                                            )
+                                            
+                                            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                                                activeStyle?.let { style ->
+                                                    when (selectedTab) {
+                                                        StyleTab.PRESETS -> {
+                                                            PresetsTab(
+                                                                styles = styles,
+                                                                activeStyle = style,
+                                                                onPresetSelected = { styleViewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
+                                                                onPresetLongClicked = { },
+                                                                onAddPreset = { }
+                                                            )
+                                                        }
+                                                        StyleTab.TEXT -> {
+                                                            TextTab(
+                                                                style = style,
+                                                                onFontSizeChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateFontSize(it)) },
+                                                                onFontWeightChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateFontWeight(it)) },
+                                                                onMaxWordsChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateMaxWordsPerLine(it)) },
+                                                                onMaxLinesChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateMaxLines(it)) },
+                                                                onRemovePunctuationChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateRemovePunctuation(it)) },
+                                                                onAlignmentChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateAlignment(it)) },
+                                                                onLetterSpacingChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateLetterSpacing(it)) },
+                                                                onIsItalicChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateIsItalic(it)) }
+                                                            )
+                                                        }
+                                                        StyleTab.COLOR -> {
+                                                            ColorTab(
+                                                                style = style,
+                                                                onTextColorChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateTextColor(it)) },
+                                                                onHighlightColorChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateHighlightColor(it)) },
+                                                                onOutlineColorChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateOutlineColor(it)) },
+                                                                onOutlineWidthChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateOutlineWidth(it)) },
+                                                                onBackgroundTypeChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundType(it)) },
+                                                                onBackgroundColorChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundColor(it)) },
+                                                                onBackgroundOpacityChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundOpacity(it)) },
+                                                                onBackgroundPaddingHChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundPaddingH(it)) },
+                                                                onBackgroundPaddingVChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundPaddingV(it)) },
+                                                                onBackgroundCornerRadiusChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundCornerRadius(it)) }
+                                                            )
+                                                        }
+                                                        StyleTab.ANIMATION -> {
+                                                            AnimationTab(
+                                                                style = style,
+                                                                onDisplayModeChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateDisplayMode(it)) },
+                                                                onWordEnterChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateWordEnterAnimation(it)) },
+                                                                onKaraokeHighlightChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateKaraokeHighlightMode(it)) },
+                                                                onAnimationDurationChange = { styleViewModel.setEvent(StyleEditorUiEvent.UpdateAnimationDurationMs(it)) }
+                                                            )
+                                                        }
+                                                    }
+                                                } ?: run {
+                                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                        CircularProgressIndicator()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
-
-                            VideoTimelineView(
-                                clips = clips,
-                                mergedClips = mergedClips,
-                                clipThumbnails = clipThumbnails,
-                                selectedClipId = selectedClipId,
-                                onClipSelected = { selectedClipId = it },
-                                onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
-                                overlays = overlays,
-                                selectedOverlayId = selectedOverlayId,
-                                onOverlaySelected = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
-                                onOverlayTimingChanged = { id, startMs, endMs ->
-                                    val overlay = overlays.find { it.id == id } ?: return@VideoTimelineView
-                                    viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(overlay.copy(startTimeMs = startMs, endTimeMs = endMs)))
-                                },
-                                onDragStateChange = { isDragging = it },
-                                zoomLevel = zoomLevel,
-                                player = player,
-                                modifier = Modifier.fillMaxSize().padding(top = 24.dp)
-                            )
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        val selectedOverlay = overlays.find { it.id == selectedOverlayId }
-                        if (selectedOverlay != null) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Button(
-                                    onClick = { 
-                                        viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(
-                                            selectedOverlay.copy(startTimeMs = 0L, endTimeMs = Long.MAX_VALUE)
-                                        ))
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                    modifier = Modifier.padding(end = 8.dp)
-                                ) {
-                                    Text("Full Video", color = MaterialTheme.colorScheme.onSurface)
-                                }
-                                
-                                IconButton(
-                                    onClick = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(selectedOverlay.id, bringToFront = false)) }
-                                ) {
-                                    Icon(Icons.Outlined.ArrowDownward, contentDescription = "Send to Back", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                
-                                IconButton(
-                                    onClick = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(selectedOverlay.id, bringToFront = true)) }
-                                ) {
-                                    Icon(Icons.Outlined.ArrowUpward, contentDescription = "Bring to Front", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                                
-                                Button(
-                                    onClick = { 
-                                        viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlay.id))
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                                ) {
-                                    Icon(Icons.Outlined.Delete, contentDescription = "Delete Overlay", tint = MaterialTheme.colorScheme.onErrorContainer)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        // New toolbar
-                        VideoEditorToolbar(
-                            canUndo = canUndo,
-                            canRedo = canRedo,
-                            selectedClipId = selectedClipId,
-                            zoomLevel = zoomLevel,
-                            onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
-                            onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
-                            onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(currentTimelineMs)) },
-                            onDuplicate = {
-                                selectedClipId?.let { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) }
-                            },
-                            onDelete = {
-                                selectedClipId?.let {
-                                    viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
-                                    selectedClipId = null
-                                }
-                            },
-                            onAddImage = {
-                                imagePickerLauncher.launch("image/*")
-                            },
-                            onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
-                            onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) }
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
@@ -869,126 +864,6 @@ private fun VideoEditorScreenContent(
     }
 }
 
-// ── Toolbar ───────────────────────────────────────────────────────────────────
-
-@Composable
-private fun VideoEditorToolbar(
-    canUndo: Boolean,
-    canRedo: Boolean,
-    selectedClipId: String?,
-    zoomLevel: Float,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-    onSplit: () -> Unit,
-    onDuplicate: () -> Unit,
-    onDelete: () -> Unit,
-    onAddImage: () -> Unit,
-    onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit
-) {
-    val hasSelection = selectedClipId != null
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Group 1: Undo / Redo
-        Row {
-            LabeledIconButton(
-                icon = Icons.AutoMirrored.Outlined.Undo,
-                label = "Undo",
-                onClick = onUndo,
-                enabled = canUndo
-            )
-            LabeledIconButton(
-                icon = Icons.AutoMirrored.Outlined.Redo,
-                label = "Redo",
-                onClick = onRedo,
-                enabled = canRedo
-            )
-        }
-
-        // Group 2: Clip tools
-        Row {
-            LabeledIconButton(
-                icon = Icons.Outlined.Image,
-                label = "+ Image",
-                onClick = onAddImage
-            )
-            LabeledIconButton(
-                icon = Icons.Outlined.ContentCut,
-                label = "Split",
-                onClick = onSplit
-            )
-            LabeledIconButton(
-                icon = Icons.Outlined.ContentCopy,
-                label = "Duplicate",
-                onClick = onDuplicate,
-                enabled = hasSelection
-            )
-            LabeledIconButton(
-                icon = Icons.Outlined.Delete,
-                label = "Delete",
-                onClick = onDelete,
-                enabled = hasSelection,
-                tint = AccentRose
-            )
-        }
-
-        // Group 3: Zoom
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onZoomOut) {
-                Icon(
-                    Icons.Outlined.Remove,
-                    contentDescription = "Zoom Out",
-                    tint = LocalAccentColor.current
-                )
-            }
-            Text(
-                text = "${(zoomLevel * 100).toInt()}%",
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            IconButton(onClick = onZoomIn) {
-                Icon(
-                    Icons.Outlined.Add,
-                    contentDescription = "Zoom In",
-                    tint = LocalAccentColor.current
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LabeledIconButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    tint: Color = LocalAccentColor.current
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(onClick = onClick, enabled = enabled) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (enabled) tint else tint.copy(alpha = 0.38f)
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (enabled) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        )
-    }
-}
-
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
 private fun formatTime(ms: Long): String {
@@ -997,3 +872,4 @@ private fun formatTime(ms: Long): String {
     val millis = ms % 1000 / 10
     return String.format(Locale.getDefault(), "%02d:%02d.%02d", minutes, seconds, millis)
 }
+

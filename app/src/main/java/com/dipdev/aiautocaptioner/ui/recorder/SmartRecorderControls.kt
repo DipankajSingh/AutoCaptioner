@@ -27,6 +27,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.border
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun SidebarButton(
@@ -35,19 +42,30 @@ fun SidebarButton(
     isActive: Boolean = false,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "buttonScale"
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-            indication = null,
-            onClick = onClick
-        )
+        modifier = Modifier
+            .scale(scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (isActive) AccentCyan else Color.Black.copy(alpha = 0.4f)),
+                .background(if (isActive) AccentCyan else Color.White.copy(alpha = 0.1f))
+                .border(1.dp, Color.White.copy(alpha = if (isActive) 0.5f else 0.15f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -59,8 +77,9 @@ fun SidebarButton(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = text,
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall
+            color = Color.White.copy(alpha = 0.9f),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium
         )
     }
 }

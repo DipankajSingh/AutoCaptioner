@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import androidx.media3.common.Player
 import java.util.UUID
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
@@ -112,6 +116,104 @@ class VideoEditorViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying = _isPlaying.asStateFlow()
+
+    private val _currentTimelineMs = MutableStateFlow(0L)
+    val currentTimelineMs = _currentTimelineMs.asStateFlow()
+
+    private var progressJob: Job? = null
+    private var boundPlayer: Player? = null
+
+    fun bindPlayer(player: Player) {
+        if (boundPlayer == player) return
+        boundPlayer?.removeListener(playerListener)
+        boundPlayer = player
+        player.addListener(playerListener)
+        _isPlaying.value = player.isPlaying
+        if (player.isPlaying) {
+            startProgressSync()
+        } else {
+            updateProgress()
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        boundPlayer?.removeListener(playerListener)
+        boundPlayer = null
+        stopProgressSync()
+        transformer?.cancel()
+        transformer = null
+    }
+
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _isPlaying.value = isPlaying
+            if (isPlaying) {
+                startProgressSync()
+            } else {
+                stopProgressSync()
+                updateProgress()
+            }
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            updateProgress()
+        }
+    }
+
+    private fun startProgressSync() {
+        progressJob?.cancel()
+        progressJob = viewModelScope.launch {
+            while (isActive) {
+                updateProgress()
+                delay(16L) // TimeBar logic runs only when playing
+            }
+        }
+    }
+
+    private fun stopProgressSync() {
+        progressJob?.cancel()
+        progressJob = null
+    }
+
+    private fun updateProgress() {
+        val player = boundPlayer ?: return
+        val windowIndex = player.currentMediaItemIndex
+        val posInWindow = player.currentPosition
+        
+        var accumulated = 0L
+        val clips = currentState.clips
+        
+        // Compute merged clips dynamically to calculate absolute timeline ms
+        val mergedClips = mutableListOf<Clip>()
+        var current: Clip? = null
+        for (c in clips) {
+            if (current == null) {
+                current = c
+            } else {
+                if (current.endTrimMs == c.startTrimMs) {
+                    current = current.copy(endTrimMs = c.endTrimMs)
+                } else {
+                    mergedClips.add(current)
+                    current = c
+                }
+            }
+        }
+        if (current != null) mergedClips.add(current)
+        
+        for (i in 0 until windowIndex.coerceAtMost(mergedClips.size)) {
+            accumulated += (mergedClips[i].endTrimMs - mergedClips[i].startTrimMs)
+        }
+        
+        _currentTimelineMs.value = accumulated + posInWindow
+    }
 
     private var transformer: Transformer? = null
     private var tempOutputFile: java.io.File? = null
@@ -558,8 +660,7 @@ class VideoEditorViewModel @Inject constructor(
     }
 
     @OptIn(UnstableApi::class)
-    override fun onCleared() {
-        super.onCleared()
+    fun cleanup() {
         transformer?.cancel()
         transformer = null
     }
