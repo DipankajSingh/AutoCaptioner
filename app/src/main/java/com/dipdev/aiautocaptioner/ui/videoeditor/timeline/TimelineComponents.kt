@@ -101,6 +101,7 @@ fun VideoClipItem(
     onClipSelected: (String) -> Unit,
     hasGapBefore: Boolean,
     onTrimClip: (String, Long, Long) -> Unit,
+    onScrollBy: (Float) -> Unit,
     pixelsPerMs: Float,
     totalEditedMs: Long
 ) {
@@ -123,8 +124,8 @@ fun VideoClipItem(
             .clip(RoundedCornerShape(4.dp))
             .background(surfaceVariantColor)
             .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) AccentAmber else outlineColor.copy(alpha = 0.5f),
+                width = 1.dp,
+                color = outlineColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(4.dp)
             )
             .pointerInput(clip.id, clipWidthPx) {
@@ -174,14 +175,17 @@ fun VideoClipItem(
             Box(modifier = Modifier.fillMaxSize().background(AccentAmber.copy(alpha = 0.1f)))
         }
 
-        // CapCut-style Trim Handles
+        // CapCut-style Trim Frame
         if (isSelected) {
-            // Left Trim Handle
+            // Top and Bottom borders
+            Box(modifier = Modifier.fillMaxSize().border(2.dp, Color.White, RoundedCornerShape(4.dp)))
+            
+            // Left Trim Handle Grip
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
-                    .width(16.dp)
+                    .width(20.dp)
                     .background(Color.White, RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp))
                     .pointerInput(clip.id + "_left") {
                         var accumulatedDeltaX = 0f
@@ -199,6 +203,7 @@ fun VideoClipItem(
                                     val newStart = (clip.startTrimMs + deltaMs).coerceIn(0L, clip.endTrimMs - 100L)
                                     if (newStart != clip.startTrimMs) {
                                         onTrimClip(clip.id, newStart, clip.endTrimMs)
+                                        onScrollBy(-dragAmount.x) // Scroll timeline to follow finger
                                     }
                                 }
                             },
@@ -211,12 +216,12 @@ fun VideoClipItem(
                 Box(modifier = Modifier.width(2.dp).height(12.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(1.dp)))
             }
             
-            // Right Trim Handle
+            // Right Trim Handle Grip
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .width(16.dp)
+                    .width(20.dp)
                     .background(Color.White, RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
                     .pointerInput(clip.id + "_right") {
                         var accumulatedDeltaX = 0f

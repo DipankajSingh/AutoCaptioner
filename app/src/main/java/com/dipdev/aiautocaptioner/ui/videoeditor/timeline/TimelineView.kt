@@ -1,4 +1,5 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.timeline
+import androidx.compose.foundation.gestures.scrollBy
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -237,6 +238,7 @@ fun TimelineView(
                                     onDraggingIndexChange = { draggingClipIndex = it },
                                     onClipSelected = onClipSelected,
                                     hasGapBefore = hasGapBefore,
+                                    onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } },
                                     onTrimClip = onTrimClip,
                                     pixelsPerMs = pixelsPerMs,
                                     totalEditedMs = totalEditedMs
