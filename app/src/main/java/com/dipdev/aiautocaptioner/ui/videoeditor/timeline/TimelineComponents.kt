@@ -11,9 +11,11 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -42,6 +44,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalDensity
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
@@ -102,7 +105,8 @@ fun VideoClipItem(
     scrollStateValue: Int,
     surfaceVariantColor: Color,
     outlineColor: Color,
-    thumbnails: List<Bitmap>?,
+    thumbnails: Map<Long, Bitmap>,
+    originalDurationMs: Long,
     onDragStateChange: (Boolean) -> Unit,
     onDragPointerStart: (Float) -> Unit,
     onDragPointerChange: (Float) -> Unit,
@@ -112,8 +116,12 @@ fun VideoClipItem(
     hasGapBefore: Boolean,
     onTrimClip: (String, Long, Long) -> Unit,
     onScrollBy: (Float) -> Unit,
-    pixelsPerMs: Float
+    pixelsPerMs: Float,
+    thumbnailIntervalMs: Long
 ) {
+    val density = LocalDensity.current
+    val updatedClip by rememberUpdatedState(clip)
+    
     Box(
         modifier = Modifier
             .width(clipWidthDp)
@@ -169,18 +177,39 @@ fun VideoClipItem(
                     vertical = if (isSelected) 2.dp else 2.dp
                 )
                 .clip(RoundedCornerShape(8.dp))
+                .background(Color.Black)
         ) {
-            if (!thumbnails.isNullOrEmpty()) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    thumbnails.forEach { bitmap ->
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "Thumbnail",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        )
+            if (thumbnails.isNotEmpty() && originalDurationMs > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth() // Respect inner padded width
+                ) {
+                    val paddingPx = with(density) { (if (isSelected) 16.dp else 14.dp).toPx() }
+                    
+                    val relevantThumbnails = thumbnails
+                        .filterKeys { it % thumbnailIntervalMs == 0L }
+                        .toSortedMap()
+                        
+                    relevantThumbnails.forEach { (timeMs, bitmap) ->
+                        // Offset by paddingPx so the thumbnail coordinates align with the outer unpadded clip bounds
+                        val localXPx = ((timeMs - clip.startTrimMs) * pixelsPerMs) - paddingPx
+                        val thumbWidthPx = thumbnailIntervalMs * pixelsPerMs
+                        
+                        // Only render if thumbnail is visible within the clip's trimmed bounds
+                        if (localXPx + thumbWidthPx > 0 && localXPx < clipWidthPx) {
+                            androidx.compose.runtime.key(timeMs) {
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = "Thumbnail",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .absoluteOffset { androidx.compose.ui.unit.IntOffset(localXPx.toInt(), 0) }
+                                        .width(with(density) { thumbWidthPx.toDp() })
+                                        .fillMaxHeight()
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -217,10 +246,10 @@ fun VideoClipItem(
                                 val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                                 if (deltaMs != 0L) {
                                     accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newStart = (currentStartMs + deltaMs).coerceIn(0L, clip.endTrimMs - 100L)
+                                    val newStart = (currentStartMs + deltaMs).coerceIn(0L, updatedClip.endTrimMs - 100L)
                                     if (newStart != currentStartMs) {
                                         currentStartMs = newStart
-                                        onTrimClip(clip.id, newStart, clip.endTrimMs)
+                                        onTrimClip(clip.id, newStart, updatedClip.endTrimMs)
                                         onScrollBy(-dragAmount.x) // Scroll timeline to follow finger
                                     }
                                 }
@@ -255,10 +284,11 @@ fun VideoClipItem(
                                 val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                                 if (deltaMs != 0L) {
                                     accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newEnd = maxOf(clip.startTrimMs + 100L, currentEndMs + deltaMs)
-                                    if (newEnd != currentEndMs) {
-                                        currentEndMs = newEnd
-                                        onTrimClip(clip.id, clip.startTrimMs, newEnd)
+                                    val newEnd = currentEndMs + deltaMs
+                                    val clampedEnd = newEnd.coerceIn(updatedClip.startTrimMs + 100L, originalDurationMs)
+                                    if (clampedEnd != currentEndMs) {
+                                        currentEndMs = clampedEnd
+                                        onTrimClip(clip.id, updatedClip.startTrimMs, clampedEnd)
                                     }
                                 }
                             },

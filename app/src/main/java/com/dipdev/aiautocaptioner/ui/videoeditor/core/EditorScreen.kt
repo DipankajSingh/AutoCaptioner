@@ -41,17 +41,18 @@ fun EditorScreen(
 ) {
     ScreenThemeProvider(accentColor = AccentCyan) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val thumbnails by viewModel.thumbnailManager.thumbnails.collectAsStateWithLifecycle()
         val overlays by viewModel.overlays.collectAsStateWithLifecycle()
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
         
         val step = uiState.step
-        val clips = uiState.clips
-        val hasEdits = uiState.hasEdits
-        val canUndo = uiState.canUndo
-        val canRedo = uiState.canRedo
-        val clipThumbnails = uiState.clipThumbnails
-        val selectedLanguage = uiState.selectedLanguage
-        val translateToEnglish = uiState.translateToEnglish
+        val clips by remember { derivedStateOf { uiState.clips } }
+        val hasEdits by remember { derivedStateOf { uiState.hasEdits } }
+        val canUndo by remember { derivedStateOf { uiState.canUndo } }
+        val canRedo by remember { derivedStateOf { uiState.canRedo } }
+        val originalDurationMs by remember { derivedStateOf { uiState.originalDurationMs } }
+        val selectedLanguage by remember { derivedStateOf { uiState.selectedLanguage } }
+        val translateToEnglish by remember { derivedStateOf { uiState.translateToEnglish } }
 
         var selectedClipId by remember { mutableStateOf<String?>(null) }
         var zoomLevel by remember { mutableStateOf(1f) }
@@ -211,7 +212,7 @@ fun EditorScreen(
                             MiniScrubber(
                                 currentTimelineMs = { editorState.currentTimelineMs },
                                 totalEditedMs = totalEditedMs,
-                                clips = clips,
+                                clips = editorState.mergedClips,
                                 player = editorState.player
                             )
 
@@ -226,7 +227,9 @@ fun EditorScreen(
                             EditorBottomDock(
                                 maxHeight = maxH,
                                 clips = clips,
-                                clipThumbnails = clipThumbnails,
+                                thumbnails = thumbnails,
+                                onRequestThumbnails = { viewModel.thumbnailManager.requestThumbnails(it) },
+                                originalDurationMs = originalDurationMs,
                                 selectedClipId = selectedClipId,
                                 onClipSelected = { selectedClipId = it },
                                 onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
@@ -235,7 +238,7 @@ fun EditorScreen(
                                 onOverlaySelected = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
                                 onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
                                 onDragStateChange = { 
-                                    if (editorState.isDragging && !it) {
+                                    if (!editorState.isDragging && it) {
                                         viewModel.setEvent(VideoEditorUiEvent.SaveState)
                                     }
                                     editorState.isDragging = it 

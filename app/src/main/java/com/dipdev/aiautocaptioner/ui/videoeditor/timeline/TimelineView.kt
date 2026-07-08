@@ -32,7 +32,9 @@ import kotlin.time.Duration.Companion.milliseconds
 fun TimelineView(
     modifier: Modifier = Modifier,
     clips: List<Clip>,
-    clipThumbnails: Map<String, List<Bitmap>>,
+    thumbnails: Map<Long, Bitmap>,
+    onRequestThumbnails: (List<Long>) -> Unit,
+    originalDurationMs: Long,
     selectedClipId: String?,
     onClipSelected: (String) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
@@ -115,13 +117,63 @@ fun TimelineView(
         }
     }
 
+    val targetChunkMs = (1000f / zoomLevel).toLong()
+    val thumbnailIntervalMs = remember(targetChunkMs) {
+        when {
+            targetChunkMs <= 100 -> 100L
+            targetChunkMs <= 250 -> 250L
+            targetChunkMs <= 500 -> 500L
+            targetChunkMs <= 1000 -> 1000L
+            targetChunkMs <= 2000 -> 2000L
+            else -> 5000L
+        }
+    }
+
+    LaunchedEffect(scrollState.value, boxWidthPx, pixelsPerMs, clips, thumbnailIntervalMs) {
+        if (boxWidthPx == 0 || pixelsPerMs == 0f) return@LaunchedEffect
+        kotlinx.coroutines.delay(80L) // Debounce rapid scroll events
+        
+        val visibleStartMs = (scrollState.value / pixelsPerMs).toLong()
+        val visibleEndMs = ((scrollState.value + boxWidthPx) / pixelsPerMs).toLong()
+        
+        val requested = mutableSetOf<Long>()
+        var currentTimelineMs = 0L
+        
+        for (clip in clips) {
+            val clipDurationMs = clip.endTrimMs - clip.startTrimMs
+            val clipStartTimelineMs = currentTimelineMs
+            val clipEndTimelineMs = currentTimelineMs + clipDurationMs
+            
+            // If the clip intersects with the visible edited timeline
+            if (clipEndTimelineMs > visibleStartMs && clipStartTimelineMs < visibleEndMs) {
+                val visibleClipStartMs = maxOf(clipStartTimelineMs, visibleStartMs)
+                val visibleClipEndMs = minOf(clipEndTimelineMs, visibleEndMs)
+                
+                // Map the visible edited times to original video timestamps
+                val offsetIntoClipStartMs = visibleClipStartMs - clipStartTimelineMs
+                val offsetIntoClipEndMs = visibleClipEndMs - clipStartTimelineMs
+                
+                val originalStartMs = clip.startTrimMs + offsetIntoClipStartMs
+                val originalEndMs = clip.startTrimMs + offsetIntoClipEndMs
+                
+                val startChunk = (originalStartMs / thumbnailIntervalMs) * thumbnailIntervalMs
+                val endChunk = (originalEndMs / thumbnailIntervalMs) * thumbnailIntervalMs
+                
+                for (time in startChunk..endChunk step thumbnailIntervalMs) {
+                    requested.add(time)
+                }
+            }
+            currentTimelineMs += clipDurationMs
+        }
+        
+        onRequestThumbnails(requested.toList())
+    }
+
     LaunchedEffect(isDragging, pixelsPerMs) {
         if (!isDragging) {
             snapshotFlow { currentTimelineMs() }.collect { timeMs ->
-                if (player.isPlaying) {
-                    val scrollOffset = (timeMs * pixelsPerMs).toInt()
-                    scrollState.scrollTo(scrollOffset)
-                }
+                val scrollOffset = (timeMs * pixelsPerMs).toInt()
+                scrollState.scrollTo(scrollOffset)
             }
         }
     }
@@ -224,11 +276,13 @@ fun TimelineView(
                                     (dragPointerScreenX + scrollState.value) - layoutCenter
                                 } else { 0f }
                                 
-                                val hasGapBefore = index > 0 && clips[index].startTrimMs > clips[index - 1].endTrimMs + 100
+                                val hasGapBefore = index > 0 && clips[index].startTrimMs >= clips[index - 1].endTrimMs
 
                                 VideoClipItem(
                                     clip = clip,
                                     index = index,
+                                    thumbnails = thumbnails,
+                                    originalDurationMs = originalDurationMs,
                                     isSelected = isSelected,
                                     clipWidthPx = clipWidthPx,
                                     clipWidthDp = clipWidthDp,
@@ -238,7 +292,6 @@ fun TimelineView(
                                     scrollStateValue = scrollState.value,
                                     surfaceVariantColor = surfaceVariantColor,
                                     outlineColor = outlineColor,
-                                    thumbnails = clipThumbnails[clip.id],
                                     onDragStateChange = onDragStateChange,
                                     onDragPointerStart = { dragPointerScreenX = it },
                                     onDragPointerChange = { dragPointerScreenX += it },
@@ -248,7 +301,8 @@ fun TimelineView(
                                     hasGapBefore = hasGapBefore,
                                     onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } },
                                     onTrimClip = onTrimClip,
-                                    pixelsPerMs = pixelsPerMs
+                                    pixelsPerMs = pixelsPerMs,
+                                    thumbnailIntervalMs = thumbnailIntervalMs
                                 )
                             }
                         }

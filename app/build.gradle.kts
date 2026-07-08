@@ -157,6 +157,7 @@ dependencies {
     implementation(libs.androidx.media3.transformer)
     implementation(libs.androidx.media3.effect)
     implementation(libs.androidx.media3.common)
+    implementation(libs.kotlinx.coroutines.guava)
 
     // -------------------------------------------------------
     // FFmpeg Kit — video processing + format fallback

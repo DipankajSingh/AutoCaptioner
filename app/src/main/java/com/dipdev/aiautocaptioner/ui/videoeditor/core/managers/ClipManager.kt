@@ -43,7 +43,8 @@ class ClipManager(
             val currentClips = getCurrentClips()
             if (historyIndex == history.size - 1 && history.lastOrNull() != currentClips) {
                 saveState(currentClips)
-                historyIndex--
+                // We just saved the current state, so historyIndex is now at the current state.
+                // We want to undo to the previous state, so we decrement once below.
             }
             historyIndex--
             val newClips = if (historyIndex >= 0) history[historyIndex] else emptyList()
@@ -130,7 +131,6 @@ class ClipManager(
     fun moveClip(fromIndex: Int, toIndex: Int) {
         val currentClips = getCurrentClips().toMutableList()
         if (fromIndex in currentClips.indices && toIndex in currentClips.indices) {
-            saveState(currentClips)
             val clip = currentClips.removeAt(fromIndex)
             currentClips.add(toIndex, clip)
             updateState(currentClips, hasEdits = true)

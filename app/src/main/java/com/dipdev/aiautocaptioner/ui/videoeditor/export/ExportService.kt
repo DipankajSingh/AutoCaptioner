@@ -43,7 +43,24 @@ class ExportService @Inject constructor(
             tempOutputFile = FileUtils.createTempVideoFile(context)
             val tempFile = tempOutputFile ?: throw IllegalStateException("Could not create temp file")
 
-            val editedMediaItems = clips.map { clip ->
+            // Merge adjacent contiguous clips to prevent FFmpeg micro-stutters
+            val mergedClips = mutableListOf<Clip>()
+            var currentMerged: Clip? = null
+            for (c in clips) {
+                if (currentMerged == null) {
+                    currentMerged = c
+                } else if (currentMerged.endTrimMs == c.startTrimMs) {
+                    currentMerged = currentMerged.copy(endTrimMs = c.endTrimMs)
+                } else {
+                    mergedClips.add(currentMerged)
+                    currentMerged = c
+                }
+            }
+            if (currentMerged != null) {
+                mergedClips.add(currentMerged)
+            }
+
+            val editedMediaItems = mergedClips.map { clip ->
                 val mediaItem = MediaItem.Builder()
                     .setUri(originalPath)
                     .setClippingConfiguration(

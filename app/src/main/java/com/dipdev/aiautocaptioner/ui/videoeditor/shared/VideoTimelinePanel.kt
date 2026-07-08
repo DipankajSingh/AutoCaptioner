@@ -46,7 +46,9 @@ fun VideoTimelinePanel(
     maxTimelineHeight: Dp,
     onTimelineHeightChanged: (Dp) -> Unit,
     clips: List<Clip>,
-    clipThumbnails: Map<String, List<Bitmap>>,
+    thumbnails: Map<Long, Bitmap>,
+    onRequestThumbnails: (List<Long>) -> Unit,
+    originalDurationMs: Long,
     selectedClipId: String?,
     onClipSelected: (String?) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
@@ -101,7 +103,9 @@ fun VideoTimelinePanel(
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 TimelineView(
                     clips = clips,
-                    clipThumbnails = clipThumbnails,
+                    thumbnails = thumbnails,
+            onRequestThumbnails = onRequestThumbnails,
+                    originalDurationMs = originalDurationMs,
                     selectedClipId = selectedClipId,
                     onClipSelected = onClipSelected,
                     onMoveClip = onMoveClip,

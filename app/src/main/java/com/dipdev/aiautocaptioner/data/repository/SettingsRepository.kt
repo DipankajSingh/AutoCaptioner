@@ -49,7 +49,7 @@ class SettingsRepository @Inject constructor(
     }.distinctUntilChanged()
 
     val showTimelineThumbnailsFlow: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[SHOW_TIMELINE_THUMBNAILS_KEY] ?: false
+        prefs[SHOW_TIMELINE_THUMBNAILS_KEY] ?: true
     }.distinctUntilChanged()
 
     val telemetryEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->

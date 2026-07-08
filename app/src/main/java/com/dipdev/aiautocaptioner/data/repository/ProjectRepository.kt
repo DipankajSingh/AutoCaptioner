@@ -277,6 +277,18 @@ class ProjectRepository @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to delete project files", e)
             }
+
+            // Clear thumbnail cache
+            try {
+                val videoHash = project.workingVideoPath.hashCode().toString()
+                val cacheDir = File(context.cacheDir, "thumbnails/$videoHash")
+                if (cacheDir.exists()) {
+                    cacheDir.deleteRecursively()
+                    Log.i(TAG, "Deleted thumbnail cache: ${cacheDir.absolutePath}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete thumbnail cache", e)
+            }
         }
     }
 

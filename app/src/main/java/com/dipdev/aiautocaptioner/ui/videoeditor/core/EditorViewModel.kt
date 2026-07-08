@@ -1,13 +1,12 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.core
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import com.dipdev.aiautocaptioner.core.video.ThumbnailExtractor
+import com.dipdev.aiautocaptioner.core.video.ThumbnailManager
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
@@ -19,7 +18,6 @@ import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.ClipManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.OverlayManager
-import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.PlayerSyncManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.export.ExportService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,12 +49,11 @@ data class VideoEditorUiState(
     val hasEdits: Boolean = false,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
-    val clipThumbnails: Map<String, List<Bitmap>> = emptyMap(),
+    val originalDurationMs: Long = 0L,
     val showTimelineThumbnails: Boolean = false,
     val selectedLanguage: String = "en",
     val translateToEnglish: Boolean = false
 ) : UiState
-
 sealed class VideoEditorUiEvent : UiEvent {
     data class LoadProject(val projectId: String) : VideoEditorUiEvent()
     data object Undo : VideoEditorUiEvent()
@@ -110,11 +107,6 @@ class EditorViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying = _isPlaying.asStateFlow()
-
-    private val _currentTimelineMs = MutableStateFlow(0L)
-    val currentTimelineMs = _currentTimelineMs.asStateFlow()
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
@@ -130,7 +122,7 @@ class EditorViewModel @Inject constructor(
         }
     )
     
-    private val overlayManager = OverlayManager(
+    val overlayManager = OverlayManager(
         context = context,
         overlayRepository = overlayRepository,
         getOverlays = { overlays.value },
@@ -139,21 +131,13 @@ class EditorViewModel @Inject constructor(
         isSelectedOverlay = { it == _selectedOverlayId.value }
     )
     
-    private val playerSyncManager = PlayerSyncManager(
-        scope = viewModelScope,
-        onIsPlayingChanged = { _isPlaying.value = it },
-        onTimelinePositionChanged = { _currentTimelineMs.value = it },
-        getClips = { currentState.clips }
-    )
+    val thumbnailManager = ThumbnailManager(context)
 
-    fun bindPlayer(player: Player) {
-        playerSyncManager.bindPlayer(player)
-    }
 
     override fun onCleared() {
         super.onCleared()
-        playerSyncManager.unbind()
         videoExporter.cancel()
+        thumbnailManager.release()
     }
 
     init {
@@ -174,35 +158,13 @@ class EditorViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            uiState.map { Pair(it.clips, it.showTimelineThumbnails) }
+            uiState.map { Pair(it.originalDurationMs, it.showTimelineThumbnails) }
                 .distinctUntilChanged()
-                .collect { (currentClips, showThumbs) ->
-                    if (showThumbs && originalVideoPath.isNotEmpty()) {
-                        val newMap = currentState.clipThumbnails.toMutableMap()
-                        
-                        for (clip in currentClips) {
-                            if (!newMap.containsKey(clip.id)) {
-                                val bitmaps = ThumbnailExtractor.extractThumbnails(
-                                    context = context,
-                                    videoPath = originalVideoPath,
-                                    startMs = clip.startTrimMs,
-                                    endMs = clip.endTrimMs,
-                                    count = 5
-                                )
-                                newMap[clip.id] = bitmaps
-                            }
-                        }
-                        
-                        val currentIds = currentClips.map { it.id }.toSet()
-                        val removedKeys = newMap.keys - currentIds
-                        removedKeys.forEach { key ->
-                            newMap.remove(key)?.forEach { it.recycle() }
-                        }
-                        
-                        setState { copy(clipThumbnails = newMap) }
-                    } else if (currentState.clipThumbnails.isNotEmpty()) {
-                        currentState.clipThumbnails.values.flatten().forEach { it.recycle() }
-                        setState { copy(clipThumbnails = emptyMap()) }
+                .collect { (durationMs, showThumbs) ->
+                    if (showThumbs && originalVideoPath.isNotEmpty() && durationMs > 0) {
+                        thumbnailManager.setVideoPath(originalVideoPath)
+                    } else {
+                        thumbnailManager.clearMemoryCache()
                     }
                 }
         }
@@ -244,7 +206,7 @@ class EditorViewModel @Inject constructor(
                 try {
                     retriever = MediaMetadataRetriever()
                     if (project.workingVideoPath.startsWith("content://") || project.workingVideoPath.startsWith("file://")) {
-                        retriever.setDataSource(context, android.net.Uri.parse(project.workingVideoPath))
+                        retriever.setDataSource(context, project.workingVideoPath.toUri())
                     } else {
                         retriever.setDataSource(project.workingVideoPath)
                     }
@@ -265,6 +227,7 @@ class EditorViewModel @Inject constructor(
                         hasEdits = false,
                         canUndo = false,
                         canRedo = false,
+                        originalDurationMs = durationMs,
                         step = VideoEditorUiStep.Ready(durationMs = durationMs, originalPath = project.workingVideoPath)
                     )
                 }
@@ -277,6 +240,7 @@ class EditorViewModel @Inject constructor(
     private fun updateDurationFromPlayer(actualDurationMs: Long) {
         if (actualDurationMs > 0 && actualDurationMs != originalDurationMs) {
             originalDurationMs = actualDurationMs
+            setState { copy(originalDurationMs = actualDurationMs) }
             if (!currentState.hasEdits && currentState.clips.size == 1) {
                 setState { copy(clips = listOf(Clip(startTrimMs = 0L, endTrimMs = actualDurationMs))) }
             }

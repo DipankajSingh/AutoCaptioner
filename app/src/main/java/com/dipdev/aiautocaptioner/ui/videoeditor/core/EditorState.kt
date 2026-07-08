@@ -118,6 +118,9 @@ class EditorState(
 ) {
     var isDragging by mutableStateOf(false)
     var currentTimelineMs by mutableStateOf(0L)
+    var isPlaying by mutableStateOf(false)
+    
+    private var hasEmittedOriginalDuration = false
     
     // Updated by the composable remember function when clips change
     var mergedClips: List<Clip> = emptyList()
@@ -129,14 +132,16 @@ class EditorState(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
                     val duration = player.duration
-                    if (duration > 0) {
+                    if (duration > 0 && !hasEmittedOriginalDuration) {
+                        hasEmittedOriginalDuration = true
                         onDurationUpdated(duration)
                     }
                 }
             }
 
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
+            override fun onIsPlayingChanged(isPlayingParam: Boolean) {
+                isPlaying = isPlayingParam
+                if (isPlayingParam) {
                     startProgressSync()
                 } else {
                     stopProgressSync()
@@ -173,11 +178,16 @@ class EditorState(
         val windowIndex = player.currentMediaItemIndex
         val posInWindow = player.currentPosition
         
+        val safeWindowIndex = windowIndex.coerceIn(0, maxOf(0, mergedClips.size - 1))
+        
         var accumulated = 0L
-        for (i in 0 until windowIndex.coerceAtMost(mergedClips.size)) {
+        for (i in 0 until safeWindowIndex) {
             accumulated += (mergedClips[i].endTrimMs - mergedClips[i].startTrimMs)
         }
         
-        currentTimelineMs = accumulated + posInWindow
+        // If windowIndex is out of bounds, clip posInWindow so we don't exceed duration
+        val safePosInWindow = if (windowIndex >= mergedClips.size) 0L else posInWindow
+        
+        currentTimelineMs = accumulated + safePosInWindow
     }
 }
