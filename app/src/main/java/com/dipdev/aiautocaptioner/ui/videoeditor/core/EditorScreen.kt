@@ -244,7 +244,12 @@ fun EditorScreen(
                                 selectedOverlayId = selectedOverlayId,
                                 onOverlaySelected = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
                                 onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
-                                onDragStateChange = { editorState.isDragging = it },
+                                onDragStateChange = { 
+                                    if (editorState.isDragging && !it) {
+                                        viewModel.setEvent(VideoEditorUiEvent.SaveState)
+                                    }
+                                    editorState.isDragging = it 
+                                },
                                 zoomLevel = zoomLevel,
                                 player = editorState.player,
                                 currentTimelineMs = { editorState.currentTimelineMs },

@@ -12,6 +12,8 @@ class ClipManager(
     private var historyIndex = -1
 
     fun saveState(clipsToSave: List<Clip> = getCurrentClips()) {
+        if (historyIndex >= 0 && history[historyIndex] == clipsToSave) return
+
         if (historyIndex < history.size - 1) {
             history.subList(historyIndex + 1, history.size).clear()
         }
@@ -119,7 +121,6 @@ class ClipManager(
         val currentClips = getCurrentClips().toMutableList()
         val index = currentClips.indexOfFirst { it.id == clipId }
         if (index != -1) {
-            saveState(currentClips)
             val clipToTrim = currentClips[index]
             currentClips[index] = clipToTrim.copy(startTrimMs = newStartTrimMs, endTrimMs = newEndTrimMs)
             updateState(currentClips, hasEdits = true)

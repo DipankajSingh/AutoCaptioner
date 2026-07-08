@@ -189,10 +189,12 @@ fun VideoClipItem(
                     .background(Color.White, RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp))
                     .pointerInput(clip.id + "_left") {
                         var accumulatedDeltaX = 0f
+                        var currentStartMs = 0L
                         detectDragGestures(
                             onDragStart = { 
                                 onDragStateChange(true)
                                 accumulatedDeltaX = 0f 
+                                currentStartMs = clip.startTrimMs
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
@@ -200,8 +202,9 @@ fun VideoClipItem(
                                 val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                                 if (deltaMs != 0L) {
                                     accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newStart = (clip.startTrimMs + deltaMs).coerceIn(0L, clip.endTrimMs - 100L)
-                                    if (newStart != clip.startTrimMs) {
+                                    val newStart = (currentStartMs + deltaMs).coerceIn(0L, clip.endTrimMs - 100L)
+                                    if (newStart != currentStartMs) {
+                                        currentStartMs = newStart
                                         onTrimClip(clip.id, newStart, clip.endTrimMs)
                                         onScrollBy(-dragAmount.x) // Scroll timeline to follow finger
                                     }
@@ -225,10 +228,12 @@ fun VideoClipItem(
                     .background(Color.White, RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
                     .pointerInput(clip.id + "_right") {
                         var accumulatedDeltaX = 0f
+                        var currentEndMs = 0L
                         detectDragGestures(
                             onDragStart = { 
                                 onDragStateChange(true)
                                 accumulatedDeltaX = 0f 
+                                currentEndMs = clip.endTrimMs
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
@@ -236,8 +241,9 @@ fun VideoClipItem(
                                 val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                                 if (deltaMs != 0L) {
                                     accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newEnd = maxOf(clip.startTrimMs + 100L, clip.endTrimMs + deltaMs)
-                                    if (newEnd != clip.endTrimMs) {
+                                    val newEnd = maxOf(clip.startTrimMs + 100L, currentEndMs + deltaMs)
+                                    if (newEnd != currentEndMs) {
+                                        currentEndMs = newEnd
                                         onTrimClip(clip.id, clip.startTrimMs, newEnd)
                                     }
                                 }
