@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.X
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +61,7 @@ fun LanguageSelector(
                             onClick = { onExpandedChange(false) },
                             modifier = Modifier.size(24.dp)
                         ) {
-                            Icon(Icons.Outlined.Close, null, modifier = Modifier.size(16.dp))
+                            Icon(FeatherIcons.X, null, modifier = Modifier.size(16.dp))
                         }
                     }
                     LanguageDropdown(

@@ -8,12 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Subtitles
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Film
+import compose.icons.feathericons.Music
+import compose.icons.feathericons.Type
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,7 +65,7 @@ fun EditorBottomDock(
     var timelineHeight by remember { mutableStateOf(300.dp) }
     val maxTimelineHeight = maxHeight * 0.5f
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         // Dynamic Tools Window
         Box(modifier = Modifier.fillMaxWidth().height(timelineHeight)) {
             when (currentMode) {
@@ -117,7 +118,7 @@ fun EditorBottomDock(
         // Bottom Tab Bar
         Surface(
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.background,
             shadowElevation = 8.dp
         ) {
             Row(
@@ -126,19 +127,19 @@ fun EditorBottomDock(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CompactTabItem(
-                    icon = Icons.Outlined.Movie,
+                    icon = FeatherIcons.Film,
                     label = "Video",
                     selected = currentMode == EditorMode.VIDEO,
                     onClick = { currentMode = EditorMode.VIDEO }
                 )
                 CompactTabItem(
-                    icon = Icons.Outlined.Subtitles,
+                    icon = FeatherIcons.Type,
                     label = "Captions",
                     selected = currentMode == EditorMode.CAPTIONS,
                     onClick = { currentMode = EditorMode.CAPTIONS }
                 )
                 CompactTabItem(
-                    icon = Icons.Outlined.MusicNote,
+                    icon = FeatherIcons.Music,
                     label = "Audio",
                     selected = currentMode == EditorMode.AUDIO,
                     onClick = { currentMode = EditorMode.AUDIO }

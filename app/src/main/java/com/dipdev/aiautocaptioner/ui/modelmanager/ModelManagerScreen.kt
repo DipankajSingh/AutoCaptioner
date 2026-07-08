@@ -7,12 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Star
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Check
+import compose.icons.feathericons.Download
+import compose.icons.feathericons.Star
+import compose.icons.feathericons.Trash2
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -117,7 +116,7 @@ private fun ModelCard(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            Icon(FeatherIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Active", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
@@ -185,7 +184,7 @@ private fun ModelCard(
                             ) { Text("Confirm") }
                         } else {
                             IconButton(onClick = { showDeleteConfirm = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete model", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+                                Icon(FeatherIcons.Trash2, contentDescription = "Delete model", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Button(onClick = onSetActive) {
@@ -264,7 +263,7 @@ private fun ModelCard(
                         horizontalArrangement = Arrangement.End
                     ) {
                         Button(onClick = onDownload) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(FeatherIcons.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Download", maxLines = 1)
                         }
@@ -283,7 +282,7 @@ private fun MetricItem(label: String, value: Int) {
         Row {
             for (i in 1..5) {
                 Icon(
-                    imageVector = Icons.Default.Star,
+                    imageVector = FeatherIcons.Star,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = if (i <= value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)

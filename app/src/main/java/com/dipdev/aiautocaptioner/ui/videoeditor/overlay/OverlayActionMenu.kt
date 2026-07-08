@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.outlined.Delete
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowDown
+import compose.icons.feathericons.ArrowUp
+import compose.icons.feathericons.Trash2
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -49,20 +49,20 @@ fun OverlayActionMenu(
         IconButton(
             onClick = onSendToBack
         ) {
-            Icon(Icons.Outlined.ArrowDownward, contentDescription = "Send to Back", tint = MaterialTheme.colorScheme.onSurface)
+            Icon(FeatherIcons.ArrowDown, contentDescription = "Send to Back", tint = MaterialTheme.colorScheme.onSurface)
         }
         
         IconButton(
             onClick = onBringToFront
         ) {
-            Icon(Icons.Outlined.ArrowUpward, contentDescription = "Bring to Front", tint = MaterialTheme.colorScheme.onSurface)
+            Icon(FeatherIcons.ArrowUp, contentDescription = "Bring to Front", tint = MaterialTheme.colorScheme.onSurface)
         }
         
         Button(
             onClick = onDelete,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer)
         ) {
-            Icon(Icons.Outlined.Delete, contentDescription = "Delete Overlay", tint = MaterialTheme.colorScheme.onErrorContainer)
+            Icon(FeatherIcons.Trash2, contentDescription = "Delete Overlay", tint = MaterialTheme.colorScheme.onErrorContainer)
             Spacer(Modifier.width(4.dp))
             Text("Delete", color = MaterialTheme.colorScheme.onErrorContainer)
         }

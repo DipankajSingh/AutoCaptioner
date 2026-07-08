@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -263,7 +263,7 @@ private fun ModelCard(
                     // Already downloaded badge
                     if (model.isDownloaded) {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle,
+                            imageVector = FeatherIcons.CheckCircle,
                             contentDescription = "Downloaded",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
@@ -294,7 +294,7 @@ private fun ModelCard(
             if (isSelected) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Icon(
-                    imageVector = Icons.Default.CheckCircle,
+                    imageVector = FeatherIcons.CheckCircle,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)

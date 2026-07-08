@@ -5,10 +5,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.AlertTriangle
+import compose.icons.feathericons.ArrowLeft
+import compose.icons.feathericons.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +56,7 @@ fun ModelDownloadScreen(
                     onNavigateBack?.let { back ->
                         if (downloadState !is DownloadState.Downloading && downloadState !is DownloadState.Starting) {
                             IconButton(onClick = back) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
                             }
                         }
                     }
@@ -96,7 +96,7 @@ fun ModelDownloadScreen(
 
                 is DownloadState.Complete -> {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = FeatherIcons.CheckCircle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(80.dp)
@@ -207,7 +207,7 @@ private fun DownloadingContent(
 @Composable
 private fun ErrorContent(message: String, onRetry: () -> Unit) {
     Icon(
-        imageVector = Icons.Default.Warning,
+        imageVector = FeatherIcons.AlertTriangle,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.error,
         modifier = Modifier.size(64.dp)

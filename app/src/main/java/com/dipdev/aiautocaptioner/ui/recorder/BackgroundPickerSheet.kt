@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.VideoFile
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Image
+import compose.icons.feathericons.Video
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,7 +118,7 @@ fun BackgroundPickerSheet(
                 ElevatedButton(onClick = {
                     imagePickerLauncher.launch("image/*")
                 }) {
-                    Icon(Icons.Default.Image, contentDescription = "Gallery")
+                    Icon(FeatherIcons.Image, contentDescription = "Gallery")
                     Spacer(Modifier.width(8.dp))
                     Text("Gallery")
                 }
@@ -127,7 +127,7 @@ fun BackgroundPickerSheet(
                     onClick = { /* Coming Soon */ },
                     enabled = false
                 ) {
-                    Icon(Icons.Default.VideoFile, contentDescription = "Video")
+                    Icon(FeatherIcons.Video, contentDescription = "Video")
                     Spacer(Modifier.width(8.dp))
                     Text("Video (Soon)")
                 }

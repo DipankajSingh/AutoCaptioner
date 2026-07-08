@@ -14,12 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Animation
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Style
-import androidx.compose.material.icons.filled.TextFields
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Activity
+import compose.icons.feathericons.Star
+import compose.icons.feathericons.Droplet
+import compose.icons.feathericons.Layers
+import compose.icons.feathericons.Type
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,7 +68,7 @@ fun BottomTabItem(
             Icon(icon, contentDescription = name, tint = tint)
             if (isPremiumLocked) {
                 Icon(
-                    Icons.Default.AutoAwesome,
+                    FeatherIcons.Star,
                     contentDescription = "PRO",
                     modifier = Modifier.size(10.dp).align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp),
                     tint = LocalAccentColor.current
@@ -100,9 +100,9 @@ fun StyleEditorBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomTabItem("Presets", Icons.Default.Style, selectedTab == StyleTab.PRESETS, selectedTint = MaterialTheme.colorScheme.primary) { onTabSelected(StyleTab.PRESETS) }
-        BottomTabItem("Text", Icons.Default.TextFields, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentBlue) { onTabSelected(StyleTab.TEXT) }
-        BottomTabItem("Color", Icons.Default.Palette, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentViolet) { onTabSelected(StyleTab.COLOR) }
-        BottomTabItem("Animate", Icons.Default.Animation, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
+        BottomTabItem("Presets", FeatherIcons.Layers, selectedTab == StyleTab.PRESETS, selectedTint = MaterialTheme.colorScheme.primary) { onTabSelected(StyleTab.PRESETS) }
+        BottomTabItem("Text", FeatherIcons.Type, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentBlue) { onTabSelected(StyleTab.TEXT) }
+        BottomTabItem("Color", FeatherIcons.Droplet, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentViolet) { onTabSelected(StyleTab.COLOR) }
+        BottomTabItem("Animate", FeatherIcons.Activity, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
     }
 }

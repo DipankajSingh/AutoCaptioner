@@ -13,8 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Play
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -133,7 +133,7 @@ fun WelcomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Filled.PlayArrow,
+                        FeatherIcons.Play,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.size(28.dp)

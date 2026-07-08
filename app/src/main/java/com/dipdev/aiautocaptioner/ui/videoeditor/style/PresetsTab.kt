@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Plus
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -59,7 +59,7 @@ fun PresetsTab(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Save Preset", modifier = Modifier.size(18.dp))
+                        Icon(FeatherIcons.Plus, contentDescription = "Save Preset", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Save", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                     }

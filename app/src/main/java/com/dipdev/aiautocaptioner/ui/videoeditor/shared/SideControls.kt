@@ -1,26 +1,11 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.ContentCut
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Remove
-import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,11 +15,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.LogOut
+import compose.icons.feathericons.Menu
+import compose.icons.feathericons.Type
+import compose.icons.feathericons.X
 
 @Composable
 fun LeftSideControls(
@@ -56,7 +42,7 @@ fun LeftSideControls(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         SideControlButton(
-            icon = Icons.Outlined.Close,
+            icon = FeatherIcons.LogOut,
             contentDescription = "Exit Editor",
             onClick = {
                 if (hasEdits) onShowBackDialog() else onNavigateBack()
@@ -68,7 +54,7 @@ fun LeftSideControls(
         
         Box {
             SideControlButton(
-                icon = Icons.Default.Menu,
+                icon = FeatherIcons.Menu,
                 contentDescription = "Menu",
                 onClick = { showMenu = true },
                 enabled = true
@@ -96,7 +82,7 @@ fun LeftSideControls(
         }
 
         SideControlButton(
-            icon = Icons.Outlined.Subtitles,
+            icon = FeatherIcons.Type,
             contentDescription = "Generate Captions",
             onClick = {
                 if (hasEdits) onApplyEdits()

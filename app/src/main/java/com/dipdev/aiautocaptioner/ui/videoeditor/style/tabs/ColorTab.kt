@@ -4,15 +4,15 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AlignHorizontalCenter
-import androidx.compose.material.icons.filled.AlignVerticalCenter
-import androidx.compose.material.icons.filled.BorderColor
-import androidx.compose.material.icons.filled.FormatColorFill
-import androidx.compose.material.icons.filled.FormatColorText
-import androidx.compose.material.icons.filled.Highlight
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.RoundedCorner
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Maximize2
+import compose.icons.feathericons.Minimize2
+import compose.icons.feathericons.Edit2
+import compose.icons.feathericons.Box
+import compose.icons.feathericons.Type
+import compose.icons.feathericons.Sun
+import compose.icons.feathericons.Droplet
+import compose.icons.feathericons.Square
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,14 +55,14 @@ fun ColorTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item { SubToolButton(Icons.Default.FormatColorText, "Text") { activeTool = ColorSubTool.TEXT } }
-            item { SubToolButton(Icons.Default.BorderColor, "Outline") { activeTool = ColorSubTool.OUTLINE } }
-            item { SubToolButton(Icons.Default.Highlight, "Highlight") { activeTool = ColorSubTool.HIGHLIGHT } }
-            item { SubToolButton(Icons.Default.FormatColorFill, "Bg Style") { activeTool = ColorSubTool.BACKGROUND } }
-            item { SubToolButton(Icons.Default.Palette, "Bg Color") { activeTool = ColorSubTool.BG_COLOR } }
-            item { SubToolButton(Icons.Default.AlignHorizontalCenter, "Pad H") { activeTool = ColorSubTool.PAD_H } }
-            item { SubToolButton(Icons.Default.AlignVerticalCenter, "Pad V") { activeTool = ColorSubTool.PAD_V } }
-            item { SubToolButton(Icons.Default.RoundedCorner, "Corners") { activeTool = ColorSubTool.CORNER } }
+            item { SubToolButton(FeatherIcons.Type, "Text") { activeTool = ColorSubTool.TEXT } }
+            item { SubToolButton(FeatherIcons.Edit2, "Outline") { activeTool = ColorSubTool.OUTLINE } }
+            item { SubToolButton(FeatherIcons.Sun, "Highlight") { activeTool = ColorSubTool.HIGHLIGHT } }
+            item { SubToolButton(FeatherIcons.Box, "Bg Style") { activeTool = ColorSubTool.BACKGROUND } }
+            item { SubToolButton(FeatherIcons.Droplet, "Bg Color") { activeTool = ColorSubTool.BG_COLOR } }
+            item { SubToolButton(FeatherIcons.Maximize2, "Pad H") { activeTool = ColorSubTool.PAD_H } }
+            item { SubToolButton(FeatherIcons.Minimize2, "Pad V") { activeTool = ColorSubTool.PAD_V } }
+            item { SubToolButton(FeatherIcons.Square, "Corners") { activeTool = ColorSubTool.CORNER } }
         }
     }
 

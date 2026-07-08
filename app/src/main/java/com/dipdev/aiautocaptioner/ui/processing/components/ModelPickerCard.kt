@@ -8,9 +8,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Star
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.CheckCircle
+import compose.icons.feathericons.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,7 +105,7 @@ fun ModelPickerCard(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Star,
+                                        imageVector = FeatherIcons.Star,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.size(12.dp)
@@ -153,7 +153,7 @@ fun ModelPickerCard(
                 // Selection Indicator
                 if (isSelected) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = FeatherIcons.CheckCircle,
                         contentDescription = "Selected",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)

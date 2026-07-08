@@ -20,13 +20,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowLeft
+import compose.icons.feathericons.ChevronDown
+import compose.icons.feathericons.ChevronUp
+import compose.icons.feathericons.RefreshCw
+import compose.icons.feathericons.Search
+import compose.icons.feathericons.X
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -186,7 +186,7 @@ fun CaptionEditorScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -197,7 +197,7 @@ fun CaptionEditorScreen(
                         onClick = { viewModel.setEvent(CaptionEditorUiEvent.Retranscribe(projectId)) }
                     ) {
                         Icon(
-                            Icons.Default.Refresh,
+                            FeatherIcons.RefreshCw,
                             contentDescription = "Retranscribe",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -256,12 +256,12 @@ fun CaptionEditorScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text(stringResource(R.string.caption_search_segments)) },
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(FeatherIcons.Search, contentDescription = "Search")
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.setEvent(CaptionEditorUiEvent.UpdateSearchQuery("")) }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            Icon(FeatherIcons.X, contentDescription = "Clear search")
                         }
                     }
                 },
@@ -428,8 +428,8 @@ private fun SegmentCard(
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp
-                                  else Icons.Default.KeyboardArrowDown,
+                    imageVector = if (isExpanded) FeatherIcons.ChevronUp
+                                  else FeatherIcons.ChevronDown,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )

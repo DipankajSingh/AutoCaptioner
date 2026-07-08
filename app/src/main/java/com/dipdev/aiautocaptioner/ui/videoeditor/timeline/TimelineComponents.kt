@@ -260,7 +260,7 @@ fun VideoClipItem(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.width(2.dp).height(14.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(50)))
+                Box(modifier = Modifier.width(2.dp).height(14.dp).background(AccentAmber, RoundedCornerShape(50)))
             }
             
             // Right Trim Handle Touch Target & Grip
@@ -298,7 +298,7 @@ fun VideoClipItem(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.width(2.dp).height(14.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(50)))
+                Box(modifier = Modifier.width(2.dp).height(14.dp).background(AccentAmber, RoundedCornerShape(50)))
             }
         }
         

@@ -2,8 +2,8 @@ package com.dipdev.aiautocaptioner.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -105,7 +105,7 @@ fun LanguageDropdown(
                         trailingIcon = {
                             if (code == selectedLanguage) {
                                 Icon(
-                                    Icons.Default.CheckCircle,
+                                    FeatherIcons.CheckCircle,
                                     contentDescription = null,
                                     tint     = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)

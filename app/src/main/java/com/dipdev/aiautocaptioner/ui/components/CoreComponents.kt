@@ -15,8 +15,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowLeft
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -203,7 +203,7 @@ fun SimpleAppScaffold(
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onNavigateBack) {
                         androidx.compose.material3.Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
+                            FeatherIcons.ArrowLeft,
                             contentDescription = "Back"
                         )
                     }

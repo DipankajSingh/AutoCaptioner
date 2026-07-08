@@ -131,7 +131,7 @@ fun TimelineView(
 
     LaunchedEffect(scrollState.value, boxWidthPx, pixelsPerMs, clips, thumbnailIntervalMs) {
         if (boxWidthPx == 0 || pixelsPerMs == 0f) return@LaunchedEffect
-        kotlinx.coroutines.delay(80L) // Debounce rapid scroll events
+        kotlinx.coroutines.delay(80L.milliseconds) // Debounce rapid scroll events
         
         val visibleStartMs = (scrollState.value / pixelsPerMs).toLong()
         val visibleEndMs = ((scrollState.value + boxWidthPx) / pixelsPerMs).toLong()
@@ -178,7 +178,7 @@ fun TimelineView(
         }
     }
 
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    val surfaceColor = MaterialTheme.colorScheme.background
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val primaryColor = MaterialTheme.colorScheme.primary

@@ -2,15 +2,15 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
-import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.FormatSize
-import androidx.compose.material.icons.filled.LineWeight
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.SpaceBar
-import androidx.compose.material.icons.filled.TextFormat
-import androidx.compose.material.icons.filled.ViewHeadline
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.AlignLeft
+import compose.icons.feathericons.Italic
+import compose.icons.feathericons.Type
+import compose.icons.feathericons.Bold
+import compose.icons.feathericons.List
+import compose.icons.feathericons.Maximize
+import compose.icons.feathericons.Hash
+import compose.icons.feathericons.AlignJustify
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,14 +48,14 @@ fun TextTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item { SubToolButton(Icons.Default.FormatSize, "Size") { activeTool = TextSubTool.SIZE } }
-            item { SubToolButton(Icons.Default.LineWeight, "Weight") { activeTool = TextSubTool.WEIGHT } }
-            item { SubToolButton(Icons.AutoMirrored.Filled.FormatAlignLeft, "Align") { activeTool = TextSubTool.ALIGNMENT } }
-            item { SubToolButton(Icons.Default.ViewHeadline, "Words") { activeTool = TextSubTool.WORDS_PER_LINE } }
-            item { SubToolButton(Icons.Default.Menu, "Max Lines") { activeTool = TextSubTool.MAX_LINES } }
-            item { SubToolButton(Icons.Default.TextFormat, "Symbols") { activeTool = TextSubTool.PUNCTUATION } }
-            item { SubToolButton(Icons.Default.FormatItalic, "Italic") { activeTool = TextSubTool.ITALIC } }
-            item { SubToolButton(Icons.Default.SpaceBar, "Spacing") { activeTool = TextSubTool.SPACING } }
+            item { SubToolButton(FeatherIcons.Type, "Size") { activeTool = TextSubTool.SIZE } }
+            item { SubToolButton(FeatherIcons.Bold, "Weight") { activeTool = TextSubTool.WEIGHT } }
+            item { SubToolButton(FeatherIcons.AlignLeft, "Align") { activeTool = TextSubTool.ALIGNMENT } }
+            item { SubToolButton(FeatherIcons.AlignJustify, "Words") { activeTool = TextSubTool.WORDS_PER_LINE } }
+            item { SubToolButton(FeatherIcons.List, "Max Lines") { activeTool = TextSubTool.MAX_LINES } }
+            item { SubToolButton(FeatherIcons.Hash, "Symbols") { activeTool = TextSubTool.PUNCTUATION } }
+            item { SubToolButton(FeatherIcons.Italic, "Italic") { activeTool = TextSubTool.ITALIC } }
+            item { SubToolButton(FeatherIcons.Maximize, "Spacing") { activeTool = TextSubTool.SPACING } }
         }
     } else {
         Row(

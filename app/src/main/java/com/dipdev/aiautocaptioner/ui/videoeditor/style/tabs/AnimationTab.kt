@@ -4,11 +4,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.StarHalf
-import androidx.compose.material.icons.filled.Animation
-import androidx.compose.material.icons.filled.Slideshow
-import androidx.compose.material.icons.filled.Speed
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Star
+import compose.icons.feathericons.Activity
+import compose.icons.feathericons.Play
+import compose.icons.feathericons.FastForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,10 +44,10 @@ fun AnimationTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item { SubToolButton(Icons.Default.Slideshow, "Display") { activeTool = AnimSubTool.MODE } }
-            item { SubToolButton(Icons.AutoMirrored.Filled.StarHalf, "Karaoke") { activeTool = AnimSubTool.HIGHLIGHT } }
-            item { SubToolButton(Icons.Default.Animation, "Animation") { activeTool = AnimSubTool.ENTER } }
-            item { SubToolButton(Icons.Default.Speed, "Speed") { activeTool = AnimSubTool.SPEED } }
+            item { SubToolButton(FeatherIcons.Play, "Display") { activeTool = AnimSubTool.MODE } }
+            item { SubToolButton(FeatherIcons.Star, "Karaoke") { activeTool = AnimSubTool.HIGHLIGHT } }
+            item { SubToolButton(FeatherIcons.Activity, "Animation") { activeTool = AnimSubTool.ENTER } }
+            item { SubToolButton(FeatherIcons.FastForward, "Speed") { activeTool = AnimSubTool.SPEED } }
         }
     } else {
         Row(

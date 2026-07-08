@@ -6,13 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.outlined.ContentCut
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.outlined.Image
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.CornerUpLeft
+import compose.icons.feathericons.CornerUpRight
+import compose.icons.feathericons.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +35,7 @@ fun SideToolbar(
     ) {
         // Undo Button
         SideControlButton(
-            icon = Icons.AutoMirrored.Outlined.Undo,
+            icon = FeatherIcons.CornerUpLeft,
             contentDescription = "Undo",
             onClick = onUndo,
             enabled = canUndo
@@ -46,7 +43,7 @@ fun SideToolbar(
 
         // Redo Button
         SideControlButton(
-            icon = Icons.AutoMirrored.Outlined.Redo,
+            icon = FeatherIcons.CornerUpRight,
             contentDescription = "Redo",
             onClick = onRedo,
             enabled = canRedo
@@ -54,7 +51,7 @@ fun SideToolbar(
 
         // Add Image Button
         SideControlButton(
-            icon = Icons.Outlined.Image,
+            icon = FeatherIcons.Image,
             contentDescription = "Add Image",
             onClick = onAddImage,
             enabled = true

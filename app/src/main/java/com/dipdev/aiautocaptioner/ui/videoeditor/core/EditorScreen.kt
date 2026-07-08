@@ -4,10 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -151,7 +147,7 @@ fun EditorScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(vertical = 16.dp),
+                                .padding(top = 16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             // Video Player and Overlays
@@ -216,13 +212,6 @@ fun EditorScreen(
                                 player = editorState.player
                             )
 
-                            HorizontalDivider(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                thickness = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
 
                             EditorBottomDock(
                                 maxHeight = maxH,

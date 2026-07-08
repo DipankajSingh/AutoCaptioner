@@ -17,14 +17,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Copy
+import compose.icons.feathericons.Edit2
+import compose.icons.feathericons.MoreVertical
+import compose.icons.feathericons.Play
+import compose.icons.feathericons.RefreshCw
+import compose.icons.feathericons.Share2
+import compose.icons.feathericons.Trash2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -136,18 +136,18 @@ fun ProjectCard(
                 var showMenu by remember { mutableStateOf(false) }
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        Icon(FeatherIcons.MoreVertical, contentDescription = "More options")
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
                             text = { Text("Rename") },
                             onClick = { showMenu = false; showRenameDialog = true },
-                            leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null) }
+                            leadingIcon = { Icon(FeatherIcons.Edit2, contentDescription = null) }
                         )
                         DropdownMenuItem(
                             text = { Text("Duplicate") },
                             onClick = { showMenu = false; onDuplicate() },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
+                            leadingIcon = { Icon(FeatherIcons.Copy, contentDescription = null) }
                         )
                         DropdownMenuItem(
                             text = { Text("Share") },
@@ -156,17 +156,17 @@ fun ProjectCard(
                                 val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
                                 onShareVideo(videoToShare)
                             },
-                            leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
+                            leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
                         )
                         DropdownMenuItem(
                             text = { Text("Re-transcribe") },
                             onClick = { showMenu = false; onRetranscribe() },
-                            leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) }
+                            leadingIcon = { Icon(FeatherIcons.RefreshCw, contentDescription = null) }
                         )
                         DropdownMenuItem(
                             text = { Text("Delete") },
                             onClick = { showMenu = false; showDeleteConfirm = true },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(FeatherIcons.Trash2, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error)
                         )
                     }
@@ -206,7 +206,7 @@ fun ProjectCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = FeatherIcons.Play,
                             contentDescription = "Play Video",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp)
@@ -290,7 +290,7 @@ fun ProjectCard(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        Icons.Default.PlayArrow,
+                                        FeatherIcons.Play,
                                         contentDescription = "Play Export",
                                         tint = Color.White,
                                         modifier = Modifier.size(24.dp)
@@ -325,7 +325,7 @@ fun ProjectCard(
                     val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
                     onShareVideo(videoToShare)
                 }) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(FeatherIcons.Share2, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Share", style = MaterialTheme.typography.labelMedium)
                 }
@@ -333,7 +333,7 @@ fun ProjectCard(
                     onClick = { showDeleteConfirm = true },
                     colors = ButtonDefaults.textButtonColors(contentColor = AccentRose)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(FeatherIcons.Trash2, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Delete", style = MaterialTheme.typography.labelMedium)
                 }

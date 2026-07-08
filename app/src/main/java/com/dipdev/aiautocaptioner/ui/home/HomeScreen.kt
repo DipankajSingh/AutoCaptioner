@@ -27,13 +27,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCut
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Videocam
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ChevronDown
+import compose.icons.feathericons.Scissors
+import compose.icons.feathericons.Settings
+import compose.icons.feathericons.Video
+import compose.icons.feathericons.X
+import compose.icons.feathericons.Zap
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -238,12 +238,12 @@ fun HomeScreen(
                         ) {
                             Text(modelText, fontSize = 13.sp)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(FeatherIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
 
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(
-                                imageVector = Icons.Default.Settings,
+                                imageVector = FeatherIcons.Settings,
                                 contentDescription = "Settings",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -259,21 +259,21 @@ fun HomeScreen(
                     onExpandedChange = { speedDialExpanded = it },
                     items = listOf(
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
-                            icon = Icons.Default.Videocam,
+                            icon = FeatherIcons.Video,
                             label = "Record Video",
                             color = MaterialTheme.colorScheme.tertiaryContainer,
                             onColor = MaterialTheme.colorScheme.onTertiaryContainer,
                             onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
                         ),
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
-                            icon = Icons.Default.Bolt,
+                            icon = FeatherIcons.Zap,
                             label = "1-Tap Captions",
                             color = MaterialTheme.colorScheme.primary,
                             onColor = MaterialTheme.colorScheme.onPrimary,
                             onClick = { quickPicker.launch("video/*") }
                         ),
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
-                            icon = Icons.Default.ContentCut,
+                            icon = FeatherIcons.Scissors,
                             label = "Advanced Studio",
                             color = MaterialTheme.colorScheme.secondaryContainer,
                             onColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -319,7 +319,7 @@ fun HomeScreen(
                             )
                             IconButton(onClick = { dismissed = true }) {
                                 Icon(
-                                    Icons.Default.Close,
+                                    FeatherIcons.X,
                                     contentDescription = "Dismiss",
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -385,7 +385,7 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Videocam, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary)
+                                Icon(FeatherIcons.Video, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary)
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
@@ -415,7 +415,7 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                                Icon(FeatherIcons.Zap, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {
@@ -445,7 +445,7 @@ fun HomeScreen(
                                     .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.ContentCut, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
+                                Icon(FeatherIcons.Scissors, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
                             }
                             Spacer(Modifier.width(16.dp))
                             Column {

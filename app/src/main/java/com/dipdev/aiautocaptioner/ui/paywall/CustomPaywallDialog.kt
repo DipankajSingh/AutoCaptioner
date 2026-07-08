@@ -23,12 +23,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Animation
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Lock
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Activity
+import compose.icons.feathericons.Zap
+import compose.icons.feathericons.CheckCircle
+import compose.icons.feathericons.Monitor
+import compose.icons.feathericons.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -167,7 +167,7 @@ fun CustomPaywallDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AutoAwesome,
+                                imageVector = FeatherIcons.Zap,
                                 contentDescription = "Pro",
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(30.dp)
@@ -209,7 +209,7 @@ fun CustomPaywallDialog(
                             .padding(vertical = 4.dp)
                     ) {
                         PaywallFeatureRow(
-                            icon = Icons.Default.HighQuality,
+                            icon = FeatherIcons.Monitor,
                             title = "4K Resolution Export",
                             subtitle = "Crystal-clear videos for every platform",
                             accentColor = AccentAmber,
@@ -218,7 +218,7 @@ fun CustomPaywallDialog(
                         )
                         HorizontalDivider(color = cardBorder, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
                         PaywallFeatureRow(
-                            icon = Icons.Default.Animation,
+                            icon = FeatherIcons.Activity,
                             title = "All Premium Styles",
                             subtitle = "Karaoke, Elastic, Typewriter & more",
                             accentColor = AccentViolet,
@@ -227,7 +227,7 @@ fun CustomPaywallDialog(
                         )
                         HorizontalDivider(color = cardBorder, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
                         PaywallFeatureRow(
-                            icon = Icons.Default.Lock,
+                            icon = FeatherIcons.Lock,
                             title = "Lifetime Access",
                             subtitle = "No subscriptions. No recurring fees.",
                             accentColor = AccentRose,
@@ -236,7 +236,7 @@ fun CustomPaywallDialog(
                         )
                         HorizontalDivider(color = cardBorder, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
                         PaywallFeatureRow(
-                            icon = Icons.Default.AutoAwesome,
+                            icon = FeatherIcons.Zap,
                             title = "Karaoke & Word Highlight",
                             subtitle = "Words light up as they're spoken",
                             accentColor = AccentCyan,
@@ -403,7 +403,7 @@ private fun PaywallFeatureRow(
         }
 
         Icon(
-            imageVector = Icons.Default.CheckCircle,
+            imageVector = FeatherIcons.CheckCircle,
             contentDescription = null,
             tint = accentColor,
             modifier = Modifier.size(18.dp)

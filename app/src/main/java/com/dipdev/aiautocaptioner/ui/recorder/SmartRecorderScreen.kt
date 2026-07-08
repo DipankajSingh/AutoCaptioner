@@ -24,9 +24,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Subject
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.X
+import compose.icons.feathericons.FileText
+import compose.icons.feathericons.Image
+import compose.icons.feathericons.RefreshCcw
+import compose.icons.feathericons.Zap
+import compose.icons.feathericons.ZapOff
+import compose.icons.feathericons.Grid
+import compose.icons.feathericons.Clock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -239,7 +245,7 @@ fun SmartRecorderContent(
             onClick = onNavigateBack,
             modifier = Modifier.padding(top = 48.dp, start = 16.dp).align(Alignment.TopStart)
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+            Icon(FeatherIcons.X, contentDescription = "Close", tint = Color.White)
         }
 
         // Top Center: Timer
@@ -277,14 +283,14 @@ fun SmartRecorderContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             SidebarButton(
-                icon = Icons.AutoMirrored.Filled.Subject,
+                icon = FeatherIcons.FileText,
                 text = "Script",
                 isActive = showTeleprompter,
                 onClick = { viewModel.toggleTeleprompter() }
             )
             if (mode == RecordingMode.FACELESS && recordingState == RecordingState.IDLE) {
                 SidebarButton(
-                    icon = Icons.Default.Wallpaper,
+                    icon = FeatherIcons.Image,
                     text = "Canvas",
                     isActive = false,
                     onClick = { showBgPicker = true }
@@ -302,7 +308,7 @@ fun SmartRecorderContent(
         ) {
             if (mode == RecordingMode.CAMERA && recordingState == RecordingState.IDLE) {
                 SidebarButton(
-                    icon = Icons.Default.Cameraswitch,
+                    icon = FeatherIcons.RefreshCcw,
                     text = "Flip",
                     onClick = {
                         val current = cameraController.cameraSelector
@@ -314,7 +320,7 @@ fun SmartRecorderContent(
                     }
                 )
                 SidebarButton(
-                    icon = if (flashEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                    icon = if (flashEnabled) FeatherIcons.Zap else FeatherIcons.ZapOff,
                     text = "Flash",
                     isActive = flashEnabled,
                     onClick = {
@@ -323,7 +329,7 @@ fun SmartRecorderContent(
                     }
                 )
                 SidebarButton(
-                    icon = Icons.Default.Grid3x3,
+                    icon = FeatherIcons.Grid,
                     text = "Grid",
                     isActive = showGrid,
                     onClick = { viewModel.toggleGrid() }
@@ -332,7 +338,7 @@ fun SmartRecorderContent(
             if (recordingState == RecordingState.IDLE) {
                 val timerText = if (countdownTimer == 0) "Timer" else "${countdownTimer}s"
                 SidebarButton(
-                    icon = Icons.Default.Timer,
+                    icon = FeatherIcons.Clock,
                     text = timerText,
                     isActive = countdownTimer > 0,
                     onClick = {

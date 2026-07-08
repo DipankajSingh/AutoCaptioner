@@ -16,12 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.ContentCut
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Remove
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Copy
+import compose.icons.feathericons.Minus
+import compose.icons.feathericons.Plus
+import compose.icons.feathericons.Scissors
+import compose.icons.feathericons.Trash2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -157,19 +157,19 @@ fun VideoTimelinePanel(
                 ) {
                     val hasSelection = selectedClipId != null
                     Icon(
-                        Icons.Outlined.ContentCut, 
+                        FeatherIcons.Scissors, 
                         "Split", 
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp).clickable { onSplit() }
                     )
                     Icon(
-                        Icons.Outlined.ContentCopy, 
+                        FeatherIcons.Copy, 
                         "Duplicate", 
                         tint = if (hasSelection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         modifier = Modifier.size(24.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDuplicate(it) } }
                     )
                     Icon(
-                        Icons.Outlined.Delete, 
+                        FeatherIcons.Trash2, 
                         "Delete", 
                         tint = if (hasSelection) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         modifier = Modifier.size(24.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDelete(it) } }
@@ -182,7 +182,7 @@ fun VideoTimelinePanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Outlined.Remove, 
+                        FeatherIcons.Minus, 
                         "Zoom Out", 
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp).clickable { onZoomOut() }
@@ -194,7 +194,7 @@ fun VideoTimelinePanel(
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
-                        Icons.Outlined.Add, 
+                        FeatherIcons.Plus, 
                         "Zoom In", 
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp).clickable { onZoomIn() }

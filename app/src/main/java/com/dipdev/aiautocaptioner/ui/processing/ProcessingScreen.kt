@@ -23,9 +23,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Edit
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.X
+import compose.icons.feathericons.Edit2
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -126,7 +126,7 @@ fun ProcessingScreen(
                 onClick = { if (isProcessing) showCancelDialog = true else onCancel() },
                 modifier = Modifier.background(LocalAccentColor.current.copy(alpha = 0.15f), CircleShape)
             ) {
-                Icon(imageVector = Icons.Outlined.Close, contentDescription = "Back to Home", tint = LocalAccentColor.current)
+                Icon(imageVector = FeatherIcons.X, contentDescription = "Back to Home", tint = LocalAccentColor.current)
             }
             
             if (!isProcessing) {
@@ -134,7 +134,7 @@ fun ProcessingScreen(
                     onClick = onNavigateToVideoEditor,
                     modifier = Modifier.background(LocalAccentColor.current.copy(alpha = 0.15f), CircleShape)
                 ) {
-                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit the video", tint = LocalAccentColor.current)
+                    Icon(imageVector = FeatherIcons.Edit2, contentDescription = "Edit the video", tint = LocalAccentColor.current)
                 }
             } else {
                 Spacer(modifier = Modifier.size(48.dp))

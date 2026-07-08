@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Plus
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -129,7 +129,7 @@ fun SpeedDialFab(
             )
         ) {
             Icon(
-                Icons.Default.Add,
+                FeatherIcons.Plus,
                 contentDescription = if (expanded) "Close" else "Create",
                 modifier = Modifier.rotate(rotation)
             )

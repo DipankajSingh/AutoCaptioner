@@ -18,13 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowLeft
+import compose.icons.feathericons.CheckCircle
+import compose.icons.feathericons.Download
+import compose.icons.feathericons.RefreshCw
+import compose.icons.feathericons.Share2
+import compose.icons.feathericons.XCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -155,7 +155,7 @@ fun ExportScreen(
                 title = { Text("Export Video", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
                     }
                 }
             )
@@ -200,7 +200,7 @@ fun ExportScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.CheckCircle,
+                                imageVector = FeatherIcons.CheckCircle,
                                 contentDescription = null,
                                 tint = LocalAccentColor.current,
                                 modifier = Modifier.size(20.dp)
@@ -220,7 +220,7 @@ fun ExportScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = FeatherIcons.CheckCircle,
                         contentDescription = "Export complete",
                         modifier = Modifier.size(64.dp),
                         tint = LocalAccentColor.current
@@ -276,7 +276,7 @@ fun ExportScreen(
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         ) {
-                            Icon(Icons.Default.Download, contentDescription = null,
+                            Icon(FeatherIcons.Download, contentDescription = null,
                                 modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Gallery", fontSize = 13.sp , softWrap = false)
@@ -291,7 +291,7 @@ fun ExportScreen(
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null,
+                            Icon(FeatherIcons.Share2, contentDescription = null,
                                 modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Share", fontSize = 13.sp,  softWrap = false)
@@ -307,7 +307,7 @@ fun ExportScreen(
                             onClick = { viewModel.setEvent(ExportUiEvent.ResetForReExport) },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null,
+                            Icon(FeatherIcons.RefreshCw, contentDescription = null,
                                 modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Re-export", fontSize = 13.sp, softWrap = false )
@@ -438,7 +438,7 @@ fun ExportScreen(
                 is ExportState.Cancelled -> {
 
                     Icon(
-                        imageVector = (Icons.Filled.Cancel),
+                        imageVector = (FeatherIcons.XCircle),
                         contentDescription = "Cancelled",
                         modifier = Modifier.size(100.dp),
                         tint = MaterialTheme.colorScheme.error

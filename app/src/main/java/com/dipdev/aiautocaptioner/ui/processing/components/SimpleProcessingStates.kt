@@ -1,8 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.processing.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.AlertTriangle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -123,7 +123,7 @@ fun ErrorView(message: String, onRetry: () -> Unit, onGoBack: () -> Unit) {
     FullScreenStateContainer(
         graphicContent = {
             Icon(
-                imageVector = Icons.Default.Warning,
+                imageVector = FeatherIcons.AlertTriangle,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(64.dp)

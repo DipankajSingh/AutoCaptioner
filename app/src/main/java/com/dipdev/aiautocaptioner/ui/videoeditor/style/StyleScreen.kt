@@ -19,15 +19,15 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Save
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowLeft
+import compose.icons.feathericons.CornerUpRight
+import compose.icons.feathericons.CornerUpLeft
+import compose.icons.feathericons.MessageSquare
+import compose.icons.feathericons.Download
+import compose.icons.feathericons.MoreVertical
+import compose.icons.feathericons.RefreshCw
+import compose.icons.feathericons.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -247,7 +247,7 @@ fun StyleScreen(
                     viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
                     onNavigateBack()
                 }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(FeatherIcons.ArrowLeft, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                 }
 
                 Spacer(Modifier.weight(1f))
@@ -258,7 +258,7 @@ fun StyleScreen(
                     enabled = canUndo
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.Undo, "Undo",
+                        FeatherIcons.CornerUpLeft, "Undo",
                         tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                 }
@@ -268,22 +268,22 @@ fun StyleScreen(
                     enabled = canRedo
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.Redo, "Redo",
+                        FeatherIcons.CornerUpRight, "Redo",
                         tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
                 }
                 // Save preset
                 IconButton(onClick = { showPresetDialog = true }) {
-                    Icon(Icons.Default.Save, "Save Preset", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(FeatherIcons.Save, "Save Preset", tint = MaterialTheme.colorScheme.onSurface)
                 }
                 // Caption editor
                 IconButton(onClick = onNavigateToCaptionEditor) {
-                    Icon(Icons.Default.ClosedCaption, "Edit Captions", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(FeatherIcons.MessageSquare, "Edit Captions", tint = MaterialTheme.colorScheme.onSurface)
                 }
                 // Overflow menu (Re-transcribe)
                 Box {
                     IconButton(onClick = { showOverflowMenu = true }) {
-                        Icon(Icons.Default.MoreVert, "More options", tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(FeatherIcons.MoreVertical, "More options", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     DropdownMenu(
                         expanded = showOverflowMenu,
@@ -296,7 +296,7 @@ fun StyleScreen(
                                 onNavigateToProcessing()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Refresh, contentDescription = null)
+                                Icon(FeatherIcons.RefreshCw, contentDescription = null)
                             }
                         )
                     }
@@ -314,7 +314,7 @@ fun StyleScreen(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(FeatherIcons.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
                     Text("Export", style = MaterialTheme.typography.labelLarge)
                 }

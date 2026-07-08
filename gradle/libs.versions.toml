@@ -1,6 +1,7 @@
 [versions]
 agp = "9.2.1"
 
+feather = "1.1.1"
 kotlin = "2.4.0"
 coreKtx = "1.19.0"
 junit = "4.13.2"
@@ -34,6 +35,7 @@ camerax = "1.6.1"
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+feather = { module = "br.com.devsrsouza.compose.icons:feather", version.ref = "feather" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

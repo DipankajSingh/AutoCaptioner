@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Pause
+import compose.icons.feathericons.Play
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -82,7 +82,7 @@ fun PlayPauseTapOverlay(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (player.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                    imageVector = if (player.isPlaying) FeatherIcons.Pause else FeatherIcons.Play,
                     contentDescription = if (player.isPlaying) "Pause" else "Play",
                     tint = AccentAmber.copy(alpha = iconAlpha),
                     modifier = Modifier.size(32.dp)
