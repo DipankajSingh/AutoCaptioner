@@ -1,0 +1,337 @@
+package com.dipdev.aiautocaptioner.ui.videoeditor.core
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import androidx.annotation.OptIn
+import androidx.lifecycle.viewModelScope
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import com.dipdev.aiautocaptioner.core.video.ThumbnailExtractor
+import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.model.Clip
+import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
+import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.ClipManager
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.OverlayManager
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.PlayerSyncManager
+import com.dipdev.aiautocaptioner.ui.videoeditor.export.ExportService
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+sealed class VideoEditorUiStep {
+    data object Idle : VideoEditorUiStep()
+    data object Loading : VideoEditorUiStep()
+    data class Ready(val durationMs: Long, val originalPath: String) : VideoEditorUiStep()
+    data class Processing(val progress: Int) : VideoEditorUiStep()
+    data object Success : VideoEditorUiStep()
+    data class Error(val message: String) : VideoEditorUiStep()
+}
+
+data class VideoEditorUiState(
+    val step: VideoEditorUiStep = VideoEditorUiStep.Idle,
+    val clips: List<Clip> = emptyList(),
+    val hasEdits: Boolean = false,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false,
+    val clipThumbnails: Map<String, List<Bitmap>> = emptyMap(),
+    val showTimelineThumbnails: Boolean = false,
+    val selectedLanguage: String = "en",
+    val translateToEnglish: Boolean = false
+) : UiState
+
+sealed class VideoEditorUiEvent : UiEvent {
+    data class LoadProject(val projectId: String) : VideoEditorUiEvent()
+    data object Undo : VideoEditorUiEvent()
+    data object Redo : VideoEditorUiEvent()
+    data class UpdateDurationFromPlayer(val actualDurationMs: Long) : VideoEditorUiEvent()
+    data class SplitClipAtAbsoluteTime(val absoluteTimelineMs: Long) : VideoEditorUiEvent()
+    data class DeleteClip(val clipId: String) : VideoEditorUiEvent()
+    data class DuplicateClip(val clipId: String) : VideoEditorUiEvent()
+    data class MoveClip(val fromIndex: Int, val toIndex: Int) : VideoEditorUiEvent()
+    data object ApplyEdits : VideoEditorUiEvent()
+    data object Cancel : VideoEditorUiEvent()
+    data object DeleteProject : VideoEditorUiEvent()
+    data class SaveLanguage(val language: String, val translateToEnglish: Boolean) : VideoEditorUiEvent()
+    data class AddOverlay(val uri: String) : VideoEditorUiEvent()
+    data class UpdateOverlay(val overlay: ImageOverlayEntity) : VideoEditorUiEvent()
+    data class DeleteOverlay(val overlayId: String) : VideoEditorUiEvent()
+    data class SelectOverlay(val overlayId: String?) : VideoEditorUiEvent()
+    data class MoveOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
+}
+
+sealed class VideoEditorUiEffect : UiEffect {
+    data object ProjectDeleted : VideoEditorUiEffect()
+}
+
+@HiltViewModel
+class EditorViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val projectRepository: ProjectRepository,
+    private val settingsRepository: SettingsRepository,
+    private val overlayRepository: OverlayRepository,
+    private val videoExporter: ExportService
+) : BaseViewModel<VideoEditorUiState, VideoEditorUiEvent, VideoEditorUiEffect>(VideoEditorUiState()) {
+
+    private var currentProjectId: String? = null
+    private val projectIdFlow = MutableStateFlow<String?>(null)
+    
+    private val _selectedOverlayId = MutableStateFlow<String?>(null)
+    val selectedOverlayId = _selectedOverlayId.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val overlays: StateFlow<List<ImageOverlayEntity>> = projectIdFlow
+        .flatMapLatest { id ->
+            if (id != null) overlayRepository.getOverlaysForProject(id)
+            else flowOf(emptyList())
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying = _isPlaying.asStateFlow()
+
+    private val _currentTimelineMs = MutableStateFlow(0L)
+    val currentTimelineMs = _currentTimelineMs.asStateFlow()
+
+    private var originalDurationMs: Long = 0L
+    private var originalVideoPath: String = ""
+
+    private val clipManager = ClipManager(
+        getOriginalDurationMs = { originalDurationMs },
+        getCurrentClips = { currentState.clips },
+        onStateChanged = { newClips, edits, undo, redo -> 
+            setState { copy(clips = newClips, hasEdits = edits, canUndo = undo, canRedo = redo) } 
+        },
+        onUndoToOriginal = {
+            setState { copy(clips = listOf(Clip(startTrimMs = 0L, endTrimMs = originalDurationMs)), hasEdits = false) }
+        }
+    )
+    
+    private val overlayManager = OverlayManager(
+        context = context,
+        overlayRepository = overlayRepository,
+        getOverlays = { overlays.value },
+        getProjectId = { currentProjectId },
+        onOverlaySelected = { _selectedOverlayId.value = it },
+        isSelectedOverlay = { it == _selectedOverlayId.value }
+    )
+    
+    private val playerSyncManager = PlayerSyncManager(
+        scope = viewModelScope,
+        onIsPlayingChanged = { _isPlaying.value = it },
+        onTimelinePositionChanged = { _currentTimelineMs.value = it },
+        getClips = { currentState.clips }
+    )
+
+    fun bindPlayer(player: Player) {
+        playerSyncManager.bindPlayer(player)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        playerSyncManager.unbind()
+        videoExporter.cancel()
+    }
+
+    init {
+        viewModelScope.launch {
+            settingsRepository.showTimelineThumbnailsFlow.collect { showThumbs ->
+                setState { copy(showTimelineThumbnails = showThumbs) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.lastLanguageFlow.collect { lang ->
+                setState { copy(selectedLanguage = lang) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.lastTranslateFlow.collect { translate ->
+                setState { copy(translateToEnglish = translate) }
+            }
+        }
+
+        viewModelScope.launch {
+            uiState.map { Pair(it.clips, it.showTimelineThumbnails) }
+                .distinctUntilChanged()
+                .collect { (currentClips, showThumbs) ->
+                    if (showThumbs && originalVideoPath.isNotEmpty()) {
+                        val newMap = currentState.clipThumbnails.toMutableMap()
+                        
+                        for (clip in currentClips) {
+                            if (!newMap.containsKey(clip.id)) {
+                                val bitmaps = ThumbnailExtractor.extractThumbnails(
+                                    context = context,
+                                    videoPath = originalVideoPath,
+                                    startMs = clip.startTrimMs,
+                                    endMs = clip.endTrimMs,
+                                    count = 5
+                                )
+                                newMap[clip.id] = bitmaps
+                            }
+                        }
+                        
+                        val currentIds = currentClips.map { it.id }.toSet()
+                        val removedKeys = newMap.keys - currentIds
+                        removedKeys.forEach { key ->
+                            newMap.remove(key)?.forEach { it.recycle() }
+                        }
+                        
+                        setState { copy(clipThumbnails = newMap) }
+                    } else if (currentState.clipThumbnails.isNotEmpty()) {
+                        currentState.clipThumbnails.values.flatten().forEach { it.recycle() }
+                        setState { copy(clipThumbnails = emptyMap()) }
+                    }
+                }
+        }
+    }
+
+    override fun handleEvent(event: VideoEditorUiEvent) {
+        when (event) {
+            is VideoEditorUiEvent.LoadProject -> loadProject(event.projectId)
+            is VideoEditorUiEvent.Undo -> clipManager.undo()
+            is VideoEditorUiEvent.Redo -> clipManager.redo()
+            is VideoEditorUiEvent.UpdateDurationFromPlayer -> updateDurationFromPlayer(event.actualDurationMs)
+            is VideoEditorUiEvent.SplitClipAtAbsoluteTime -> clipManager.splitClipAtAbsoluteTime(event.absoluteTimelineMs)
+            is VideoEditorUiEvent.DeleteClip -> clipManager.deleteClip(event.clipId)
+            is VideoEditorUiEvent.DuplicateClip -> clipManager.duplicateClip(event.clipId)
+            is VideoEditorUiEvent.MoveClip -> clipManager.moveClip(event.fromIndex, event.toIndex)
+            is VideoEditorUiEvent.ApplyEdits -> applyEdits()
+            is VideoEditorUiEvent.Cancel -> cancel()
+            is VideoEditorUiEvent.DeleteProject -> deleteProject()
+            is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
+            is VideoEditorUiEvent.AddOverlay -> overlayManager.addOverlay(event.uri, viewModelScope)
+            is VideoEditorUiEvent.UpdateOverlay -> overlayManager.updateOverlay(event.overlay, viewModelScope)
+            is VideoEditorUiEvent.DeleteOverlay -> overlayManager.deleteOverlay(event.overlayId, viewModelScope)
+            is VideoEditorUiEvent.SelectOverlay -> overlayManager.selectOverlay(event.overlayId)
+            is VideoEditorUiEvent.MoveOverlayZ -> overlayManager.moveOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+        }
+    }
+
+    private fun loadProject(projectId: String) {
+        viewModelScope.launch {
+            setState { copy(step = VideoEditorUiStep.Loading) }
+            currentProjectId = projectId
+            projectIdFlow.value = projectId
+            val project = projectRepository.getProjectById(projectId)
+            if (project != null) {
+                var durationMs = 0L
+                var retriever: MediaMetadataRetriever? = null
+                try {
+                    retriever = MediaMetadataRetriever()
+                    if (project.workingVideoPath.startsWith("content://") || project.workingVideoPath.startsWith("file://")) {
+                        retriever.setDataSource(context, android.net.Uri.parse(project.workingVideoPath))
+                    } else {
+                        retriever.setDataSource(project.workingVideoPath)
+                    }
+                    val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    durationMs = durationStr?.toLongOrNull() ?: 0L
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    retriever?.release()
+                }
+                originalDurationMs = durationMs
+                originalVideoPath = project.workingVideoPath
+                clipManager.reset()
+                
+                setState { 
+                    copy(
+                        clips = listOf(Clip(startTrimMs = 0L, endTrimMs = durationMs)),
+                        hasEdits = false,
+                        canUndo = false,
+                        canRedo = false,
+                        step = VideoEditorUiStep.Ready(durationMs = durationMs, originalPath = project.workingVideoPath)
+                    )
+                }
+            } else {
+                setState { copy(step = VideoEditorUiStep.Error("Project or video not found")) }
+            }
+        }
+    }
+
+    private fun updateDurationFromPlayer(actualDurationMs: Long) {
+        if (actualDurationMs > 0 && actualDurationMs != originalDurationMs) {
+            originalDurationMs = actualDurationMs
+            if (!currentState.hasEdits && currentState.clips.size == 1) {
+                setState { copy(clips = listOf(Clip(startTrimMs = 0L, endTrimMs = actualDurationMs))) }
+            }
+        }
+    }
+
+    private fun applyEdits() {
+        val projectId = currentProjectId ?: return
+        val step = currentState.step as? VideoEditorUiStep.Ready ?: return
+        
+        setState { copy(step = VideoEditorUiStep.Processing(0)) }
+        
+        videoExporter.startExport(
+            scope = viewModelScope,
+            originalPath = step.originalPath,
+            clips = currentState.clips,
+            onProgress = { progress ->
+                setState { copy(step = VideoEditorUiStep.Processing(progress)) }
+            },
+            onSuccess = { tempFile ->
+                viewModelScope.launch {
+                    projectRepository.updateWorkingVideoPath(projectId, tempFile.absolutePath)
+                    projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
+                    setState { copy(step = VideoEditorUiStep.Success) }
+                }
+            },
+            onError = { error ->
+                setState { copy(step = VideoEditorUiStep.Error(error)) }
+            }
+        )
+    }
+
+    private fun cancel() {
+        videoExporter.cancel()
+        if (originalVideoPath.isNotEmpty()) {
+            setState { copy(step = VideoEditorUiStep.Ready(originalDurationMs, originalVideoPath)) }
+        } else {
+            setState { copy(step = VideoEditorUiStep.Idle) }
+        }
+    }
+
+    private fun deleteProject() {
+        viewModelScope.launch {
+            currentProjectId?.let { id ->
+                projectRepository.deleteProject(id)
+            }
+            setEffect(VideoEditorUiEffect.ProjectDeleted)
+        }
+    }
+
+    private fun saveLanguage(language: String, translateToEnglish: Boolean) {
+        setState { copy(selectedLanguage = language, translateToEnglish = translateToEnglish) }
+        viewModelScope.launch {
+            settingsRepository.saveLastLanguageSettings(language, translateToEnglish)
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    fun cleanup() {
+        videoExporter.cancel()
+    }
+}

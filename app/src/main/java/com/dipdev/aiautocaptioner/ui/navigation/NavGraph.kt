@@ -15,7 +15,7 @@ import com.dipdev.aiautocaptioner.ui.modeldownload.ModelDownloadScreen
 import com.dipdev.aiautocaptioner.ui.onboarding.OnboardingScreen
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
-import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.StyleEditorScreen
+import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -190,7 +190,7 @@ fun NavGraph(
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
             val fromProcessing = backStackEntry.arguments?.getBoolean("fromProcessing") ?: false
-            StyleEditorScreen(
+            StyleScreen(
                 projectId = projectId,
                 fromProcessing = fromProcessing,
                 onNavigateBack = { navController.popBackStack() },
@@ -232,7 +232,7 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            com.dipdev.aiautocaptioner.ui.videoeditor.VideoEditorScreen(
+            com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen(
                 projectId = projectId,
                 onNavigateToProcessing = {
                     navController.navigate(Screen.Processing.createRoute(projectId)) {

@@ -46,6 +46,7 @@ fun VideoPlayerCard(
     modifier: Modifier = Modifier,
     player: Player?,
     showControls: Boolean = false,
+    enableTapOverlay: Boolean = true,
     cornerRadius: Dp = 4.dp
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(cornerRadius))) {
@@ -66,7 +67,7 @@ fun VideoPlayerCard(
         )
         
         // Transparent overlay for tap-to-play/pause if controls are disabled
-        if (!showControls) {
+        if (!showControls && enableTapOverlay) {
             var isPlaying by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(player?.playWhenReady ?: false) }
             
             // Sync state with player when it changes externally
