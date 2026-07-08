@@ -44,13 +44,8 @@ fun VideoTimelinePanel(
     onCaptionTap: () -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
-    onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit,
     player: Player,
     currentTimelineMs: () -> Long,
-    onSplitClip: () -> Unit,
-    onDuplicateClip: (String) -> Unit,
-    onDeleteClip: (String) -> Unit,
     onMoveOverlayZ: (String, Boolean) -> Unit,
     onDeleteOverlay: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -123,20 +118,6 @@ fun VideoTimelinePanel(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            VideoEditorToolbar(
-                selectedClipId = selectedClipId,
-                zoomLevel = zoomLevel,
-                onSplit = onSplitClip,
-                onDuplicate = { selectedClipId?.let { onDuplicateClip(it) } },
-                onDelete = {
-                    selectedClipId?.let {
-                        onDeleteClip(it)
-                        onClipSelected(null)
-                    }
-                },
-                onZoomIn = onZoomIn,
-                onZoomOut = onZoomOut
-            )
         }
     }
 }

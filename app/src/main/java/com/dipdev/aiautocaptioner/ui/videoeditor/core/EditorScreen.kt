@@ -192,6 +192,16 @@ fun EditorScreen(
                                     onLanguageSelected = { lang, trans ->
                                         viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
                                     },
+                                    selectedClipId = selectedClipId,
+                                    zoomLevel = zoomLevel,
+                                    onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
+                                    onDuplicate = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
+                                    onDelete = { 
+                                        viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
+                                        selectedClipId = null
+                                    },
+                                    onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
+                                    onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
                                     modifier = Modifier.align(Alignment.TopEnd)
                                 )
                             }
@@ -236,13 +246,8 @@ fun EditorScreen(
                                 onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
                                 onDragStateChange = { editorState.isDragging = it },
                                 zoomLevel = zoomLevel,
-                                onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
-                                onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
                                 player = editorState.player,
                                 currentTimelineMs = { editorState.currentTimelineMs },
-                                onSplitClip = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
-                                onDuplicateClip = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
-                                onDeleteClip = { viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it)) },
                                 onMoveOverlayZ = { id, bringToFront -> viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront)) },
                                 onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
                                 styleViewModel = styleViewModel,

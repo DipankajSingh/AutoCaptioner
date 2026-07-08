@@ -1,15 +1,26 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,7 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 
 @Composable
 fun LeftSideControls(
@@ -102,6 +117,13 @@ fun RightSideControls(
     selectedLanguage: String,
     translateToEnglish: Boolean,
     onLanguageSelected: (String, Boolean) -> Unit,
+    selectedClipId: String?,
+    zoomLevel: Float,
+    onSplit: () -> Unit,
+    onDuplicate: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var langPanelExpanded by remember { mutableStateOf(false) }
@@ -126,5 +148,54 @@ fun RightSideControls(
             translateToEnglish = translateToEnglish,
             onLanguageSelected = onLanguageSelected
         )
+        
+        // Compact editing tools
+        Column(
+            modifier = Modifier
+                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val hasSelection = selectedClipId != null
+            Icon(
+                Icons.Outlined.ContentCut, 
+                "Split", 
+                tint = LocalAccentColor.current,
+                modifier = Modifier.size(20.dp).clickable { onSplit() }
+            )
+            Icon(
+                Icons.Outlined.ContentCopy, 
+                "Duplicate", 
+                tint = if (hasSelection) LocalAccentColor.current else LocalAccentColor.current.copy(alpha = 0.38f),
+                modifier = Modifier.size(20.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDuplicate(it) } }
+            )
+            Icon(
+                Icons.Outlined.Delete, 
+                "Delete", 
+                tint = if (hasSelection) AccentRose else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                modifier = Modifier.size(20.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDelete(it) } }
+            )
+            
+            // Zoom tools
+            Icon(
+                Icons.Outlined.Add, 
+                "Zoom In", 
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp).clickable { onZoomIn() }
+            )
+            Text(
+                text = "${(zoomLevel * 100).toInt()}%",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            Icon(
+                Icons.Outlined.Remove, 
+                "Zoom Out", 
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp).clickable { onZoomOut() }
+            )
+        }
     }
 }

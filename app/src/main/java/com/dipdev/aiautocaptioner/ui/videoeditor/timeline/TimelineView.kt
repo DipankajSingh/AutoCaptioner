@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -189,7 +190,6 @@ fun TimelineView(
             Column(modifier = Modifier.fillMaxHeight()) {
                 TimelineRuler(totalEditedMs, pixelsPerMs, totalWidthDp, zoomLevel, textMeasurer, onSurfaceColor)
                 
-                Text("Video", fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp))
                 if (clips.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
@@ -199,7 +199,7 @@ fun TimelineView(
                         )
                     }
                 } else {
-                    Row(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.height(56.dp).fillMaxWidth()) {
                         clips.forEachIndexed { index, clip ->
                             key(clip.id) {
                                 val durationMs = clip.endTrimMs - clip.startTrimMs
@@ -242,10 +242,9 @@ fun TimelineView(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(totalWidthDp).height(1.dp).background(outlineColor.copy(alpha = 0.5f)))
+                Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
 
-                Text("Caption", fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp))
-                Box(modifier = Modifier.height(40.dp).width(totalWidthDp).background(Color.DarkGray.copy(alpha = 0.1f))) {
+                Box(modifier = Modifier.height(28.dp).width(totalWidthDp).background(Color.DarkGray.copy(alpha = 0.1f), RoundedCornerShape(4.dp))) {
                     overlays.forEach { overlay ->
                         val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
                         val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
@@ -270,11 +269,10 @@ fun TimelineView(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
 
-                Text("Audio", fontSize = 10.sp, color = onSurfaceColor.copy(alpha = 0.5f), modifier = Modifier.padding(start = 4.dp))
-                Box(modifier = Modifier.height(40.dp).width(totalWidthDp).background(Color.DarkGray.copy(alpha = 0.1f)))
-                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.height(28.dp).width(totalWidthDp).background(Color.DarkGray.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.width(halfWidthDp))

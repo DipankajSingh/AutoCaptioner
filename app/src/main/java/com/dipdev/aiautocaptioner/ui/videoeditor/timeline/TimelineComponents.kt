@@ -46,13 +46,13 @@ fun TimelineRuler(
     textMeasurer: TextMeasurer,
     onSurfaceColor: Color
 ) {
-    Canvas(modifier = Modifier.width(totalWidthDp).height(40.dp)) {
+    Canvas(modifier = Modifier.width(totalWidthDp).height(20.dp)) {
         val durationSec = totalEditedMs / 1000
         for (i in 0..durationSec) {
             val x = i * 1000 * pixelsPerMs
             drawLine(
-                color = onSurfaceColor.copy(alpha = 0.7f),
-                start = Offset(x, 0f),
+                color = onSurfaceColor.copy(alpha = 0.5f),
+                start = Offset(x, size.height - 10f),
                 end = Offset(x, size.height),
                 strokeWidth = 2f
             )
@@ -61,7 +61,7 @@ fun TimelineRuler(
                 if (subX <= size.width) {
                     drawLine(
                         color = onSurfaceColor.copy(alpha = 0.25f),
-                        start = Offset(subX, size.height - 10f),
+                        start = Offset(subX, size.height - 5f),
                         end = Offset(subX, size.height),
                         strokeWidth = 1f
                     )
@@ -71,9 +71,9 @@ fun TimelineRuler(
                 val timeText = String.format("%02d:%02d", i / 60, i % 60)
                 val layoutResult = textMeasurer.measure(
                     text = timeText,
-                    style = TextStyle(color = AccentAmber, fontSize = 10.sp)
+                    style = TextStyle(color = onSurfaceColor.copy(alpha = 0.7f), fontSize = 8.sp)
                 )
-                drawText(textLayoutResult = layoutResult, topLeft = Offset(x + 4f, 4f))
+                drawText(textLayoutResult = layoutResult, topLeft = Offset(x + 2f, 0f))
             }
         }
     }
@@ -302,6 +302,23 @@ fun CaptionOverlayItem(
                 onCaptionTap()
             }
     ) {
+        // Overlay icon/indicator
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("T", color = Color.White, fontSize = 10.sp)
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Caption", color = Color.White, fontSize = 10.sp, maxLines = 1)
+        }
+
         if (isSelectedOverlay) {
             Box(modifier = Modifier.align(Alignment.CenterStart).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
             Box(modifier = Modifier.align(Alignment.CenterEnd).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
