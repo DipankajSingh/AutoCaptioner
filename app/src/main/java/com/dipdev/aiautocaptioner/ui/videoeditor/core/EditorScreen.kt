@@ -248,6 +248,7 @@ fun EditorScreen(
                                 zoomLevel = zoomLevel,
                                 player = editorState.player,
                                 currentTimelineMs = { editorState.currentTimelineMs },
+                                onTrimClip = { id, start, end -> viewModel.setEvent(VideoEditorUiEvent.TrimClip(id, start, end)) },
                                 onMoveOverlayZ = { id, bringToFront -> viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront)) },
                                 onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
                                 styleViewModel = styleViewModel,

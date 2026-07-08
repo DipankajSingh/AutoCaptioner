@@ -47,6 +47,7 @@ fun EditorBottomDock(
     zoomLevel: Float,
     player: Player,
     currentTimelineMs: () -> Long,
+    onTrimClip: (String, Long, Long) -> Unit,
     onMoveOverlayZ: (String, Boolean) -> Unit,
     onDeleteOverlay: (String) -> Unit,
     styleViewModel: StyleViewModel,
@@ -79,6 +80,7 @@ fun EditorBottomDock(
                         zoomLevel = zoomLevel,
                         player = player,
                         currentTimelineMs = currentTimelineMs,
+                        onTrimClip = onTrimClip,
                         onMoveOverlayZ = onMoveOverlayZ,
                         onDeleteOverlay = onDeleteOverlay,
                         modifier = Modifier.fillMaxSize()

@@ -44,7 +44,8 @@ fun TimelineView(
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
-    currentTimelineMs: () -> Long
+    currentTimelineMs: () -> Long,
+    onTrimClip: (String, Long, Long) -> Unit = {_,_,_ ->}
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
@@ -235,7 +236,10 @@ fun TimelineView(
                                     onCheckSwaps = checkSwaps,
                                     onDraggingIndexChange = { draggingClipIndex = it },
                                     onClipSelected = onClipSelected,
-                                    hasGapBefore = hasGapBefore
+                                    hasGapBefore = hasGapBefore,
+                                    onTrimClip = onTrimClip,
+                                    pixelsPerMs = pixelsPerMs,
+                                    totalEditedMs = totalEditedMs
                                 )
                             }
                         }

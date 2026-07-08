@@ -115,6 +115,17 @@ class ClipManager(
         }
     }
 
+    fun trimClip(clipId: String, newStartTrimMs: Long, newEndTrimMs: Long) {
+        val currentClips = getCurrentClips().toMutableList()
+        val index = currentClips.indexOfFirst { it.id == clipId }
+        if (index != -1) {
+            saveState(currentClips)
+            val clipToTrim = currentClips[index]
+            currentClips[index] = clipToTrim.copy(startTrimMs = newStartTrimMs, endTrimMs = newEndTrimMs)
+            updateState(currentClips, hasEdits = true)
+        }
+    }
+
     fun moveClip(fromIndex: Int, toIndex: Int) {
         val currentClips = getCurrentClips().toMutableList()
         if (fromIndex in currentClips.indices && toIndex in currentClips.indices) {

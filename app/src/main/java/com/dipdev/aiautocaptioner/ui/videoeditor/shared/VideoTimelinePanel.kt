@@ -46,6 +46,7 @@ fun VideoTimelinePanel(
     zoomLevel: Float,
     player: Player,
     currentTimelineMs: () -> Long,
+    onTrimClip: (String, Long, Long) -> Unit,
     onMoveOverlayZ: (String, Boolean) -> Unit,
     onDeleteOverlay: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -98,6 +99,7 @@ fun VideoTimelinePanel(
                     zoomLevel = zoomLevel,
                     player = player,
                     currentTimelineMs = currentTimelineMs,
+                    onTrimClip = onTrimClip,
                     modifier = Modifier.fillMaxSize()
                 )
             }
