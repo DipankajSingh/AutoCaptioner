@@ -162,18 +162,12 @@ class ThumbnailManager(private val context: Context) {
         val r = retriever ?: return@withContext null
         
         try {
-            val scaledBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && targetThumbWidth > 0) {
-                // Let the native framework downscale the frame immediately during decode. Uses virtually 0 RAM.
-                r.getScaledFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST, targetThumbWidth, targetThumbHeight)
-            } else {
-                // Fallback for API 24-26
-                val raw = r.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
-                if (raw != null && targetThumbWidth > 0) {
-                    val scaled = raw.scale(targetThumbWidth, targetThumbHeight)
-                    if (scaled != raw) raw.recycle()
-                    scaled
-                } else raw
-            }
+            val raw = r.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+            val scaledBitmap = if (raw != null && targetThumbWidth > 0) {
+                val scaled = raw.scale(targetThumbWidth, targetThumbHeight)
+                if (scaled != raw) raw.recycle()
+                scaled
+            } else raw
 
             if (scaledBitmap != null) {
                 FileOutputStream(file).use { out ->
