@@ -15,9 +15,8 @@ import com.dipdev.aiautocaptioner.ui.modeldownload.ModelDownloadScreen
 import com.dipdev.aiautocaptioner.ui.onboarding.OnboardingScreen
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
-import com.dipdev.aiautocaptioner.ui.styleeditor.StyleEditorScreen
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.StyleEditorScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
@@ -241,9 +240,6 @@ fun NavGraph(
                     }
                 },
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToCaptionEditor = {
-                    navController.navigate(Screen.CaptionEditor.createRoute(projectId))
-                },
                 onNavigateToExport = {
                     navController.navigate(Screen.Export.createRoute(projectId))
                 }

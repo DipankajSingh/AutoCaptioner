@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor.tabs
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.tabs
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -20,8 +20,8 @@ import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
-import com.dipdev.aiautocaptioner.ui.styleeditor.SubToolButton
-import com.dipdev.aiautocaptioner.ui.styleeditor.LabeledPremiumSlider
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.SubToolButton
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.LabeledPremiumSlider
 
 enum class AnimSubTool { MODE, HIGHLIGHT, ENTER, SPEED }
 

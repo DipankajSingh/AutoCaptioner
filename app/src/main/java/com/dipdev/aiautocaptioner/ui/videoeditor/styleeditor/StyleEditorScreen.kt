@@ -1,10 +1,9 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,7 +40,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,14 +52,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
 import com.dipdev.aiautocaptioner.ui.components.InAppToast
 import com.dipdev.aiautocaptioner.ui.paywall.CustomPaywallDialog
-import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.AnimationTab
-import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.ColorTab
-import com.dipdev.aiautocaptioner.ui.styleeditor.tabs.TextTab
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.tabs.AnimationTab
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.tabs.ColorTab
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.tabs.TextTab
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 
@@ -93,10 +94,10 @@ fun StyleEditorScreen(
     // Show toast once on first entry from processing
     var toastTriggered by remember { mutableStateOf(fromProcessing) }
 
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE || event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
                 viewModel.exoPlayer?.pause()
             }
         }
@@ -336,8 +337,6 @@ fun StyleEditorScreen(
                 VideoPreview(
                     style = style,
                     videoPath = project?.workingVideoPath,
-                    videoWidth = outWidth,
-                    videoHeight = outHeight,
                     segments = segments,
                     wordsMap = wordsMap,
                     durationMs = videoDurationMs,

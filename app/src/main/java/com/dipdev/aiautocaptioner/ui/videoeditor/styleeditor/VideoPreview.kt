@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -21,19 +24,17 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.engine.CaptionRenderer
+import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VideoPreview(
     style: CaptionStyleEntity,
     videoPath: String?,
-    videoWidth: Int,
-    videoHeight: Int,
     segments: List<CaptionSegmentEntity>,
     wordsMap: Map<String, List<CaptionWordEntity>>,
     durationMs: Long,
     exoPlayer: ExoPlayer?,
-    bottomPadding: androidx.compose.ui.unit.Dp = 0.dp,
     onPositionYChange: (Float) -> Unit,
     onSeek: (Long) -> Unit
 ) {
@@ -52,7 +53,7 @@ fun VideoPreview(
             } else {
                 // Paused — one update then sleep to avoid constant recomposition
                 currentPositionMs = exoPlayer.currentPosition
-                kotlinx.coroutines.delay(250.milliseconds)
+                delay(250.milliseconds)
             }
         }
     }
@@ -180,24 +181,24 @@ private fun SeekBar(
             // Background track
             drawRoundRect(
                 color = Color.White.copy(alpha = 0.25f),
-                topLeft = androidx.compose.ui.geometry.Offset(0f, cy - trackHeight / 2f),
-                size = androidx.compose.ui.geometry.Size(size.width, trackHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
+                topLeft = Offset(0f, cy - trackHeight / 2f),
+                size = Size(size.width, trackHeight),
+                cornerRadius = CornerRadius(trackHeight / 2f)
             )
             // Filled progress
             if (thumbX > 0f) {
                 drawRoundRect(
                     color = Color.White,
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, cy - trackHeight / 2f),
-                    size = androidx.compose.ui.geometry.Size(thumbX, trackHeight),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2f)
+                    topLeft = Offset(0f, cy - trackHeight / 2f),
+                    size = Size(thumbX, trackHeight),
+                    cornerRadius = CornerRadius(trackHeight / 2f)
                 )
             }
             // Thumb dot
             drawCircle(
                 color = Color.White,
                 radius = 6.dp.toPx(),
-                center = androidx.compose.ui.geometry.Offset(thumbX, cy)
+                center = Offset(thumbX, cy)
             )
         }
     }

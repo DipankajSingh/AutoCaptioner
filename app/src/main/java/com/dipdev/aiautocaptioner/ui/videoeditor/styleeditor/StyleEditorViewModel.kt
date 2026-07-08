@@ -1,10 +1,9 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor
 
-import androidx.lifecycle.ViewModel
+import android.annotation.SuppressLint
+import android.app.Activity
 import androidx.lifecycle.viewModelScope
 import android.content.Context
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -19,10 +18,6 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -30,10 +25,13 @@ import androidx.core.net.toUri
 import com.revenuecat.purchases.restorePurchasesWith
 
 import com.dipdev.aiautocaptioner.data.billing.PremiumManager
+import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
+import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
+import com.revenuecat.purchases.Purchases
 
 data class StyleEditorUiState(
     val isPremium: Boolean = false,
@@ -41,8 +39,8 @@ data class StyleEditorUiState(
     val styles: List<CaptionStyleEntity> = emptyList(),
     val activeStyle: CaptionStyleEntity? = null,
     val project: ProjectEntity? = null,
-    val segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
-    val wordsMap: Map<String, List<com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity>> = emptyMap(),
+    val segments: List<CaptionSegmentEntity> = emptyList(),
+    val wordsMap: Map<String, List<CaptionWordEntity>> = emptyMap(),
     val selectedTab: StyleTab = StyleTab.PRESETS,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
@@ -84,7 +82,7 @@ sealed interface StyleEditorUiEvent : UiEvent {
     data class DeletePreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
     data object Undo : StyleEditorUiEvent
     data object Redo : StyleEditorUiEvent
-    data class PurchaseLifetime(val activity: android.app.Activity) : StyleEditorUiEvent
+    data class PurchaseLifetime(val activity: Activity) : StyleEditorUiEvent
     data object RestorePurchases : StyleEditorUiEvent
 }
 
@@ -140,7 +138,7 @@ class StyleEditorViewModel @Inject constructor(
             is StyleEditorUiEvent.DeletePreset -> deletePreset(event.style)
             is StyleEditorUiEvent.Undo -> undo()
             is StyleEditorUiEvent.Redo -> redo()
-            is StyleEditorUiEvent.PurchaseLifetime -> purchaseLifetime(event.activity)
+            is StyleEditorUiEvent.PurchaseLifetime -> purchaseLifetime()
             is StyleEditorUiEvent.RestorePurchases -> restorePurchases()
         }
     }
@@ -149,10 +147,9 @@ class StyleEditorViewModel @Inject constructor(
         // No-op, mock is removed. Purchase is handled by RevenueCat Paywall directly in UI.
     }
 
-    private fun purchaseLifetime(activity: android.app.Activity) {
+    private fun purchaseLifetime() {
         viewModelScope.launch {
             setState { copy(isPurchaseLoading = true) }
-            val result = premiumManager.purchaseLifetime(activity)
             setState { copy(isPurchaseLoading = false) }
         }
     }
@@ -161,15 +158,15 @@ class StyleEditorViewModel @Inject constructor(
         viewModelScope.launch {
             setState { copy(isPurchaseLoading = true) }
             try {
-                com.revenuecat.purchases.Purchases.sharedInstance.restorePurchasesWith(
-                    onSuccess = { customerInfo ->
+                Purchases.sharedInstance.restorePurchasesWith(
+                    onSuccess = { _ ->
                         setState { copy(isPurchaseLoading = false) }
                     },
-                    onError = { error ->
+                    onError = { _ ->
                         setState { copy(isPurchaseLoading = false) }
                     }
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 setState { copy(isPurchaseLoading = false) }
             }
         }
@@ -204,6 +201,7 @@ class StyleEditorViewModel @Inject constructor(
         exoPlayer?.seekTo(ms)
     }
 
+    @SuppressLint("EmptySuperCall")
     override fun onCleared() {
         super.onCleared()
         exoPlayer?.release()

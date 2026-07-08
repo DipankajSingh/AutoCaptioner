@@ -56,12 +56,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
-import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
-import androidx.compose.runtime.withFrameMillis
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -69,6 +66,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @SuppressLint("DefaultLocale")
 @Composable
 fun VideoTimelineView(
+    modifier: Modifier = Modifier,
     clips: List<Clip>,
     clipThumbnails: Map<String, List<Bitmap>>,
     selectedClipId: String?,
@@ -82,8 +80,7 @@ fun VideoTimelineView(
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
-    currentTimelineMs: Long,
-    modifier: Modifier = Modifier
+    currentTimelineMs: () -> Long
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
@@ -146,7 +143,7 @@ fun VideoTimelineView(
                 }
                 if (scrolled) {
                     checkSwaps()
-                    kotlinx.coroutines.delay(16)
+                    kotlinx.coroutines.delay(16.milliseconds)
                 } else {
                     break
                 }
@@ -155,10 +152,14 @@ fun VideoTimelineView(
     }
 
     // Sync playhead with video playback using state
-    LaunchedEffect(currentTimelineMs, isDragging, pixelsPerMs) {
-        if (!isDragging && player.isPlaying) {
-            val scrollOffset = (currentTimelineMs * pixelsPerMs).toInt()
-            scrollState.scrollTo(scrollOffset)
+    LaunchedEffect(isDragging, pixelsPerMs) {
+        if (!isDragging) {
+            androidx.compose.runtime.snapshotFlow { currentTimelineMs() }.collect { timeMs ->
+                if (player.isPlaying) {
+                    val scrollOffset = (timeMs * pixelsPerMs).toInt()
+                    scrollState.scrollTo(scrollOffset)
+                }
+            }
         }
     }
 

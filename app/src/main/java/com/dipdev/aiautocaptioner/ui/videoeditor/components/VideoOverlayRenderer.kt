@@ -29,7 +29,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun VideoOverlayRenderer(
     overlays: List<ImageOverlayEntity>,
-    currentTimelineMs: Long,
+    currentTimelineMs: () -> Long,
     selectedOverlayId: String?,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String) -> Unit,
@@ -39,7 +39,7 @@ fun VideoOverlayRenderer(
         val canvasWidth = constraints.maxWidth.toFloat()
         val canvasHeight = constraints.maxHeight.toFloat()
         
-        overlays.filter { currentTimelineMs in it.startTimeMs..it.endTimeMs }.forEach { overlay ->
+        overlays.filter { currentTimelineMs() in it.startTimeMs..it.endTimeMs }.forEach { overlay ->
             val isSelected = overlay.id == selectedOverlayId
             
             var localScale by remember(overlay.id) { mutableFloatStateOf(overlay.scaleX) }

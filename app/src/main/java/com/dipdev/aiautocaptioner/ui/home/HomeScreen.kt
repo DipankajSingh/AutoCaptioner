@@ -28,19 +28,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +45,6 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,16 +65,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.airbnb.lottie.compose.rememberLottieDynamicProperties
-import com.airbnb.lottie.compose.rememberLottieDynamicProperty
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
-import androidx.compose.ui.graphics.toArgb
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
@@ -176,14 +165,14 @@ fun HomeScreen(
 
     // Navigate when import succeeds
     LaunchedEffect(importState) {
-        when (val state = importState) {
+        when (importState) {
             is ImportState.Success -> {
                 viewModel.resetImportState()
-                onNavigateToVideoEditor(state.projectId)
+                onNavigateToVideoEditor(importState.projectId)
             }
             is ImportState.QuickSuccess -> {
                 viewModel.resetImportState()
-                onNavigateToProcessing(state.projectId)
+                onNavigateToProcessing(importState.projectId)
             }
             else -> {}
         }
@@ -347,7 +336,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-            } else if (projects!!.isEmpty()) {
+            } else if (projects.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -494,7 +483,7 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "${projects!!.size}",
+                                    text = "${projects.size}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
@@ -504,7 +493,7 @@ fun HomeScreen(
                         }
                     }
                     items(
-                        items = projects!!,
+                        items = projects,
                         key = { it.project.id }
                     ) { projectWithExports ->
                         ProjectCard(
@@ -561,7 +550,7 @@ fun HomeScreen(
 
             // Error snackbar
             if (importState is ImportState.Error) {
-                val message = (importState as ImportState.Error).message
+                val message = importState.message
                 LaunchedEffect(importState) {
                     kotlinx.coroutines.delay(3000.milliseconds)
                     viewModel.resetImportState()

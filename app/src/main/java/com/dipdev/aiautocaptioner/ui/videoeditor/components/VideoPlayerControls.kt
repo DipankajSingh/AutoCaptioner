@@ -94,7 +94,7 @@ fun PlayPauseTapOverlay(
 
 @Composable
 fun TimerPill(
-    currentTimelineMs: Long,
+    currentTimelineMs: () -> Long,
     totalEditedMs: Long,
     formatTime: (Long) -> String,
     modifier: Modifier = Modifier
@@ -104,7 +104,7 @@ fun TimerPill(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "${formatTime(currentTimelineMs)} / ${formatTime(totalEditedMs)}",
+            text = "${formatTime(currentTimelineMs())} / ${formatTime(totalEditedMs)}",
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             style = MaterialTheme.typography.labelSmall
         )
@@ -113,14 +113,14 @@ fun TimerPill(
 
 @Composable
 fun MiniScrubber(
-    currentTimelineMs: Long,
+    currentTimelineMs: () -> Long,
     totalEditedMs: Long,
     clips: List<Clip>,
     player: Player,
     modifier: Modifier = Modifier
 ) {
     val scrubFraction = if (totalEditedMs > 0L) {
-        (currentTimelineMs.toFloat() / totalEditedMs.toFloat()).coerceIn(0f, 1f)
+        (currentTimelineMs().toFloat() / totalEditedMs.toFloat()).coerceIn(0f, 1f)
     } else 0f
 
     val primaryColor = MaterialTheme.colorScheme.primary

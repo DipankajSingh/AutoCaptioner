@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor.tabs
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.tabs
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -22,10 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
-import com.dipdev.aiautocaptioner.ui.styleeditor.AdvancedColorPicker
-import com.dipdev.aiautocaptioner.ui.styleeditor.PremiumSlider
-import com.dipdev.aiautocaptioner.ui.styleeditor.SubToolButton
-import com.dipdev.aiautocaptioner.ui.styleeditor.LabeledPremiumSlider
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.AdvancedColorPicker
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.SubToolButton
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.LabeledPremiumSlider
 
 enum class ColorSubTool { TEXT, HIGHLIGHT, OUTLINE, BACKGROUND, BG_COLOR, PAD_H, PAD_V, CORNER }
 

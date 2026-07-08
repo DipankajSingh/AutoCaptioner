@@ -96,7 +96,8 @@ class VideoEditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
     private val settingsRepository: SettingsRepository,
-    private val overlayRepository: OverlayRepository
+    private val overlayRepository: OverlayRepository,
+    private val videoExporter: VideoExporter
 ) : BaseViewModel<VideoEditorUiState, VideoEditorUiEvent, VideoEditorUiEffect>(VideoEditorUiState()) {
 
     private var currentProjectId: String? = null
@@ -144,8 +145,7 @@ class VideoEditorViewModel @Inject constructor(
         boundPlayer?.removeListener(playerListener)
         boundPlayer = null
         stopProgressSync()
-        transformer?.cancel()
-        transformer = null
+        videoExporter.cancel()
     }
 
     private val playerListener = object : Player.Listener {
@@ -215,8 +215,6 @@ class VideoEditorViewModel @Inject constructor(
         _currentTimelineMs.value = accumulated + posInWindow
     }
 
-    private var transformer: Transformer? = null
-    private var tempOutputFile: java.io.File? = null
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
@@ -473,83 +471,34 @@ class VideoEditorViewModel @Inject constructor(
         }
     }
 
-    @OptIn(UnstableApi::class)
     private fun applyEdits() {
         val projectId = currentProjectId ?: return
         val step = currentState.step as? VideoEditorUiStep.Ready ?: return
         
-        viewModelScope.launch {
-            setState { copy(step = VideoEditorUiStep.Processing(0)) }
-            
-            try {
-                tempOutputFile = com.dipdev.aiautocaptioner.core.utils.FileUtils.createTempVideoFile(context)
-                val tempFile = tempOutputFile ?: return@launch
-                
-                val editedMediaItems = currentState.clips.map { clip ->
-                    val mediaItem = MediaItem.Builder()
-                        .setUri(step.originalPath)
-                        .setClippingConfiguration(
-                            MediaItem.ClippingConfiguration.Builder()
-                                .setStartPositionMs(clip.startTrimMs)
-                                .setEndPositionMs(clip.endTrimMs)
-                                .build()
-                        )
-                        .build()
-                    EditedMediaItem.Builder(mediaItem).build()
-                }
-
-                val sequence = EditedMediaItemSequence.withAudioAndVideoFrom(editedMediaItems)
-                val composition = Composition.Builder(listOf(sequence)).build()
-                
-                transformer = Transformer.Builder(context)
-                    .addListener(object : Transformer.Listener {
-                        override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                            viewModelScope.launch {
-                                projectRepository.updateWorkingVideoPath(projectId, tempFile.absolutePath)
-                                projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
-                                setState { copy(step = VideoEditorUiStep.Success) }
-                            }
-                        }
-
-                        override fun onError(
-                            composition: Composition,
-                            exportResult: ExportResult,
-                            exportException: ExportException
-                        ) {
-                            tempFile.delete()
-                            tempOutputFile = null
-                            setState { copy(step = VideoEditorUiStep.Error(exportException.message ?: "Unknown error during trim")) }
-                        }
-                    })
-                    .build()
-                
-                transformer?.start(composition, tempFile.absolutePath)
-                
+        setState { copy(step = VideoEditorUiStep.Processing(0)) }
+        
+        videoExporter.startExport(
+            scope = viewModelScope,
+            originalPath = step.originalPath,
+            clips = currentState.clips,
+            onProgress = { progress ->
+                setState { copy(step = VideoEditorUiStep.Processing(progress)) }
+            },
+            onSuccess = { tempFile ->
                 viewModelScope.launch {
-                    val progressHolder = androidx.media3.transformer.ProgressHolder()
-                    while (transformer != null && currentState.step is VideoEditorUiStep.Processing) {
-                        val progressState = transformer?.getProgress(progressHolder)
-                        if (progressState == Transformer.PROGRESS_STATE_AVAILABLE) {
-                            setState { copy(step = VideoEditorUiStep.Processing(progressHolder.progress)) }
-                        } else if (progressState == Transformer.PROGRESS_STATE_NOT_STARTED) {
-                            setState { copy(step = VideoEditorUiStep.Processing(0)) }
-                        }
-                        kotlinx.coroutines.delay(500.milliseconds)
-                    }
+                    projectRepository.updateWorkingVideoPath(projectId, tempFile.absolutePath)
+                    projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
+                    setState { copy(step = VideoEditorUiStep.Success) }
                 }
-
-            } catch (e: Exception) {
-                setState { copy(step = VideoEditorUiStep.Error(e.message ?: "Failed to process video")) }
+            },
+            onError = { error ->
+                setState { copy(step = VideoEditorUiStep.Error(error)) }
             }
-        }
+        )
     }
 
-    @OptIn(UnstableApi::class)
     private fun cancel() {
-        transformer?.cancel()
-        transformer = null
-        tempOutputFile?.delete()
-        tempOutputFile = null
+        videoExporter.cancel()
         if (originalVideoPath.isNotEmpty()) {
             setState { copy(step = VideoEditorUiStep.Ready(originalDurationMs, originalVideoPath)) }
         } else {
@@ -661,7 +610,6 @@ class VideoEditorViewModel @Inject constructor(
 
     @OptIn(UnstableApi::class)
     fun cleanup() {
-        transformer?.cancel()
-        transformer = null
+        videoExporter.cancel()
     }
 }

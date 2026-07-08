@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor.tabs
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.tabs
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -20,9 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
-import com.dipdev.aiautocaptioner.ui.styleeditor.PremiumSlider
-import com.dipdev.aiautocaptioner.ui.styleeditor.SubToolButton
-import com.dipdev.aiautocaptioner.ui.styleeditor.LabeledPremiumSlider
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.SubToolButton
+import com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor.LabeledPremiumSlider
 
 enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION, ITALIC, SPACING }
 

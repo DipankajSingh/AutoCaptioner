@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.styleeditor
+package com.dipdev.aiautocaptioner.ui.videoeditor.styleeditor
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Animation
@@ -63,8 +62,14 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import androidx.compose.animation.animateColor
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.draw.scale
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
@@ -110,9 +115,9 @@ fun PresetChip(
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = if (style.emphasisAnimation == AnimationType.SCALE_POP || style.emphasisAnimation == AnimationType.BOUNCE) 1.15f else 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
     )
@@ -122,9 +127,9 @@ fun PresetChip(
     val animColor by infiniteTransition.animateColor(
         initialValue = baseColor,
         targetValue = if (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.LINE_HIGHLIGHT) highlightColor else baseColor,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(800),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "color"
     )
@@ -132,9 +137,9 @@ fun PresetChip(
     val alpha by infiniteTransition.animateFloat(
         initialValue = if (style.wordEnterAnimation == AnimationType.FADE || style.displayMode == DisplayMode.TYPEWRITER) 0.3f else 1f,
         targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(800),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "alpha"
     )
@@ -174,7 +179,7 @@ fun BottomTabItem(
     selectedTint: Color = MaterialTheme.colorScheme.primary,
     onClick: () -> Unit
 ) {
-    val tint by androidx.compose.animation.animateColorAsState(
+    val tint by animateColorAsState(
         targetValue = if (selected) selectedTint else MaterialTheme.colorScheme.onSurface,
         label = "tabTint"
     )
@@ -183,7 +188,7 @@ fun BottomTabItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick
             )
