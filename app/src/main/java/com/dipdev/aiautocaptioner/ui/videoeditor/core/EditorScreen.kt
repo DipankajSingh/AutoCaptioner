@@ -192,16 +192,6 @@ fun EditorScreen(
                                     onLanguageSelected = { lang, trans ->
                                         viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
                                     },
-                                    selectedClipId = selectedClipId,
-                                    zoomLevel = zoomLevel,
-                                    onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
-                                    onDuplicate = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
-                                    onDelete = { 
-                                        viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
-                                        selectedClipId = null
-                                    },
-                                    onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
-                                    onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
                                     modifier = Modifier.align(Alignment.TopEnd)
                                 )
                             }
@@ -257,6 +247,14 @@ fun EditorScreen(
                                 onMoveOverlayZ = { id, bringToFront -> viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront)) },
                                 onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
                                 styleViewModel = styleViewModel,
+                                onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
+                                onDuplicate = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
+                                onDelete = { 
+                                    viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
+                                    selectedClipId = null
+                                },
+                                onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
+                                onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

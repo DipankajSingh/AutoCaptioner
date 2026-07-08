@@ -9,11 +9,21 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,8 +112,7 @@ fun VideoClipItem(
     hasGapBefore: Boolean,
     onTrimClip: (String, Long, Long) -> Unit,
     onScrollBy: (Float) -> Unit,
-    pixelsPerMs: Float,
-    totalEditedMs: Long
+    pixelsPerMs: Float
 ) {
     Box(
         modifier = Modifier
@@ -121,12 +130,12 @@ fun VideoClipItem(
                 }
             }
             .padding(horizontal = 1.dp) // slight gap between clips
-            .clip(RoundedCornerShape(4.dp))
-            .background(surfaceVariantColor)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) Color.White else surfaceVariantColor)
             .border(
                 width = 1.dp,
-                color = outlineColor.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(4.dp)
+                color = if (isSelected) Color.White else outlineColor.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
             )
             .pointerInput(clip.id, clipWidthPx) {
                 detectDragGesturesAfterLongPress(
@@ -152,41 +161,47 @@ fun VideoClipItem(
             }
             .clickable { onClipSelected(clip.id) }
     ) {
-        if (!thumbnails.isNullOrEmpty()) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                thumbnails.forEach { bitmap ->
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Thumbnail",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = if (isSelected) 16.dp else 14.dp,
+                    vertical = if (isSelected) 2.dp else 2.dp
+                )
+                .clip(RoundedCornerShape(8.dp))
+        ) {
+            if (!thumbnails.isNullOrEmpty()) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    thumbnails.forEach { bitmap ->
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Thumbnail",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
+                    }
                 }
             }
-        }
-        
-        // Dark overlay for readability
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
-        
-        // Selected Overlay
-        if (isSelected) {
-            Box(modifier = Modifier.fillMaxSize().background(AccentAmber.copy(alpha = 0.1f)))
+            
+            // Dark overlay for readability
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
+            
+            // Selected Overlay
+            if (isSelected) {
+                Box(modifier = Modifier.fillMaxSize().background(AccentAmber.copy(alpha = 0.1f)))
+            }
         }
 
-        // CapCut-style Trim Frame
+        // Trim Handles and Selected State Overlays
         if (isSelected) {
-            // Top and Bottom borders
-            Box(modifier = Modifier.fillMaxSize().border(2.dp, Color.White, RoundedCornerShape(4.dp)))
-            
-            // Left Trim Handle Grip
+            // Left Trim Handle Touch Target & Grip
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
-                    .width(20.dp)
-                    .background(Color.White, RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp))
+                    .width(16.dp)
                     .pointerInput(clip.id + "_left") {
                         var accumulatedDeltaX = 0f
                         var currentStartMs = 0L
@@ -216,16 +231,15 @@ fun VideoClipItem(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.width(2.dp).height(12.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(1.dp)))
+                Box(modifier = Modifier.width(2.dp).height(14.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(50)))
             }
             
-            // Right Trim Handle Grip
+            // Right Trim Handle Touch Target & Grip
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .width(20.dp)
-                    .background(Color.White, RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                    .width(16.dp)
                     .pointerInput(clip.id + "_right") {
                         var accumulatedDeltaX = 0f
                         var currentEndMs = 0L
@@ -254,7 +268,7 @@ fun VideoClipItem(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.width(2.dp).height(12.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(1.dp)))
+                Box(modifier = Modifier.width(2.dp).height(14.dp).background(Color.Black.copy(alpha=0.3f), RoundedCornerShape(50)))
             }
         }
         

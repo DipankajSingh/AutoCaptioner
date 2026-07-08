@@ -3,20 +3,33 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -49,6 +62,11 @@ fun VideoTimelinePanel(
     onTrimClip: (String, Long, Long) -> Unit,
     onMoveOverlayZ: (String, Boolean) -> Unit,
     onDeleteOverlay: (String) -> Unit,
+    onSplit: () -> Unit,
+    onDuplicate: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -119,7 +137,66 @@ fun VideoTimelinePanel(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
+            
+            // Bottom Toolbar for Timeline Tools
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Editing tools
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val hasSelection = selectedClipId != null
+                    Icon(
+                        Icons.Outlined.ContentCut, 
+                        "Split", 
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp).clickable { onSplit() }
+                    )
+                    Icon(
+                        Icons.Outlined.ContentCopy, 
+                        "Duplicate", 
+                        tint = if (hasSelection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        modifier = Modifier.size(24.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDuplicate(it) } }
+                    )
+                    Icon(
+                        Icons.Outlined.Delete, 
+                        "Delete", 
+                        tint = if (hasSelection) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        modifier = Modifier.size(24.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDelete(it) } }
+                    )
+                }
+                
+                // Zoom controls
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.Remove, 
+                        "Zoom Out", 
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp).clickable { onZoomOut() }
+                    )
+                    Text(
+                        text = "${(zoomLevel * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        Icons.Outlined.Add, 
+                        "Zoom In", 
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp).clickable { onZoomIn() }
+                    )
+                }
+            }
         }
     }
 }

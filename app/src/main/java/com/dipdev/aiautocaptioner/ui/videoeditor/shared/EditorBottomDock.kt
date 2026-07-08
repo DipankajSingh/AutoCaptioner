@@ -51,6 +51,11 @@ fun EditorBottomDock(
     onMoveOverlayZ: (String, Boolean) -> Unit,
     onDeleteOverlay: (String) -> Unit,
     styleViewModel: StyleViewModel,
+    onSplit: () -> Unit,
+    onDuplicate: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
@@ -83,6 +88,11 @@ fun EditorBottomDock(
                         onTrimClip = onTrimClip,
                         onMoveOverlayZ = onMoveOverlayZ,
                         onDeleteOverlay = onDeleteOverlay,
+                        onSplit = onSplit,
+                        onDuplicate = onDuplicate,
+                        onDelete = onDelete,
+                        onZoomIn = onZoomIn,
+                        onZoomOut = onZoomOut,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

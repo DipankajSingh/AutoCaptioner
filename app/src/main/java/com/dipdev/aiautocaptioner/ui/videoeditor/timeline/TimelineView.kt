@@ -20,7 +20,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
@@ -151,12 +150,21 @@ fun TimelineView(
                             scrollState.scrollTo(newScroll.coerceIn(0, scrollState.maxValue))
                             val seekTimeMs = (scrollState.value / pixelsPerMs).toLong()
                             
+                            val mergedClips = mutableListOf<Clip>()
+                            var currentMerged: Clip? = null
+                            for (c in clips) {
+                                if (currentMerged == null) { currentMerged = c }
+                                else if (currentMerged.endTrimMs == c.startTrimMs) { currentMerged = currentMerged.copy(endTrimMs = c.endTrimMs) }
+                                else { mergedClips.add(currentMerged); currentMerged = c }
+                            }
+                            if (currentMerged != null) mergedClips.add(currentMerged)
+
                             var accumulated = 0L
                             var targetWindowIndex = 0
                             var targetPosInWindow = 0L
                             
-                            for (i in clips.indices) {
-                                val clipDuration = clips[i].endTrimMs - clips[i].startTrimMs
+                            for (i in mergedClips.indices) {
+                                val clipDuration = mergedClips[i].endTrimMs - mergedClips[i].startTrimMs
                                 if (seekTimeMs >= accumulated && seekTimeMs < accumulated + clipDuration) {
                                     targetWindowIndex = i
                                     targetPosInWindow = seekTimeMs - accumulated
@@ -165,9 +173,9 @@ fun TimelineView(
                                 accumulated += clipDuration
                             }
                             
-                            if (seekTimeMs >= totalEditedMs && clips.isNotEmpty()) {
-                                targetWindowIndex = clips.size - 1
-                                targetPosInWindow = clips.last().endTrimMs - clips.last().startTrimMs
+                            if (seekTimeMs >= totalEditedMs && mergedClips.isNotEmpty()) {
+                                targetWindowIndex = mergedClips.size - 1
+                                targetPosInWindow = mergedClips.last().endTrimMs - mergedClips.last().startTrimMs
                             }
                             
                             player.seekTo(targetWindowIndex, targetPosInWindow)
@@ -240,8 +248,7 @@ fun TimelineView(
                                     hasGapBefore = hasGapBefore,
                                     onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } },
                                     onTrimClip = onTrimClip,
-                                    pixelsPerMs = pixelsPerMs,
-                                    totalEditedMs = totalEditedMs
+                                    pixelsPerMs = pixelsPerMs
                                 )
                             }
                         }
