@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,7 @@ import androidx.core.graphics.scale
 
 class ThumbnailManager(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val retrieverMutex = Mutex()
     
     // Memory cache: max size in bytes
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -70,8 +73,14 @@ class ThumbnailManager(private val context: Context) {
         retriever?.release()
         
         currentVideoPath = videoPath
-        val videoHash = videoPath.hashCode().toString()
-        cacheDir = File(context.cacheDir, "thumbnails/$videoHash").apply { mkdirs() }
+        val file = File(videoPath)
+        val uniqueId = if (file.exists()) {
+            "${videoPath.hashCode()}_${file.lastModified()}"
+        } else {
+            videoPath.hashCode().toString()
+        }
+        cacheDir = File(context.cacheDir, "thumbnails/$uniqueId").apply { mkdirs() }
+        cleanupOldCacheDirectories()
         
         var newRetriever: MediaMetadataRetriever? = null
         try {
@@ -108,6 +117,20 @@ class ThumbnailManager(private val context: Context) {
         }
     }
 
+    private fun cleanupOldCacheDirectories() {
+        scope.launch(Dispatchers.IO) {
+            val thumbnailsBaseDir = File(context.cacheDir, "thumbnails")
+            if (thumbnailsBaseDir.exists()) {
+                val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+                thumbnailsBaseDir.listFiles()?.forEach { dir ->
+                    if (dir.isDirectory && dir != cacheDir && dir.lastModified() < oneDayAgo) {
+                        dir.deleteRecursively()
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * The UI calls this with the list of exact timestamps it needs right now.
      * @param timestamps List of times in milliseconds.
@@ -118,6 +141,14 @@ class ThumbnailManager(private val context: Context) {
         for (time in unneededJobs) {
             activeJobs[time]?.cancel()
             activeJobs.remove(time)
+        }
+        
+        if (unneededJobs.isNotEmpty()) {
+            _thumbnails.update { current ->
+                val next = current.toMutableMap()
+                unneededJobs.forEach { time -> next.remove(time) }
+                next
+            }
         }
 
         // Process requested timestamps
@@ -162,12 +193,14 @@ class ThumbnailManager(private val context: Context) {
         val r = retriever ?: return@withContext null
         
         try {
-            val raw = r.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
-            val scaledBitmap = if (raw != null && targetThumbWidth > 0) {
-                val scaled = raw.scale(targetThumbWidth, targetThumbHeight)
-                if (scaled != raw) raw.recycle()
-                scaled
-            } else raw
+            val scaledBitmap = retrieverMutex.withLock {
+                val raw = r.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                if (raw != null && targetThumbWidth > 0) {
+                    val scaled = raw.scale(targetThumbWidth, targetThumbHeight)
+                    if (scaled != raw) raw.recycle()
+                    scaled
+                } else raw
+            }
 
             if (scaledBitmap != null) {
                 FileOutputStream(file).use { out ->
