@@ -78,13 +78,16 @@ fun TimelineView(
         val draggedIdx = draggingClipIndex
         if (draggedIdx != null && draggedIdx in clips.indices) {
             val centerInRow = dragPointerScreenX + scrollState.value
+            var swapped = false
             if (draggedIdx < clips.size - 1) {
                 val nextCenter = clipLayoutCenters[draggedIdx + 1]
                 if (centerInRow > nextCenter) {
                     onMoveClip(draggedIdx, draggedIdx + 1)
                     draggingClipIndex = draggedIdx + 1
+                    swapped = true
                 }
-            } else if (draggedIdx > 0) {
+            }
+            if (!swapped && draggedIdx > 0) {
                 val prevCenter = clipLayoutCenters[draggedIdx - 1]
                 if (centerInRow < prevCenter) {
                     onMoveClip(draggedIdx, draggedIdx - 1)

@@ -195,20 +195,28 @@ class EditorViewModel @Inject constructor(
     }
 
     private fun loadProject(projectId: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             setState { copy(step = VideoEditorUiStep.Loading) }
             currentProjectId = projectId
             projectIdFlow.value = projectId
             val project = projectRepository.getProjectById(projectId)
             if (project != null) {
+                var workingPath = project.workingVideoPath
+                if (!workingPath.startsWith("content://")) {
+                    val videoFile = java.io.File(workingPath)
+                    if (!videoFile.exists() && java.io.File(project.originalVideoUri).exists()) {
+                        workingPath = project.originalVideoUri
+                        projectRepository.updateWorkingVideoPath(projectId, workingPath)
+                    }
+                }
                 var durationMs = 0L
                 var retriever: MediaMetadataRetriever? = null
                 try {
                     retriever = MediaMetadataRetriever()
-                    if (project.workingVideoPath.startsWith("content://") || project.workingVideoPath.startsWith("file://")) {
-                        retriever.setDataSource(context, project.workingVideoPath.toUri())
+                    if (workingPath.startsWith("content://") || workingPath.startsWith("file://")) {
+                        retriever.setDataSource(context, workingPath.toUri())
                     } else {
-                        retriever.setDataSource(project.workingVideoPath)
+                        retriever.setDataSource(workingPath)
                     }
                     val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                     durationMs = durationStr?.toLongOrNull() ?: 0L
@@ -218,7 +226,7 @@ class EditorViewModel @Inject constructor(
                     retriever?.release()
                 }
                 originalDurationMs = durationMs
-                originalVideoPath = project.workingVideoPath
+                originalVideoPath = workingPath
                 clipManager.reset()
                 
                 setState { 
@@ -228,7 +236,7 @@ class EditorViewModel @Inject constructor(
                         canUndo = false,
                         canRedo = false,
                         originalDurationMs = durationMs,
-                        step = VideoEditorUiStep.Ready(durationMs = durationMs, originalPath = project.workingVideoPath)
+                        step = VideoEditorUiStep.Ready(durationMs = durationMs, originalPath = workingPath)
                     )
                 }
             } else {
@@ -261,8 +269,14 @@ class EditorViewModel @Inject constructor(
                 setState { copy(step = VideoEditorUiStep.Processing(progress)) }
             },
             onSuccess = { tempFile ->
-                viewModelScope.launch {
-                    projectRepository.updateWorkingVideoPath(projectId, tempFile.absolutePath)
+                viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val projectDir = java.io.File(context.filesDir, "projects/$projectId")
+                    if (!projectDir.exists()) projectDir.mkdirs()
+                    val permanentFile = java.io.File(projectDir, "edited_video_${System.currentTimeMillis()}.mp4")
+                    tempFile.copyTo(permanentFile, overwrite = true)
+                    tempFile.delete()
+                    
+                    projectRepository.updateWorkingVideoPath(projectId, permanentFile.absolutePath)
                     projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
                     setState { copy(step = VideoEditorUiStep.Success) }
                 }

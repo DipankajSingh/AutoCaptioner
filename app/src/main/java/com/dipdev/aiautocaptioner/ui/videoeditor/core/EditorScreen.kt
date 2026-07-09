@@ -22,7 +22,7 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.shared.RightSideControls
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.TimerPill
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -35,7 +35,7 @@ fun EditorScreen(
     viewModel: EditorViewModel = hiltViewModel(),
     styleViewModel: StyleViewModel = hiltViewModel()
 ) {
-    ScreenThemeProvider(accentColor = AccentCyan) {
+    ScreenThemeProvider(accentColor = AccentAmber) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val thumbnails by viewModel.thumbnailManager.thumbnails.collectAsStateWithLifecycle()
         val overlays by viewModel.overlays.collectAsStateWithLifecycle()

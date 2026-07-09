@@ -135,6 +135,15 @@ class TranscriptionManager @Inject constructor(
                 crashReporter.recordException(e)
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
                 updateNotification(null)
+                activeProjectId?.let { pid ->
+                    try {
+                        val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
+                        val status = if (hasCaptions) ProjectStatus.TRANSCRIBED else ProjectStatus.IMPORTED
+                        projectRepository.updateStatus(pid, status)
+                    } catch (inner: Exception) {
+                        Log.e(TAG, "Failed to revert status", inner)
+                    }
+                }
             }
         }
     }
