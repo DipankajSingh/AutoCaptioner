@@ -5,7 +5,9 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
@@ -15,15 +17,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import androidx.compose.foundation.Canvas
+import coil3.compose.AsyncImage
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Layers
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
+import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -43,6 +53,7 @@ fun TimelineView(
     selectedOverlayId: String? = null,
     onOverlaySelected: (String) -> Unit = {},
     onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
+    onMoveOverlayZ: (String, Boolean) -> Unit = {_,_ ->},
     onCaptionTap: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
@@ -51,6 +62,7 @@ fun TimelineView(
     onTrimClip: (String, Long, Long) -> Unit = {_,_,_ ->}
 ) {
     val scrollState = rememberScrollState()
+    val verticalScrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
     var boxWidthPx by remember { mutableIntStateOf(0) }
     val textMeasurer = rememberTextMeasurer()
@@ -231,109 +243,187 @@ fun TimelineView(
         val safeTotalWidthPx = maxOf(1f, totalEditedMs * pixelsPerMs)
         val totalWidthDp = with(density) { safeTotalWidthPx.toDp() }
 
+        // Main Timeline Area
         Row(
             modifier = Modifier
                 .fillMaxHeight()
                 .horizontalScroll(scrollState, enabled = true)
         ) {
-            Spacer(modifier = Modifier.width(halfWidthDp))
+            Spacer(modifier = Modifier.width(halfWidthDp - 40.dp))
 
             Column(modifier = Modifier.fillMaxHeight()) {
-                TimelineRuler(totalEditedMs, pixelsPerMs, totalWidthDp, zoomLevel, textMeasurer, onSurfaceColor)
+                Row {
+                    Spacer(modifier = Modifier.width(40.dp))
+                    TimelineRuler(totalEditedMs, pixelsPerMs, totalWidthDp, zoomLevel, textMeasurer, onSurfaceColor)
+                }
                 
-                if (clips.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Tap the video to trim and split",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else {
-                    Row(modifier = Modifier.height(56.dp).fillMaxWidth()) {
-                        clips.forEachIndexed { index, clip ->
-                            key(clip.id) {
-                                val durationMs = clip.endTrimMs - clip.startTrimMs
-                                val clipWidthPx = maxOf(1f, durationMs * pixelsPerMs)
-                                val clipWidthDp = with(density) { clipWidthPx.toDp() }
-                                
-                                val isSelected = clip.id == selectedClipId
-                                val currentClipIndex by rememberUpdatedState(index)
-                                val isBeingDragged = draggingClipIndex == currentClipIndex
-                                val layoutCenter = clipLayoutCenters[index]
-                                val currentDragOffset = if (isBeingDragged) {
-                                    (dragPointerScreenX + scrollState.value) - layoutCenter
-                                } else { 0f }
-                                
-                                val hasGapBefore = index > 0 && clips[index].startTrimMs >= clips[index - 1].endTrimMs
-
-                                VideoClipItem(
-                                    clip = clip,
-                                    index = index,
-                                    thumbnails = thumbnails,
-                                    originalDurationMs = originalDurationMs,
-                                    isSelected = isSelected,
-                                    clipWidthPx = clipWidthPx,
-                                    clipWidthDp = clipWidthDp,
-                                    isBeingDragged = isBeingDragged,
-                                    currentDragOffset = currentDragOffset,
-                                    clipLayoutCenters = clipLayoutCenters,
-                                    scrollStateValue = scrollState.value,
-                                    surfaceVariantColor = surfaceVariantColor,
-                                    outlineColor = outlineColor,
-                                    onDragStateChange = onDragStateChange,
-                                    onDragPointerStart = { dragPointerScreenX = it },
-                                    onDragPointerChange = { dragPointerScreenX += it },
-                                    onCheckSwaps = checkSwaps,
-                                    onDraggingIndexChange = { draggingClipIndex = it },
-                                    onClipSelected = onClipSelected,
-                                    hasGapBefore = hasGapBefore,
-                                    onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } },
-                                    onTrimClip = onTrimClip,
-                                    pixelsPerMs = pixelsPerMs,
-                                    thumbnailIntervalMs = thumbnailIntervalMs
+                Column(modifier = Modifier.weight(1f).verticalScroll(verticalScrollState)) {
+                    if (clips.isEmpty()) {
+                        Row(modifier = Modifier.height(100.dp).fillMaxWidth()) {
+                            Spacer(modifier = Modifier.width(40.dp))
+                            Box(modifier = Modifier.fillMaxHeight().weight(1f), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "Tap the video to trim and split",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
-                    }
-                }
+                    } else {
+                        Row(modifier = Modifier.height(56.dp).fillMaxWidth()) {
+                            Spacer(modifier = Modifier.width(40.dp))
+                            clips.forEachIndexed { index, clip ->
+                                key(clip.id) {
+                                    val durationMs = clip.endTrimMs - clip.startTrimMs
+                                    val clipWidthPx = maxOf(1f, durationMs * pixelsPerMs)
+                                    val clipWidthDp = with(density) { clipWidthPx.toDp() }
+                                    
+                                    val isSelected = clip.id == selectedClipId
+                                    val currentClipIndex by rememberUpdatedState(index)
+                                    val isBeingDragged = draggingClipIndex == currentClipIndex
+                                    val layoutCenter = clipLayoutCenters[index]
+                                    val currentDragOffset = if (isBeingDragged) {
+                                        (dragPointerScreenX + scrollState.value) - layoutCenter
+                                    } else { 0f }
+                                    
+                                    val hasGapBefore = index > 0 && clips[index].startTrimMs >= clips[index - 1].endTrimMs
 
-                Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
-
-                Box(modifier = Modifier.height(28.dp).width(totalWidthDp).background(Color.DarkGray.copy(alpha = 0.1f), RoundedCornerShape(4.dp))) {
-                    overlays.forEach { overlay ->
-                        val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
-                        val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
-                        val durationMs = maxOf(0L, endTimeMs - startTimeMs)
-                        
-                        if (durationMs > 0) {
-                            CaptionOverlayItem(
-                                overlay = overlay,
-                                isSelectedOverlay = overlay.id == selectedOverlayId,
-                                overlayOffsetXDp = with(density) { (startTimeMs * pixelsPerMs).toDp() },
-                                overlayWidthDp = with(density) { (durationMs * pixelsPerMs).toDp() },
-                                pixelsPerMs = pixelsPerMs,
-                                currentEndTimeMs = endTimeMs,
-                                totalEditedMs = totalEditedMs,
-                                primaryColor = primaryColor,
-                                onOverlaySelected = onOverlaySelected,
-                                onDragStateChange = onDragStateChange,
-                                onOverlayTimingChanged = onOverlayTimingChanged,
-                                onCaptionTap = onCaptionTap
-                            )
+                                    VideoClipItem(
+                                        clip = clip,
+                                        index = index,
+                                        thumbnails = thumbnails,
+                                        originalDurationMs = originalDurationMs,
+                                        isSelected = isSelected,
+                                        clipWidthPx = clipWidthPx,
+                                        clipWidthDp = clipWidthDp,
+                                        isBeingDragged = isBeingDragged,
+                                        currentDragOffset = currentDragOffset,
+                                        clipLayoutCenters = clipLayoutCenters,
+                                        scrollStateValue = scrollState.value,
+                                        surfaceVariantColor = surfaceVariantColor,
+                                        outlineColor = outlineColor,
+                                        onDragStateChange = onDragStateChange,
+                                        onDragPointerStart = { dragPointerScreenX = it },
+                                        onDragPointerChange = { dragPointerScreenX += it },
+                                        onCheckSwaps = checkSwaps,
+                                        onDraggingIndexChange = { draggingClipIndex = it },
+                                        onClipSelected = onClipSelected,
+                                        hasGapBefore = hasGapBefore,
+                                        onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } },
+                                        onTrimClip = onTrimClip,
+                                        pixelsPerMs = pixelsPerMs,
+                                        thumbnailIntervalMs = thumbnailIntervalMs
+                                    )
+                                }
+                            }
                         }
                     }
+
+                    Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
+
+                    overlays.forEach { overlay ->
+                        key(overlay.id) {
+                            var isDragging by remember { mutableStateOf(false) }
+                            var dragOffsetY by remember { mutableFloatStateOf(0f) }
+                            
+                            Row(modifier = Modifier.height(48.dp).fillMaxWidth().padding(bottom = 4.dp)) {
+                                // Track Header (Drag Handle)
+                                Box(
+                                    modifier = Modifier
+                                        .width(40.dp)
+                                        .fillMaxHeight()
+                                        .zIndex(2f)
+                                        .graphicsLayer {
+                                            translationY = dragOffsetY
+                                            scaleX = if (isDragging) 1.1f else 1f
+                                            scaleY = if (isDragging) 1.1f else 1f
+                                            shadowElevation = if (isDragging) 8.dp.toPx() else 0f
+                                        }
+                                        .background(Color(0xFF333333), RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
+                                        .pointerInput(overlay.id) {
+                                            var accumulatedY = 0f
+                                            detectVerticalDragGestures(
+                                                onDragStart = { 
+                                                    isDragging = true 
+                                                    accumulatedY = 0f
+                                                    dragOffsetY = 0f
+                                                },
+                                                onVerticalDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    accumulatedY += dragAmount
+                                                    dragOffsetY += dragAmount
+                                                    
+                                                    if (accumulatedY > 52f) { // 48dp height + 4dp gap
+                                                        onMoveOverlayZ(overlay.id, false)
+                                                        accumulatedY -= 52f
+                                                        dragOffsetY -= 52f
+                                                    } else if (accumulatedY < -52f) {
+                                                        onMoveOverlayZ(overlay.id, true)
+                                                        accumulatedY += 52f
+                                                        dragOffsetY += 52f
+                                                    }
+                                                },
+                                                onDragEnd = {
+                                                    isDragging = false
+                                                    dragOffsetY = 0f
+                                                },
+                                                onDragCancel = {
+                                                    isDragging = false
+                                                    dragOffsetY = 0f
+                                                }
+                                            )
+                                        }
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        val dotRadius = 1.5.dp.toPx()
+                                        val spacingX = 6.dp.toPx()
+                                        val spacingY = 6.dp.toPx()
+                                        val startX = size.width / 2 - spacingX / 2
+                                        val startY = size.height / 2 - spacingY
+                                        for (row in 0..2) {
+                                            for (col in 0..1) {
+                                                drawCircle(
+                                                    color = Color.White.copy(alpha = 0.7f),
+                                                    radius = dotRadius,
+                                                    center = androidx.compose.ui.geometry.Offset(startX + col * spacingX, startY + row * spacingY)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(Color.DarkGray.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
+                                    val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
+                                    val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
+                                    val durationMs = maxOf(0L, endTimeMs - startTimeMs)
+                                    
+                                    if (durationMs > 0) {
+                                        ImageOverlayTrackItem(
+                                            overlay = overlay,
+                                            isSelectedOverlay = overlay.id == selectedOverlayId,
+                                            pixelsPerMs = pixelsPerMs,
+                                            currentEndTimeMs = endTimeMs,
+                                            totalEditedMs = totalEditedMs,
+                                            primaryColor = primaryColor,
+                                            scrollStateValue = scrollState.value,
+                                            timelineWidthPx = boxWidthPx,
+                                            onOverlaySelected = onOverlaySelected,
+                                            onDragStateChange = onDragStateChange,
+                                            onOverlayTimingChanged = onOverlayTimingChanged,
+                                            onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(totalWidthDp).height(40.dp))
                 }
-
-                Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
-
-                Box(modifier = Modifier.height(28.dp).width(totalWidthDp).background(Color.DarkGray.copy(alpha = 0.1f), RoundedCornerShape(4.dp)))
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.width(halfWidthDp))
         }
-
+        
         Box(modifier = Modifier.align(Alignment.Center).fillMaxHeight()) {
             PlayheadMarker()
         }
