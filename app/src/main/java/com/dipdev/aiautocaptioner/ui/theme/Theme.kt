@@ -25,12 +25,12 @@ fun AutoCaptionerTheme(
 
     val (bgColor, surfaceColor, surfaceVariantColor) = backgroundColors
 
-    // Primary will just be AccentBlue as a fallback, but the UI should use semantic colors directly
+    // Primary will just be AccentAmber as a fallback, but the UI should use semantic colors directly
     val colorScheme = darkColorScheme(
-        primary            = AccentBlue,
+        primary            = AccentAmber,
         onPrimary          = Color.White,
-        primaryContainer   = AccentBlue.copy(alpha = 0.15f),
-        onPrimaryContainer = AccentBlue,
+        primaryContainer   = AccentAmber.copy(alpha = 0.15f),
+        onPrimaryContainer = AccentAmber,
         secondary          = surfaceVariantColor,
         onSecondary        = TextPrimary,
         tertiary           = AccentViolet,

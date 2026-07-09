@@ -73,7 +73,7 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
-import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -180,7 +180,7 @@ fun HomeScreen(
 
     var speedDialExpanded by remember { mutableStateOf(false) }
 
-    ScreenThemeProvider(accentColor = AccentBlue) {
+    ScreenThemeProvider(accentColor = AccentAmber) {
         Scaffold(
             topBar = {
             Surface(

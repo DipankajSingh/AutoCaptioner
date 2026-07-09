@@ -41,4 +41,4 @@ val FlatGray  = Color(0xFF2D2D2D)
 val FlatWhite = Color(0xFFF5F5F5)
 
 // ── CompositionLocal: lets each screen provide its accent color ───────────────
-val LocalAccentColor = staticCompositionLocalOf { AccentBlue }
+val LocalAccentColor = staticCompositionLocalOf { AccentAmber }

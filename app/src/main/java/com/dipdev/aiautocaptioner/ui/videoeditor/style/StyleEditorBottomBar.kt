@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.animateColorAsState
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
-import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 
@@ -101,7 +101,7 @@ fun StyleEditorBottomBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         BottomTabItem("Presets", FeatherIcons.Layers, selectedTab == StyleTab.PRESETS, selectedTint = MaterialTheme.colorScheme.primary) { onTabSelected(StyleTab.PRESETS) }
-        BottomTabItem("Text", FeatherIcons.Type, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentBlue) { onTabSelected(StyleTab.TEXT) }
+        BottomTabItem("Text", FeatherIcons.Type, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.TEXT) }
         BottomTabItem("Color", FeatherIcons.Droplet, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentViolet) { onTabSelected(StyleTab.COLOR) }
         BottomTabItem("Animate", FeatherIcons.Activity, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
     }

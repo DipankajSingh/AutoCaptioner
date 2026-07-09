@@ -67,7 +67,7 @@ import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
-import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -172,7 +172,7 @@ fun CaptionEditorScreen(
         }
     }
 
-    CompositionLocalProvider(LocalAccentColor provides AccentBlue) {
+    CompositionLocalProvider(LocalAccentColor provides AccentAmber) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -191,7 +191,7 @@ fun CaptionEditorScreen(
                 },
                 actions = {
                     TextButton(onClick = { showJumpDialog = true }) {
-                        Text(stringResource(R.string.caption_jump), color = AccentBlue)
+                        Text(stringResource(R.string.caption_jump), color = AccentAmber)
                     }
                     IconButton(
                         onClick = { viewModel.setEvent(CaptionEditorUiEvent.Retranscribe(projectId)) }
@@ -222,7 +222,7 @@ fun CaptionEditorScreen(
                     onClick = { viewModel.setEvent(CaptionEditorUiEvent.ShareSrt(projectId)) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentBlue,
+                        containerColor = AccentAmber,
                         contentColor = Color.White
                     )
                 ) {
@@ -388,7 +388,7 @@ private fun SegmentCard(
     onWordLongPress: (CaptionWordEntity) -> Unit
 ) {
     val cardColor = if (isActive) {
-        AccentBlue.copy(alpha = 0.12f)
+        AccentAmber.copy(alpha = 0.12f)
     } else {
         androidx.compose.ui.graphics.Color.Unspecified
     }
@@ -406,7 +406,7 @@ private fun SegmentCard(
                         .width(4.dp)
                         .fillMaxHeight()
                         .background(
-                            AccentBlue,
+                            AccentAmber,
                             RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
                         )
                 )
@@ -424,7 +424,7 @@ private fun SegmentCard(
                 Text(
                     text = "${formatMs(segment.startTimeMs)} → ${formatMs(segment.endTimeMs)}",
                     fontSize = 12.sp,
-                    color = AccentBlue,
+                    color = AccentAmber,
                     fontWeight = FontWeight.Medium
                 )
                 Icon(

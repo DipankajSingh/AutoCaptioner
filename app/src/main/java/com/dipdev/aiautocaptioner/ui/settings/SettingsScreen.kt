@@ -39,7 +39,7 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.ui.components.SimpleAppScaffold
-import com.dipdev.aiautocaptioner.ui.theme.AccentBlue
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +55,7 @@ fun SettingsScreen(
     val telemetryEnabled = uiState.telemetryEnabled
     val context = LocalContext.current
 
-    ScreenThemeProvider(accentColor = AccentBlue) {
+    ScreenThemeProvider(accentColor = AccentAmber) {
         SimpleAppScaffold(
             title = "Settings",
             onNavigateBack = onNavigateBack
