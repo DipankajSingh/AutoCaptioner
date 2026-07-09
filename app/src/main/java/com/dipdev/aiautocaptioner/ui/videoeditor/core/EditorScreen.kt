@@ -51,7 +51,7 @@ fun EditorScreen(
         val translateToEnglish by remember { derivedStateOf { uiState.translateToEnglish } }
 
         var selectedClipId by remember { mutableStateOf<String?>(null) }
-        var zoomLevel by remember { mutableStateOf(1f) }
+        var zoomLevel by remember { mutableFloatStateOf(1f) }
         var showBackDialog by remember { mutableStateOf(false) }
         var showDeleteDialog by remember { mutableStateOf(false) }
 

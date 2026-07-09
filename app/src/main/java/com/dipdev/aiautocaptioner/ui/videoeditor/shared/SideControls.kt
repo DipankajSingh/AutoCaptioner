@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ClosedCaption
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -19,8 +21,6 @@ import androidx.compose.ui.unit.dp
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.LogOut
 import compose.icons.feathericons.Menu
-import compose.icons.feathericons.Type
-import compose.icons.feathericons.X
 
 @Composable
 fun LeftSideControls(
@@ -82,7 +82,7 @@ fun LeftSideControls(
         }
 
         SideControlButton(
-            icon = FeatherIcons.Type,
+            icon = Icons.Rounded.ClosedCaption,
             contentDescription = "Generate Captions",
             onClick = {
                 if (hasEdits) onApplyEdits()

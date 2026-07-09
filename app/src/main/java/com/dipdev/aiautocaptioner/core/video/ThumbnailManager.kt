@@ -11,8 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,12 +22,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 import androidx.core.net.toUri
 import androidx.core.graphics.scale
 
 class ThumbnailManager(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val retrieverMutex = Mutex()
+    private val poolSemaphore = Semaphore(3)
     
     // Memory cache: max size in bytes
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -61,7 +62,7 @@ class ThumbnailManager(private val context: Context) {
     private var currentVideoPath: String = ""
     private var cacheDir: File? = null
     
-    private var retriever: MediaMetadataRetriever? = null
+    private val retrieverPool = ConcurrentLinkedQueue<MediaMetadataRetriever>()
     private var targetThumbWidth: Int = -1
     private val targetThumbHeight: Int = 120
     
@@ -70,7 +71,8 @@ class ThumbnailManager(private val context: Context) {
         
         // Cleanup old
         clearMemoryCache()
-        retriever?.release()
+        retrieverPool.forEach { it.release() }
+        retrieverPool.clear()
         
         currentVideoPath = videoPath
         val file = File(videoPath)
@@ -82,38 +84,41 @@ class ThumbnailManager(private val context: Context) {
         cacheDir = File(context.cacheDir, "thumbnails/$uniqueId").apply { mkdirs() }
         cleanupOldCacheDirectories()
         
-        var newRetriever: MediaMetadataRetriever? = null
         try {
-            newRetriever = MediaMetadataRetriever().apply {
-                if (videoPath.startsWith("content://") || videoPath.startsWith("file://")) {
-                    setDataSource(context, videoPath.toUri())
-                } else {
-                    setDataSource(videoPath)
+            for (i in 0 until 3) {
+                val r = MediaMetadataRetriever().apply {
+                    if (videoPath.startsWith("content://") || videoPath.startsWith("file://")) {
+                        setDataSource(context, videoPath.toUri())
+                    } else {
+                        setDataSource(videoPath)
+                    }
                 }
                 
-                // Pre-calculate thumbnail dimensions to use native hardware scaling
-                val widthStr = extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                val heightStr = extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                val rotationStr = extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-                
-                val width = widthStr?.toIntOrNull() ?: 1920
-                val height = heightStr?.toIntOrNull() ?: 1080
-                val rotation = rotationStr?.toIntOrNull() ?: 0
-                
-                val (actualWidth, actualHeight) = if (rotation == 90 || rotation == 270) {
-                    Pair(height, width)
-                } else {
-                    Pair(width, height)
+                if (i == 0) {
+                    // Pre-calculate thumbnail dimensions to use native hardware scaling
+                    val widthStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                    val heightStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                    val rotationStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                    
+                    val width = widthStr?.toIntOrNull() ?: 1920
+                    val height = heightStr?.toIntOrNull() ?: 1080
+                    val rotation = rotationStr?.toIntOrNull() ?: 0
+                    
+                    val (actualWidth, actualHeight) = if (rotation == 90 || rotation == 270) {
+                        Pair(height, width)
+                    } else {
+                        Pair(width, height)
+                    }
+                    
+                    val aspectRatio = actualWidth.toFloat() / actualHeight.toFloat()
+                    targetThumbWidth = (targetThumbHeight * aspectRatio).toInt()
                 }
-                
-                val aspectRatio = actualWidth.toFloat() / actualHeight.toFloat()
-                targetThumbWidth = (targetThumbHeight * aspectRatio).toInt()
+                retrieverPool.add(r)
             }
-            retriever = newRetriever
         } catch (e: Exception) {
             e.printStackTrace()
-            newRetriever?.release()
-            retriever = null
+            retrieverPool.forEach { it.release() }
+            retrieverPool.clear()
         }
     }
 
@@ -190,26 +195,27 @@ class ThumbnailManager(private val context: Context) {
         }
 
         // 3. Extract from Video using stable API with hardware downscaling
-        val r = retriever ?: return@withContext null
-        
-        try {
-            val scaledBitmap = retrieverMutex.withLock {
+        poolSemaphore.withPermit {
+            val r = retrieverPool.poll() ?: return@withContext null
+            try {
                 val raw = r.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
-                if (raw != null && targetThumbWidth > 0) {
+                val scaledBitmap = if (raw != null && targetThumbWidth > 0) {
                     val scaled = raw.scale(targetThumbWidth, targetThumbHeight)
                     if (scaled != raw) raw.recycle()
                     scaled
                 } else raw
-            }
 
-            if (scaledBitmap != null) {
-                FileOutputStream(file).use { out ->
-                    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+                if (scaledBitmap != null) {
+                    FileOutputStream(file).use { out ->
+                        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+                    }
+                    return@withContext scaledBitmap
                 }
-                return@withContext scaledBitmap
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                retrieverPool.offer(r)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
         return@withContext null
     }
@@ -231,8 +237,8 @@ class ThumbnailManager(private val context: Context) {
 
     fun release() {
         clearMemoryCache()
-        retriever?.release()
-        retriever = null
+        retrieverPool.forEach { it.release() }
+        retrieverPool.clear()
         scope.cancel()
     }
 }

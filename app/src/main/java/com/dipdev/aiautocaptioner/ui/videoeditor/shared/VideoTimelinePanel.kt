@@ -104,7 +104,7 @@ fun VideoTimelinePanel(
                 TimelineView(
                     clips = clips,
                     thumbnails = thumbnails,
-            onRequestThumbnails = onRequestThumbnails,
+                    onRequestThumbnails = onRequestThumbnails,
                     originalDurationMs = originalDurationMs,
                     selectedClipId = selectedClipId,
                     onClipSelected = onClipSelected,

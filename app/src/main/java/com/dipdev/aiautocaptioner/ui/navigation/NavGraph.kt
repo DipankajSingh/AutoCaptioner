@@ -151,7 +151,9 @@ fun NavGraph(
                     }
                 },
                 onNavigateToVideoEditor = {
-                    navController.navigate(Screen.VideoEditor.createRoute(projectId))
+                    navController.navigate(Screen.VideoEditor.createRoute(projectId)) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
                 },
                 onCancel = { navController.popBackStack() }
             )

@@ -12,6 +12,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import com.dipdev.aiautocaptioner.core.utils.FileUtils
 import com.dipdev.aiautocaptioner.data.model.Clip
+import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -44,21 +45,7 @@ class ExportService @Inject constructor(
             val tempFile = tempOutputFile ?: throw IllegalStateException("Could not create temp file")
 
             // Merge adjacent contiguous clips to prevent FFmpeg micro-stutters
-            val mergedClips = mutableListOf<Clip>()
-            var currentMerged: Clip? = null
-            for (c in clips) {
-                if (currentMerged == null) {
-                    currentMerged = c
-                } else if (currentMerged.endTrimMs == c.startTrimMs) {
-                    currentMerged = currentMerged.copy(endTrimMs = c.endTrimMs)
-                } else {
-                    mergedClips.add(currentMerged)
-                    currentMerged = c
-                }
-            }
-            if (currentMerged != null) {
-                mergedClips.add(currentMerged)
-            }
+            val mergedClips = mergeContiguousClips(clips)
 
             val editedMediaItems = mergedClips.map { clip ->
                 val mediaItem = MediaItem.Builder()

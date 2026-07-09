@@ -105,7 +105,7 @@ sealed class ProcessingUiEvent : UiEvent {
 }
 
 sealed class ProcessingUiEffect : UiEffect {
-    data object NavigateToStyleEditor : ProcessingUiEffect()
+    data object NavigateToVideoEditor : ProcessingUiEffect()
 }
 
 @HiltViewModel
@@ -151,7 +151,7 @@ class ProcessingViewModel @Inject constructor(
                     setState { copy(step = step) }
                     if (step is ProcessingStep.Done) {
                         // No delay — navigate immediately; StyleEditor shows in-app toast
-                        setEffect(ProcessingUiEffect.NavigateToStyleEditor)
+                        setEffect(ProcessingUiEffect.NavigateToVideoEditor)
                         transcriptionManager.clearState()
                     }
                 }
@@ -193,7 +193,7 @@ class ProcessingViewModel @Inject constructor(
 
             if (isAlreadyDone && !forceModelPicker) {
                 // Project already transcribed — go straight to style editor
-                setEffect(ProcessingUiEffect.NavigateToStyleEditor)
+                setEffect(ProcessingUiEffect.NavigateToVideoEditor)
                 return@launch
             }
             

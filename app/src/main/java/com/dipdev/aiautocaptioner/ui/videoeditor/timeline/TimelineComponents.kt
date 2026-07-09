@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -187,9 +188,11 @@ fun VideoClipItem(
                 ) {
                     val paddingPx = with(density) { (if (isSelected) 16.dp else 14.dp).toPx() }
                     
-                    val relevantThumbnails = thumbnails
-                        .filterKeys { it % thumbnailIntervalMs == 0L }
-                        .toSortedMap()
+                    val relevantThumbnails = remember(thumbnails, thumbnailIntervalMs) {
+                        thumbnails
+                            .filterKeys { it % thumbnailIntervalMs == 0L }
+                            .toSortedMap()
+                    }
                         
                     relevantThumbnails.forEach { (timeMs, bitmap) ->
                         // Offset by paddingPx so the thumbnail coordinates align with the outer unpadded clip bounds
@@ -204,7 +207,7 @@ fun VideoClipItem(
                                     contentDescription = "Thumbnail",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
-                                        .absoluteOffset { androidx.compose.ui.unit.IntOffset(localXPx.toInt(), 0) }
+                                        .absoluteOffset { IntOffset(localXPx.toInt(), 0) }
                                         .width(with(density) { thumbWidthPx.toDp() })
                                         .fillMaxHeight()
                                 )

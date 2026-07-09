@@ -86,8 +86,10 @@ fun ProcessingScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.uiEffect.collect {
-            onNavigateToStyleEditor()
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is ProcessingUiEffect.NavigateToVideoEditor -> onNavigateToVideoEditor()
+            }
         }
     }
 

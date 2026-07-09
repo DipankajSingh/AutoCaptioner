@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
+import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -57,7 +58,6 @@ fun TimelineView(
     val density = LocalDensity.current
     val pixelsPerMs = with(density) { (50.dp.toPx() / 1000f) * zoomLevel }
     
-    var isDragging by remember { mutableStateOf(false) }
     var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
     var dragPointerScreenX by remember { mutableFloatStateOf(0f) }
     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
@@ -169,11 +169,46 @@ fun TimelineView(
         onRequestThumbnails(requested.toList())
     }
 
-    LaunchedEffect(isDragging, pixelsPerMs) {
-        if (!isDragging) {
+    val mergedClips = remember(clips) { mergeContiguousClips(clips) }
+
+    LaunchedEffect(scrollState.isScrollInProgress, pixelsPerMs) {
+        if (scrollState.isScrollInProgress) {
+            onDragStateChange(true)
+            player.pause()
+            var lastSeekTime = -1L
+            snapshotFlow { scrollState.value }.collect { scrollValue ->
+                val seekTimeMs = (scrollValue / pixelsPerMs).toLong()
+                if (kotlin.math.abs(seekTimeMs - lastSeekTime) > 20L) {
+                    lastSeekTime = seekTimeMs
+                    var accumulated = 0L
+                    var targetWindowIndex = 0
+                    var targetPosInWindow = 0L
+                    
+                    for (i in mergedClips.indices) {
+                        val clipDuration = mergedClips[i].endTrimMs - mergedClips[i].startTrimMs
+                        if (seekTimeMs >= accumulated && seekTimeMs < accumulated + clipDuration) {
+                            targetWindowIndex = i
+                            targetPosInWindow = seekTimeMs - accumulated
+                            break
+                        }
+                        accumulated += clipDuration
+                    }
+                    
+                    if (seekTimeMs >= totalEditedMs && mergedClips.isNotEmpty()) {
+                        targetWindowIndex = mergedClips.size - 1
+                        targetPosInWindow = mergedClips.last().endTrimMs - mergedClips.last().startTrimMs
+                    }
+                    
+                    player.seekTo(targetWindowIndex, targetPosInWindow)
+                }
+            }
+        } else {
+            onDragStateChange(false)
             snapshotFlow { currentTimelineMs() }.collect { timeMs ->
-                val scrollOffset = (timeMs * pixelsPerMs).toInt()
-                scrollState.scrollTo(scrollOffset)
+                if (player.isPlaying) {
+                    val scrollOffset = (timeMs * pixelsPerMs).toInt()
+                    scrollState.scrollTo(scrollOffset)
+                }
             }
         }
     }
@@ -188,55 +223,6 @@ fun TimelineView(
         modifier = modifier
             .background(surfaceColor)
             .onGloballyPositioned { coordinates -> boxWidthPx = coordinates.size.width }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = {
-                        isDragging = true
-                        onDragStateChange(true)
-                        player.pause()
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        coroutineScope.launch {
-                            val newScroll = (scrollState.value - dragAmount.x).toInt()
-                            scrollState.scrollTo(newScroll.coerceIn(0, scrollState.maxValue))
-                            val seekTimeMs = (scrollState.value / pixelsPerMs).toLong()
-                            
-                            val mergedClips = mutableListOf<Clip>()
-                            var currentMerged: Clip? = null
-                            for (c in clips) {
-                                if (currentMerged == null) { currentMerged = c }
-                                else if (currentMerged.endTrimMs == c.startTrimMs) { currentMerged = currentMerged.copy(endTrimMs = c.endTrimMs) }
-                                else { mergedClips.add(currentMerged); currentMerged = c }
-                            }
-                            if (currentMerged != null) mergedClips.add(currentMerged)
-
-                            var accumulated = 0L
-                            var targetWindowIndex = 0
-                            var targetPosInWindow = 0L
-                            
-                            for (i in mergedClips.indices) {
-                                val clipDuration = mergedClips[i].endTrimMs - mergedClips[i].startTrimMs
-                                if (seekTimeMs >= accumulated && seekTimeMs < accumulated + clipDuration) {
-                                    targetWindowIndex = i
-                                    targetPosInWindow = seekTimeMs - accumulated
-                                    break
-                                }
-                                accumulated += clipDuration
-                            }
-                            
-                            if (seekTimeMs >= totalEditedMs && mergedClips.isNotEmpty()) {
-                                targetWindowIndex = mergedClips.size - 1
-                                targetPosInWindow = mergedClips.last().endTrimMs - mergedClips.last().startTrimMs
-                            }
-                            
-                            player.seekTo(targetWindowIndex, targetPosInWindow)
-                        }
-                    },
-                    onDragEnd = { isDragging = false; onDragStateChange(false) },
-                    onDragCancel = { isDragging = false; onDragStateChange(false) }
-                )
-            }
     ) {
         val halfWidthDp = with(density) { (boxWidthPx / 2).toDp() }
         val safeTotalWidthPx = maxOf(1f, totalEditedMs * pixelsPerMs)
@@ -245,7 +231,7 @@ fun TimelineView(
         Row(
             modifier = Modifier
                 .fillMaxHeight()
-                .horizontalScroll(scrollState, enabled = false)
+                .horizontalScroll(scrollState, enabled = true)
         ) {
             Spacer(modifier = Modifier.width(halfWidthDp))
 

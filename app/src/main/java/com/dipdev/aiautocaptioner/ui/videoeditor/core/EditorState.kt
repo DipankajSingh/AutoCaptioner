@@ -16,6 +16,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.dipdev.aiautocaptioner.data.model.Clip
+import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -48,31 +49,13 @@ fun rememberEditorState(
         }
     }
 
-    LaunchedEffect(player) {
-        state.startProgressSync()
-    }
-
     // Compute merged clips dynamically to calculate absolute timeline ms
     val mergedClips = remember(clips) {
-        val list = mutableListOf<Clip>()
-        var currentMergedClip: Clip? = null
-        for (clip in clips) {
-            if (currentMergedClip == null) {
-                currentMergedClip = clip
-            } else {
-                if (currentMergedClip.endTrimMs == clip.startTrimMs) {
-                    currentMergedClip = currentMergedClip.copy(endTrimMs = clip.endTrimMs)
-                } else {
-                    list.add(currentMergedClip)
-                    currentMergedClip = clip
-                }
-            }
-        }
-        if (currentMergedClip != null) {
-            list.add(currentMergedClip)
-        }
-        list
+        mergeContiguousClips(clips)
     }
+
+    // Keep track of the previous media items to prevent unnecessary ExoPlayer restarts
+    var previousMediaItems by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
 
     // Sync ExoPlayer playlist with clips
     LaunchedEffect(mergedClips, state.isDragging, originalVideoPath) {
@@ -89,18 +72,28 @@ fun rememberEditorState(
                     .build()
             }
 
-            // Try to preserve timeline position across playlist updates
-            val oldWindowIndex = player.currentMediaItemIndex
-            val oldPos = player.currentPosition
-            val wasPlaying = player.playWhenReady
-            
-            player.setMediaItems(mediaItems)
-            player.prepare()
+            val changed = mediaItems.size != previousMediaItems.size ||
+                mediaItems.zip(previousMediaItems).any { (new, old) ->
+                    new.clippingConfiguration.startPositionMs != old.clippingConfiguration.startPositionMs ||
+                    new.clippingConfiguration.endPositionMs != old.clippingConfiguration.endPositionMs ||
+                    new.localConfiguration?.uri != old.localConfiguration?.uri
+                }
 
-            if (mediaItems.isNotEmpty()) {
-                player.seekTo(oldWindowIndex.coerceIn(0, mediaItems.size - 1), oldPos)
+            if (changed) {
+                previousMediaItems = mediaItems
+                // Try to preserve timeline position across playlist updates
+                val oldWindowIndex = player.currentMediaItemIndex
+                val oldPos = player.currentPosition
+                val wasPlaying = player.playWhenReady
+                
+                player.setMediaItems(mediaItems)
+                player.prepare()
+
+                if (mediaItems.isNotEmpty()) {
+                    player.seekTo(oldWindowIndex.coerceIn(0, mediaItems.size - 1), oldPos)
+                }
+                player.playWhenReady = wasPlaying
             }
-            player.playWhenReady = wasPlaying
         }
     }
 

@@ -504,7 +504,7 @@ fun HomeScreen(
                                     ProjectStatus.READY_FOR_PROCESSING,
                                     ProjectStatus.EXTRACTING_AUDIO,
                                     ProjectStatus.TRANSCRIBING -> onNavigateToProcessing(projectWithExports.project.id)
-                                    else -> onNavigateToEditor(projectWithExports.project.id)
+                                    else -> onNavigateToVideoEditor(projectWithExports.project.id)
                                 }
                             },
                             onDelete = { viewModel.deleteProject(projectWithExports.project) },
