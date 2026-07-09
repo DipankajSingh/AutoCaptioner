@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
-import com.dipdev.aiautocaptioner.ui.videoeditor.overlay.OverlayActionMenu
 import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineView
 
 @Composable
@@ -66,6 +65,7 @@ fun VideoTimelinePanel(
     onDeleteOverlay: (String) -> Unit,
     onSplit: () -> Unit,
     onDuplicate: (String) -> Unit,
+    onDuplicateOverlay: (String) -> Unit,
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
@@ -126,21 +126,7 @@ fun VideoTimelinePanel(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
 
-            val selectedOverlay = overlays.find { it.id == selectedOverlayId }
-            if (selectedOverlay != null) {
-                OverlayActionMenu(
-                    selectedOverlay = selectedOverlay,
-                    onFullVideo = {
-                        onUpdateOverlay(selectedOverlay.copy(startTimeMs = 0L, endTimeMs = Long.MAX_VALUE))
-                    },
-                    onSendToBack = { onMoveOverlayZ(selectedOverlay.id, false) },
-                    onBringToFront = { onMoveOverlayZ(selectedOverlay.id, true) },
-                    onDelete = { onDeleteOverlay(selectedOverlay.id) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
             
             // Bottom Toolbar for Timeline Tools
             Row(
@@ -155,24 +141,35 @@ fun VideoTimelinePanel(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val hasSelection = selectedClipId != null
+                    val hasClipSelection = selectedClipId != null
+                    val hasOverlaySelection = selectedOverlayId != null
+                    val hasAnySelection = hasClipSelection || hasOverlaySelection
+                    val accentColor = MaterialTheme.colorScheme.primary
+                    val grayColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+
                     Icon(
                         FeatherIcons.Scissors, 
                         "Split", 
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp).clickable { onSplit() }
+                        tint = if (hasClipSelection) accentColor else grayColor,
+                        modifier = Modifier.size(24.dp).clickable(enabled = hasClipSelection) { onSplit() }
                     )
                     Icon(
                         FeatherIcons.Copy, 
                         "Duplicate", 
-                        tint = if (hasSelection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(24.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDuplicate(it) } }
+                        tint = if (hasAnySelection) accentColor else grayColor,
+                        modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
+                            if (hasOverlaySelection) selectedOverlayId?.let { onDuplicateOverlay(it) }
+                            else if (hasClipSelection) selectedClipId?.let { onDuplicate(it) }
+                        }
                     )
                     Icon(
                         FeatherIcons.Trash2, 
                         "Delete", 
-                        tint = if (hasSelection) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        modifier = Modifier.size(24.dp).clickable(enabled = hasSelection) { selectedClipId?.let { onDelete(it) } }
+                        tint = if (hasAnySelection) MaterialTheme.colorScheme.error else grayColor,
+                        modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
+                            if (hasOverlaySelection) selectedOverlayId?.let { onDeleteOverlay(it) }
+                            else if (hasClipSelection) selectedClipId?.let { onDelete(it) }
+                        }
                     )
                 }
                 

@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
-import com.dipdev.aiautocaptioner.ui.components.ProjectStatusChip
 import com.dipdev.aiautocaptioner.ui.components.RenameDialog
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import java.io.File
@@ -227,8 +226,7 @@ fun ProjectCard(
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    ProjectStatusChip(status = project.status)
+
                 }
             }
 

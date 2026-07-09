@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
+import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
@@ -77,7 +78,7 @@ class HomeViewModel @Inject constructor(
     fun importVideo(uri: Uri) {
         viewModelScope.launch {
             setState { copy(importState = ImportState.Loading) }
-            val result = projectRepository.importVideo(uri)
+            val result = projectRepository.importVideo(uri, CreationMode.ADVANCED)
             setState { 
                 copy(importState = result.fold(
                     { projectId -> ImportState.Success(projectId) },
@@ -90,7 +91,7 @@ class HomeViewModel @Inject constructor(
     fun importVideoQuick(uri: Uri) {
         viewModelScope.launch {
             setState { copy(importState = ImportState.Loading) }
-            val result = projectRepository.importVideo(uri)
+            val result = projectRepository.importVideo(uri, CreationMode.QUICK_CAPTION)
             setState { 
                 copy(importState = result.fold(
                     { projectId -> ImportState.QuickSuccess(projectId) },

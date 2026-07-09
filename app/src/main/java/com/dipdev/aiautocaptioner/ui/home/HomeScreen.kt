@@ -86,7 +86,7 @@ fun HomeScreen(
     onNavigateToSmartRecorder: (String) -> Unit,
     onNavigateToVideoEditor: (String) -> Unit,
     onNavigateToProcessing: (String) -> Unit,
-    onNavigateToEditor: (String) -> Unit,
+    onNavigateToCaptionEditor: (String) -> Unit,
     onNavigateToModelManager: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: (String) -> Unit,
@@ -499,12 +499,15 @@ fun HomeScreen(
                         ProjectCard(
                             projectWithExports = projectWithExports,
                             onClick = {
-                                when (projectWithExports.project.status) {
-                                    ProjectStatus.IMPORTED -> onNavigateToVideoEditor(projectWithExports.project.id)
-                                    ProjectStatus.READY_FOR_PROCESSING,
-                                    ProjectStatus.EXTRACTING_AUDIO,
-                                    ProjectStatus.TRANSCRIBING -> onNavigateToProcessing(projectWithExports.project.id)
-                                    else -> onNavigateToVideoEditor(projectWithExports.project.id)
+                                val project = projectWithExports.project
+                                if (project.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
+                                    if (project.status == com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.TRANSCRIBED || project.status == com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.EXPORTED) {
+                                        onNavigateToCaptionEditor(project.id)
+                                    } else {
+                                        onNavigateToProcessing(project.id)
+                                    }
+                                } else {
+                                    onNavigateToVideoEditor(project.id)
                                 }
                             },
                             onDelete = { viewModel.deleteProject(projectWithExports.project) },

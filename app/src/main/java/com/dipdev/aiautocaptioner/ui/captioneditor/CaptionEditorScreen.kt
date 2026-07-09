@@ -79,6 +79,7 @@ fun CaptionEditorScreen(
     onNavigateBack: () -> Unit,
     onNavigateToStyleEditor: () -> Unit,
     onNavigateToProcessing: (String) -> Unit,
+    onNavigateToExport: (String) -> Unit,
     viewModel: CaptionEditorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -219,14 +220,14 @@ fun CaptionEditorScreen(
                     Text(stringResource(R.string.caption_style_editor), maxLines = 1)
                 }
                 AppPrimaryButton(
-                    onClick = { viewModel.setEvent(CaptionEditorUiEvent.ShareSrt(projectId)) },
+                    onClick = { onNavigateToExport(projectId) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentAmber,
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Export SRT", maxLines = 1)
+                    Text("Export Video", maxLines = 1)
                 }
             }
         }

@@ -100,9 +100,9 @@ fun StyleEditorBottomBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomTabItem("Presets", FeatherIcons.Layers, selectedTab == StyleTab.PRESETS, selectedTint = MaterialTheme.colorScheme.primary) { onTabSelected(StyleTab.PRESETS) }
+        BottomTabItem("Presets", FeatherIcons.Layers, selectedTab == StyleTab.PRESETS, selectedTint = AccentAmber) { onTabSelected(StyleTab.PRESETS) }
         BottomTabItem("Text", FeatherIcons.Type, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.TEXT) }
-        BottomTabItem("Color", FeatherIcons.Droplet, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentViolet) { onTabSelected(StyleTab.COLOR) }
+        BottomTabItem("Color", FeatherIcons.Droplet, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.COLOR) }
         BottomTabItem("Animate", FeatherIcons.Activity, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
     }
 }

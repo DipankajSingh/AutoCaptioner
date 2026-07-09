@@ -6,6 +6,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.EmphasisType
 import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
+import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
 
@@ -34,6 +35,13 @@ class Converters {
         ProjectStatus.valueOf(value)
     // valueOf() converts String back to enum constant
     // "IMPORTED" → ProjectStatus.IMPORTED
+
+    // ---- CreationMode ----
+    @TypeConverter
+    fun fromCreationMode(mode: CreationMode): String = mode.name
+
+    @TypeConverter
+    fun toCreationMode(value: String): CreationMode = CreationMode.valueOf(value)
 
     // ---- DisplayMode ----
     @TypeConverter

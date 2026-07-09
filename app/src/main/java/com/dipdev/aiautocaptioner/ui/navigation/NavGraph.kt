@@ -82,8 +82,8 @@ fun NavGraph(
                 onNavigateToProcessing = { projectId ->
                     navController.navigate(Screen.Processing.createRoute(projectId))
                 },
-                onNavigateToEditor = { projectId ->
-                    navController.navigate(Screen.StyleEditor.createRoute(projectId))
+                onNavigateToCaptionEditor = { projectId ->
+                    navController.navigate(Screen.CaptionEditor.createRoute(projectId))
                 },
                 onNavigateToModelManager = {
                     navController.navigate(Screen.ModelManager.route)
@@ -176,6 +176,9 @@ fun NavGraph(
                 },
                 onNavigateToProcessing = { pid ->
                     navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true))
+                },
+                onNavigateToExport = { pid ->
+                    navController.navigate(Screen.Export.createRoute(pid))
                 }
             )
         }

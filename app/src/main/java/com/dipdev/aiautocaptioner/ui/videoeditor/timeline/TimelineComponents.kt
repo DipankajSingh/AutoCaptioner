@@ -10,16 +10,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -37,6 +34,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -45,8 +43,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.platform.LocalDensity
-import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 
@@ -330,117 +326,6 @@ fun VideoClipItem(
     }
 }
 
-@Composable
-fun CaptionOverlayItem(
-    overlay: ImageOverlayEntity,
-    isSelectedOverlay: Boolean,
-    overlayOffsetXDp: Dp,
-    overlayWidthDp: Dp,
-    pixelsPerMs: Float,
-    currentEndTimeMs: Long,
-    totalEditedMs: Long,
-    primaryColor: Color,
-    onOverlaySelected: (String) -> Unit,
-    onDragStateChange: (Boolean) -> Unit,
-    onOverlayTimingChanged: (String, Long, Long) -> Unit,
-    onCaptionTap: () -> Unit
-) {
-    val updatedOverlay by rememberUpdatedState(overlay)
-    val updatedEndTimeMs by rememberUpdatedState(currentEndTimeMs)
-
-    Box(
-        modifier = Modifier
-            .offset(x = overlayOffsetXDp)
-            .width(overlayWidthDp)
-            .fillMaxHeight()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (isSelectedOverlay) AccentAmber.copy(alpha = 0.5f) else primaryColor.copy(alpha = 0.3f))
-            .border(
-                width = if (isSelectedOverlay) 2.dp else 1.dp,
-                color = if (isSelectedOverlay) AccentAmber else primaryColor.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(4.dp)
-            )
-            .pointerInput(overlay.id) {
-                var dragType = 0
-                var accumulatedDeltaX = 0f
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        onOverlaySelected(updatedOverlay.id)
-                        val edgeWidth = 20.dp.toPx()
-                        dragType = when {
-                            offset.x <= edgeWidth -> 1
-                            offset.x >= size.width - edgeWidth -> 2
-                            else -> 3
-                        }
-                        accumulatedDeltaX = 0f
-                        onDragStateChange(true)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        accumulatedDeltaX += dragAmount.x
-                        val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
-                        if (deltaMs != 0L) {
-                            accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                            val oStart = updatedOverlay.startTimeMs
-                            val oEnd = updatedEndTimeMs
-                            when (dragType) {
-                                1 -> {
-                                    val newStart = (oStart + deltaMs).coerceIn(0L, oEnd - 100L)
-                                    onOverlayTimingChanged(updatedOverlay.id, newStart, updatedOverlay.endTimeMs)
-                                }
-                                2 -> {
-                                    val newEnd = (oEnd + deltaMs).coerceIn(oStart + 100L, totalEditedMs)
-                                    onOverlayTimingChanged(updatedOverlay.id, oStart, if (updatedOverlay.endTimeMs == Long.MAX_VALUE) Long.MAX_VALUE else newEnd)
-                                }
-                                3 -> {
-                                    val dur = oEnd - oStart
-                                    val newStart = (oStart + deltaMs).coerceIn(0L, totalEditedMs - dur)
-                                    val newEnd = newStart + dur
-                                    val finalEnd = if (updatedOverlay.endTimeMs == Long.MAX_VALUE) Long.MAX_VALUE else newEnd
-                                    onOverlayTimingChanged(updatedOverlay.id, newStart, finalEnd)
-                                }
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        dragType = 0
-                        onDragStateChange(false)
-                    },
-                    onDragCancel = {
-                        dragType = 0
-                        onDragStateChange(false)
-                    }
-                )
-            }
-            .clickable { 
-                onOverlaySelected(overlay.id)
-                onCaptionTap()
-            }
-    ) {
-        // Overlay icon/indicator
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("T", color = Color.White, fontSize = 10.sp)
-            }
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Caption", color = Color.White, fontSize = 10.sp, maxLines = 1)
-        }
-
-        if (isSelectedOverlay) {
-            Box(modifier = Modifier.align(Alignment.CenterStart).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
-            Box(modifier = Modifier.align(Alignment.CenterEnd).width(10.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.3f)))
-        }
-    }
-}
 
 @Composable
 fun PlayheadMarker() {

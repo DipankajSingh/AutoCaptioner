@@ -99,8 +99,16 @@ data class ProjectEntity(
     val transcribedWithModelId: String? = null,
 
     val facelessBackgroundType: String? = null,
-    val facelessBackgroundValue: String? = null
+    val facelessBackgroundValue: String? = null,
+    
+    // Indicates how this project was created to determine routing logic
+    val creationMode: CreationMode = CreationMode.ADVANCED
 )
+
+enum class CreationMode {
+    QUICK_CAPTION,
+    ADVANCED
+}
 
 // Represents where the project is in the processing pipeline
 // Stored as String in the database (Room converts enum to String automatically)

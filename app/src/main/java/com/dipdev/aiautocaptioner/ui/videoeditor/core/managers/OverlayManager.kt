@@ -39,6 +39,8 @@ class OverlayManager(
                     id = UUID.randomUUID().toString(),
                     projectId = projectId,
                     imageUri = destFile.absolutePath,
+                    startTimeMs = 0L,
+                    endTimeMs = 5000L,
                     zOrder = maxZ + 1,
                     createdAt = System.currentTimeMillis()
                 )
@@ -97,6 +99,42 @@ class OverlayManager(
                 overlayRepository.updateOverlay(overlay.copy(zOrder = prev.zOrder))
                 overlayRepository.updateOverlay(prev.copy(zOrder = currentZ))
             }
+        }
+    }
+
+    fun duplicateOverlay(overlayId: String, scope: CoroutineScope) {
+        val overlay = getOverlays().find { it.id == overlayId } ?: return
+        val projectId = getProjectId() ?: return
+        scope.launch(Dispatchers.IO) {
+            var newImageUri = overlay.imageUri
+            if (!overlay.imageUri.startsWith("content://")) {
+                try {
+                    val originalFile = File(overlay.imageUri)
+                    if (originalFile.exists()) {
+                        val overlayDir = File(context.filesDir, "projects/$projectId/overlays")
+                        if (!overlayDir.exists()) overlayDir.mkdirs()
+                        
+                        val destFile = File(overlayDir, "${UUID.randomUUID()}.jpg")
+                        originalFile.copyTo(destFile)
+                        newImageUri = destFile.absolutePath
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            
+            val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
+            val duplicate = overlay.copy(
+                id = UUID.randomUUID().toString(),
+                imageUri = newImageUri,
+                zOrder = maxZ + 1,
+                // offset position slightly so it's visible as a copy
+                positionX = overlay.positionX + 0.05f,
+                positionY = overlay.positionY + 0.05f,
+                createdAt = System.currentTimeMillis()
+            )
+            overlayRepository.addOverlay(duplicate)
+            onOverlaySelected(duplicate.id) // Auto select the new duplicate
         }
     }
 }

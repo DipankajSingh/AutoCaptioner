@@ -25,6 +25,7 @@ import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun OverlayRenderer(
@@ -57,7 +58,7 @@ fun OverlayRenderer(
             
             LaunchedEffect(lastTransformTime) {
                 if (lastTransformTime > 0) {
-                    delay(300)
+                    delay(300.milliseconds)
                     onUpdateOverlay(
                         overlay.copy(
                             scaleX = localScale,

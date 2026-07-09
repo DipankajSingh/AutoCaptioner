@@ -89,6 +89,7 @@ fun ProcessingScreen(
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is ProcessingUiEffect.NavigateToVideoEditor -> onNavigateToVideoEditor()
+                is ProcessingUiEffect.NavigateToCaptionEditor -> onNavigateToCaptionEditor()
             }
         }
     }

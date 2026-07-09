@@ -52,7 +52,7 @@ class ProjectRepository @Inject constructor(
     // 4. Extracts and saves the thumbnail
     // 5. Saves the project to the database
     // Returns the new projectId so the caller can navigate to ProcessingScreen
-    suspend fun importVideo(videoUri: Uri): Result<String> {
+    suspend fun importVideo(videoUri: Uri, creationMode: com.dipdev.aiautocaptioner.data.db.entity.CreationMode = com.dipdev.aiautocaptioner.data.db.entity.CreationMode.ADVANCED): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 // Step 1 — Read video metadata using MediaMetadataRetriever
@@ -142,7 +142,8 @@ class ProjectRepository @Inject constructor(
                     status = ProjectStatus.IMPORTED,
                     hasVisitedCaptionEditor = false,
                     createdAt = now,
-                    updatedAt = now
+                    updatedAt = now,
+                    creationMode = creationMode
                 )
 
                 projectDao.insertProject(project)

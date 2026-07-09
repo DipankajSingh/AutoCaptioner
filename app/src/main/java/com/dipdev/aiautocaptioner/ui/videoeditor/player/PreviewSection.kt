@@ -27,6 +27,8 @@ fun PreviewSection(
             enableTapOverlay = false
         )
 
+        PlayPauseTapOverlay(player = player)
+
         OverlayRenderer(
             overlays = overlays,
             currentTimelineMs = currentTimelineMs,
@@ -34,7 +36,5 @@ fun PreviewSection(
             onUpdateOverlay = onUpdateOverlay,
             onSelectOverlay = onSelectOverlay
         )
-
-        PlayPauseTapOverlay(player = player)
     }
 }

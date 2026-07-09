@@ -73,6 +73,7 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class UpdateOverlay(val overlay: ImageOverlayEntity) : VideoEditorUiEvent()
     data class DeleteOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class SelectOverlay(val overlayId: String?) : VideoEditorUiEvent()
+    data class DuplicateOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class MoveOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
 }
 
@@ -190,6 +191,7 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.UpdateOverlay -> overlayManager.updateOverlay(event.overlay, viewModelScope)
             is VideoEditorUiEvent.DeleteOverlay -> overlayManager.deleteOverlay(event.overlayId, viewModelScope)
             is VideoEditorUiEvent.SelectOverlay -> overlayManager.selectOverlay(event.overlayId)
+            is VideoEditorUiEvent.DuplicateOverlay -> overlayManager.duplicateOverlay(event.overlayId, viewModelScope)
             is VideoEditorUiEvent.MoveOverlayZ -> overlayManager.moveOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
         }
     }

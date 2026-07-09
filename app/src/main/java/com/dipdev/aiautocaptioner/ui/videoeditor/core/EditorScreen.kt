@@ -175,6 +175,11 @@ fun EditorScreen(
                                     onShowDeleteDialog = { showDeleteDialog = true },
                                     onApplyEdits = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits) },
                                     onNavigateToProcessing = onNavigateToProcessing,
+                                    selectedLanguage = selectedLanguage,
+                                    translateToEnglish = translateToEnglish,
+                                    onLanguageSelected = { lang, trans ->
+                                        viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
+                                    },
                                     modifier = Modifier.align(Alignment.TopStart)
                                 )
 
@@ -184,11 +189,6 @@ fun EditorScreen(
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
                                     onAddImage = { imagePickerLauncher.launch("image/*") },
-                                    selectedLanguage = selectedLanguage,
-                                    translateToEnglish = translateToEnglish,
-                                    onLanguageSelected = { lang, trans ->
-                                        viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
-                                    },
                                     modifier = Modifier.align(Alignment.TopEnd)
                                 )
                             }
@@ -220,11 +220,17 @@ fun EditorScreen(
                                 onRequestThumbnails = { viewModel.thumbnailManager.requestThumbnails(it) },
                                 originalDurationMs = originalDurationMs,
                                 selectedClipId = selectedClipId,
-                                onClipSelected = { selectedClipId = it },
+                                onClipSelected = { 
+                                    selectedClipId = it 
+                                    if (it != null) viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
+                                },
                                 onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
                                 overlays = overlays,
                                 selectedOverlayId = selectedOverlayId,
-                                onOverlaySelected = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
+                                onOverlaySelected = { 
+                                    viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) 
+                                    if (it != null) selectedClipId = null
+                                },
                                 onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
                                 onDragStateChange = { 
                                     if (!editorState.isDragging && it) {
@@ -241,6 +247,7 @@ fun EditorScreen(
                                 styleViewModel = styleViewModel,
                                 onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
                                 onDuplicate = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
+                                onDuplicateOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(it)) },
                                 onDelete = { 
                                     viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
                                     selectedClipId = null

@@ -106,6 +106,7 @@ sealed class ProcessingUiEvent : UiEvent {
 
 sealed class ProcessingUiEffect : UiEffect {
     data object NavigateToVideoEditor : ProcessingUiEffect()
+    data object NavigateToCaptionEditor : ProcessingUiEffect()
 }
 
 @HiltViewModel
@@ -151,7 +152,12 @@ class ProcessingViewModel @Inject constructor(
                     setState { copy(step = step) }
                     if (step is ProcessingStep.Done) {
                         // No delay — navigate immediately; StyleEditor shows in-app toast
-                        setEffect(ProcessingUiEffect.NavigateToVideoEditor)
+                        val project = pendingProjectId?.let { projectRepository.getProjectById(it) }
+                        if (project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
+                            setEffect(ProcessingUiEffect.NavigateToCaptionEditor)
+                        } else {
+                            setEffect(ProcessingUiEffect.NavigateToVideoEditor)
+                        }
                         transcriptionManager.clearState()
                     }
                 }
@@ -192,8 +198,12 @@ class ProcessingViewModel @Inject constructor(
             setState { copy(workingVideoPath = project?.workingVideoPath) }
 
             if (isAlreadyDone && !forceModelPicker) {
-                // Project already transcribed — go straight to style editor
-                setEffect(ProcessingUiEffect.NavigateToVideoEditor)
+                // Project already transcribed — go straight to editor
+                if (project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
+                    setEffect(ProcessingUiEffect.NavigateToCaptionEditor)
+                } else {
+                    setEffect(ProcessingUiEffect.NavigateToVideoEditor)
+                }
                 return@launch
             }
             
@@ -322,6 +332,7 @@ class ProcessingViewModel @Inject constructor(
     }
 
     private fun startProcessing(projectId: String) {
+        pendingProjectId = projectId
         val activeModelId = currentState.activeModel?.id ?: return
         transcriptionManager.startProcess(
             projectId = projectId,
