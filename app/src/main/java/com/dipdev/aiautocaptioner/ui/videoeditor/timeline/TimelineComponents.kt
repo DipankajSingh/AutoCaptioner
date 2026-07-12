@@ -7,7 +7,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
@@ -112,7 +111,6 @@ fun VideoClipItem(
     onClipSelected: (String) -> Unit,
     hasGapBefore: Boolean,
     onTrimClip: (String, Long, Long) -> Unit,
-    onScrollBy: (Float) -> Unit,
     pixelsPerMs: Float,
     thumbnailIntervalMs: Long
 ) {
@@ -230,34 +228,23 @@ fun VideoClipItem(
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
                     .width(16.dp)
-                    .pointerInput(clip.id + "_left") {
-                        var accumulatedDeltaX = 0f
-                        var currentStartMs = 0L
-                        detectDragGestures(
-                            onDragStart = { 
-                                onDragStateChange(true)
-                                accumulatedDeltaX = 0f 
-                                currentStartMs = clip.startTrimMs
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                accumulatedDeltaX += dragAmount.x
-                                val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
-                                if (deltaMs != 0L) {
-                                    accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newStart = (currentStartMs + deltaMs).coerceIn(0L, updatedClip.endTrimMs - 100L)
-                                    if (newStart != currentStartMs) {
-                                        currentStartMs = newStart
-                                        onTrimClip(clip.id, newStart, updatedClip.endTrimMs)
-                                        onScrollBy(-dragAmount.x) // Scroll timeline to follow finger
-                                    }
-                                }
-                            },
-                            onDragEnd = { onDragStateChange(false) },
-                            onDragCancel = { onDragStateChange(false) }
-                        )
-                    },
-                contentAlignment = Alignment.Center
+                    .timelineTrimGesture(
+                        key1 = clip.id,
+                        key2 = "left",
+                        pixelsPerMs      = pixelsPerMs,
+                        currentEdgeMs    = clip.startTrimMs,
+                        minEdgeMs        = 0L,
+                        maxEdgeMs        = updatedClip.endTrimMs - 100L,
+                        scrollStateValue = scrollStateValue,
+                        onDragStart  = { onDragStateChange(true) },
+                        // Video trim handles report no pointer to the parent edge-scroll loop
+                        // (that loop only runs during swap-drags, not trim).
+                        onDragPointerStart  = {},
+                        onDragPointerChange = {},
+                        onEdgeChange = { newStart -> onTrimClip(clip.id, newStart, updatedClip.endTrimMs) },
+                        onDragEnd    = { onDragStateChange(false) },
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
                 Box(modifier = Modifier.width(2.dp).height(14.dp).background(AccentAmber, RoundedCornerShape(50)))
             }
@@ -268,34 +255,21 @@ fun VideoClipItem(
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
                     .width(16.dp)
-                    .pointerInput(clip.id + "_right") {
-                        var accumulatedDeltaX = 0f
-                        var currentEndMs = 0L
-                        detectDragGestures(
-                            onDragStart = { 
-                                onDragStateChange(true)
-                                accumulatedDeltaX = 0f 
-                                currentEndMs = clip.endTrimMs
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                accumulatedDeltaX += dragAmount.x
-                                val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
-                                if (deltaMs != 0L) {
-                                    accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newEnd = currentEndMs + deltaMs
-                                    val clampedEnd = newEnd.coerceIn(updatedClip.startTrimMs + 100L, originalDurationMs)
-                                    if (clampedEnd != currentEndMs) {
-                                        currentEndMs = clampedEnd
-                                        onTrimClip(clip.id, updatedClip.startTrimMs, clampedEnd)
-                                    }
-                                }
-                            },
-                            onDragEnd = { onDragStateChange(false) },
-                            onDragCancel = { onDragStateChange(false) }
-                        )
-                    },
-                contentAlignment = Alignment.Center
+                    .timelineTrimGesture(
+                        key1 = clip.id,
+                        key2 = "right",
+                        pixelsPerMs      = pixelsPerMs,
+                        currentEdgeMs    = clip.endTrimMs,
+                        minEdgeMs        = updatedClip.startTrimMs + 100L,
+                        maxEdgeMs        = originalDurationMs,
+                        scrollStateValue = scrollStateValue,
+                        onDragStart  = { onDragStateChange(true) },
+                        onDragPointerStart  = {},
+                        onDragPointerChange = {},
+                        onEdgeChange = { newEnd -> onTrimClip(clip.id, updatedClip.startTrimMs, newEnd) },
+                        onDragEnd    = { onDragStateChange(false) },
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
                 Box(modifier = Modifier.width(2.dp).height(14.dp).background(AccentAmber, RoundedCornerShape(50)))
             }

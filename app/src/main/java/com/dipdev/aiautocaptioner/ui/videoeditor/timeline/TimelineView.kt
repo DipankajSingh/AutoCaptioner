@@ -310,7 +310,6 @@ fun TimelineView(
                                         onDraggingIndexChange = { draggingClipIndex = it },
                                         onClipSelected = onClipSelected,
                                         hasGapBefore = hasGapBefore,
-                                        onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } },
                                         onTrimClip = onTrimClip,
                                         pixelsPerMs = pixelsPerMs,
                                         thumbnailIntervalMs = thumbnailIntervalMs

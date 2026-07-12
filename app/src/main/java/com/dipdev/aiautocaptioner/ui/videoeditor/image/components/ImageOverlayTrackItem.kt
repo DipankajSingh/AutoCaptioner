@@ -2,12 +2,10 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.image.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -19,21 +17,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.timelineMoveGesture
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.timelineTrimGesture
 
+/**
+ * Renders a single image overlay pill on the timeline.
+ *
+ * Gesture behaviour:
+ *  • Tap            → select
+ *  • Long-press drag → move (uses [timelineMoveGesture])
+ *  • Left/right edge drag → trim (uses [timelineTrimGesture])
+ *
+ * The parent [TimelineView] owns [dragPointerScreenX] and the edge-scroll
+ * LaunchedEffect; this composable just reports pointer-X changes up via
+ * [onDragPointerStart] / [onDragPointerChange].
+ */
 @Composable
 fun ImageOverlayTrackItem(
     overlay: ImageOverlayEntity,
@@ -48,19 +60,25 @@ fun ImageOverlayTrackItem(
     onDragStateChange: (Boolean) -> Unit,
     onOverlayTimingChanged: (String, Long, Long) -> Unit,
     onDragPointerStart: (Float) -> Unit,
-    onDragPointerChange: (Float) -> Unit
+    onDragPointerChange: (Float) -> Unit,
 ) {
+    // rememberUpdatedState lets the gesture lambdas always see the latest
+    // values without restarting the pointerInput block on every recomposition.
     val updatedOverlay by rememberUpdatedState(overlay)
     val updatedEndTimeMs by rememberUpdatedState(currentEndTimeMs)
 
+    // Nullable → null means "not dragging / showing DB-committed position".
     var dragStateStartMs by remember { mutableStateOf<Long?>(null) }
-    var dragStateEndMs by remember { mutableStateOf<Long?>(null) }
+    var dragStateEndMs   by remember { mutableStateOf<Long?>(null) }
 
     val effectiveStartMs = dragStateStartMs ?: overlay.startTimeMs
-    val effectiveEndMs = dragStateEndMs ?: updatedEndTimeMs
+    val effectiveEndMs   = dragStateEndMs   ?: updatedEndTimeMs
 
-    val dragOffsetXDp = with(androidx.compose.ui.platform.LocalDensity.current) { (effectiveStartMs * pixelsPerMs).toDp() }
-    val dragWidthDp = with(androidx.compose.ui.platform.LocalDensity.current) { (maxOf(0L, effectiveEndMs - effectiveStartMs) * pixelsPerMs).toDp() }
+    val density = LocalDensity.current
+    val dragOffsetXDp = with(density) { (effectiveStartMs * pixelsPerMs).toDp() }
+    val dragWidthDp   = with(density) { (maxOf(0L, effectiveEndMs - effectiveStartMs) * pixelsPerMs).toDp() }
+
+    val isMoving = dragStateStartMs != null && dragStateEndMs != null
 
     Box(
         modifier = Modifier
@@ -69,7 +87,7 @@ fun ImageOverlayTrackItem(
             .fillMaxHeight()
             .zIndex(if (dragStateStartMs != null || dragStateEndMs != null) 1f else 0f)
             .graphicsLayer {
-                if (dragStateStartMs != null && dragStateEndMs != null) { // Type 3 drag (move)
+                if (isMoving) {
                     scaleX = 1.05f
                     scaleY = 1.05f
                     shadowElevation = 8.dp.toPx()
@@ -77,206 +95,143 @@ fun ImageOverlayTrackItem(
                     this.clip = true
                 }
             }
-            .padding(horizontal = 1.dp) // slight gap
+            .padding(horizontal = 1.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(if (isSelectedOverlay) Color.White else primaryColor.copy(alpha = 0.3f))
             .border(
                 width = if (isSelectedOverlay) 2.dp else 1.dp,
                 color = if (isSelectedOverlay) Color.White else primaryColor.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
             )
-            .pointerInput(overlay.id) {
-                var accumulatedDeltaX = 0f
-                var currentStartMs = 0L
-                var currentEndMs = 0L
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        onOverlaySelected(updatedOverlay.id)
-                        accumulatedDeltaX = 0f
-                        currentStartMs = updatedOverlay.startTimeMs
-                        currentEndMs = updatedEndTimeMs
-                        onDragStateChange(true)
-                        
-                        val centerPx = ((currentStartMs + currentEndMs) / 2f) * pixelsPerMs
-                        onDragPointerStart(centerPx - scrollStateValue)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        onDragPointerChange(dragAmount.x)
-                        
-                        accumulatedDeltaX += dragAmount.x
-                        val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
-                        if (deltaMs != 0L) {
-                            accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                            val dur = currentEndMs - currentStartMs
-                            val newStart = (currentStartMs + deltaMs).coerceIn(0L, totalEditedMs - dur)
-                            if (newStart != currentStartMs) {
-                                val newEnd = newStart + dur
-                                currentStartMs = newStart
-                                currentEndMs = newEnd
-                                dragStateStartMs = newStart
-                                dragStateEndMs = newEnd
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        if (dragStateStartMs != null && dragStateEndMs != null) {
-                            val finalStart = dragStateStartMs ?: updatedOverlay.startTimeMs
-                            val finalEnd = dragStateEndMs ?: updatedEndTimeMs
-                            onOverlayTimingChanged(
-                                updatedOverlay.id, 
-                                finalStart, 
-                                if (updatedOverlay.endTimeMs == Long.MAX_VALUE) Long.MAX_VALUE else finalEnd
-                            )
-                        }
-                        dragStateStartMs = null
-                        dragStateEndMs = null
-                        onDragStateChange(false)
-                    },
-                    onDragCancel = {
-                        dragStateStartMs = null
-                        dragStateEndMs = null
-                        onDragStateChange(false)
+            // ── Move gesture (long-press) ──────────────────────────────────
+            .timelineMoveGesture(
+                key1 = overlay.id,
+                pixelsPerMs = pixelsPerMs,
+                startTimeMs = overlay.startTimeMs,
+                endTimeMs   = updatedEndTimeMs,
+                totalDurationMs = totalEditedMs,
+                scrollStateValue = scrollStateValue,
+                onDragStart  = {
+                    onOverlaySelected(updatedOverlay.id)
+                    onDragStateChange(true)
+                },
+                onDragPointerStart  = onDragPointerStart,
+                onDragPointerChange = onDragPointerChange,
+                onPositionChange = { newStart, newEnd ->
+                    dragStateStartMs = newStart
+                    dragStateEndMs   = newEnd
+                },
+                onDragEnd = { finalStart, finalEnd ->
+                    if (dragStateStartMs != null) {
+                        val persistedEnd = if (updatedOverlay.endTimeMs == Long.MAX_VALUE)
+                            Long.MAX_VALUE else finalEnd
+                        onOverlayTimingChanged(updatedOverlay.id, finalStart, persistedEnd)
                     }
-                )
-            }
-            .clickable { onOverlaySelected(overlay.id) }
+                    dragStateStartMs = null
+                    dragStateEndMs   = null
+                    onDragStateChange(false)
+                },
+            )
+            .clickable { onOverlaySelected(overlay.id) },
     ) {
+        // ── Thumbnail tiles ────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
                     horizontal = if (isSelectedOverlay) 16.dp else 14.dp,
-                    vertical = if (isSelectedOverlay) 2.dp else 2.dp
+                    vertical   = 2.dp,
                 )
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.Black)
+                .background(Color.Black),
         ) {
-            // Tiled Thumbnail
             Row(modifier = Modifier.fillMaxSize()) {
                 val numImages = (dragWidthDp.value / 32f).toInt() + 1
-                
-                for (i in 0 until numImages) {
+                repeat(numImages) {
                     AsyncImage(
                         model = overlay.imageUri,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxHeight().aspectRatio(1f)
+                        modifier = Modifier.fillMaxHeight().aspectRatio(1f),
                     )
                 }
             }
-            
-            // Dark overlay for readability
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
-            
-            // Selected Overlay
             if (isSelectedOverlay) {
                 Box(modifier = Modifier.fillMaxSize().background(AccentAmber.copy(alpha = 0.1f)))
             }
         }
 
-        // Selected Handles (Matching Video Timeline)
+        // ── Trim handles (only when selected) ─────────────────────────────
         if (isSelectedOverlay) {
+            // Left trim handle
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .width(16.dp)
                     .fillMaxHeight()
-                    .pointerInput(overlay.id + "_left") {
-                        var accumulatedDeltaX = 0f
-                        var currentStartMs = 0L
-                        detectDragGestures(
-                            onDragStart = { 
-                                onDragStateChange(true)
-                                accumulatedDeltaX = 0f
-                                currentStartMs = updatedOverlay.startTimeMs
-                                val startPx = currentStartMs * pixelsPerMs
-                                onDragPointerStart(startPx - scrollStateValue)
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDragPointerChange(dragAmount.x)
-                                
-                                accumulatedDeltaX += dragAmount.x
-                                val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
-                                if (deltaMs != 0L) {
-                                    accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newStart = (currentStartMs + deltaMs).coerceIn(0L, updatedEndTimeMs - 100L)
-                                    if (newStart != currentStartMs) {
-                                        currentStartMs = newStart
-                                        dragStateStartMs = newStart
-                                        dragStateEndMs = updatedEndTimeMs
-                                    }
-                                }
-                            },
-                            onDragEnd = {
-                                if (dragStateStartMs != null) {
-                                    onOverlayTimingChanged(overlay.id, dragStateStartMs!!, updatedEndTimeMs)
-                                }
-                                dragStateStartMs = null
-                                dragStateEndMs = null
-                                onDragStateChange(false)
-                            },
-                            onDragCancel = {
-                                dragStateStartMs = null
-                                dragStateEndMs = null
-                                onDragStateChange(false)
+                    .timelineTrimGesture(
+                        key1 = overlay.id,
+                        key2 = "left",
+                        pixelsPerMs = pixelsPerMs,
+                        currentEdgeMs = updatedOverlay.startTimeMs,
+                        minEdgeMs    = 0L,
+                        maxEdgeMs    = updatedEndTimeMs - 100L,
+                        scrollStateValue = scrollStateValue,
+                        onDragStart  = { onDragStateChange(true) },
+                        onDragPointerStart  = onDragPointerStart,
+                        onDragPointerChange = onDragPointerChange,
+                        onEdgeChange = { newStart ->
+                            dragStateStartMs = newStart
+                            dragStateEndMs   = updatedEndTimeMs
+                        },
+                        onDragEnd = { finalStart ->
+                            if (dragStateStartMs != null) {
+                                onOverlayTimingChanged(overlay.id, finalStart, updatedEndTimeMs)
                             }
-                        )
-                    },
-                contentAlignment = Alignment.Center
+                            dragStateStartMs = null
+                            dragStateEndMs   = null
+                            onDragStateChange(false)
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
                 Box(modifier = Modifier.width(2.dp).height(14.dp).background(AccentAmber, RoundedCornerShape(50)))
             }
+
+            // Right trim handle
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(16.dp)
                     .fillMaxHeight()
-                    .pointerInput(overlay.id + "_right") {
-                        var accumulatedDeltaX = 0f
-                        var currentEndMs = 0L
-                        detectDragGestures(
-                            onDragStart = { 
-                                onDragStateChange(true)
-                                accumulatedDeltaX = 0f
-                                currentEndMs = updatedEndTimeMs
-                                val endPx = currentEndMs * pixelsPerMs
-                                onDragPointerStart(endPx - scrollStateValue)
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDragPointerChange(dragAmount.x)
-                                
-                                accumulatedDeltaX += dragAmount.x
-                                val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
-                                if (deltaMs != 0L) {
-                                    accumulatedDeltaX -= (deltaMs * pixelsPerMs)
-                                    val newEnd = (currentEndMs + deltaMs).coerceIn(updatedOverlay.startTimeMs + 100L, totalEditedMs)
-                                    if (newEnd != currentEndMs) {
-                                        currentEndMs = newEnd
-                                        dragStateStartMs = updatedOverlay.startTimeMs
-                                        dragStateEndMs = newEnd
-                                    }
-                                }
-                            },
-                            onDragEnd = {
-                                if (dragStateEndMs != null) {
-                                    val finalEnd = if (overlay.endTimeMs == Long.MAX_VALUE && dragStateEndMs == totalEditedMs) Long.MAX_VALUE else dragStateEndMs!!
-                                    onOverlayTimingChanged(overlay.id, updatedOverlay.startTimeMs, finalEnd)
-                                }
-                                dragStateStartMs = null
-                                dragStateEndMs = null
-                                onDragStateChange(false)
-                            },
-                            onDragCancel = {
-                                dragStateStartMs = null
-                                dragStateEndMs = null
-                                onDragStateChange(false)
+                    .timelineTrimGesture(
+                        key1 = overlay.id,
+                        key2 = "right",
+                        pixelsPerMs = pixelsPerMs,
+                        currentEdgeMs = updatedEndTimeMs,
+                        minEdgeMs    = updatedOverlay.startTimeMs + 100L,
+                        maxEdgeMs    = totalEditedMs,
+                        scrollStateValue = scrollStateValue,
+                        onDragStart  = { onDragStateChange(true) },
+                        onDragPointerStart  = onDragPointerStart,
+                        onDragPointerChange = onDragPointerChange,
+                        onEdgeChange = { newEnd ->
+                            dragStateStartMs = updatedOverlay.startTimeMs
+                            dragStateEndMs   = newEnd
+                        },
+                        onDragEnd = { finalEnd ->
+                            if (dragStateEndMs != null) {
+                                val persistedEnd = if (overlay.endTimeMs == Long.MAX_VALUE
+                                    && finalEnd == totalEditedMs) Long.MAX_VALUE else finalEnd
+                                onOverlayTimingChanged(overlay.id, updatedOverlay.startTimeMs, persistedEnd)
                             }
-                        )
-                    },
-                contentAlignment = Alignment.Center
+                            dragStateStartMs = null
+                            dragStateEndMs   = null
+                            onDragStateChange(false)
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
                 Box(modifier = Modifier.width(2.dp).height(14.dp).background(AccentAmber, RoundedCornerShape(50)))
             }
