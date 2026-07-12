@@ -4,11 +4,14 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
@@ -98,7 +101,7 @@ fun EditorScreen(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(bottom = paddingValues.calculateBottomPadding())
             ) {
                 val maxH = maxHeight
 
@@ -146,8 +149,7 @@ fun EditorScreen(
 
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 16.dp),
+                                .fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             // Video Player and Overlays
@@ -166,6 +168,19 @@ fun EditorScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
 
+                                // Status bar shadow
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp)
+                                        .background(
+                                            brush = Brush.verticalGradient(
+                                                colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)
+                                            )
+                                        )
+                                        .align(Alignment.TopCenter)
+                                )
+
                                 LeftSideControls(
                                     hasEdits = hasEdits,
                                     onNavigateBack = onNavigateBack,
@@ -180,7 +195,9 @@ fun EditorScreen(
                                     onLanguageSelected = { lang, trans ->
                                         viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
                                     },
-                                    modifier = Modifier.align(Alignment.TopStart)
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                 )
 
                                 RightSideControls(
@@ -189,7 +206,9 @@ fun EditorScreen(
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
                                     onAddImage = { imagePickerLauncher.launch("image/*") },
-                                    modifier = Modifier.align(Alignment.TopEnd)
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                 )
                             }
 
