@@ -140,28 +140,23 @@ fun VideoClipItem(
                 color = if (isSelected) Color.White else outlineColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(12.dp)
             )
-            .pointerInput(clip.id, clipWidthPx) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = {
-                        onDraggingIndexChange(index)
-                        onDragStateChange(true)
-                        onDragPointerStart(clipLayoutCenters[index] - scrollStateValue)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        onDragPointerChange(dragAmount.x)
-                        onCheckSwaps()
-                    },
-                    onDragEnd = {
-                        onDraggingIndexChange(null)
-                        onDragStateChange(false)
-                    },
-                    onDragCancel = {
-                        onDraggingIndexChange(null)
-                        onDragStateChange(false)
-                    }
-                )
-            }
+            .timelineClipSwapGesture(
+                key1 = clip.id,
+                key2 = clipWidthPx,
+                clipCenterPx = clipLayoutCenters[index],
+                scrollStateValue = scrollStateValue,
+                onDragStart = {
+                    onDraggingIndexChange(index)
+                    onDragStateChange(true)
+                },
+                onDragPointerStart = onDragPointerStart,
+                onDragPointerChange = onDragPointerChange,
+                onCheckSwaps = onCheckSwaps,
+                onDragEnd = {
+                    onDraggingIndexChange(null)
+                    onDragStateChange(false)
+                }
+            )
             .clickable { onClipSelected(clip.id) }
     ) {
         Box(

@@ -2,58 +2,34 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.timeline
 
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 
 // ---------------------------------------------------------------------------
 // TimelineDragGestures.kt
 //
-// Reusable Modifier extensions that encode the two gesture models used by
-// every timeline track item:
+// Reusable Modifier extensions that encode the gesture models used by
+// timeline track items.
 //
-//  1. timelineMoveGesture  – long-press then drag to reposition a clip in
-//                            free-floating tracks (image overlay, text, audio).
-//                            Reports accumulated-pixel→ms deltas so the caller
-//                            never has to touch raw pixels.
+//  1. timelineMoveGesture   – long-press then drag to reposition a clip in
+//                             free-floating tracks (image overlay, text, audio).
+//                             Reports accumulated-pixel→ms deltas.
 //
-//  2. timelineTrimGesture  – immediate drag to extend or shrink one edge of a
-//                            clip (left/right trim handles on every track).
+//  2. timelineTrimGesture   – immediate drag to extend or shrink one edge of a
+//                             clip (left/right trim handles on every track).
 //
-// Both modifiers report a screen-space pointer X coordinate to the parent
-// TimelineView via [onDragPointerStart] / [onDragPointerChange] so the single
-// edge-scroll LaunchedEffect there can auto-scroll regardless of which track
-// type is being dragged.
+//  3. timelineClipSwapGesture - long-press then drag to swap video clips.
+//                               Reports screen-X to the parent for auto-scroll
+//                               and collision detection.
 //
-// Performance notes:
-//  • All mutable state lives in plain local vars inside the gesture coroutine
-//    (no State objects → no extra recompositions while dragging).
-//  • The accumulated-fractional-pixel technique avoids Int-truncation jitter.
-//  • Keys are forwarded to pointerInput so Compose can skip re-subscribing when
-//    unrelated state changes trigger recomposition.
+//  4. timelineLayerReorderGesture - immediate vertical drag on track headers
+//                                   to reorder layers (Z-index).
 // ---------------------------------------------------------------------------
 
 /**
  * Attaches a **long-press → drag** gesture that lets the user reposition a
  * free-floating timeline clip (e.g. image overlay, future text/audio track).
- *
- * @param key1 / key2   Stable identity keys forwarded to [pointerInput].
- *                      Pass the clip's id plus any value that should reset
- *                      gesture state when it changes (e.g. pixelsPerMs).
- * @param pixelsPerMs   Current zoom-derived scale factor.
- * @param startTimeMs   The clip's current start time in milliseconds.
- * @param endTimeMs     The clip's current end time in milliseconds.
- * @param totalDurationMs  Maximum allowed end time (the edited video length).
- * @param scrollStateValue Horizontal scroll offset in pixels (read-only snapshot).
- * @param onDragStart   Called once when the long-press drag begins.
- * @param onDragPointerStart  Reports the initial screen-X of the pointer so
- *                            the parent's edge-scroll loop knows where we are.
- *                            Pass the clip centre in screen-X: (centreMs * pxPerMs) - scroll.
- * @param onDragPointerChange Reports the delta screen-X on each drag event so
- *                            the parent can keep its [dragPointerScreenX] updated.
- * @param onPositionChange    Called whenever the clip should move.  Receives the
- *                            new (startMs, endMs) — already clamped and debounced.
- * @param onDragEnd     Called when the gesture ends (finger up or cancelled).
- *                      Receives the final (startMs, endMs) to persist to the DB.
  */
 fun Modifier.timelineMoveGesture(
     key1: Any,
@@ -69,7 +45,6 @@ fun Modifier.timelineMoveGesture(
     onPositionChange: (newStartMs: Long, newEndMs: Long) -> Unit,
     onDragEnd: (finalStartMs: Long, finalEndMs: Long) -> Unit,
 ): Modifier = this.pointerInput(key1, key2) {
-    // All state is local to the gesture coroutine — zero Compose State allocations.
     var accumulatedPx = 0f
     var currentStartMs = 0L
     var currentEndMs = 0L
@@ -91,7 +66,6 @@ fun Modifier.timelineMoveGesture(
             accumulatedPx += dragAmount.x
             val deltaMs = (accumulatedPx / pixelsPerMs).toLong()
             if (deltaMs != 0L) {
-                // Consume only the whole-millisecond portion to avoid jitter.
                 accumulatedPx -= deltaMs * pixelsPerMs
 
                 val duration = currentEndMs - currentStartMs
@@ -110,23 +84,6 @@ fun Modifier.timelineMoveGesture(
 
 /**
  * Attaches an **immediate drag** gesture for a trim handle (left or right edge).
- *
- * Unlike [timelineMoveGesture], this uses [detectDragGestures] (no long-press
- * required) because the touch target is a dedicated narrow strip that cannot be
- * confused with a scroll.
- *
- * @param key1 / key2   Stable identity keys forwarded to [pointerInput].
- * @param pixelsPerMs   Current zoom-derived scale factor.
- * @param currentEdgeMs The edge being trimmed (startTimeMs for left handle,
- *                      endTimeMs for right handle).
- * @param minEdgeMs     Minimum allowed value for [currentEdgeMs] after trimming.
- * @param maxEdgeMs     Maximum allowed value for [currentEdgeMs] after trimming.
- * @param scrollStateValue  Horizontal scroll offset in pixels (read-only snapshot).
- * @param onDragPointerStart  Reports the initial screen-X of this handle edge.
- * @param onDragPointerChange Reports the delta screen-X on each drag event.
- * @param onEdgeChange  Called whenever the edge should update, with the new
- *                      clamped edge time in milliseconds.
- * @param onDragEnd     Called when the gesture ends. Receives the final edge time.
  */
 fun Modifier.timelineTrimGesture(
     key1: Any,
@@ -172,5 +129,74 @@ fun Modifier.timelineTrimGesture(
         },
         onDragEnd = { onDragEnd(edgeMs) },
         onDragCancel = { onDragEnd(edgeMs) },
+    )
+}
+
+/**
+ * Attaches a **long-press → drag** gesture for swapping sequential clips 
+ * (like video clips) without changing their individual timestamps directly.
+ */
+fun Modifier.timelineClipSwapGesture(
+    key1: Any,
+    key2: Any = Unit,
+    clipCenterPx: Float,
+    scrollStateValue: Int,
+    onDragStart: () -> Unit,
+    onDragPointerStart: (screenX: Float) -> Unit,
+    onDragPointerChange: (deltaX: Float) -> Unit,
+    onCheckSwaps: () -> Unit,
+    onDragEnd: () -> Unit,
+): Modifier = this.pointerInput(key1, key2) {
+    detectDragGesturesAfterLongPress(
+        onDragStart = {
+            onDragStart()
+            onDragPointerStart(clipCenterPx - scrollStateValue)
+        },
+        onDrag = { change, dragAmount ->
+            change.consume()
+            onDragPointerChange(dragAmount.x)
+            onCheckSwaps()
+        },
+        onDragEnd = { onDragEnd() },
+        onDragCancel = { onDragEnd() }
+    )
+}
+
+/**
+ * Attaches an **immediate vertical drag** gesture for reordering layers (e.g. tracks).
+ */
+fun Modifier.timelineLayerReorderGesture(
+    key1: Any,
+    key2: Any = Unit,
+    rowHeightPx: Float,
+    onDragStart: () -> Unit,
+    onDragOffsetChange: (deltaY: Float) -> Unit,
+    onMoveLayer: (moveUp: Boolean) -> Unit,
+    onDragEnd: () -> Unit,
+): Modifier = this.pointerInput(key1, key2) {
+    var accumulatedY = 0f
+
+    detectVerticalDragGestures(
+        onDragStart = {
+            accumulatedY = 0f
+            onDragStart()
+        },
+        onVerticalDrag = { change, dragAmount ->
+            change.consume()
+            accumulatedY += dragAmount
+            onDragOffsetChange(dragAmount)
+            
+            if (accumulatedY > rowHeightPx) {
+                onMoveLayer(false) // moved down
+                accumulatedY -= rowHeightPx
+                onDragOffsetChange(-rowHeightPx) // correction
+            } else if (accumulatedY < -rowHeightPx) {
+                onMoveLayer(true) // moved up
+                accumulatedY += rowHeightPx
+                onDragOffsetChange(rowHeightPx) // correction
+            }
+        },
+        onDragEnd = { onDragEnd() },
+        onDragCancel = { onDragEnd() }
     )
 }

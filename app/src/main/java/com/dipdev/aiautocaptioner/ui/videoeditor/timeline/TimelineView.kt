@@ -22,7 +22,6 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
@@ -340,39 +339,20 @@ fun TimelineView(
                                             shadowElevation = if (isDragging) 8.dp.toPx() else 0f
                                         }
                                         .background(Color(0xFF333333), RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
-                                        .pointerInput(overlay.id) {
-                                            var accumulatedY = 0f
-                                            detectVerticalDragGestures(
-                                                onDragStart = { 
-                                                    isDragging = true 
-                                                    accumulatedY = 0f
-                                                    dragOffsetY = 0f
-                                                },
-                                                onVerticalDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    accumulatedY += dragAmount
-                                                    dragOffsetY += dragAmount
-                                                    
-                                                    if (accumulatedY > 52f) { // 48dp height + 4dp gap
-                                                        onMoveOverlayZ(overlay.id, false)
-                                                        accumulatedY -= 52f
-                                                        dragOffsetY -= 52f
-                                                    } else if (accumulatedY < -52f) {
-                                                        onMoveOverlayZ(overlay.id, true)
-                                                        accumulatedY += 52f
-                                                        dragOffsetY += 52f
-                                                    }
-                                                },
-                                                onDragEnd = {
-                                                    isDragging = false
-                                                    dragOffsetY = 0f
-                                                },
-                                                onDragCancel = {
-                                                    isDragging = false
-                                                    dragOffsetY = 0f
-                                                }
-                                            )
-                                        }
+                                        .timelineLayerReorderGesture(
+                                            key1 = overlay.id,
+                                            rowHeightPx = 52f, // 48dp height + 4dp gap
+                                            onDragStart = { 
+                                                isDragging = true 
+                                                dragOffsetY = 0f
+                                            },
+                                            onDragOffsetChange = { deltaY -> dragOffsetY += deltaY },
+                                            onMoveLayer = { moveUp -> onMoveOverlayZ(overlay.id, moveUp) },
+                                            onDragEnd = {
+                                                isDragging = false
+                                                dragOffsetY = 0f
+                                            }
+                                        )
                                 ) {
                                     Canvas(modifier = Modifier.fillMaxSize()) {
                                         val dotRadius = 1.5.dp.toPx()
