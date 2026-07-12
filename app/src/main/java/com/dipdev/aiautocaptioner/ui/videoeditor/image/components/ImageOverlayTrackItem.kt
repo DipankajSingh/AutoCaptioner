@@ -47,7 +47,8 @@ fun ImageOverlayTrackItem(
     onOverlaySelected: (String) -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     onOverlayTimingChanged: (String, Long, Long) -> Unit,
-    onScrollBy: (Float) -> Unit
+    onDragPointerStart: (Float) -> Unit,
+    onDragPointerChange: (Float) -> Unit
 ) {
     val updatedOverlay by rememberUpdatedState(overlay)
     val updatedEndTimeMs by rememberUpdatedState(currentEndTimeMs)
@@ -95,9 +96,14 @@ fun ImageOverlayTrackItem(
                         currentStartMs = updatedOverlay.startTimeMs
                         currentEndMs = updatedEndTimeMs
                         onDragStateChange(true)
+                        
+                        val centerPx = ((currentStartMs + currentEndMs) / 2f) * pixelsPerMs
+                        onDragPointerStart(centerPx - scrollStateValue)
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
+                        onDragPointerChange(dragAmount.x)
+                        
                         accumulatedDeltaX += dragAmount.x
                         val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                         if (deltaMs != 0L) {
@@ -110,7 +116,6 @@ fun ImageOverlayTrackItem(
                                 currentEndMs = newEnd
                                 dragStateStartMs = newStart
                                 dragStateEndMs = newEnd
-                                onScrollBy(-dragAmount.x)
                             }
                         }
                     },
@@ -185,9 +190,13 @@ fun ImageOverlayTrackItem(
                                 onDragStateChange(true)
                                 accumulatedDeltaX = 0f
                                 currentStartMs = updatedOverlay.startTimeMs
+                                val startPx = currentStartMs * pixelsPerMs
+                                onDragPointerStart(startPx - scrollStateValue)
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
+                                onDragPointerChange(dragAmount.x)
+                                
                                 accumulatedDeltaX += dragAmount.x
                                 val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                                 if (deltaMs != 0L) {
@@ -197,7 +206,6 @@ fun ImageOverlayTrackItem(
                                         currentStartMs = newStart
                                         dragStateStartMs = newStart
                                         dragStateEndMs = updatedEndTimeMs
-                                        onScrollBy(-dragAmount.x)
                                     }
                                 }
                             },
@@ -233,9 +241,13 @@ fun ImageOverlayTrackItem(
                                 onDragStateChange(true)
                                 accumulatedDeltaX = 0f
                                 currentEndMs = updatedEndTimeMs
+                                val endPx = currentEndMs * pixelsPerMs
+                                onDragPointerStart(endPx - scrollStateValue)
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
+                                onDragPointerChange(dragAmount.x)
+                                
                                 accumulatedDeltaX += dragAmount.x
                                 val deltaMs = (accumulatedDeltaX / pixelsPerMs).toLong()
                                 if (deltaMs != 0L) {
@@ -245,7 +257,6 @@ fun ImageOverlayTrackItem(
                                         currentEndMs = newEnd
                                         dragStateStartMs = updatedOverlay.startTimeMs
                                         dragStateEndMs = newEnd
-                                        onScrollBy(dragAmount.x)
                                     }
                                 }
                             },

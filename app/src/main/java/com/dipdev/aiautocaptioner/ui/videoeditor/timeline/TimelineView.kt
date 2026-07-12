@@ -71,6 +71,7 @@ fun TimelineView(
     val pixelsPerMs = with(density) { (50.dp.toPx() / 1000f) * zoomLevel }
     
     var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
+    var draggingOverlayId by remember { mutableStateOf<String?>(null) }
     var dragPointerScreenX by remember { mutableFloatStateOf(0f) }
     val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
 
@@ -109,8 +110,8 @@ fun TimelineView(
         }
     }
 
-    LaunchedEffect(draggingClipIndex, dragPointerScreenX) {
-        if (draggingClipIndex != null) {
+    LaunchedEffect(draggingClipIndex, draggingOverlayId, dragPointerScreenX) {
+        if (draggingClipIndex != null || draggingOverlayId != null) {
             val edgeThreshold = with(density) { 60.dp.toPx() }
             val speed = 15f
             while (isActive) {
@@ -408,9 +409,16 @@ fun TimelineView(
                                             scrollStateValue = scrollState.value,
                                             timelineWidthPx = boxWidthPx,
                                             onOverlaySelected = onOverlaySelected,
-                                            onDragStateChange = onDragStateChange,
+                                            onDragStateChange = { 
+                                                onDragStateChange(it)
+                                                if (!it) draggingOverlayId = null
+                                            },
                                             onOverlayTimingChanged = onOverlayTimingChanged,
-                                            onScrollBy = { amount -> coroutineScope.launch { scrollState.scrollBy(amount) } }
+                                            onDragPointerStart = { 
+                                                dragPointerScreenX = it 
+                                                draggingOverlayId = overlay.id
+                                            },
+                                            onDragPointerChange = { dragPointerScreenX += it }
                                         )
                                     }
                                 }
