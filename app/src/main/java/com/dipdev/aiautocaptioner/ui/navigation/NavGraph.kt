@@ -20,7 +20,6 @@ import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
-import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
 
 @Composable
@@ -144,11 +143,6 @@ fun NavGraph(
             ProcessingScreen(
                 projectId = projectId,
                 forceModelPicker = forceModelPicker,
-                onNavigateToStyleEditor = {
-                    navController.navigate(Screen.StyleEditor.createRoute(projectId, fromProcessing = true)) {
-                        popUpTo(Screen.Home.route) { inclusive = false }
-                    }
-                },
                 onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId)) {
                         popUpTo(Screen.Home.route) { inclusive = false }
@@ -179,11 +173,6 @@ fun NavGraph(
                 projectId = projectId,
                 fromEditor = fromEditor,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToStyleEditor = {
-                    navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
-                        popUpTo(Screen.Home.route) { inclusive = false }
-                    }
-                },
                 onNavigateToProcessing = { pid ->
                     navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true))
                 },
@@ -233,42 +222,6 @@ fun NavGraph(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToExport = {
                         navController.navigate(Screen.Export.createRoute(projectId))
-                    }
-                )
-            }
-
-            composable(
-                route = Screen.StyleEditor.route,
-                arguments = listOf(
-                    navArgument("projectId") { type = NavType.StringType },
-                    navArgument("fromProcessing") {
-                        type = NavType.BoolType
-                        defaultValue = false
-                    }
-                )
-            ) { backStackEntry ->
-                val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-                val fromProcessing = backStackEntry.arguments?.getBoolean("fromProcessing") ?: false
-
-                // Fix A: Same SharedPlayerViewModel instance as EditorScreen
-                val graphEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry(Screen.ProjectEditorGraph.createRoute(projectId))
-                }
-                val sharedPlayerViewModel: SharedPlayerViewModel = hiltViewModel(graphEntry)
-
-                StyleScreen(
-                    projectId = projectId,
-                    fromProcessing = fromProcessing,
-                    sharedPlayerViewModel = sharedPlayerViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToCaptionEditor = {
-                        navController.navigate(Screen.CaptionEditor.createRoute(projectId))
-                    },
-                    onNavigateToExport = {
-                        navController.navigate(Screen.Export.createRoute(projectId))
-                    },
-                    onNavigateToProcessing = {
-                        navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true))
                     }
                 )
             }

@@ -265,27 +265,11 @@ fun EditorScreen(
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
                                     onAddImage = { imagePickerLauncher.launch("image/*") },
+                                    onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits) },
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                 )
-
-                                // Export Button (Top Right)
-                                androidx.compose.material3.TextButton(
-                                    onClick = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits) },
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(
-                                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
-                                            end = 72.dp // padded to the left of RightSideControls
-                                        ),
-                                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                                        contentColor = Color.White,
-                                        containerColor = AccentViolet.copy(alpha = 0.8f)
-                                    )
-                                ) {
-                                    androidx.compose.material3.Text("Export", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                                }
 
                                 // Fix 11: Inline caption editor extracted to CaptionInlineEditor composable
                                 // Fix 8: imePadding is applied inside CaptionInlineEditor

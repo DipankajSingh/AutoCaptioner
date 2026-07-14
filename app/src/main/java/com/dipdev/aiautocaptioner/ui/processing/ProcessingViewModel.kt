@@ -151,7 +151,7 @@ class ProcessingViewModel @Inject constructor(
                 if (step !is ProcessingStep.Idle) {
                     setState { copy(step = step) }
                     if (step is ProcessingStep.Done) {
-                        // No delay — navigate immediately; StyleEditor shows in-app toast
+                        // No delay — navigate immediately; EditorScreen shows in-app toast
                         val project = pendingProjectId?.let { projectRepository.getProjectById(it) }
                         if (project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
                             setEffect(ProcessingUiEffect.NavigateToCaptionEditor)

@@ -70,7 +70,6 @@ import com.dipdev.aiautocaptioner.ui.processing.components.TranscribingStateView
 fun ProcessingScreen(
     projectId: String,
     forceModelPicker: Boolean = false,
-    onNavigateToStyleEditor: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
     onNavigateToVideoEditor: () -> Unit,
     onCancel: () -> Unit,

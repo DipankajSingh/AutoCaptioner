@@ -105,6 +105,7 @@ fun RightSideControls(
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onAddImage: () -> Unit,
+    onNavigateToExport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -112,6 +113,14 @@ fun RightSideControls(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        SideControlButton(
+            icon = FeatherIcons.Download,
+            contentDescription = "Export",
+            onClick = onNavigateToExport,
+            tint = LocalAccentColor.current,
+            containerColor = LocalAccentColor.current.copy(alpha = 0.15f)
+        )
+
         SideToolbar(
             canUndo = canUndo,
             canRedo = canRedo,

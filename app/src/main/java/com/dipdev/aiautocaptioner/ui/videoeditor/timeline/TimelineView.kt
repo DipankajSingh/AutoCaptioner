@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.Type
 import compose.icons.feathericons.Layers
 import androidx.media3.common.Player
 import androidx.compose.foundation.Canvas
@@ -272,15 +273,35 @@ fun TimelineView(
                                 .fillMaxWidth()
                                 .padding(bottom = 4.dp)
                         ) {
-                            Spacer(modifier = Modifier.width(40.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .fillMaxHeight()
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        androidx.compose.foundation.shape.RoundedCornerShape(
+                                            topStart = 6.dp, bottomStart = 6.dp
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    FeatherIcons.Type,
+                                    contentDescription = "Captions",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                             // Caption chips positioned inside total timeline width
                             Box(
                                 modifier = Modifier
                                     .width(totalWidthDp)
                                     .fillMaxHeight()
                                     .background(
-                                        AccentViolet.copy(alpha = 0.15f),
-                                        androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                                        androidx.compose.foundation.shape.RoundedCornerShape(
+                                            topEnd = 6.dp, bottomEnd = 6.dp
+                                        )
                                     )
                             ) {
                                 segments.forEach { seg ->

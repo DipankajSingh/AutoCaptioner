@@ -78,7 +78,6 @@ fun CaptionEditorScreen(
     projectId: String,
     fromEditor: Boolean = false,
     onNavigateBack: () -> Unit,
-    onNavigateToStyleEditor: () -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToExport: (String) -> Unit,
     viewModel: CaptionEditorViewModel = hiltViewModel()
@@ -214,12 +213,6 @@ fun CaptionEditorScreen(
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AppOutlinedButton(
-                    onClick = onNavigateToStyleEditor,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.caption_style_editor), maxLines = 1)
-                }
                 if (!fromEditor) {
                     AppPrimaryButton(
                         onClick = { onNavigateToExport(projectId) },

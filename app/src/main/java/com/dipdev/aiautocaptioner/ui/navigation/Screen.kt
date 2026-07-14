@@ -71,11 +71,6 @@ sealed class Screen(val route: String) {
             "caption_editor/$projectId?fromEditor=$fromEditor"
     }
 
-    // Style editor — font, color, animation settings
-    data object StyleEditor : Screen("style_editor/{projectId}?fromProcessing={fromProcessing}") {
-        fun createRoute(projectId: String, fromProcessing: Boolean = false) =
-            "style_editor/$projectId?fromProcessing=$fromProcessing"
-    }
 
     // Export — FFmpeg / Media3 burns captions into video
     data object Export : Screen("export/{projectId}") {
