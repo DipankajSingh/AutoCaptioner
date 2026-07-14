@@ -37,7 +37,6 @@ fun LeftSideControls(
     onNavigateToExport: () -> Unit,
     onDeleteProject: () -> Unit,
     onShowDeleteDialog: () -> Unit,
-    onApplyEdits: () -> Unit,
     onNavigateToProcessing: () -> Unit,
     selectedLanguage: String,
     translateToEnglish: Boolean,
@@ -85,8 +84,7 @@ fun LeftSideControls(
             icon = Icons.Rounded.ClosedCaption,
             contentDescription = "Generate Captions", // Replace with stringResource
             onClick = {
-                if (hasEdits) onApplyEdits()
-                else onNavigateToProcessing()
+                onNavigateToProcessing()
             }
         )
 

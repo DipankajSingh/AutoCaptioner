@@ -261,6 +261,15 @@ class EditorViewModel @Inject constructor(
         val projectId = currentProjectId ?: return
         val step = currentState.step as? VideoEditorUiStep.Ready ?: return
         
+        if (!currentState.hasEdits) {
+            // Bypass export since no edits were made
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
+                setState { copy(step = VideoEditorUiStep.Success) }
+            }
+            return
+        }
+
         setState { copy(step = VideoEditorUiStep.Processing(0)) }
         
         videoExporter.startExport(

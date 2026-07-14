@@ -264,6 +264,38 @@ fun TimelineView(
                 }
                 
                 Column(modifier = Modifier.weight(1f).verticalScroll(verticalScrollState)) {
+                    // Caption Track (top of timeline)
+                    if (segments.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .height(36.dp)
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp)
+                        ) {
+                            Spacer(modifier = Modifier.width(40.dp))
+                            // Caption chips positioned inside total timeline width
+                            Box(
+                                modifier = Modifier
+                                    .width(totalWidthDp)
+                                    .fillMaxHeight()
+                                    .background(
+                                        AccentViolet.copy(alpha = 0.15f),
+                                        androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                                    )
+                            ) {
+                                segments.forEach { seg ->
+                                    CaptionTrackItem(
+                                        segment = seg,
+                                        clips = clips,
+                                        pixelsPerMs = pixelsPerMs,
+                                        isSelected = seg.id == selectedCaptionSegmentId,
+                                        onTap = onCaptionSegmentTap
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     if (clips.isEmpty()) {
                         Row(modifier = Modifier.height(100.dp).fillMaxWidth()) {
                             Spacer(modifier = Modifier.width(40.dp))
@@ -318,61 +350,6 @@ fun TimelineView(
                                         onTrimClip = onTrimClip,
                                         pixelsPerMs = pixelsPerMs,
                                         thumbnailIntervalMs = thumbnailIntervalMs
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Caption Track (shown below video clips when segments are available)
-                    if (segments.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .height(36.dp)
-                                .fillMaxWidth()
-                                .padding(bottom = 2.dp)
-                        ) {
-                            // Track header icon
-                            Box(
-                                modifier = Modifier
-                                    .width(40.dp)
-                                    .fillMaxHeight()
-                                    .background(
-                                        // Fix 14: theme token replaces hardcoded Color(0xFF3D1A78)
-                                        AccentViolet,
-                                        androidx.compose.foundation.shape.RoundedCornerShape(
-                                            topStart = 6.dp, bottomStart = 6.dp
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    FeatherIcons.Layers,
-                                    contentDescription = "Captions",
-                                    tint = Color.White.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                            // Caption chips positioned inside total timeline width
-                            Box(
-                                modifier = Modifier
-                                    .width(totalWidthDp)
-                                    .fillMaxHeight()
-                                    .background(
-                                        // Fix 14: theme token replaces hardcoded Color(0xFF1A0A3D)
-                                        AccentViolet.copy(alpha = 0.15f),
-                                        androidx.compose.foundation.shape.RoundedCornerShape(
-                                            topEnd = 6.dp, bottomEnd = 6.dp
-                                        )
-                                    )
-                            ) {
-                                segments.forEach { seg ->
-                                    CaptionTrackItem(
-                                        segment = seg,
-                                        clips = clips,
-                                        pixelsPerMs = pixelsPerMs,
-                                        isSelected = seg.id == selectedCaptionSegmentId,
-                                        onTap = onCaptionSegmentTap
                                     )
                                 }
                             }

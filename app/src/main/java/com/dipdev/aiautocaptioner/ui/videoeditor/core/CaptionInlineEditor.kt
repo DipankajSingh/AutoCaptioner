@@ -72,9 +72,11 @@ fun CaptionInlineEditor(
             exit = fadeOut() + slideOutVertically { it / 2 }
         ) {
             segment?.let { seg ->
-                GlassmorphicCard(
+                androidx.compose.material3.Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    shadowElevation = 8.dp
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),

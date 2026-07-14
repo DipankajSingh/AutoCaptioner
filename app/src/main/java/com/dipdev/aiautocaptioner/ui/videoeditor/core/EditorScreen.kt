@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
+import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorBottomDock
@@ -247,7 +248,6 @@ fun EditorScreen(
                                     onNavigateToExport = onNavigateToExport,
                                     onDeleteProject = { viewModel.setEvent(VideoEditorUiEvent.DeleteProject) },
                                     onShowDeleteDialog = { showDeleteDialog = true },
-                                    onApplyEdits = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits) },
                                     onNavigateToProcessing = onNavigateToProcessing,
                                     selectedLanguage = selectedLanguage,
                                     translateToEnglish = translateToEnglish,
@@ -269,6 +269,23 @@ fun EditorScreen(
                                         .align(Alignment.TopEnd)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                 )
+
+                                // Export Button (Top Right)
+                                androidx.compose.material3.TextButton(
+                                    onClick = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(
+                                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
+                                            end = 72.dp // padded to the left of RightSideControls
+                                        ),
+                                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                                        contentColor = Color.White,
+                                        containerColor = AccentViolet.copy(alpha = 0.8f)
+                                    )
+                                ) {
+                                    androidx.compose.material3.Text("Export", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                }
 
                                 // Fix 11: Inline caption editor extracted to CaptionInlineEditor composable
                                 // Fix 8: imePadding is applied inside CaptionInlineEditor
