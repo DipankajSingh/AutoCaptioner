@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,12 +70,27 @@ fun VideoTimelinePanel(
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
+    // Fix 6: pinch-to-zoom callback — called with the cumulative pinch scale factor
+    onPinchZoom: (scale: Float) -> Unit = {},
+    segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
+    selectedCaptionSegmentId: String? = null,
+    onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
     val currentTimelineHeight by androidx.compose.runtime.rememberUpdatedState(timelineHeight)
 
-    Box(modifier = modifier.fillMaxWidth().height(timelineHeight)) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(timelineHeight)
+            // Fix 6: pinch-to-zoom using detectTransformGestures (compatible with horizontal scroll)
+            .pointerInput(Unit) {
+                detectTransformGestures { _, _, zoom, _ ->
+                    onPinchZoom(zoom)
+                }
+            }
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Unified Drag handle at top
             Box(
@@ -122,6 +138,14 @@ fun VideoTimelinePanel(
                     player = player,
                     currentTimelineMs = currentTimelineMs,
                     onTrimClip = onTrimClip,
+                    // Fix 17: was silently dropped — onMoveOverlayZ was accepted but never forwarded
+                    onMoveOverlayZ = { id, bringToFront ->
+                        val overlay = overlays.find { it.id == id } ?: return@TimelineView
+                        onMoveOverlayZ(id, bringToFront)
+                    },
+                    segments = segments,
+                    selectedCaptionSegmentId = selectedCaptionSegmentId,
+                    onCaptionSegmentTap = onCaptionSegmentTap,
                     modifier = Modifier.fillMaxSize()
                 )
             }

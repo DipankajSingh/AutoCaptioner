@@ -76,6 +76,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun CaptionEditorScreen(
     projectId: String,
+    fromEditor: Boolean = false,
     onNavigateBack: () -> Unit,
     onNavigateToStyleEditor: () -> Unit,
     onNavigateToProcessing: (String) -> Unit,
@@ -219,15 +220,17 @@ fun CaptionEditorScreen(
                 ) {
                     Text(stringResource(R.string.caption_style_editor), maxLines = 1)
                 }
-                AppPrimaryButton(
-                    onClick = { onNavigateToExport(projectId) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentAmber,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text("Export Video", maxLines = 1)
+                if (!fromEditor) {
+                    AppPrimaryButton(
+                        onClick = { onNavigateToExport(projectId) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentAmber,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Export Video", maxLines = 1)
+                    }
                 }
             }
         }

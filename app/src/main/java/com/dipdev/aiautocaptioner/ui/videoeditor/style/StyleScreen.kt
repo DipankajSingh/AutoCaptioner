@@ -60,6 +60,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.ui.components.FlatAlertDialog
 import com.dipdev.aiautocaptioner.ui.components.InAppToast
 import com.dipdev.aiautocaptioner.ui.paywall.CustomPaywallDialog
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs.AnimationTab
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs.ColorTab
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs.TextTab
@@ -74,6 +75,8 @@ fun StyleScreen(
     onNavigateToCaptionEditor: () -> Unit,
     onNavigateToExport: () -> Unit,
     onNavigateToProcessing: () -> Unit = {},
+    // Fix A: shared player from NavGraph (navigation-graph-scoped)
+    sharedPlayerViewModel: SharedPlayerViewModel,
     viewModel: StyleViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,17 +97,20 @@ fun StyleScreen(
     // Show toast once on first entry from processing
     var toastTriggered by remember { mutableStateOf(fromProcessing) }
 
+    // Fix A: collect shared player (owned by SharedPlayerViewModel)
+    val player by sharedPlayerViewModel.player.collectAsStateWithLifecycle()
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
-                viewModel.exoPlayer?.pause()
+            if (event == Lifecycle.Event.ON_STOP) {
+                sharedPlayerViewModel.pauseForBackground()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            viewModel.exoPlayer?.pause()
+            sharedPlayerViewModel.pauseForBackground()
         }
     }
 
@@ -116,10 +122,6 @@ fun StyleScreen(
     val segments = uiState.segments
     val wordsMap = uiState.wordsMap
     val videoDurationMs = uiState.videoDurationMs
-
-    LaunchedEffect(project?.workingVideoPath) {
-        project?.workingVideoPath?.let { viewModel.setEvent(StyleEditorUiEvent.InitPlayer(it)) }
-    }
 
     LaunchedEffect(projectId) {
         viewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
@@ -169,6 +171,8 @@ fun StyleScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showExportWarning = false
+                    // Fix 9: mark as visited so the warning won't reappear on the next export attempt
+                    viewModel.setEvent(StyleEditorUiEvent.MarkCaptionEditorVisited(projectId))
                     viewModel.setEvent(StyleEditorUiEvent.SaveAndApply(projectId))
                     onNavigateToExport()
                 }) {
@@ -340,9 +344,10 @@ fun StyleScreen(
                     segments = segments,
                     wordsMap = wordsMap,
                     durationMs = videoDurationMs,
-                    exoPlayer = viewModel.exoPlayer,
+                    // Fix A: `player` is collected from sharedPlayerViewModel.player StateFlow
+                    exoPlayer = player,
                     onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdatePositionY(it)) },
-                    onSeek = { viewModel.setEvent(StyleEditorUiEvent.SeekTo(it)) }
+                    onSeek = { ms -> player?.seekTo(ms) }
                 )
             }
         }

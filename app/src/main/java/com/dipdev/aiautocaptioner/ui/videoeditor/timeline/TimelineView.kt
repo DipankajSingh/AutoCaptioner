@@ -11,8 +11,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,14 +26,15 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Layers
 import androidx.media3.common.Player
 import androidx.compose.foundation.Canvas
 import coil3.compose.AsyncImage
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.Layers
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
+import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -58,7 +61,10 @@ fun TimelineView(
     zoomLevel: Float,
     player: Player,
     currentTimelineMs: () -> Long,
-    onTrimClip: (String, Long, Long) -> Unit = {_,_,_ ->}
+    onTrimClip: (String, Long, Long) -> Unit = {_,_,_ ->},
+    segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
+    selectedCaptionSegmentId: String? = null,
+    onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val verticalScrollState = rememberScrollState()
@@ -318,6 +324,61 @@ fun TimelineView(
                         }
                     }
 
+                    // Caption Track (shown below video clips when segments are available)
+                    if (segments.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .height(36.dp)
+                                .fillMaxWidth()
+                                .padding(bottom = 2.dp)
+                        ) {
+                            // Track header icon
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .fillMaxHeight()
+                                    .background(
+                                        // Fix 14: theme token replaces hardcoded Color(0xFF3D1A78)
+                                        AccentViolet,
+                                        androidx.compose.foundation.shape.RoundedCornerShape(
+                                            topStart = 6.dp, bottomStart = 6.dp
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    FeatherIcons.Layers,
+                                    contentDescription = "Captions",
+                                    tint = Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            // Caption chips positioned inside total timeline width
+                            Box(
+                                modifier = Modifier
+                                    .width(totalWidthDp)
+                                    .fillMaxHeight()
+                                    .background(
+                                        // Fix 14: theme token replaces hardcoded Color(0xFF1A0A3D)
+                                        AccentViolet.copy(alpha = 0.15f),
+                                        androidx.compose.foundation.shape.RoundedCornerShape(
+                                            topEnd = 6.dp, bottomEnd = 6.dp
+                                        )
+                                    )
+                            ) {
+                                segments.forEach { seg ->
+                                    CaptionTrackItem(
+                                        segment = seg,
+                                        clips = clips,
+                                        pixelsPerMs = pixelsPerMs,
+                                        isSelected = seg.id == selectedCaptionSegmentId,
+                                        onTap = onCaptionSegmentTap
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
 
                     overlays.forEach { overlay ->
@@ -338,7 +399,7 @@ fun TimelineView(
                                             scaleY = if (isDragging) 1.1f else 1f
                                             shadowElevation = if (isDragging) 8.dp.toPx() else 0f
                                         }
-                                        .background(Color(0xFF333333), RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
                                         .timelineLayerReorderGesture(
                                             key1 = overlay.id,
                                             rowHeightPx = 52f, // 48dp height + 4dp gap

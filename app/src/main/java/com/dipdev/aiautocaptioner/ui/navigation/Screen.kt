@@ -45,6 +45,15 @@ sealed class Screen(val route: String) {
         fun createRoute(projectId: String) = "export_history/$projectId"
     }
 
+    /**
+     * Nested navigation graph that scopes [SharedPlayerViewModel] across VideoEditor and StyleEditor.
+     * Navigate to the graph by navigating to VideoEditor.createRoute(projectId); the nested graph
+     * is entered automatically.
+     */
+    data object ProjectEditorGraph : Screen("project_editor_graph/{projectId}") {
+        fun createRoute(projectId: String) = "project_editor_graph/$projectId"
+    }
+
     // Video Editor — Trim and middle cuts before processing
     data object VideoEditor : Screen("video_editor/{projectId}") {
         fun createRoute(projectId: String) = "video_editor/$projectId"
@@ -57,8 +66,9 @@ sealed class Screen(val route: String) {
     }
 
     // Caption editor — fix words, adjust timing, mark emphasis
-    data object CaptionEditor : Screen("caption_editor/{projectId}") {
-        fun createRoute(projectId: String) = "caption_editor/$projectId"
+    data object CaptionEditor : Screen("caption_editor/{projectId}?fromEditor={fromEditor}") {
+        fun createRoute(projectId: String, fromEditor: Boolean = false) =
+            "caption_editor/$projectId?fromEditor=$fromEditor"
     }
 
     // Style editor — font, color, animation settings

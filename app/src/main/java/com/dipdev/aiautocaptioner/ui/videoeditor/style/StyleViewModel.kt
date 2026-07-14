@@ -1,12 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.style
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.lifecycle.viewModelScope
 import android.content.Context
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
 import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
@@ -21,7 +17,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
-import androidx.core.net.toUri
 import com.revenuecat.purchases.restorePurchasesWith
 
 import com.dipdev.aiautocaptioner.data.billing.PremiumManager
@@ -49,8 +44,6 @@ data class StyleEditorUiState(
 
 sealed interface StyleEditorUiEvent : UiEvent {
     data object UnlockPremiumMock : StyleEditorUiEvent
-    data class InitPlayer(val videoPath: String) : StyleEditorUiEvent
-    data class SeekTo(val ms: Long) : StyleEditorUiEvent
     data class LoadStyles(val projectId: String) : StyleEditorUiEvent
     data class SelectPreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
     data class SelectTab(val tab: StyleTab) : StyleEditorUiEvent
@@ -84,6 +77,10 @@ sealed interface StyleEditorUiEvent : UiEvent {
     data object Redo : StyleEditorUiEvent
     data class PurchaseLifetime(val activity: Activity) : StyleEditorUiEvent
     data object RestorePurchases : StyleEditorUiEvent
+    /** Inline quick-edit from VideoEditor popup: update a segment's text without entering full CaptionEditor. */
+    data class UpdateSegmentText(val segmentId: String, val newText: String) : StyleEditorUiEvent
+    /** Fix 9: marks the caption editor as visited so the export warning does not reappear */
+    data class MarkCaptionEditorVisited(val projectId: String) : StyleEditorUiEvent
 }
 
 sealed interface StyleEditorUiEffect : UiEffect
@@ -105,8 +102,6 @@ class StyleViewModel @Inject constructor(
     override fun handleEvent(event: StyleEditorUiEvent) {
         when (event) {
             is StyleEditorUiEvent.UnlockPremiumMock -> unlockPremiumMock()
-            is StyleEditorUiEvent.InitPlayer -> initPlayer(event.videoPath)
-            is StyleEditorUiEvent.SeekTo -> seekTo(event.ms)
             is StyleEditorUiEvent.LoadStyles -> loadStyles(event.projectId)
             is StyleEditorUiEvent.SelectPreset -> selectPreset(event.style)
             is StyleEditorUiEvent.SelectTab -> selectTab(event.tab)
@@ -140,6 +135,8 @@ class StyleViewModel @Inject constructor(
             is StyleEditorUiEvent.Redo -> redo()
             is StyleEditorUiEvent.PurchaseLifetime -> purchaseLifetime()
             is StyleEditorUiEvent.RestorePurchases -> restorePurchases()
+            is StyleEditorUiEvent.UpdateSegmentText -> updateSegmentText(event.segmentId, event.newText)
+            is StyleEditorUiEvent.MarkCaptionEditorVisited -> markCaptionEditorVisited(event.projectId)
         }
     }
 
@@ -148,10 +145,7 @@ class StyleViewModel @Inject constructor(
     }
 
     private fun purchaseLifetime() {
-        viewModelScope.launch {
-            setState { copy(isPurchaseLoading = true) }
-            setState { copy(isPurchaseLoading = false) }
-        }
+        // Fix 15: Purchase is handled by RevenueCat Paywall directly in UI — no-op here.
     }
 
     private fun restorePurchases() {
@@ -172,40 +166,32 @@ class StyleViewModel @Inject constructor(
         }
     }
 
-    // ---- ExoPlayer lives in the ViewModel so it survives navigation ----
-    // Initialised lazily once we know the video path from the project
-    var exoPlayer: ExoPlayer? = null
-        private set
-
-    // Track one word-collector job per segment to avoid unbounded coroutine growth
-    // (Removed in favor of a single project-level word flow)
-    private fun initPlayer(videoPath: String) {
-        if (exoPlayer != null) return           // already alive — don't recreate
-        val player = ExoPlayer.Builder(appContext).build().apply {
-            setMediaItem(MediaItem.fromUri(videoPath.toUri()))
-            repeatMode = Player.REPEAT_MODE_ALL
-            prepare()
-            playWhenReady = false
-            addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) {
-                    if (state == Player.STATE_READY && uiState.value.videoDurationMs == 0L) {
-                        setState { copy(videoDurationMs = duration.coerceAtLeast(0L)) }
-                    }
-                }
-            })
+    private fun updateSegmentText(segmentId: String, newText: String) {
+        viewModelScope.launch {
+            val current = uiState.value.segments.find { it.id == segmentId } ?: return@launch
+            val updated = current.copy(text = newText, isEdited = true)
+            captionRepository.updateSegment(updated)
+            // Refresh local state immediately so the caption track re-renders without waiting for Flow
+            setState {
+                copy(segments = segments.map { if (it.id == segmentId) updated else it })
+            }
         }
-        exoPlayer = player
     }
 
-    private fun seekTo(ms: Long) {
-        exoPlayer?.seekTo(ms)
-    }
+    // Fix A: ExoPlayer ownership moved to SharedPlayerViewModel (navigation-graph-scoped).
+    // Fix 15: purchaseLifetime() is a no-op — RevenueCat Paywall handles purchases in UI.
+    // Fix 16: @SuppressLint("EmptySuperCall") annotation removed — it was incorrect.
 
-    @SuppressLint("EmptySuperCall")
-    override fun onCleared() {
-        super.onCleared()
-        exoPlayer?.release()
-        exoPlayer = null
+    /**
+     * Fix 9: Persists [ProjectEntity.hasVisitedCaptionEditor] = true so the "Export Anyway"
+     * warning does not reappear on subsequent export attempts.
+     */
+    private fun markCaptionEditorVisited(projectId: String) {
+        viewModelScope.launch {
+            val project = projectRepository.getProjectById(projectId) ?: return@launch
+            projectRepository.updateProject(project.copy(hasVisitedCaptionEditor = true))
+            setState { copy(project = project.copy(hasVisitedCaptionEditor = true)) }
+        }
     }
 
     private val undoStack = mutableListOf<CaptionStyleEntity>()

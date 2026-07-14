@@ -60,6 +60,11 @@ fun EditorBottomDock(
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
+    // Fix 6: pinch-to-zoom scale factor from VideoTimelinePanel
+    onPinchZoom: (scale: Float) -> Unit = {},
+    segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
+    selectedCaptionSegmentId: String? = null,
+    onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
@@ -100,6 +105,10 @@ fun EditorBottomDock(
                         onDelete = onDelete,
                         onZoomIn = onZoomIn,
                         onZoomOut = onZoomOut,
+                        onPinchZoom = onPinchZoom,
+                        segments = segments,
+                        selectedCaptionSegmentId = selectedCaptionSegmentId,
+                        onCaptionSegmentTap = onCaptionSegmentTap,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

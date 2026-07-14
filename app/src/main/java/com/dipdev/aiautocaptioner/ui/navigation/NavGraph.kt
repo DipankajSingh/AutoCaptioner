@@ -1,11 +1,14 @@
 package com.dipdev.aiautocaptioner.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.dipdev.aiautocaptioner.ui.captioneditor.CaptionEditorScreen
@@ -15,9 +18,10 @@ import com.dipdev.aiautocaptioner.ui.modeldownload.ModelDownloadScreen
 import com.dipdev.aiautocaptioner.ui.onboarding.OnboardingScreen
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleScreen
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun NavGraph(
@@ -162,12 +166,18 @@ fun NavGraph(
         composable(
             route = Screen.CaptionEditor.route,
             arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType }
+                navArgument("projectId") { type = NavType.StringType },
+                navArgument("fromEditor") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+            val fromEditor = backStackEntry.arguments?.getBoolean("fromEditor") ?: false
             CaptionEditorScreen(
                 projectId = projectId,
+                fromEditor = fromEditor,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToStyleEditor = {
                     navController.navigate(Screen.StyleEditor.createRoute(projectId)) {
@@ -183,32 +193,85 @@ fun NavGraph(
             )
         }
 
-        composable(
-            route = Screen.StyleEditor.route,
+        // ── Project Editor Graph ───────────────────────────────────────────────────
+        // VideoEditor and StyleEditor share a single ExoPlayer via SharedPlayerViewModel,
+        // which is scoped to this nested navigation graph.
+        navigation(
+            startDestination = Screen.VideoEditor.route,
+            route = Screen.ProjectEditorGraph.route,
             arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType },
-                navArgument("fromProcessing") {
-                    type = NavType.BoolType
-                    defaultValue = false
-                }
+                navArgument("projectId") { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            val fromProcessing = backStackEntry.arguments?.getBoolean("fromProcessing") ?: false
-            StyleScreen(
-                projectId = projectId,
-                fromProcessing = fromProcessing,
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToCaptionEditor = {
-                    navController.navigate(Screen.CaptionEditor.createRoute(projectId))
-                },
-                onNavigateToExport = {
-                    navController.navigate(Screen.Export.createRoute(projectId))
-                },
-                onNavigateToProcessing = {
-                    navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true))
+        ) {
+            composable(
+                route = Screen.VideoEditor.route,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+
+                // Fix A: SharedPlayerViewModel scoped to the parent graph entry
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Screen.ProjectEditorGraph.createRoute(projectId))
                 }
-            )
+                val sharedPlayerViewModel: SharedPlayerViewModel = hiltViewModel(graphEntry)
+
+                EditorScreen(
+                    projectId = projectId,
+                    sharedPlayerViewModel = sharedPlayerViewModel,
+                    onNavigateToProcessing = {
+                        navController.navigate(Screen.Processing.createRoute(projectId)) {
+                            popUpTo(Screen.Home.route) { inclusive = false }
+                        }
+                    },
+                    onNavigateToCaptionEditor = {
+                        navController.navigate(Screen.CaptionEditor.createRoute(projectId, fromEditor = true)) {
+                            popUpTo(Screen.VideoEditor.createRoute(projectId)) { inclusive = false }
+                        }
+                    },
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToExport = {
+                        navController.navigate(Screen.Export.createRoute(projectId))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.StyleEditor.route,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("fromProcessing") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+                val fromProcessing = backStackEntry.arguments?.getBoolean("fromProcessing") ?: false
+
+                // Fix A: Same SharedPlayerViewModel instance as EditorScreen
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Screen.ProjectEditorGraph.createRoute(projectId))
+                }
+                val sharedPlayerViewModel: SharedPlayerViewModel = hiltViewModel(graphEntry)
+
+                StyleScreen(
+                    projectId = projectId,
+                    fromProcessing = fromProcessing,
+                    sharedPlayerViewModel = sharedPlayerViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToCaptionEditor = {
+                        navController.navigate(Screen.CaptionEditor.createRoute(projectId))
+                    },
+                    onNavigateToExport = {
+                        navController.navigate(Screen.Export.createRoute(projectId))
+                    },
+                    onNavigateToProcessing = {
+                        navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true))
+                    }
+                )
+            }
         }
 
         composable(
@@ -226,27 +289,6 @@ fun NavGraph(
                     navController.navigate(Screen.Home.route) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
-            )
-        }
-
-        composable(
-            route = Screen.VideoEditor.route,
-            arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen(
-                projectId = projectId,
-                onNavigateToProcessing = {
-                    navController.navigate(Screen.Processing.createRoute(projectId)) {
-                        popUpTo(Screen.Home.route) { inclusive = false }
-                    }
-                },
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToExport = {
-                    navController.navigate(Screen.Export.createRoute(projectId))
                 }
             )
         }

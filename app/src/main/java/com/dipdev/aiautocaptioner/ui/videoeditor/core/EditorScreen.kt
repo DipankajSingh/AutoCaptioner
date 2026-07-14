@@ -3,6 +3,11 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.core
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.*
@@ -13,7 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
@@ -24,8 +33,12 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.player.MiniScrubber
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.RightSideControls
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.TimerPill
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Edit2
+import compose.icons.feathericons.X
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -35,6 +48,9 @@ fun EditorScreen(
     onNavigateBack: () -> Unit,
     onNavigateToExport: () -> Unit,
     onNavigateToProcessing: () -> Unit,
+    onNavigateToCaptionEditor: () -> Unit,
+    // Fix A: received from NavGraph — navigation-graph-scoped shared player
+    sharedPlayerViewModel: SharedPlayerViewModel,
     viewModel: EditorViewModel = hiltViewModel(),
     styleViewModel: StyleViewModel = hiltViewModel()
 ) {
@@ -45,23 +61,48 @@ fun EditorScreen(
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
         
         val step = uiState.step
-        val clips by remember { derivedStateOf { uiState.clips } }
-        val hasEdits by remember { derivedStateOf { uiState.hasEdits } }
-        val canUndo by remember { derivedStateOf { uiState.canUndo } }
-        val canRedo by remember { derivedStateOf { uiState.canRedo } }
-        val originalDurationMs by remember { derivedStateOf { uiState.originalDurationMs } }
-        val selectedLanguage by remember { derivedStateOf { uiState.selectedLanguage } }
-        val translateToEnglish by remember { derivedStateOf { uiState.translateToEnglish } }
+
+        // Fix 12: Direct reads from uiState — derivedStateOf{} wrappers that merely
+        // re-expose fields add overhead without any recomposition benefit.
+        val clips = uiState.clips
+        val hasEdits = uiState.hasEdits
+        val canUndo = uiState.canUndo
+        val canRedo = uiState.canRedo
+        val originalDurationMs = uiState.originalDurationMs
+        val selectedLanguage = uiState.selectedLanguage
+        val translateToEnglish = uiState.translateToEnglish
+
+        val styleUiState by styleViewModel.uiState.collectAsStateWithLifecycle()
+
+        // Fix A: collect the shared player
+        val player by sharedPlayerViewModel.player.collectAsStateWithLifecycle()
 
         var selectedClipId by remember { mutableStateOf<String?>(null) }
         var zoomLevel by remember { mutableFloatStateOf(1f) }
         var showBackDialog by remember { mutableStateOf(false) }
         var showDeleteDialog by remember { mutableStateOf(false) }
+        // Caption inline popup
+        var selectedCaptionSegment by remember { mutableStateOf<CaptionSegmentEntity?>(null) }
+        var inlineEditText by remember { mutableStateOf("") }
 
         val imagePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri ->
             uri?.let { viewModel.setEvent(VideoEditorUiEvent.AddOverlay(it.toString())) }
+        }
+
+        // Fix A: pause when app goes to background — shared player, shared responsibility
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) {
+                    sharedPlayerViewModel.pauseForBackground()
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
         }
 
         BackHandler {
@@ -87,15 +128,13 @@ fun EditorScreen(
             }
         }
 
-        // State Holder for ExoPlayer
+        // Fix A: initialise the shared player once the video path is known
         val originalVideoPath = (step as? VideoEditorUiStep.Ready)?.originalPath ?: ""
-        val editorState = rememberEditorState(
-            clips = clips,
-            originalVideoPath = originalVideoPath,
-            onDurationUpdated = { duration ->
-                viewModel.setEvent(VideoEditorUiEvent.UpdateDurationFromPlayer(duration))
+        LaunchedEffect(originalVideoPath) {
+            if (originalVideoPath.isNotEmpty()) {
+                sharedPlayerViewModel.initPlayer(originalVideoPath)
             }
-        )
+        }
 
         Scaffold { paddingValues ->
             BoxWithConstraints(
@@ -145,11 +184,27 @@ fun EditorScreen(
                         // Handled by LaunchedEffect
                     }
                     is VideoEditorUiStep.Ready -> {
+                        // Wait for shared player to be initialised
+                        val currentPlayer = player
+                        if (currentPlayer == null) {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                            return@BoxWithConstraints
+                        }
+
                         val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
 
+                        // Fix A: pass injected player into EditorState (no longer creates its own)
+                        val editorState = rememberEditorState(
+                            player = currentPlayer,
+                            clips = clips,
+                            originalVideoPath = originalVideoPath,
+                            onDurationUpdated = { duration ->
+                                viewModel.setEvent(VideoEditorUiEvent.UpdateDurationFromPlayer(duration))
+                            }
+                        )
+
                         Column(
-                            modifier = Modifier
-                                .fillMaxSize(),
+                            modifier = Modifier.fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             // Video Player and Overlays
@@ -162,9 +217,13 @@ fun EditorScreen(
                                     player = editorState.player,
                                     overlays = overlays,
                                     currentTimelineMs = { editorState.currentTimelineMs },
+                                    currentSourceMs = { editorState.currentSourceMs },
                                     selectedOverlayId = selectedOverlayId,
                                     onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
                                     onSelectOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
+                                    activeStyle = styleUiState.activeStyle,
+                                    segments = styleUiState.segments,
+                                    wordsMap = styleUiState.wordsMap,
                                     modifier = Modifier.fillMaxSize()
                                 )
 
@@ -210,7 +269,27 @@ fun EditorScreen(
                                         .align(Alignment.TopEnd)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                 )
-                            }
+
+                                // Fix 11: Inline caption editor extracted to CaptionInlineEditor composable
+                                // Fix 8: imePadding is applied inside CaptionInlineEditor
+                                CaptionInlineEditor(
+                                    segment = selectedCaptionSegment,
+                                    editText = inlineEditText,
+                                    onEditTextChange = { inlineEditText = it },
+                                    onSave = { segId, text ->
+                                        styleViewModel.setEvent(
+                                            StyleEditorUiEvent.UpdateSegmentText(segId, text)
+                                        )
+                                        selectedCaptionSegment = null
+                                    },
+                                    onDismiss = { selectedCaptionSegment = null },
+                                    onOpenFullEditor = {
+                                        selectedCaptionSegment = null
+                                        onNavigateToCaptionEditor()
+                                    },
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                )
+                            } // end preview Box
 
                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -230,7 +309,6 @@ fun EditorScreen(
                                 clips = editorState.mergedClips,
                                 player = editorState.player
                             )
-
 
                             EditorBottomDock(
                                 maxHeight = maxH,
@@ -273,6 +351,16 @@ fun EditorScreen(
                                 },
                                 onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
                                 onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
+                                onPinchZoom = { scale ->
+                                    // Fix 6: Pinch-to-zoom from timeline passed through here
+                                    zoomLevel = (zoomLevel * scale).coerceIn(0.2f, 5f)
+                                },
+                                segments = styleUiState.segments,
+                                selectedCaptionSegmentId = selectedCaptionSegment?.id,
+                                onCaptionSegmentTap = { seg ->
+                                    selectedCaptionSegment = seg
+                                    inlineEditText = seg.text
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -281,48 +369,28 @@ fun EditorScreen(
             }
         }
 
+        // Fix 10: Extracted dialog composables
         if (showBackDialog) {
-            AlertDialog(
-                onDismissRequest = { showBackDialog = false },
-                title = { Text("Save changes?") },
-                text = { Text("You have unsaved edits. Do you want to apply them before leaving?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showBackDialog = false
-                        viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
-                    }) {
-                        Text("Save & Continue")
-                    }
+            UnsavedEditsDialog(
+                onSaveAndContinue = {
+                    showBackDialog = false
+                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
                 },
-                dismissButton = {
-                    TextButton(onClick = {
-                        showBackDialog = false
-                        onNavigateBack()
-                    }) {
-                        Text("Discard")
-                    }
-                }
+                onDiscard = {
+                    showBackDialog = false
+                    onNavigateBack()
+                },
+                onDismiss = { showBackDialog = false }
             )
         }
 
         if (showDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Project?") },
-                text = { Text("Are you sure you want to delete this project? Your edits will be lost.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDeleteDialog = false
-                        viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
-                    }) {
-                        Text("Delete")
-                    }
+            DeleteProjectDialog(
+                onConfirm = {
+                    showDeleteDialog = false
+                    viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
                 },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
+                onDismiss = { showDeleteDialog = false }
             )
         }
     }

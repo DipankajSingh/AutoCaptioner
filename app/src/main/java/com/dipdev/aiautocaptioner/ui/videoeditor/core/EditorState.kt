@@ -1,6 +1,5 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.core
 
-import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -10,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -22,30 +20,32 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/**
+ * Fix A: EditorState no longer creates its own ExoPlayer.
+ * The player is injected from [SharedPlayerViewModel] (navigation-graph-scoped),
+ * allowing it to be shared with StyleScreen without restarting playback on navigation.
+ *
+ * The caller is responsible for player lifecycle (init and release).
+ * EditorState only manages playlist sync, progress polling, and position tracking.
+ */
 @Composable
 fun rememberEditorState(
+    player: ExoPlayer,          // Fix A: injected from SharedPlayerViewModel
     clips: List<Clip>,
     originalVideoPath: String,
     onDurationUpdated: (Long) -> Unit
 ): EditorState {
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    
-    val player = remember {
-        ExoPlayer.Builder(context).build().apply {
-            repeatMode = Player.REPEAT_MODE_ALL
-            playWhenReady = false
-        }
-    }
 
     val state = remember(player) {
         EditorState(player, coroutineScope, onDurationUpdated)
     }
 
+    // Stop progress sync when the composable leaves composition
     DisposableEffect(player) {
         onDispose {
             state.stopProgressSync()
-            player.release()
+            // NOTE: player.release() is NOT called here — SharedPlayerViewModel owns the lifecycle.
         }
     }
 
@@ -81,7 +81,7 @@ fun rememberEditorState(
 
             if (changed) {
                 previousMediaItems = mediaItems
-                // Try to preserve timeline position across playlist updates
+                // Preserve timeline position across playlist updates
                 val oldWindowIndex = player.currentMediaItemIndex
                 val oldPos = player.currentPosition
                 val wasPlaying = player.playWhenReady
@@ -97,7 +97,7 @@ fun rememberEditorState(
         }
     }
 
-    // Expose mergedClips to the state so that the polling loop can use them to calculate timeline Ms
+    // Expose mergedClips to the state so that the polling loop can use them to calculate timeline ms
     state.mergedClips = mergedClips
     
     return state
@@ -111,6 +111,8 @@ class EditorState(
 ) {
     var isDragging by mutableStateOf(false)
     var currentTimelineMs by mutableStateOf(0L)
+    /** Absolute timestamp in the original source video — use this for CaptionRenderer. */
+    var currentSourceMs by mutableStateOf(0L)
     var isPlaying by mutableStateOf(false)
     
     private var hasEmittedOriginalDuration = false
@@ -182,5 +184,12 @@ class EditorState(
         val safePosInWindow = if (windowIndex >= mergedClips.size) 0L else posInWindow
         
         currentTimelineMs = accumulated + safePosInWindow
+
+        // Source timestamp: startTrimMs of the current clip + position within that window
+        currentSourceMs = if (mergedClips.isNotEmpty() && safeWindowIndex < mergedClips.size) {
+            mergedClips[safeWindowIndex].startTrimMs + safePosInWindow
+        } else {
+            safePosInWindow
+        }
     }
 }
