@@ -185,6 +185,7 @@ dependencies {
     // -------------------------------------------------------
     implementation(libs.coil.compose)
     implementation("io.coil-kt.coil3:coil-video:3.5.0")
+    implementation(libs.cloudy)
 
     // -------------------------------------------------------
     // Splash Screen

@@ -135,14 +135,20 @@ fun NavGraph(
                 navArgument("forceModelPicker") {
                     type = NavType.BoolType
                     defaultValue = false
+                },
+                navArgument("isRegenerating") {
+                    type = NavType.BoolType
+                    defaultValue = false
                 }
             )
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
             val forceModelPicker = backStackEntry.arguments?.getBoolean("forceModelPicker") ?: false
+            val isRegenerating = backStackEntry.arguments?.getBoolean("isRegenerating") ?: false
             ProcessingScreen(
                 projectId = projectId,
                 forceModelPicker = forceModelPicker,
+                isRegenerating = isRegenerating,
                 onNavigateToCaptionEditor = {
                     navController.navigate(Screen.CaptionEditor.createRoute(projectId)) {
                         popUpTo(Screen.Home.route) { inclusive = false }
@@ -174,7 +180,7 @@ fun NavGraph(
                 fromEditor = fromEditor,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToProcessing = { pid ->
-                    navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true))
+                    navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true, isRegenerating = true))
                 },
                 onNavigateToExport = { pid ->
                     navController.navigate(Screen.Export.createRoute(pid))
@@ -210,9 +216,7 @@ fun NavGraph(
                     projectId = projectId,
                     sharedPlayerViewModel = sharedPlayerViewModel,
                     onNavigateToProcessing = {
-                        navController.navigate(Screen.Processing.createRoute(projectId)) {
-                            popUpTo(Screen.Home.route) { inclusive = false }
-                        }
+                        navController.navigate(Screen.Processing.createRoute(projectId, forceModelPicker = true, isRegenerating = true))
                     },
                     onNavigateToCaptionEditor = {
                         navController.navigate(Screen.CaptionEditor.createRoute(projectId, fromEditor = true)) {

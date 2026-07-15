@@ -5,6 +5,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.SavedStateHandle
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.core.whisper.CaptionSegmenter
 import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
@@ -90,7 +91,11 @@ data class ProcessingUiState(
 ) : UiState
 
 sealed class ProcessingUiEvent : UiEvent {
-    data class PrepareForProject(val projectId: String, val forceModelPicker: Boolean = false) : ProcessingUiEvent()
+    data class PrepareForProject(
+        val projectId: String,
+        val forceModelPicker: Boolean = false,
+        val isRegenerating: Boolean = false
+    ) : ProcessingUiEvent()
     data class SelectLanguage(val language: String) : ProcessingUiEvent()
     data class ToggleTranslation(val enabled: Boolean) : ProcessingUiEvent()
     data object ShowModelSetup : ProcessingUiEvent()
@@ -111,6 +116,7 @@ sealed class ProcessingUiEffect : UiEffect {
 
 @HiltViewModel
 class ProcessingViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
     private val captionRepository: CaptionRepository,
@@ -128,6 +134,11 @@ class ProcessingViewModel @Inject constructor(
     private var pendingProjectId: String? = null
 
     init {
+        val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
+        if (isRegenerating) {
+            transcriptionManager.clearState()
+        }
+
         viewModelScope.launch {
             modelRepository.getActiveModel().collect { model ->
                 setState { copy(activeModel = model) }
@@ -173,7 +184,7 @@ class ProcessingViewModel @Inject constructor(
 
     override fun handleEvent(event: ProcessingUiEvent) {
         when (event) {
-            is ProcessingUiEvent.PrepareForProject -> prepareForProject(event.projectId, event.forceModelPicker)
+            is ProcessingUiEvent.PrepareForProject -> prepareForProject(event.projectId, event.forceModelPicker, event.isRegenerating)
             is ProcessingUiEvent.SelectLanguage -> selectLanguage(event.language)
             is ProcessingUiEvent.ToggleTranslation -> setState { copy(translateToEnglish = event.enabled) }
             is ProcessingUiEvent.ShowModelSetup -> showModelSetup()
@@ -190,14 +201,14 @@ class ProcessingViewModel @Inject constructor(
 
 
 
-    private fun prepareForProject(projectId: String, forceModelPicker: Boolean) {
+    private fun prepareForProject(projectId: String, forceModelPicker: Boolean, isRegenerating: Boolean) {
         viewModelScope.launch {
             val project = projectRepository.getProjectById(projectId)
             val isAlreadyDone = project?.status == ProjectStatus.TRANSCRIBED ||
                                 project?.status == ProjectStatus.EXPORTED
             setState { copy(workingVideoPath = project?.workingVideoPath) }
 
-            if (isAlreadyDone && !forceModelPicker) {
+            if (isAlreadyDone && !forceModelPicker && !isRegenerating) {
                 // Project already transcribed — go straight to editor
                 if (project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
                     setEffect(ProcessingUiEffect.NavigateToCaptionEditor)
@@ -334,11 +345,13 @@ class ProcessingViewModel @Inject constructor(
     private fun startProcessing(projectId: String) {
         pendingProjectId = projectId
         val activeModelId = currentState.activeModel?.id ?: return
+        val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
         transcriptionManager.startProcess(
             projectId = projectId,
             modelId = activeModelId,
             language = currentState.selectedLanguage,
-            translateToEnglish = currentState.translateToEnglish
+            translateToEnglish = currentState.translateToEnglish,
+            isRegenerating = isRegenerating
         )
     }
 

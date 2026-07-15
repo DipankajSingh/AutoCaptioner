@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
+import com.skydoves.cloudy.cloudy
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -66,6 +67,7 @@ import androidx.compose.ui.draw.blur
 fun ProcessingScreen(
     projectId: String,
     forceModelPicker: Boolean = false,
+    isRegenerating: Boolean = false,
     onNavigateToCaptionEditor: () -> Unit,
     onNavigateToVideoEditor: () -> Unit,
     onCancel: () -> Unit,
@@ -76,8 +78,8 @@ fun ProcessingScreen(
     val streamedSegments = uiState.streamedSegments
     val safetyCheck = uiState.safetyCheck
 
-    LaunchedEffect(projectId, forceModelPicker) {
-        viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId, forceModelPicker))
+    LaunchedEffect(projectId, forceModelPicker, isRegenerating) {
+        viewModel.setEvent(ProcessingUiEvent.PrepareForProject(projectId, forceModelPicker, isRegenerating))
     }
 
     LaunchedEffect(Unit) {
@@ -125,7 +127,7 @@ fun ProcessingScreen(
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(50.dp)
+                    .cloudy(radius = 25)
             )
             // Darken overlay for better text readability
             androidx.compose.foundation.layout.Box(

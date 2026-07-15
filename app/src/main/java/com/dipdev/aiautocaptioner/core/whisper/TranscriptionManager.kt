@@ -82,7 +82,7 @@ class TranscriptionManager @Inject constructor(
         notificationManager.notify(101, notification)
     }
 
-    fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean) {
+    fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean = false) {
         if (activeJob?.isActive == true) return
         activeProjectId = projectId
         isCancelled = false
@@ -125,7 +125,7 @@ class TranscriptionManager @Inject constructor(
                 }
 
                 // Proceed to processing
-                startTranscription(projectId, language, translateToEnglish)
+                startTranscription(projectId, language, translateToEnglish, isRegenerating)
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 Log.i(TAG, "Process cancelled")
@@ -148,7 +148,7 @@ class TranscriptionManager @Inject constructor(
         }
     }
 
-    private suspend fun startTranscription(projectId: String, language: String, translateToEnglish: Boolean) {
+    private suspend fun startTranscription(projectId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean) {
         startDripFeed()
 
         val project = projectRepository.getProjectById(projectId) ?: run {
@@ -156,7 +156,7 @@ class TranscriptionManager @Inject constructor(
             return
         }
 
-        if (project.status == ProjectStatus.TRANSCRIBED || project.status == ProjectStatus.EXPORTED) {
+        if (!isRegenerating && (project.status == ProjectStatus.TRANSCRIBED || project.status == ProjectStatus.EXPORTED)) {
             _step.value = ProcessingStep.Done
             updateNotification(null)
             return

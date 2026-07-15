@@ -61,8 +61,8 @@ sealed class Screen(val route: String) {
 
     // Processing screen — extract audio + transcribe
     // Takes projectId as argument so it knows which project to process
-    data object Processing : Screen("processing/{projectId}?forceModelPicker={forceModelPicker}") {
-        fun createRoute(projectId: String, forceModelPicker: Boolean = false) = "processing/$projectId?forceModelPicker=$forceModelPicker"
+    data object Processing : Screen("processing/{projectId}?forceModelPicker={forceModelPicker}&isRegenerating={isRegenerating}") {
+        fun createRoute(projectId: String, forceModelPicker: Boolean = false, isRegenerating: Boolean = false) = "processing/$projectId?forceModelPicker=$forceModelPicker&isRegenerating=$isRegenerating"
     }
 
     // Caption editor — fix words, adjust timing, mark emphasis

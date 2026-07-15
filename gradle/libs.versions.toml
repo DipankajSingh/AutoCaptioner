@@ -31,6 +31,7 @@ accompanist = "0.37.3"
 firebaseBom = "34.15.0"
 revenuecat = "10.13.0"
 camerax = "1.6.1"
+cloudy = "0.7.1"
 
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
@@ -87,6 +88,7 @@ androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", 
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+cloudy = { group = "com.github.skydoves", name = "cloudy", version.ref = "cloudy" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
