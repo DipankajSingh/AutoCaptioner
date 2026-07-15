@@ -45,6 +45,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,9 +95,10 @@ fun HomeScreen(
 ) {
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
     val projects = uiState.projects
     val activeModel = uiState.activeModel
-    val context = LocalContext.current
+    
     val importState = uiState.importState
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
@@ -163,9 +165,15 @@ fun HomeScreen(
         uri?.let { viewModel.importVideoQuick(it) }
     }
 
+    
+    BackHandler {
+        val activity = context as? android.app.Activity
+        activity?.moveTaskToBack(true)
+    }
+
     // Navigate when import succeeds
-    LaunchedEffect(importState) {
-        when (importState) {
+    LaunchedEffect(uiState.importState) {
+        when (val importState = uiState.importState) {
             is ImportState.Success -> {
                 viewModel.resetImportState()
                 onNavigateToVideoEditor(importState.projectId)

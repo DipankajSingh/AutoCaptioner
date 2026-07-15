@@ -87,7 +87,8 @@ data class ProcessingUiState(
     val streamedSegments: List<StreamedSegment> = emptyList(),
     val segmentCount: Int = 0,
     val safetyCheck: ModelSafetyCheck = ModelSafetyCheck.Idle,
-    val activeModel: WhisperModel? = null
+    val activeModel: WhisperModel? = null,
+    val availableModels: List<WhisperModel> = emptyList()
 ) : UiState
 
 sealed class ProcessingUiEvent : UiEvent {
@@ -107,6 +108,13 @@ sealed class ProcessingUiEvent : UiEvent {
     data object CancelModelSetup : ProcessingUiEvent()
     data object Cancel : ProcessingUiEvent()
     data class StartProcessing(val projectId: String) : ProcessingUiEvent()
+    data class StartTranscriptionExplicit(
+        val projectId: String,
+        val modelId: String,
+        val language: String,
+        val translateToEnglish: Boolean
+    ) : ProcessingUiEvent()
+    data object ResetToIdle : ProcessingUiEvent()
 }
 
 sealed class ProcessingUiEffect : UiEffect {
@@ -143,6 +151,11 @@ class ProcessingViewModel @Inject constructor(
             modelRepository.getActiveModel().collect { model ->
                 setState { copy(activeModel = model) }
             }
+        }
+        
+        viewModelScope.launch {
+            val models = modelRepository.getAvailableModels()
+            setState { copy(availableModels = models) }
         }
 
         viewModelScope.launch {
@@ -196,6 +209,8 @@ class ProcessingViewModel @Inject constructor(
             is ProcessingUiEvent.CancelModelSetup -> cancelModelSetup()
             is ProcessingUiEvent.Cancel -> cancel()
             is ProcessingUiEvent.StartProcessing -> startProcessing(event.projectId)
+            is ProcessingUiEvent.StartTranscriptionExplicit -> startTranscriptionExplicit(event.projectId, event.modelId, event.language, event.translateToEnglish)
+            is ProcessingUiEvent.ResetToIdle -> resetToIdle()
         }
     }
 
@@ -210,7 +225,7 @@ class ProcessingViewModel @Inject constructor(
 
             if (isAlreadyDone && !forceModelPicker && !isRegenerating) {
                 // Project already transcribed — go straight to editor
-                if (project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
+                if (project.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
                     setEffect(ProcessingUiEffect.NavigateToCaptionEditor)
                 } else {
                     setEffect(ProcessingUiEffect.NavigateToVideoEditor)
@@ -353,6 +368,29 @@ class ProcessingViewModel @Inject constructor(
             translateToEnglish = currentState.translateToEnglish,
             isRegenerating = isRegenerating
         )
+    }
+
+    private fun startTranscriptionExplicit(projectId: String, modelId: String, language: String, translateToEnglish: Boolean) {
+        pendingProjectId = projectId
+        val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
+        
+        viewModelScope.launch {
+            settingsRepository.saveLastLanguageSettings(language, translateToEnglish)
+            modelRepository.setActiveModel(modelId)
+        }
+
+        transcriptionManager.startProcess(
+            projectId = projectId,
+            modelId = modelId,
+            language = language,
+            translateToEnglish = translateToEnglish,
+            isRegenerating = isRegenerating
+        )
+    }
+
+    private fun resetToIdle() {
+        transcriptionManager.clearState()
+        setState { copy(step = ProcessingStep.Idle) }
     }
 
     override fun onCleared() {

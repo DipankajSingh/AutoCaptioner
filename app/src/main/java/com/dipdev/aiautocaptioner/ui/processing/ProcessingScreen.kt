@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
 import com.skydoves.cloudy.cloudy
+import com.skydoves.cloudy.sky
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -118,6 +119,7 @@ fun ProcessingScreen(
         // --- 1. Immersive Background ---
         val videoUri = uiState.workingVideoPath
         if (videoUri != null) {
+            val sky = com.skydoves.cloudy.rememberSky()
             coil3.compose.AsyncImage(
                 model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                     .data(videoUri)
@@ -125,9 +127,11 @@ fun ProcessingScreen(
                     .build(),
                 contentDescription = null,
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                onSuccess = { sky.invalidate() },
                 modifier = Modifier
                     .fillMaxSize()
                     .cloudy(radius = 25)
+                    .sky(sky)
             )
             // Darken overlay for better text readability
             androidx.compose.foundation.layout.Box(
@@ -233,54 +237,6 @@ fun ProcessingScreen(
                             )
                         }
 
-                        is ProcessingStep.DownloadingModel -> {
-                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = currentStep.progress / 100f, modifier = Modifier.size(120.dp))
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text("Downloading AI Model...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("${currentStep.progress}%", fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
-                        }
-
-                        is ProcessingStep.ExtractingAudio -> {
-                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = 0f, modifier = Modifier.size(120.dp))
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text("Preparing your video...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("This may take a moment", fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
-                        }
-
-                        is ProcessingStep.LoadingModel -> {
-                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = 0.1f, modifier = Modifier.size(120.dp))
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text("Warming up the AI...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-
-                        is ProcessingStep.Transcribing -> {
-                            // Fake progress interpolation
-                            val rawProgress = currentStep.progress
-                            val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-                                targetValue = rawProgress + 0.05f, // Slightly ahead
-                                animationSpec = tween(durationMillis = 30000, easing = androidx.compose.animation.core.LinearOutSlowInEasing), // Slow 30s crawl
-                                label = "transcriptionProgress"
-                            )
-                            
-                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = animatedProgress, modifier = Modifier.size(120.dp))
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text("Listening & typing...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            if (currentStep.estimatedSecondsRemaining != null) {
-                                val secs = currentStep.estimatedSecondsRemaining
-                                val timeText = if (secs >= 60) "~${secs / 60}m left" else "~${secs}s left"
-                                Text(timeText, fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
-                            }
-                        }
-
-                        is ProcessingStep.Saving -> {
-                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = 1f, modifier = Modifier.size(120.dp))
-                            Spacer(modifier = Modifier.height(24.dp))
-                            Text("Finalizing captions...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-
-                        is ProcessingStep.Cancelling -> {
-                            CancellingView()
-                        }
                         is ProcessingStep.Cancelled -> {
                             CancelledView(
                                 onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
@@ -294,7 +250,12 @@ fun ProcessingScreen(
                                 onGoBack = onCancel
                             )
                         }
-                        else -> {}
+                        else -> {
+                            com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionProgressView(
+                                step = currentStep,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }

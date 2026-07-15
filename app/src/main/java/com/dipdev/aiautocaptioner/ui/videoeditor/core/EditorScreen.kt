@@ -15,14 +15,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
+import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
@@ -53,7 +56,8 @@ fun EditorScreen(
     // Fix A: received from NavGraph — navigation-graph-scoped shared player
     sharedPlayerViewModel: SharedPlayerViewModel,
     viewModel: EditorViewModel = hiltViewModel(),
-    styleViewModel: StyleViewModel = hiltViewModel()
+    styleViewModel: StyleViewModel = hiltViewModel(),
+    processingViewModel: com.dipdev.aiautocaptioner.ui.processing.ProcessingViewModel = hiltViewModel()
 ) {
     ScreenThemeProvider(accentColor = AccentAmber) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -62,6 +66,8 @@ fun EditorScreen(
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
         
         val step = uiState.step
+        val processingUiState by processingViewModel.uiState.collectAsStateWithLifecycle()
+        val processingStep = processingUiState.step
 
         // Fix 12: Direct reads from uiState — derivedStateOf{} wrappers that merely
         // re-expose fields add overhead without any recomposition benefit.
@@ -82,9 +88,11 @@ fun EditorScreen(
         var zoomLevel by remember { mutableFloatStateOf(1f) }
         var showBackDialog by remember { mutableStateOf(false) }
         var showDeleteDialog by remember { mutableStateOf(false) }
-        // Caption inline popup
         var selectedCaptionSegment by remember { mutableStateOf<CaptionSegmentEntity?>(null) }
         var inlineEditText by remember { mutableStateOf("") }
+        
+        var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
+        var pendingTranscriptionParams by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
 
         val imagePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
@@ -114,7 +122,33 @@ fun EditorScreen(
             viewModel.uiEffect.collect { effect ->
                 when (effect) {
                     is VideoEditorUiEffect.ProjectDeleted -> onNavigateBack()
+                    is VideoEditorUiEffect.NavigateToProcessing -> {
+                        if (pendingTranscriptionParams != null) {
+                            val (modelId, lang, translate) = pendingTranscriptionParams!!
+                            pendingTranscriptionParams = null
+                            processingViewModel.setEvent(
+                                com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.StartTranscriptionExplicit(
+                                    projectId = projectId,
+                                    modelId = modelId,
+                                    language = lang,
+                                    translateToEnglish = translate
+                                )
+                            )
+                        } else {
+                            onNavigateToProcessing()
+                        }
+                    }
+                    is VideoEditorUiEffect.NavigateToExport -> onNavigateToExport()
                 }
+            }
+        }
+        
+        LaunchedEffect(processingStep) {
+            if (processingStep is com.dipdev.aiautocaptioner.ui.processing.ProcessingStep.Done) {
+                // Transcription finished! Reset state to hide overlay.
+                processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.ResetToIdle)
+                // We reload styles to immediately show the new captions on screen
+                styleViewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
             }
         }
 
@@ -123,11 +157,6 @@ fun EditorScreen(
             styleViewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
         }
 
-        LaunchedEffect(step) {
-            if (step is VideoEditorUiStep.Success) {
-                onNavigateToProcessing()
-            }
-        }
 
         // Fix A: initialise the shared player once the video path is known
         val originalVideoPath = (step as? VideoEditorUiStep.Ready)?.originalPath ?: ""
@@ -162,27 +191,52 @@ fun EditorScreen(
                         }
                     }
                     is VideoEditorUiStep.Processing -> {
-                        Column(
-                            modifier = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.85f))
                         ) {
-                            if (step.progress > 0) {
-                                LinearProgressIndicator(progress = { step.progress / 100f })
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("${step.progress}%")
-                            } else {
-                                CircularProgressIndicator()
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(32.dp)
+                            ) {
+                                AiProcessingAnimation(
+                                    progress = if (step.progress > 0) step.progress / 100f else 0f, 
+                                    modifier = Modifier.size(120.dp)
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    text = "Applying Edits...",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                if (step.progress > 0) {
+                                    Text(
+                                        text = "${step.progress}%",
+                                        fontSize = 16.sp,
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("Applying edits...", style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            AppOutlinedButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.Cancel) }) {
-                                Text("Cancel")
+
+                            TextButton(
+                                onClick = { viewModel.setEvent(VideoEditorUiEvent.Cancel) },
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 64.dp)
+                            ) {
+                                Text(
+                                    text = "Cancel",
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
-                    }
-                    is VideoEditorUiStep.Success -> {
-                        // Handled by LaunchedEffect
                     }
                     is VideoEditorUiStep.Ready -> {
                         // Wait for shared player to be initialised
@@ -245,10 +299,10 @@ fun EditorScreen(
                                     hasEdits = hasEdits,
                                     onNavigateBack = onNavigateBack,
                                     onShowBackDialog = { showBackDialog = true },
-                                    onNavigateToExport = onNavigateToExport,
+                                    onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
                                     onDeleteProject = { viewModel.setEvent(VideoEditorUiEvent.DeleteProject) },
                                     onShowDeleteDialog = { showDeleteDialog = true },
-                                    onNavigateToProcessing = onNavigateToProcessing,
+                                    onNavigateToProcessing = { showTranscriptionBottomSheet = true },
                                     hasCaptions = styleUiState.segments.isNotEmpty(),
                                     onNavigateToCaptionEditor = onNavigateToCaptionEditor,
                                     selectedLanguage = selectedLanguage,
@@ -267,7 +321,7 @@ fun EditorScreen(
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
                                     onAddImage = { imagePickerLauncher.launch("image/*") },
-                                    onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits) },
+                                    onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
@@ -377,7 +431,7 @@ fun EditorScreen(
             UnsavedEditsDialog(
                 onSaveAndContinue = {
                     showBackDialog = false
-                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits)
+                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false))
                 },
                 onDiscard = {
                     showBackDialog = false
@@ -396,6 +450,31 @@ fun EditorScreen(
                 onDismiss = { showDeleteDialog = false }
             )
         }
+
+        if (showTranscriptionBottomSheet) {
+            // First time they click it, fetch models if needed
+            LaunchedEffect(Unit) {
+                processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.PrepareForProject(projectId, forceModelPicker = true))
+            }
+            
+            com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionBottomSheet(
+                onDismiss = { showTranscriptionBottomSheet = false },
+                availableModels = processingUiState.availableModels,
+                initialModelId = processingUiState.activeModel?.id,
+                initialLanguage = processingUiState.selectedLanguage,
+                initialTranslate = processingUiState.translateToEnglish,
+                onStart = { modelId, lang, translate ->
+                    showTranscriptionBottomSheet = false
+                    pendingTranscriptionParams = Triple(modelId, lang, translate)
+                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false))
+                }
+            )
+        }
+
+        com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionOverlay(
+            step = processingStep,
+            onCancel = { processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel) }
+        )
     }
 }
 

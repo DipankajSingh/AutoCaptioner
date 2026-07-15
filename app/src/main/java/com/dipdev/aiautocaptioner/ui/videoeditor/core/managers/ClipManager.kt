@@ -25,13 +25,20 @@ class ClipManager(
             historyIndex--
         }
         
-        updateState(clipsToSave, hasEdits = true)
+        updateState(clipsToSave)
     }
 
-    private fun updateState(newClips: List<Clip>, hasEdits: Boolean) {
+    private fun checkHasEdits(clips: List<Clip>): Boolean {
+        if (clips.size != 1) return true
+        val clip = clips.first()
+        return clip.startTrimMs != 0L || clip.endTrimMs != getOriginalDurationMs()
+    }
+
+    private fun updateState(newClips: List<Clip>, hasEditsOverride: Boolean? = null) {
+        val actualHasEdits = hasEditsOverride ?: checkHasEdits(newClips)
         onStateChanged(
             newClips,
-            hasEdits,
+            actualHasEdits,
             historyIndex >= 0,
             historyIndex < history.size - 1
         )
@@ -52,7 +59,7 @@ class ClipManager(
             if (historyIndex < 0) {
                 onUndoToOriginal()
             } else {
-                updateState(newClips, hasEdits = true)
+                updateState(newClips)
             }
         }
     }
@@ -61,7 +68,7 @@ class ClipManager(
         val canRedo = historyIndex < history.size - 1
         if (canRedo) {
             historyIndex++
-            updateState(history[historyIndex], hasEdits = true)
+            updateState(history[historyIndex])
         }
     }
 
@@ -92,7 +99,7 @@ class ClipManager(
                 currentClips.removeAt(targetClipIndex)
                 currentClips.add(targetClipIndex, clip2)
                 currentClips.add(targetClipIndex, clip1)
-                updateState(currentClips, hasEdits = true)
+                updateState(currentClips)
             }
         }
     }
@@ -102,7 +109,7 @@ class ClipManager(
         if (currentClips.size > 1) {
             saveState(currentClips)
             currentClips.removeAll { it.id == clipId }
-            updateState(currentClips, hasEdits = true)
+            updateState(currentClips)
         }
     }
 
@@ -114,7 +121,7 @@ class ClipManager(
             val clipToDuplicate = currentClips[index]
             val newClip = Clip(startTrimMs = clipToDuplicate.startTrimMs, endTrimMs = clipToDuplicate.endTrimMs)
             currentClips.add(index + 1, newClip)
-            updateState(currentClips, hasEdits = true)
+            updateState(currentClips)
         }
     }
 
@@ -124,7 +131,7 @@ class ClipManager(
         if (index != -1) {
             val clipToTrim = currentClips[index]
             currentClips[index] = clipToTrim.copy(startTrimMs = newStartTrimMs, endTrimMs = newEndTrimMs)
-            updateState(currentClips, hasEdits = true)
+            updateState(currentClips)
         }
     }
 
@@ -133,7 +140,7 @@ class ClipManager(
         if (fromIndex in currentClips.indices && toIndex in currentClips.indices) {
             val clip = currentClips.removeAt(fromIndex)
             currentClips.add(toIndex, clip)
-            updateState(currentClips, hasEdits = true)
+            updateState(currentClips)
         }
     }
     

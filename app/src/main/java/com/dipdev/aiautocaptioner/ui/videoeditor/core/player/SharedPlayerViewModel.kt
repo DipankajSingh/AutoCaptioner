@@ -17,7 +17,7 @@ import javax.inject.Inject
  *
  * Both screens obtain this via:
  *   val parentEntry = remember(backStackEntry) {
- *       navController.getBackStackEntry("project_editor_graph/$projectId")
+ *       navController.getBackStackEntry(Screen.ProjectEditorGraph.route)
  *   }
  *   val sharedPlayerViewModel: SharedPlayerViewModel = hiltViewModel(parentEntry)
  *

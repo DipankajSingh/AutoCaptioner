@@ -33,6 +33,8 @@ import compose.icons.feathericons.Zap
 import compose.icons.feathericons.ZapOff
 import compose.icons.feathericons.Grid
 import compose.icons.feathericons.Clock
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PanTool
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,6 +69,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import java.io.File
+import java.util.concurrent.Executors
 import kotlin.random.Random
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -129,17 +132,112 @@ fun SmartRecorderContent(
     val audioAmplitude = uiState.audioAmplitude
     val isCountdownActive = uiState.isCountdownActive
     val countdownRemaining = uiState.countdownRemaining
+    val isGestureDetectionEnabled = uiState.isGestureDetectionEnabled
 
     var showBgPicker by remember { mutableStateOf(false) }
     var flashEnabled by remember { mutableStateOf(false) }
 
     val cameraController = remember {
         LifecycleCameraController(context).apply {
-            setEnabledUseCases(CameraController.VIDEO_CAPTURE)
+            setEnabledUseCases(CameraController.VIDEO_CAPTURE or CameraController.IMAGE_ANALYSIS)
         }
     }
     
     var activeRecording by remember { mutableStateOf<androidx.camera.video.Recording?>(null) }
+    
+    val startRecordingAction: () -> Unit = {
+        if (recordingState == RecordingState.IDLE) {
+            if (mode == RecordingMode.FACELESS && !micGranted) {
+                onRequestMic()
+            } else if (mode == RecordingMode.CAMERA && !cameraGranted) {
+                onRequestCamera()
+            } else if (mode == RecordingMode.CAMERA && !isAudioMuted && !micGranted) {
+                onRequestMic()
+            } else {
+                viewModel.requestStartRecording {
+                    // Start CameraX
+                    viewModel.prepareCameraRecordingFile { file ->
+                        val outputOptions = FileOutputOptions.Builder(file).build()
+                        val executor = ContextCompat.getMainExecutor(context)
+                        
+                        val listener = Consumer<VideoRecordEvent> { event ->
+                            if (event is VideoRecordEvent.Start) {
+                                viewModel.onCameraRecordingStarted()
+                            } else if (event is VideoRecordEvent.Finalize) {
+                                if (!event.hasError()) {
+                                    viewModel.onCameraRecordingStopped()
+                                } else {
+                                    viewModel.onCameraRecordingError()
+                                }
+                                activeRecording = null
+                            }
+                        }
+
+                        activeRecording = if (isAudioMuted) {
+                            cameraController.startRecording(outputOptions, AudioConfig.AUDIO_DISABLED, executor, listener)
+                        } else {
+                            cameraController.startRecording(outputOptions, AudioConfig.create(true), executor, listener)
+                        }
+                    }
+                }
+            }
+        } else {
+            if (mode == RecordingMode.FACELESS) {
+                viewModel.stopFacelessRecording()
+            } else {
+                activeRecording?.stop()
+            }
+        }
+    }
+
+    // MediaPipe Gesture Recognizer Setup
+    val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
+    val gestureListener = remember(startRecordingAction, recordingState, isCountdownActive) {
+        object : GestureDetectorHelper.GestureListener {
+            override fun onPalmDetected() {
+                mainExecutor.execute {
+                    // Start recording only if idle and no countdown active
+                    if (recordingState == RecordingState.IDLE && !isCountdownActive) {
+                        startRecordingAction()
+                    }
+                }
+            }
+            override fun onError(error: String) {
+                // Silently ignore or log error
+            }
+        }
+    }
+
+    val backgroundExecutor = remember { Executors.newSingleThreadExecutor() }
+    var gestureHelper by remember { mutableStateOf<GestureDetectorHelper?>(null) }
+
+    LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
+        if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA) {
+            // Load the ML model on a background thread so it doesn't freeze the UI
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val helper = GestureDetectorHelper(context, gestureListener)
+                gestureHelper = helper
+                cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
+            }
+        } else {
+            cameraController.clearImageAnalysisAnalyzer()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                gestureHelper?.clearGestureRecognizer()
+                gestureHelper = null
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            cameraController.clearImageAnalysisAnalyzer()
+            val helperToClean = gestureHelper
+            backgroundExecutor.execute {
+                helperToClean?.clearGestureRecognizer()
+            }
+            backgroundExecutor.shutdown()
+        }
+    }
 
     // Lifecycle handling for backgrounding app during recording
     DisposableEffect(lifecycleOwner) {
@@ -161,8 +259,7 @@ fun SmartRecorderContent(
     }
 
     LaunchedEffect(finishedProjectId) {
-        if (finishedProjectId != null) {
-            val pId = finishedProjectId!!
+        finishedProjectId?.let { pId ->
             viewModel.resetState()
             onVideoReady(pId)
         }
@@ -208,15 +305,19 @@ fun SmartRecorderContent(
 
 
         if (showTeleprompter) {
-            TeleprompterOverlay(
-                text = teleprompterText,
-                onTextChanged = { viewModel.updateTeleprompterText(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.4f)
-                    .padding(horizontal = 32.dp, vertical = 80.dp) // Leave room for top bar
-                    .align(Alignment.TopCenter)
-            )
+            if (mode == RecordingMode.FACELESS) {
+                FacelessTeleprompterOverlay(
+                    text = teleprompterText,
+                    onTextChanged = { viewModel.updateTeleprompterText(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                TeleprompterOverlay(
+                    text = teleprompterText,
+                    onTextChanged = { viewModel.updateTeleprompterText(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
 
         if (isCountdownActive) {
@@ -334,6 +435,12 @@ fun SmartRecorderContent(
                     isActive = showGrid,
                     onClick = { viewModel.toggleGrid() }
                 )
+                SidebarButton(
+                    icon = Icons.Rounded.PanTool,
+                    text = "Palm",
+                    isActive = isGestureDetectionEnabled,
+                    onClick = { viewModel.toggleGestureDetection() }
+                )
             }
             if (recordingState == RecordingState.IDLE) {
                 val timerText = if (countdownTimer == 0) "Timer" else "${countdownTimer}s"
@@ -392,55 +499,7 @@ fun SmartRecorderContent(
             // Record Button
             RecordButton(
                 isRecording = recordingState == RecordingState.RECORDING,
-                onClick = {
-                    if (recordingState == RecordingState.IDLE) {
-                        if (mode == RecordingMode.FACELESS && !micGranted) {
-                            onRequestMic()
-                            return@RecordButton
-                        }
-                        if (mode == RecordingMode.CAMERA && !cameraGranted) {
-                            onRequestCamera()
-                            return@RecordButton
-                        }
-                        if (mode == RecordingMode.CAMERA && !isAudioMuted && !micGranted) {
-                            onRequestMic()
-                            return@RecordButton
-                        }
-                        
-                        viewModel.requestStartRecording {
-                            // Start CameraX
-                            viewModel.prepareCameraRecordingFile { file ->
-                                val outputOptions = FileOutputOptions.Builder(file).build()
-                                val executor = ContextCompat.getMainExecutor(context)
-                                
-                                val listener = Consumer<VideoRecordEvent> { event ->
-                                    if (event is VideoRecordEvent.Start) {
-                                        viewModel.onCameraRecordingStarted()
-                                    } else if (event is VideoRecordEvent.Finalize) {
-                                        if (!event.hasError()) {
-                                            viewModel.onCameraRecordingStopped()
-                                        } else {
-                                            viewModel.onCameraRecordingError()
-                                        }
-                                        activeRecording = null
-                                    }
-                                }
-
-                                activeRecording = if (isAudioMuted) {
-                                    cameraController.startRecording(outputOptions, AudioConfig.AUDIO_DISABLED, executor, listener)
-                                } else {
-                                    cameraController.startRecording(outputOptions, AudioConfig.create(true), executor, listener)
-                                }
-                            }
-                        }
-                    } else {
-                        if (mode == RecordingMode.FACELESS) {
-                            viewModel.stopFacelessRecording()
-                        } else {
-                            activeRecording?.stop()
-                        }
-                    }
-                }
+                onClick = startRecordingAction
             )
         }
     }

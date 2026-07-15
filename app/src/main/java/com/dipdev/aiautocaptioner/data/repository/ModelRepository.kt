@@ -211,6 +211,7 @@ class ModelRepository @Inject constructor(
                     val buffer = ByteArray(8192)
                     var bytesRead: Int
                     while (input.read(buffer).also { bytesRead = it } != -1) {
+                        kotlinx.coroutines.yield()
                         output.write(buffer, 0, bytesRead)
                         downloadedBytes += bytesRead
 

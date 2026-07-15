@@ -131,6 +131,11 @@ dependencies {
     implementation(libs.androidx.camera.view)
 
     // -------------------------------------------------------
+    // MediaPipe - Gesture Recognition
+    // -------------------------------------------------------
+    implementation(libs.mediapipe.tasks.vision)
+
+    // -------------------------------------------------------
     // Lifecycle + ViewModel
     // -------------------------------------------------------
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -2,12 +2,10 @@ package com.dipdev.aiautocaptioner.ui.recorder
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,59 +40,20 @@ fun GridOverlay() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TeleprompterOverlay(
-    text: String,
-    onTextChanged: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.Black.copy(alpha = 0.45f))
-            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
-            .padding(16.dp)
-    ) {
-        TextField(
-            value = text,
-            onValueChange = onTextChanged,
-            placeholder = { 
-                Text(
-                    "Paste your script here...", 
-                    color = Color.White.copy(alpha = 0.5f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) 
-            },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White.copy(alpha = 0.95f),
-                cursorColor = AccentCyan,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            textStyle = MaterialTheme.typography.headlineMedium.copy(
-                fontSize = 28.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 40.sp,
-                textAlign = TextAlign.Center,
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = Color.Black.copy(alpha = 0.8f),
-                    offset = Offset(2f, 2f),
-                    blurRadius = 4f
-                )
-            ),
-            modifier = Modifier.fillMaxSize()
-        )
-    }
-}
-
 @Composable
 fun AudioVisualizerOverlay(amplitude: Float) {
-    // Elegant, thin Siri-style waveform
+    // Elegant, thin Siri-style waveform with advanced diagnostics
+    
+    // Amplify the raw amplitude significantly since raw RMS on typical speech is very small
+    val safeAmplitude = if (amplitude.isNaN()) 0f else (amplitude * 15f).coerceIn(0f, 1f)
+    
+    // Determine color based on overall amplitude
+    val baseColor = when {
+        safeAmplitude > 0.85f -> Color.Red         // Clipping/Too Loud
+        safeAmplitude < 0.15f -> Color.Yellow      // Too Quiet
+        else -> AccentCyan                         // Perfect
+    }
+    
     Row(
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.Center,
@@ -104,9 +63,6 @@ fun AudioVisualizerOverlay(amplitude: Float) {
         for (i in 0 until barCount) {
             val distanceToCenter = Math.abs(i - barCount / 2).toFloat()
             val scaleFactor = 1f - (distanceToCenter / (barCount / 2f))
-
-            // Amplify the raw amplitude significantly since raw RMS on typical speech is very small
-            val safeAmplitude = if (amplitude.isNaN()) 0f else (amplitude * 15f).coerceIn(0f, 1f)
             
             // Generate some deterministic wave-like variations across the bars based on the amplitude
             val barAmp = safeAmplitude * scaleFactor * (0.6f + (Math.sin((safeAmplitude * 20f + i).toDouble()).toFloat() * 0.4f))
@@ -125,7 +81,7 @@ fun AudioVisualizerOverlay(amplitude: Float) {
                     .width(4.dp)
                     .height(animatedHeight.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.6f)) // Translucent white is less distracting
+                    .background(baseColor.copy(alpha = 0.8f)) 
             )
         }
     }

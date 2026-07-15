@@ -64,7 +64,8 @@ data class SmartRecorderState(
     val teleprompterText: String = "",
     val audioAmplitude: Float = 0f,
     val isCountdownActive: Boolean = false,
-    val countdownRemaining: Int = 0
+    val countdownRemaining: Int = 0,
+    val isGestureDetectionEnabled: Boolean = false
 ) : UiState
 
 @HiltViewModel
@@ -120,6 +121,7 @@ class SmartRecorderViewModel @Inject constructor(
     fun setCountdownTimer(seconds: Int) { setState { copy(countdownTimer = seconds) } }
     fun toggleTeleprompter() { setState { copy(showTeleprompter = !currentState.showTeleprompter) } }
     fun updateTeleprompterText(text: String) { setState { copy(teleprompterText = text) } }
+    fun toggleGestureDetection() { setState { copy(isGestureDetectionEnabled = !currentState.isGestureDetectionEnabled) } }
 
     fun requestStartRecording(onProceedToCameraX: () -> Unit) {
         if (currentState.recordingState != RecordingState.IDLE || currentState.isCountdownActive) return

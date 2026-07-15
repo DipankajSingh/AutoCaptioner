@@ -39,7 +39,6 @@ sealed class VideoEditorUiStep {
     data object Loading : VideoEditorUiStep()
     data class Ready(val durationMs: Long, val originalPath: String) : VideoEditorUiStep()
     data class Processing(val progress: Int) : VideoEditorUiStep()
-    data object Success : VideoEditorUiStep()
     data class Error(val message: String) : VideoEditorUiStep()
 }
 
@@ -65,7 +64,7 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class DeleteClip(val clipId: String) : VideoEditorUiEvent()
     data class DuplicateClip(val clipId: String) : VideoEditorUiEvent()
     data class MoveClip(val fromIndex: Int, val toIndex: Int) : VideoEditorUiEvent()
-    data object ApplyEdits : VideoEditorUiEvent()
+    data class ApplyEdits(val navigateToExport: Boolean = false) : VideoEditorUiEvent()
     data object Cancel : VideoEditorUiEvent()
     data object DeleteProject : VideoEditorUiEvent()
     data class SaveLanguage(val language: String, val translateToEnglish: Boolean) : VideoEditorUiEvent()
@@ -79,6 +78,8 @@ sealed class VideoEditorUiEvent : UiEvent {
 
 sealed class VideoEditorUiEffect : UiEffect {
     data object ProjectDeleted : VideoEditorUiEffect()
+    data object NavigateToProcessing : VideoEditorUiEffect()
+    data object NavigateToExport : VideoEditorUiEffect()
 }
 
 @HiltViewModel
@@ -183,7 +184,7 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.DeleteClip -> clipManager.deleteClip(event.clipId)
             is VideoEditorUiEvent.DuplicateClip -> clipManager.duplicateClip(event.clipId)
             is VideoEditorUiEvent.MoveClip -> clipManager.moveClip(event.fromIndex, event.toIndex)
-            is VideoEditorUiEvent.ApplyEdits -> applyEdits()
+            is VideoEditorUiEvent.ApplyEdits -> applyEdits(event.navigateToExport)
             is VideoEditorUiEvent.Cancel -> cancel()
             is VideoEditorUiEvent.DeleteProject -> deleteProject()
             is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
@@ -197,6 +198,7 @@ class EditorViewModel @Inject constructor(
     }
 
     private fun loadProject(projectId: String) {
+        if (currentProjectId == projectId && currentState.step !is VideoEditorUiStep.Error) return
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             setState { copy(step = VideoEditorUiStep.Loading) }
             currentProjectId = projectId
@@ -257,15 +259,17 @@ class EditorViewModel @Inject constructor(
         }
     }
 
-    private fun applyEdits() {
+    private fun applyEdits(navigateToExport: Boolean) {
         val projectId = currentProjectId ?: return
         val step = currentState.step as? VideoEditorUiStep.Ready ?: return
         
+        val targetEffect = if (navigateToExport) VideoEditorUiEffect.NavigateToExport else VideoEditorUiEffect.NavigateToProcessing
+
         if (!currentState.hasEdits) {
             // Bypass export since no edits were made
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
-                setState { copy(step = VideoEditorUiStep.Success) }
+                setEffect(targetEffect)
             }
             return
         }
@@ -289,7 +293,8 @@ class EditorViewModel @Inject constructor(
                     
                     projectRepository.updateWorkingVideoPath(projectId, permanentFile.absolutePath)
                     projectRepository.updateStatus(projectId, com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.READY_FOR_PROCESSING)
-                    setState { copy(step = VideoEditorUiStep.Success) }
+                    setState { copy(step = step) }
+                    setEffect(targetEffect)
                 }
             },
             onError = { error ->

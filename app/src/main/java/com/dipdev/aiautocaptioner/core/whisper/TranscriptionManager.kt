@@ -144,6 +144,8 @@ class TranscriptionManager @Inject constructor(
                         Log.e(TAG, "Failed to revert status", inner)
                     }
                 }
+            } finally {
+                whisperEngine.release()
             }
         }
     }
@@ -195,7 +197,7 @@ class TranscriptionManager @Inject constructor(
                 language = language,
                 translateToEnglish = translateToEnglish,
                 onProgress = { percent ->
-                    if (isCancelled) throw kotlinx.coroutines.CancellationException("Cancelled by user")
+                    if (isCancelled) return@transcribeWithWordTimestamps
                     val progressFraction = percent / 100f
                     val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs
                     val etaSecs: Int? = if (progressFraction > 0.05f) {
@@ -207,7 +209,7 @@ class TranscriptionManager @Inject constructor(
                     updateNotification("Transcribing video... ${percent}%")
                 },
                 onSegmentDecoded = { text, startMs, endMs ->
-                    if (isCancelled) throw kotlinx.coroutines.CancellationException("Cancelled by user")
+                    if (isCancelled) return@transcribeWithWordTimestamps
                     val trimmed = text.trim()
                     if (trimmed.isNotBlank() && !trimmed.startsWith("[")) {
                         _segmentBuffer.trySend(StreamedSegment(trimmed, startMs, endMs))
@@ -265,7 +267,6 @@ class TranscriptionManager @Inject constructor(
         activeJob?.cancel()
         activeJob = null
         managerScope.launch(Dispatchers.IO) {
-            whisperEngine.release()
             updateNotification(null)
             activeProjectId?.let { pid ->
                 val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()

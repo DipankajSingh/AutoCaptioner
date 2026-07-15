@@ -77,11 +77,16 @@ import kotlin.time.Duration.Companion.milliseconds
 fun CaptionEditorScreen(
     projectId: String,
     fromEditor: Boolean = false,
+    sharedPlayerViewModel: com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToExport: (String) -> Unit,
-    viewModel: CaptionEditorViewModel = hiltViewModel()
+    viewModel: CaptionEditorViewModel = hiltViewModel(),
+    processingViewModel: com.dipdev.aiautocaptioner.ui.processing.ProcessingViewModel = hiltViewModel()
 ) {
+    val processingUiState by processingViewModel.uiState.collectAsStateWithLifecycle()
+    val processingStep = processingUiState.step
+    
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val project = uiState.project
     val segments = uiState.segments
@@ -101,39 +106,39 @@ fun CaptionEditorScreen(
         viewModel.setEvent(CaptionEditorUiEvent.LoadProject(projectId))
     }
 
+    var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
+
     LaunchedEffect(retranscribeRequested) {
         if (retranscribeRequested) {
             viewModel.setEvent(CaptionEditorUiEvent.RetranscribeHandled)
-            onNavigateToProcessing(projectId)
+            showTranscriptionBottomSheet = true
+        }
+    }
+    
+    LaunchedEffect(processingStep) {
+        if (processingStep is com.dipdev.aiautocaptioner.ui.processing.ProcessingStep.Done) {
+            processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.ResetToIdle)
         }
     }
 
     val context = LocalContext.current
 
     val videoPath = project?.workingVideoPath
-    val player = remember(videoPath) {
-        if (videoPath != null) {
-            androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
-                setMediaItem(androidx.media3.common.MediaItem.fromUri(videoPath))
-                prepare()
-                playWhenReady = false
-            }
-        } else null
-    }
-
-    androidx.compose.runtime.DisposableEffect(player) {
-        onDispose {
-            player?.release()
+    val player by sharedPlayerViewModel.player.collectAsStateWithLifecycle()
+    
+    LaunchedEffect(videoPath) {
+        if (!videoPath.isNullOrEmpty()) {
+            sharedPlayerViewModel.initPlayer(videoPath)
         }
     }
 
     var currentPositionMs by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(player) {
-        if (player == null) return@LaunchedEffect
+        val currentPlayer = player ?: return@LaunchedEffect
         while (true) {
-            currentPositionMs = player.currentPosition
-            kotlinx.coroutines.delay(if (player.isPlaying) 100L else 500L)
+            currentPositionMs = currentPlayer.currentPosition
+            kotlinx.coroutines.delay(if (currentPlayer.isPlaying) 100L else 500L)
         }
     }
 
@@ -372,6 +377,36 @@ fun CaptionEditorScreen(
             }
         )
     }
+
+    if (showTranscriptionBottomSheet) {
+        LaunchedEffect(Unit) {
+            processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.PrepareForProject(projectId, forceModelPicker = true))
+        }
+        
+        com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionBottomSheet(
+            onDismiss = { showTranscriptionBottomSheet = false },
+            availableModels = processingUiState.availableModels,
+            initialModelId = processingUiState.activeModel?.id,
+            initialLanguage = processingUiState.selectedLanguage,
+            initialTranslate = processingUiState.translateToEnglish,
+            onStart = { modelId, lang, translate ->
+                showTranscriptionBottomSheet = false
+                processingViewModel.setEvent(
+                    com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.StartTranscriptionExplicit(
+                        projectId = projectId,
+                        modelId = modelId,
+                        language = lang,
+                        translateToEnglish = translate
+                    )
+                )
+            }
+        )
+    }
+
+    com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionOverlay(
+        step = processingStep,
+        onCancel = { processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel) }
+    )
 }
 
 @Composable

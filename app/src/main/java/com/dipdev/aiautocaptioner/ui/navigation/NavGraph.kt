@@ -30,6 +30,12 @@ fun NavGraph(
     // instead of hardcoded to splash
     startDestination: String = Screen.Onboarding.route
 ) {
+    val safePopBackStack: () -> Unit = {
+        if (navController.currentBackStackEntry?.lifecycle?.currentState == androidx.lifecycle.Lifecycle.State.RESUMED) {
+            navController.popBackStack()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -105,13 +111,13 @@ fun NavGraph(
         
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
         composable(Screen.ModelManager.route) {
             com.dipdev.aiautocaptioner.ui.modelmanager.ModelManagerScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
         
@@ -124,7 +130,7 @@ fun NavGraph(
             val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
             com.dipdev.aiautocaptioner.ui.exporthistory.ExportHistoryScreen(
                 projectId = projectId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
@@ -159,34 +165,10 @@ fun NavGraph(
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
-                onCancel = { navController.popBackStack() }
+                onCancel = { safePopBackStack() }
             )
         }
 
-        composable(
-            route = Screen.CaptionEditor.route,
-            arguments = listOf(
-                navArgument("projectId") { type = NavType.StringType },
-                navArgument("fromEditor") {
-                    type = NavType.BoolType
-                    defaultValue = false
-                }
-            )
-        ) { backStackEntry ->
-            val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
-            val fromEditor = backStackEntry.arguments?.getBoolean("fromEditor") ?: false
-            CaptionEditorScreen(
-                projectId = projectId,
-                fromEditor = fromEditor,
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToProcessing = { pid ->
-                    navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true, isRegenerating = true))
-                },
-                onNavigateToExport = { pid ->
-                    navController.navigate(Screen.Export.createRoute(pid))
-                }
-            )
-        }
 
         // ── Project Editor Graph ───────────────────────────────────────────────────
         // VideoEditor and StyleEditor share a single ExoPlayer via SharedPlayerViewModel,
@@ -208,7 +190,7 @@ fun NavGraph(
 
                 // Fix A: SharedPlayerViewModel scoped to the parent graph entry
                 val graphEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry(Screen.ProjectEditorGraph.createRoute(projectId))
+                    navController.getBackStackEntry(Screen.ProjectEditorGraph.route)
                 }
                 val sharedPlayerViewModel: SharedPlayerViewModel = hiltViewModel(graphEntry)
 
@@ -220,12 +202,44 @@ fun NavGraph(
                     },
                     onNavigateToCaptionEditor = {
                         navController.navigate(Screen.CaptionEditor.createRoute(projectId, fromEditor = true)) {
-                            popUpTo(Screen.VideoEditor.createRoute(projectId)) { inclusive = false }
+                            popUpTo(Screen.VideoEditor.route) { inclusive = false }
                         }
                     },
-                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateBack = { safePopBackStack() },
                     onNavigateToExport = {
                         navController.navigate(Screen.Export.createRoute(projectId))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.CaptionEditor.route,
+                arguments = listOf(
+                    navArgument("projectId") { type = NavType.StringType },
+                    navArgument("fromEditor") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    }
+                )
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: ""
+                val fromEditor = backStackEntry.arguments?.getBoolean("fromEditor") ?: false
+                
+                val graphEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Screen.ProjectEditorGraph.route)
+                }
+                val sharedPlayerViewModel: SharedPlayerViewModel = hiltViewModel(graphEntry)
+
+                CaptionEditorScreen(
+                    projectId = projectId,
+                    fromEditor = fromEditor,
+                    sharedPlayerViewModel = sharedPlayerViewModel,
+                    onNavigateBack = { safePopBackStack() },
+                    onNavigateToProcessing = { pid ->
+                        navController.navigate(Screen.Processing.createRoute(pid, forceModelPicker = true, isRegenerating = true))
+                    },
+                    onNavigateToExport = { pid ->
+                        navController.navigate(Screen.Export.createRoute(pid))
                     }
                 )
             }
@@ -241,7 +255,7 @@ fun NavGraph(
             
             com.dipdev.aiautocaptioner.ui.export.ExportScreen(
                 projectId = projectId,
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { safePopBackStack() },
                 onNavigateToHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(0) { inclusive = true }
@@ -257,7 +271,7 @@ fun NavGraph(
             )
         ) {
             SmartRecorderScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { safePopBackStack() },
                 onVideoReady = { projectId ->
                     navController.navigate(Screen.VideoEditor.createRoute(projectId)) {
                         popUpTo(Screen.SmartRecorder.route) { inclusive = true }
