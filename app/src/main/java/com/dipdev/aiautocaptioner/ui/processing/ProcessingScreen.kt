@@ -55,15 +55,11 @@ import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.processing.components.CancelProcessDialog
 import com.dipdev.aiautocaptioner.ui.processing.components.CancelledView
 import com.dipdev.aiautocaptioner.ui.processing.components.CancellingView
-import com.dipdev.aiautocaptioner.ui.processing.components.DownloadingStateView
 import com.dipdev.aiautocaptioner.ui.processing.components.ErrorView
-import com.dipdev.aiautocaptioner.ui.processing.components.ExtractingAudioView
-import com.dipdev.aiautocaptioner.ui.processing.components.LoadingModelView
 import com.dipdev.aiautocaptioner.ui.processing.components.ModelPickerCard
 import com.dipdev.aiautocaptioner.ui.processing.components.SafetyCheckDialogs
-import com.dipdev.aiautocaptioner.ui.processing.components.SavingView
-import com.dipdev.aiautocaptioner.ui.processing.components.TranscribingStateView
-
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.blur
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +91,7 @@ fun ProcessingScreen(
 
     val isProcessing = step is ProcessingStep.DownloadingModel ||
                        step is ProcessingStep.ExtractingAudio ||
+                       step is ProcessingStep.LoadingModel ||
                        step is ProcessingStep.Transcribing ||
                        step is ProcessingStep.Saving
 
@@ -115,155 +112,192 @@ fun ProcessingScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = { if (isProcessing) showCancelDialog = true else onCancel() },
-                modifier = Modifier.background(LocalAccentColor.current.copy(alpha = 0.15f), CircleShape)
-            ) {
-                Icon(imageVector = FeatherIcons.X, contentDescription = "Back to Home", tint = LocalAccentColor.current)
-            }
-            
-            if (!isProcessing) {
-                IconButton(
-                    onClick = onNavigateToVideoEditor,
-                    modifier = Modifier.background(LocalAccentColor.current.copy(alpha = 0.15f), CircleShape)
-                ) {
-                    Icon(imageVector = FeatherIcons.Edit2, contentDescription = "Edit the video", tint = LocalAccentColor.current)
-                }
-            } else {
-                Spacer(modifier = Modifier.size(48.dp))
-            }
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
+        // --- 1. Immersive Background ---
+        val videoUri = uiState.workingVideoPath
+        if (videoUri != null) {
+            coil3.compose.AsyncImage(
+                model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data(videoUri)
+                    .decoderFactory(coil3.video.VideoFrameDecoder.Factory())
+                    .build(),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(50.dp)
+            )
+            // Darken overlay for better text readability
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.65f))
+            )
+        } else {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            )
         }
 
-        AnimatedContent(
-            targetState = step,
-            transitionSpec = {
-                (fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.96f))
-                    .togetherWith(fadeOut(tween(300)))
-            },
-            contentKey = { it::class.simpleName },
-            label = "processing_step",
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
-        ) { currentStep ->
-            when (currentStep) {
-                // Idle / Loading — show nothing (splash screen holds)
-                is ProcessingStep.Idle -> {}
-
-                // SetupAI — model picker bottom sheet shown inline below
-                is ProcessingStep.SetupAI,
-                is ProcessingStep.Ready -> {
-                    // Empty body; SetupAI sheet is shown as a bottom sheet overlay
-                }
-                is ProcessingStep.DownloadingModel -> {
-                    DownloadingStateView(step = currentStep)
-                }
-                is ProcessingStep.ExtractingAudio -> {
-                    ExtractingAudioView(onCancel = { viewModel.setEvent(ProcessingUiEvent.Cancel) })
-                }
-                is ProcessingStep.LoadingModel -> {
-                    LoadingModelView()
-                }
-                is ProcessingStep.Transcribing -> {
-                    TranscribingStateView(
-                        step = currentStep,
-                        streamedSegments = streamedSegments,
-                        onCancel = { viewModel.setEvent(ProcessingUiEvent.Cancel) }
-                    )
-                }
-                is ProcessingStep.Saving -> {
-                    SavingView()
-                }
-                is ProcessingStep.Done -> {
-                    // Navigation handled by LaunchedEffect collecting uiEffect
-                }
-                is ProcessingStep.Cancelling -> {
-                    CancellingView()
-                }
-                is ProcessingStep.Cancelled -> {
-                    CancelledView(
-                        onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
-                        onGoBack = onCancel
-                    )
-                }
-                is ProcessingStep.Error -> {
-                    ErrorView(
-                        message = currentStep.message,
-                        onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
-                        onGoBack = onCancel
-                    )
-                }
-            }
-        }
-    }
-    // end Column
-
-    // SetupAI bottom sheet — shown when no model is downloaded yet
-    if (step is ProcessingStep.SetupAI) {
-        var selectedModelId by remember { mutableStateOf(step.recommendedModelId) }
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-        ModalBottomSheet(
-            onDismissRequest = onCancel,
-            sheetState = sheetState,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
-        ) {
-            Column(
+        // --- 2. Main Content Stack ---
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Top Bar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.75f)
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Choose your AI model",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                Text(
-                    text = "Required for transcription. Downloaded once, runs offline.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(bottom = 20.dp)
-                )
-
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+                IconButton(
+                    onClick = { if (isProcessing) showCancelDialog = true else onCancel() },
+                    modifier = Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape)
                 ) {
-                    items(step.models) { model ->
-                        ModelPickerCard(
-                            model = model,
-                            isRecommended = model.id == step.recommendedModelId,
-                            isSelected = model.id == selectedModelId,
-                            onClick = { selectedModelId = model.id }
-                        )
+                    Icon(imageVector = FeatherIcons.X, contentDescription = "Back", tint = Color.White)
+                }
+                
+                if (!isProcessing) {
+                    IconButton(
+                        onClick = onNavigateToVideoEditor,
+                        modifier = Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape)
+                    ) {
+                        Icon(imageVector = FeatherIcons.Edit2, contentDescription = "Edit the video", tint = Color.White)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                val selectedModel = step.models.find { it.id == selectedModelId }
-                val isDownloaded = selectedModel?.isDownloaded == true
-
-                GradientPrimaryButton(
-                    text = if (isDownloaded) "Generate Captions" else "Download & Generate",
-                    onClick = { selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) } },
-                    enabled = selectedModelId != null,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                )
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // --- 3. Dynamic Center Content ---
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = {
+                    (fadeIn(tween(500)) + scaleIn(tween(500), initialScale = 0.95f))
+                        .togetherWith(fadeOut(tween(300)))
+                },
+                contentKey = { it::class.simpleName },
+                label = "processing_step",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            ) { currentStep ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    when (currentStep) {
+                        is ProcessingStep.SetupAI -> {
+                            var selectedModelId by remember { mutableStateOf(currentStep.recommendedModelId) }
+                            
+                            Text(
+                                text = "Choose AI Accuracy",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text(
+                                text = "Downloaded once, runs fully offline.",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(bottom = 32.dp)
+                            )
+
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.heightIn(max = 300.dp)
+                            ) {
+                                items(currentStep.models) { model ->
+                                    ModelPickerCard(
+                                        model = model,
+                                        isRecommended = model.id == currentStep.recommendedModelId,
+                                        isSelected = model.id == selectedModelId,
+                                        onClick = { selectedModelId = model.id }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(32.dp))
+
+                            val selectedModel = currentStep.models.find { it.id == selectedModelId }
+                            val isDownloaded = selectedModel?.isDownloaded == true
+
+                            GradientPrimaryButton(
+                                text = if (isDownloaded) "Generate Captions" else "Download & Generate",
+                                onClick = { selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) } },
+                                enabled = selectedModelId != null,
+                                modifier = Modifier.fillMaxWidth().height(56.dp)
+                            )
+                        }
+
+                        is ProcessingStep.DownloadingModel -> {
+                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = currentStep.progress / 100f, modifier = Modifier.size(120.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text("Downloading AI Model...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("${currentStep.progress}%", fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
+                        }
+
+                        is ProcessingStep.ExtractingAudio -> {
+                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = 0f, modifier = Modifier.size(120.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text("Preparing your video...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("This may take a moment", fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
+                        }
+
+                        is ProcessingStep.LoadingModel -> {
+                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = 0.1f, modifier = Modifier.size(120.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text("Warming up the AI...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        is ProcessingStep.Transcribing -> {
+                            // Fake progress interpolation
+                            val rawProgress = currentStep.progress
+                            val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = rawProgress + 0.05f, // Slightly ahead
+                                animationSpec = tween(durationMillis = 30000, easing = androidx.compose.animation.core.LinearOutSlowInEasing), // Slow 30s crawl
+                                label = "transcriptionProgress"
+                            )
+                            
+                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = animatedProgress, modifier = Modifier.size(120.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text("Listening & typing...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            if (currentStep.estimatedSecondsRemaining != null) {
+                                val secs = currentStep.estimatedSecondsRemaining
+                                val timeText = if (secs >= 60) "~${secs / 60}m left" else "~${secs}s left"
+                                Text(timeText, fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
+                            }
+                        }
+
+                        is ProcessingStep.Saving -> {
+                            com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation(progress = 1f, modifier = Modifier.size(120.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text("Finalizing captions...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        is ProcessingStep.Cancelling -> {
+                            CancellingView()
+                        }
+                        is ProcessingStep.Cancelled -> {
+                            CancelledView(
+                                onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
+                                onGoBack = onCancel
+                            )
+                        }
+                        is ProcessingStep.Error -> {
+                            ErrorView(
+                                message = currentStep.message,
+                                onRetry = { viewModel.setEvent(ProcessingUiEvent.StartProcessing(projectId)) },
+                                onGoBack = onCancel
+                            )
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1.5f))
         }
     }
 

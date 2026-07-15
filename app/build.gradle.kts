@@ -184,6 +184,7 @@ dependencies {
     // Coil — thumbnail image loading
     // -------------------------------------------------------
     implementation(libs.coil.compose)
+    implementation("io.coil-kt.coil3:coil-video:3.5.0")
 
     // -------------------------------------------------------
     // Splash Screen

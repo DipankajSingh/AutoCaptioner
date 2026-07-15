@@ -249,6 +249,8 @@ fun EditorScreen(
                                     onDeleteProject = { viewModel.setEvent(VideoEditorUiEvent.DeleteProject) },
                                     onShowDeleteDialog = { showDeleteDialog = true },
                                     onNavigateToProcessing = onNavigateToProcessing,
+                                    hasCaptions = styleUiState.segments.isNotEmpty(),
+                                    onNavigateToCaptionEditor = onNavigateToCaptionEditor,
                                     selectedLanguage = selectedLanguage,
                                     translateToEnglish = translateToEnglish,
                                     onLanguageSelected = { lang, trans ->

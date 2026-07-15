@@ -38,6 +38,8 @@ fun LeftSideControls(
     onDeleteProject: () -> Unit,
     onShowDeleteDialog: () -> Unit,
     onNavigateToProcessing: () -> Unit,
+    hasCaptions: Boolean,
+    onNavigateToCaptionEditor: () -> Unit,
     selectedLanguage: String,
     translateToEnglish: Boolean,
     onLanguageSelected: (String, Boolean) -> Unit,
@@ -45,6 +47,7 @@ fun LeftSideControls(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showLanguagePanel by remember { mutableStateOf(false) }
+    var showCollisionDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier.padding(top = 16.dp, start = 12.dp),
@@ -84,9 +87,27 @@ fun LeftSideControls(
             icon = Icons.Rounded.ClosedCaption,
             contentDescription = "Generate Captions", // Replace with stringResource
             onClick = {
-                onNavigateToProcessing()
+                if (hasCaptions) {
+                    showCollisionDialog = true
+                } else {
+                    onNavigateToProcessing()
+                }
             }
         )
+
+        if (showCollisionDialog) {
+            CaptionCollisionDialog(
+                onDismiss = { showCollisionDialog = false },
+                onEdit = {
+                    showCollisionDialog = false
+                    onNavigateToCaptionEditor()
+                },
+                onRegenerate = {
+                    showCollisionDialog = false
+                    onNavigateToProcessing()
+                }
+            )
+        }
 
         LanguageSelector(
             expanded = showLanguagePanel,
@@ -195,6 +216,33 @@ fun SideControlButton(
             modifier = Modifier.size(24.dp)
         )
     }
+}
+
+@Composable
+fun CaptionCollisionDialog(
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onRegenerate: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Captions Exist")
+        },
+        text = {
+            Text("Captions have already been generated for this video. Do you want to edit them, or regenerate with a different AI model?")
+        },
+        confirmButton = {
+            Button(onClick = onRegenerate) {
+                Text("Regenerate")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onEdit) {
+                Text("Edit Captions")
+            }
+        }
+    )
 }
 
 // ---------------------------------------------------------------------------
