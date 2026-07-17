@@ -6,27 +6,6 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 
-// ---------------------------------------------------------------------------
-// TimelineDragGestures.kt
-//
-// Reusable Modifier extensions that encode the gesture models used by
-// timeline track items.
-//
-//  1. timelineMoveGesture   – long-press then drag to reposition a clip in
-//                             free-floating tracks (image overlay, text, audio).
-//                             Reports accumulated-pixel→ms deltas.
-//
-//  2. timelineTrimGesture   – immediate drag to extend or shrink one edge of a
-//                             clip (left/right trim handles on every track).
-//
-//  3. timelineClipSwapGesture - long-press then drag to swap video clips.
-//                               Reports screen-X to the parent for auto-scroll
-//                               and collision detection.
-//
-//  4. timelineLayerReorderGesture - immediate vertical drag on track headers
-//                                   to reorder layers (Z-index).
-// ---------------------------------------------------------------------------
-
 /**
  * Attaches a **long-press → drag** gesture that lets the user reposition a
  * free-floating timeline clip (e.g. image overlay, future text/audio track).
@@ -34,11 +13,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 fun Modifier.timelineMoveGesture(
     key1: Any,
     key2: Any = Unit,
-    pixelsPerMs: Float,
-    startTimeMs: Long,
-    endTimeMs: Long,
-    totalDurationMs: Long,
-    scrollStateValue: Int,
+    pixelsPerMs: () -> Float,
+    startTimeMs: () -> Long,
+    endTimeMs: () -> Long,
+    totalDurationMs: () -> Long,
+    scrollStateValue: () -> Int,
     onDragStart: () -> Unit = {},
     onDragPointerStart: (screenX: Float) -> Unit,
     onDragPointerChange: (deltaX: Float) -> Unit,
@@ -50,13 +29,14 @@ fun Modifier.timelineMoveGesture(
     var currentEndMs = 0L
 
     detectDragGesturesAfterLongPress(
-        onDragStart = {
-            currentStartMs = startTimeMs
-            currentEndMs = endTimeMs
+        onDragStart = { offset ->
+            currentStartMs = startTimeMs()
+            currentEndMs = endTimeMs()
             accumulatedPx = 0f
 
-            val centerScreenX = ((currentStartMs + currentEndMs) / 2f * pixelsPerMs) - scrollStateValue
-            onDragPointerStart(centerScreenX)
+            // Calculate exact touch point based on current physical position
+            val absoluteScreenX = offset.x + (currentStartMs * pixelsPerMs()) - scrollStateValue()
+            onDragPointerStart(absoluteScreenX)
             onDragStart()
         },
         onDrag = { change, dragAmount ->
@@ -64,12 +44,13 @@ fun Modifier.timelineMoveGesture(
             onDragPointerChange(dragAmount.x)
 
             accumulatedPx += dragAmount.x
-            val deltaMs = (accumulatedPx / pixelsPerMs).toLong()
+            val ppms = pixelsPerMs()
+            val deltaMs = (accumulatedPx / ppms).toLong()
             if (deltaMs != 0L) {
-                accumulatedPx -= deltaMs * pixelsPerMs
+                accumulatedPx -= deltaMs * ppms
 
                 val duration = currentEndMs - currentStartMs
-                val newStart = (currentStartMs + deltaMs).coerceIn(0L, totalDurationMs - duration)
+                val newStart = (currentStartMs + deltaMs).coerceIn(0L, totalDurationMs() - duration)
                 if (newStart != currentStartMs) {
                     currentStartMs = newStart
                     currentEndMs = newStart + duration
@@ -88,11 +69,11 @@ fun Modifier.timelineMoveGesture(
 fun Modifier.timelineTrimGesture(
     key1: Any,
     key2: Any = Unit,
-    pixelsPerMs: Float,
-    currentEdgeMs: Long,
-    minEdgeMs: Long,
-    maxEdgeMs: Long,
-    scrollStateValue: Int,
+    pixelsPerMs: () -> Float,
+    currentEdgeMs: () -> Long,
+    minEdgeMs: () -> Long,
+    maxEdgeMs: () -> Long,
+    scrollStateValue: () -> Int,
     onDragStart: () -> Unit = {},
     onDragPointerStart: (screenX: Float) -> Unit,
     onDragPointerChange: (deltaX: Float) -> Unit,
@@ -103,11 +84,11 @@ fun Modifier.timelineTrimGesture(
     var edgeMs = 0L
 
     detectDragGestures(
-        onDragStart = {
-            edgeMs = currentEdgeMs
+        onDragStart = { offset ->
+            edgeMs = currentEdgeMs()
             accumulatedPx = 0f
 
-            val edgeScreenX = edgeMs * pixelsPerMs - scrollStateValue
+            val edgeScreenX = offset.x + (edgeMs * pixelsPerMs()) - scrollStateValue()
             onDragPointerStart(edgeScreenX)
             onDragStart()
         },
@@ -116,11 +97,12 @@ fun Modifier.timelineTrimGesture(
             onDragPointerChange(dragAmount.x)
 
             accumulatedPx += dragAmount.x
-            val deltaMs = (accumulatedPx / pixelsPerMs).toLong()
+            val ppms = pixelsPerMs()
+            val deltaMs = (accumulatedPx / ppms).toLong()
             if (deltaMs != 0L) {
-                accumulatedPx -= deltaMs * pixelsPerMs
+                accumulatedPx -= deltaMs * ppms
 
-                val newEdge = (edgeMs + deltaMs).coerceIn(minEdgeMs, maxEdgeMs)
+                val newEdge = (edgeMs + deltaMs).coerceIn(minEdgeMs(), maxEdgeMs())
                 if (newEdge != edgeMs) {
                     edgeMs = newEdge
                     onEdgeChange(edgeMs)
@@ -148,7 +130,7 @@ fun Modifier.timelineClipSwapGesture(
     onDragEnd: () -> Unit,
 ): Modifier = this.pointerInput(key1, key2) {
     detectDragGesturesAfterLongPress(
-        onDragStart = {
+        onDragStart = { offset ->
             onDragStart()
             onDragPointerStart(clipCenterPx - scrollStateValue)
         },

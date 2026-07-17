@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -71,7 +72,8 @@ fun VideoTimelinePanel(
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     // Fix 6: pinch-to-zoom callback — called with the cumulative pinch scale factor
-    onPinchZoom: (scale: Float) -> Unit = {},
+    onPinchZoom: (scale: Float) -> Unit = {
+},
     segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
     selectedCaptionSegmentId: String? = null,
     onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
@@ -79,6 +81,7 @@ fun VideoTimelinePanel(
 ) {
     val density = LocalDensity.current
     val currentTimelineHeight by androidx.compose.runtime.rememberUpdatedState(timelineHeight)
+    val updatedOverlays by rememberUpdatedState(overlays)
 
     Box(
         modifier = modifier
@@ -129,7 +132,7 @@ fun VideoTimelinePanel(
                     selectedOverlayId = selectedOverlayId,
                     onOverlaySelected = onOverlaySelected,
                     onOverlayTimingChanged = { id, startMs, endMs ->
-                        val overlay = overlays.find { it.id == id } ?: return@TimelineView
+                        val overlay = updatedOverlays.find { it.id == id } ?: return@TimelineView
                         onUpdateOverlay(overlay.copy(startTimeMs = startMs, endTimeMs = endMs))
                     },
                     onCaptionTap = onCaptionTap,
@@ -140,7 +143,7 @@ fun VideoTimelinePanel(
                     onTrimClip = onTrimClip,
                     // Fix 17: was silently dropped — onMoveOverlayZ was accepted but never forwarded
                     onMoveOverlayZ = { id, bringToFront ->
-                        val overlay = overlays.find { it.id == id } ?: return@TimelineView
+                        val overlay = updatedOverlays.find { it.id == id } ?: return@TimelineView
                         onMoveOverlayZ(id, bringToFront)
                     },
                     segments = segments,

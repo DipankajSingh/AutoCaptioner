@@ -116,6 +116,9 @@ fun VideoClipItem(
 ) {
     val density = LocalDensity.current
     val updatedClip by rememberUpdatedState(clip)
+    val updatedPixelsPerMs by rememberUpdatedState(pixelsPerMs)
+    val updatedScrollStateValue by rememberUpdatedState(scrollStateValue)
+    val updatedOriginalDurationMs by rememberUpdatedState(originalDurationMs)
     
     Box(
         modifier = Modifier
@@ -226,11 +229,11 @@ fun VideoClipItem(
                     .timelineTrimGesture(
                         key1 = clip.id,
                         key2 = "left",
-                        pixelsPerMs      = pixelsPerMs,
-                        currentEdgeMs    = clip.startTrimMs,
-                        minEdgeMs        = 0L,
-                        maxEdgeMs        = updatedClip.endTrimMs - 100L,
-                        scrollStateValue = scrollStateValue,
+                        pixelsPerMs      = { updatedPixelsPerMs },
+                        currentEdgeMs    = { updatedClip.startTrimMs },
+                        minEdgeMs        = { 0L },
+                        maxEdgeMs        = { updatedClip.endTrimMs - 100L },
+                        scrollStateValue = { updatedScrollStateValue },
                         onDragStart  = { onDragStateChange(true) },
                         // Video trim handles report no pointer to the parent edge-scroll loop
                         // (that loop only runs during swap-drags, not trim).
@@ -253,11 +256,11 @@ fun VideoClipItem(
                     .timelineTrimGesture(
                         key1 = clip.id,
                         key2 = "right",
-                        pixelsPerMs      = pixelsPerMs,
-                        currentEdgeMs    = clip.endTrimMs,
-                        minEdgeMs        = updatedClip.startTrimMs + 100L,
-                        maxEdgeMs        = originalDurationMs,
-                        scrollStateValue = scrollStateValue,
+                        pixelsPerMs      = { updatedPixelsPerMs },
+                        currentEdgeMs    = { updatedClip.endTrimMs },
+                        minEdgeMs        = { updatedClip.startTrimMs + 100L },
+                        maxEdgeMs        = { updatedOriginalDurationMs },
+                        scrollStateValue = { updatedScrollStateValue },
                         onDragStart  = { onDragStateChange(true) },
                         onDragPointerStart  = {},
                         onDragPointerChange = {},
