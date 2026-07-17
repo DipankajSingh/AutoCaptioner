@@ -65,32 +65,39 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import java.io.File
 import java.util.concurrent.Executors
 import kotlin.random.Random
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.Dispatchers
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SmartRecorderScreen(
     onNavigateBack: () -> Unit,
     onVideoReady: (String) -> Unit,
     viewModel: SmartRecorderViewModel = hiltViewModel()
 ) {
-    val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
-    val micPermissionState = rememberPermissionState(android.Manifest.permission.RECORD_AUDIO)
     val context = LocalContext.current
+    var cameraGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
+    var micGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        cameraGranted = granted
+    }
+    val micLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        micGranted = granted
+    }
 
     SmartRecorderContent(
         onNavigateBack = onNavigateBack,
         onVideoReady = onVideoReady,
         viewModel = viewModel,
-        cameraGranted = cameraPermissionState.status.isGranted,
-        micGranted = micPermissionState.status.isGranted,
-        onRequestCamera = { cameraPermissionState.launchPermissionRequest() },
-        onRequestMic = { micPermissionState.launchPermissionRequest() },
+        cameraGranted = cameraGranted,
+        micGranted = micGranted,
+        onRequestCamera = { cameraLauncher.launch(android.Manifest.permission.CAMERA) },
+        onRequestMic = { micLauncher.launch(android.Manifest.permission.RECORD_AUDIO) },
         onOpenSettings = {
             val intent = android.content.Intent(
                 android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -190,15 +197,19 @@ fun SmartRecorderContent(
         }
     }
 
+    val currentStartAction by rememberUpdatedState(startRecordingAction)
+    val currentRecordingState by rememberUpdatedState(recordingState)
+    val currentIsCountdownActive by rememberUpdatedState(isCountdownActive)
+
     // MediaPipe Gesture Recognizer Setup
     val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
-    val gestureListener = remember(startRecordingAction, recordingState, isCountdownActive) {
+    val gestureListener = remember {
         object : GestureDetectorHelper.GestureListener {
             override fun onPalmDetected() {
                 mainExecutor.execute {
                     // Start recording only if idle and no countdown active
-                    if (recordingState == RecordingState.IDLE && !isCountdownActive) {
-                        startRecordingAction()
+                    if (currentRecordingState == RecordingState.IDLE && !currentIsCountdownActive) {
+                        currentStartAction()
                     }
                 }
             }
@@ -208,7 +219,7 @@ fun SmartRecorderContent(
         }
     }
 
-    val backgroundExecutor = remember { Executors.newSingleThreadExecutor() }
+    val backgroundExecutor = remember { Dispatchers.Default.asExecutor() }
     var gestureHelper by remember { mutableStateOf<GestureDetectorHelper?>(null) }
 
     LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
@@ -235,7 +246,6 @@ fun SmartRecorderContent(
             backgroundExecutor.execute {
                 helperToClean?.clearGestureRecognizer()
             }
-            backgroundExecutor.shutdown()
         }
     }
 

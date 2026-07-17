@@ -24,6 +24,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 class FacelessVideoRecorder {
 
@@ -116,7 +118,7 @@ class FacelessVideoRecorder {
             audioRecord?.startRecording()
 
             // Start threads
-            videoJob = scope.launch { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
+            videoJob = scope.launch(Dispatchers.IO) { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
             videoEncoderJob = scope.launch { videoEncodeLoop() }
             audioJob = scope.launch { audioEncodeLoop() }
 
@@ -136,14 +138,16 @@ class FacelessVideoRecorder {
             withTimeoutOrNull(2000) { videoEncoderJob?.join() }
             withTimeoutOrNull(2000) { audioJob?.join() }
 
+            videoJob?.cancel()
+            videoEncoderJob?.cancel()
+            audioJob?.cancel()
+
             releaseResources()
             outputFile?.let { onCompleteCallback?.invoke(it) }
-            
-            scope.cancel() // Cancel the scope
         }
     }
 
-    private fun videoDrawLoop(bitmap: Bitmap?, color: Int?, gradientColors: List<Int>?, scale: Float = 1f, offsetX: Float = 0f, offsetY: Float = 0f) {
+    private suspend fun videoDrawLoop(bitmap: Bitmap?, color: Int?, gradientColors: List<Int>?, scale: Float = 1f, offsetX: Float = 0f, offsetY: Float = 0f) {
         val frameDurationMs = 1000L / VIDEO_FPS
         val rect = android.graphics.Rect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT)
         var frameCount = 0L
@@ -197,7 +201,7 @@ class FacelessVideoRecorder {
                 val elapsed = System.currentTimeMillis() - startTime
                 val sleepTime = frameDurationMs - elapsed
                 if (sleepTime > 0) {
-                    Thread.sleep(sleepTime)
+                    delay(sleepTime)
                 }
                 frameCount++
             }

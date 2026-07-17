@@ -47,29 +47,7 @@ sealed interface StyleEditorUiEvent : UiEvent {
     data class LoadStyles(val projectId: String) : StyleEditorUiEvent
     data class SelectPreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
     data class SelectTab(val tab: StyleTab) : StyleEditorUiEvent
-    data class UpdateFontSize(val size: Float) : StyleEditorUiEvent
-    data class UpdateFontWeight(val weight: Int) : StyleEditorUiEvent
-    data class UpdateTextColor(val color: Long) : StyleEditorUiEvent
-    data class UpdateHighlightColor(val color: Long) : StyleEditorUiEvent
-    data class UpdateOutlineWidth(val width: Float) : StyleEditorUiEvent
-    data class UpdateOutlineColor(val color: Long) : StyleEditorUiEvent
-    data class UpdateBackgroundType(val type: BackgroundType) : StyleEditorUiEvent
-    data class UpdateBackgroundColor(val color: Long) : StyleEditorUiEvent
-    data class UpdateBackgroundOpacity(val opacity: Float) : StyleEditorUiEvent
-    data class UpdateDisplayMode(val mode: DisplayMode) : StyleEditorUiEvent
-    data class UpdateWordEnterAnimation(val anim: AnimationType) : StyleEditorUiEvent
-    data class UpdateKaraokeHighlightMode(val mode: KaraokeHighlightMode) : StyleEditorUiEvent
-    data class UpdatePositionY(val y: Float) : StyleEditorUiEvent
-    data class UpdateAlignment(val alignment: TextAlignment) : StyleEditorUiEvent
-    data class UpdateMaxWordsPerLine(val count: Int) : StyleEditorUiEvent
-    data class UpdateMaxLines(val count: Int) : StyleEditorUiEvent
-    data class UpdateRemovePunctuation(val remove: Boolean) : StyleEditorUiEvent
-    data class UpdateBackgroundPaddingH(val v: Float) : StyleEditorUiEvent
-    data class UpdateBackgroundPaddingV(val v: Float) : StyleEditorUiEvent
-    data class UpdateBackgroundCornerRadius(val v: Float) : StyleEditorUiEvent
-    data class UpdateAnimationDurationMs(val v: Int) : StyleEditorUiEvent
-    data class UpdateLetterSpacing(val v: Float) : StyleEditorUiEvent
-    data class UpdateIsItalic(val v: Boolean) : StyleEditorUiEvent
+    data class UpdateStyle(val propertyName: String, val transform: (CaptionStyleEntity) -> CaptionStyleEntity) : StyleEditorUiEvent
     data class SaveAndApply(val projectId: String) : StyleEditorUiEvent
     data class SaveAsNewPreset(val presetName: String) : StyleEditorUiEvent
     data class DeletePreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
@@ -105,29 +83,7 @@ class StyleViewModel @Inject constructor(
             is StyleEditorUiEvent.LoadStyles -> loadStyles(event.projectId)
             is StyleEditorUiEvent.SelectPreset -> selectPreset(event.style)
             is StyleEditorUiEvent.SelectTab -> selectTab(event.tab)
-            is StyleEditorUiEvent.UpdateFontSize -> updateFontSize(event.size)
-            is StyleEditorUiEvent.UpdateFontWeight -> updateFontWeight(event.weight)
-            is StyleEditorUiEvent.UpdateTextColor -> updateTextColor(event.color)
-            is StyleEditorUiEvent.UpdateHighlightColor -> updateHighlightColor(event.color)
-            is StyleEditorUiEvent.UpdateOutlineWidth -> updateOutlineWidth(event.width)
-            is StyleEditorUiEvent.UpdateOutlineColor -> updateOutlineColor(event.color)
-            is StyleEditorUiEvent.UpdateBackgroundType -> updateBackgroundType(event.type)
-            is StyleEditorUiEvent.UpdateBackgroundColor -> updateBackgroundColor(event.color)
-            is StyleEditorUiEvent.UpdateBackgroundOpacity -> updateBackgroundOpacity(event.opacity)
-            is StyleEditorUiEvent.UpdateDisplayMode -> updateDisplayMode(event.mode)
-            is StyleEditorUiEvent.UpdateWordEnterAnimation -> updateWordEnterAnimation(event.anim)
-            is StyleEditorUiEvent.UpdateKaraokeHighlightMode -> updateKaraokeHighlightMode(event.mode)
-            is StyleEditorUiEvent.UpdatePositionY -> updatePositionY(event.y)
-            is StyleEditorUiEvent.UpdateAlignment -> updateAlignment(event.alignment)
-            is StyleEditorUiEvent.UpdateMaxWordsPerLine -> updateMaxWordsPerLine(event.count)
-            is StyleEditorUiEvent.UpdateMaxLines -> updateMaxLines(event.count)
-            is StyleEditorUiEvent.UpdateRemovePunctuation -> updateRemovePunctuation(event.remove)
-            is StyleEditorUiEvent.UpdateBackgroundPaddingH -> updateBackgroundPaddingH(event.v)
-            is StyleEditorUiEvent.UpdateBackgroundPaddingV -> updateBackgroundPaddingV(event.v)
-            is StyleEditorUiEvent.UpdateBackgroundCornerRadius -> updateBackgroundCornerRadius(event.v)
-            is StyleEditorUiEvent.UpdateAnimationDurationMs -> updateAnimationDurationMs(event.v)
-            is StyleEditorUiEvent.UpdateLetterSpacing -> updateLetterSpacing(event.v)
-            is StyleEditorUiEvent.UpdateIsItalic -> updateIsItalic(event.v)
+            is StyleEditorUiEvent.UpdateStyle -> updateStyle(event.propertyName, event.transform)
             is StyleEditorUiEvent.SaveAndApply -> saveAndApply(event.projectId)
             is StyleEditorUiEvent.SaveAsNewPreset -> saveAsNewPreset(event.presetName)
             is StyleEditorUiEvent.DeletePreset -> deletePreset(event.style)
@@ -304,107 +260,24 @@ class StyleViewModel @Inject constructor(
         setState { copy(selectedTab = tab) }
     }
 
-    private fun updateFontSize(size: Float) {
-        pushState("fontSize")
-        setState { copy(activeStyle = activeStyle?.copy(fontSize = size)) }
-    }
-
-    private fun updateFontWeight(weight: Int) {
-        pushState("fontWeight")
-        setState { copy(activeStyle = activeStyle?.copy(fontWeight = weight)) }
-    }
-
-    private fun updateTextColor(color: Long) {
-        pushState("textColor")
-        setState { copy(activeStyle = activeStyle?.copy(textColor = color)) }
-    }
-
-    private fun updateHighlightColor(color: Long) {
-        pushState("highlightColor")
-        setState { copy(activeStyle = activeStyle?.copy(highlightColor = color)) }
-    }
-
-    private fun updateOutlineWidth(width: Float) {
-        pushState("outlineWidth")
-        setState { copy(activeStyle = activeStyle?.copy(outlineWidth = width)) }
-    }
-
-    private fun updateOutlineColor(color: Long) {
-        pushState("outlineColor")
-        setState { copy(activeStyle = activeStyle?.copy(outlineColor = color)) }
-    }
-
-    private fun updateBackgroundType(type: BackgroundType) {
-        pushState("backgroundType")
-        setState { copy(activeStyle = activeStyle?.copy(backgroundType = type)) }
-    }
-
-    private fun updateBackgroundColor(color: Long) {
-        pushState("backgroundColor")
-        setState { copy(activeStyle = activeStyle?.copy(backgroundColor = color)) }
-    }
-
-    private fun updateBackgroundOpacity(opacity: Float) {
-        pushState("backgroundOpacity")
-        setState { copy(activeStyle = activeStyle?.copy(backgroundOpacity = opacity)) }
-    }
-
-    private fun updateDisplayMode(mode: DisplayMode) {
-        pushState("displayMode")
-        var style = uiState.value.activeStyle?.copy(displayMode = mode) ?: return
-        if (mode == DisplayMode.KARAOKE_FILL || mode == DisplayMode.PHRASE) {
-            style = style.copy(
-                wordEnterAnimation = AnimationType.NONE,
-                wordExitAnimation = AnimationType.NONE
-            )
+    private fun updateStyle(propertyName: String, transform: (CaptionStyleEntity) -> CaptionStyleEntity) {
+        pushState(propertyName)
+        var style = uiState.value.activeStyle?.let(transform) ?: return
+        
+        if (propertyName == "displayMode") {
+            if (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.PHRASE) {
+                style = style.copy(
+                    wordEnterAnimation = AnimationType.NONE,
+                    wordExitAnimation = AnimationType.NONE
+                )
+            }
+            if (style.displayMode == DisplayMode.TYPEWRITER) {
+                style = style.copy(wordEnterAnimation = AnimationType.TYPEWRITER)
+            }
         }
-        if (mode == DisplayMode.TYPEWRITER) {
-            style = style.copy(wordEnterAnimation = AnimationType.TYPEWRITER)
-        }
+        
         setState { copy(activeStyle = style) }
     }
-
-    private fun updateWordEnterAnimation(anim: AnimationType) {
-        pushState("wordEnterAnimation")
-        setState { copy(activeStyle = activeStyle?.copy(wordEnterAnimation = anim)) }
-    }
-
-    private fun updateKaraokeHighlightMode(mode: KaraokeHighlightMode) {
-        pushState("karaokeHighlightMode")
-        setState { copy(activeStyle = activeStyle?.copy(karaokeHighlightMode = mode)) }
-    }
-
-    private fun updatePositionY(y: Float) {
-        pushState("positionY")
-        setState { copy(activeStyle = activeStyle?.copy(positionY = y)) }
-    }
-
-    private fun updateAlignment(alignment: TextAlignment) {
-        pushState("alignment")
-        setState { copy(activeStyle = activeStyle?.copy(alignment = alignment)) }
-    }
-
-    private fun updateMaxWordsPerLine(count: Int) {
-        pushState("maxWordsPerLine")
-        setState { copy(activeStyle = activeStyle?.copy(maxWordsPerLine = count)) }
-    }
-
-    private fun updateMaxLines(count: Int) {
-        pushState("maxLines")
-        setState { copy(activeStyle = activeStyle?.copy(maxLines = count)) }
-    }
-
-    private fun updateRemovePunctuation(remove: Boolean) {
-        pushState("removePunctuation")
-        setState { copy(activeStyle = activeStyle?.copy(removePunctuation = remove)) }
-    }
-
-    private fun updateBackgroundPaddingH(v: Float) { pushState("backgroundPaddingH"); setState { copy(activeStyle = activeStyle?.copy(backgroundPaddingH = v)) } }
-    private fun updateBackgroundPaddingV(v: Float) { pushState("backgroundPaddingV"); setState { copy(activeStyle = activeStyle?.copy(backgroundPaddingV = v)) } }
-    private fun updateBackgroundCornerRadius(v: Float) { pushState("backgroundCornerRadius"); setState { copy(activeStyle = activeStyle?.copy(backgroundCornerRadius = v)) } }
-    private fun updateAnimationDurationMs(v: Int) { pushState("animationDurationMs"); setState { copy(activeStyle = activeStyle?.copy(animationDurationMs = v)) } }
-    private fun updateLetterSpacing(v: Float) { pushState("letterSpacing"); setState { copy(activeStyle = activeStyle?.copy(letterSpacing = v)) } }
-    private fun updateIsItalic(v: Boolean) { pushState("isItalic"); setState { copy(activeStyle = activeStyle?.copy(isItalic = v)) } }
 
     private fun saveAndApply(projectId: String) {
         viewModelScope.launch {

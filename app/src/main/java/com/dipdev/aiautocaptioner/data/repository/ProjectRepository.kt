@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
+import com.dipdev.aiautocaptioner.core.media.MediaProcessor
+import com.dipdev.aiautocaptioner.core.storage.FileStorageManager
 import com.dipdev.aiautocaptioner.data.db.dao.ProjectDao
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
@@ -28,7 +30,9 @@ class ProjectRepository @Inject constructor(
     private val projectDao: ProjectDao,
     private val db: AppDatabase,
     @ApplicationContext private val context: Context,
-    private val crashReporter: CrashReporter
+    private val crashReporter: CrashReporter,
+    private val mediaProcessor: MediaProcessor,
+    private val fileStorageManager: FileStorageManager
 ) {
 
     companion object {
@@ -55,47 +59,12 @@ class ProjectRepository @Inject constructor(
     suspend fun importVideo(videoUri: Uri, creationMode: com.dipdev.aiautocaptioner.data.db.entity.CreationMode = com.dipdev.aiautocaptioner.data.db.entity.CreationMode.ADVANCED): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
-                // Step 1 — Read video metadata using MediaMetadataRetriever
-                val retriever = MediaMetadataRetriever()
-                val durationMs: Long
-                val width: Int
-                val height: Int
-                val rotation: Int
-                val fps: Float
-                val fileName: String?
-
-                try {
-                    retriever.setDataSource(context, videoUri)
-
-                    durationMs = retriever
-                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                        ?.toLongOrNull() ?: 0L
-
-                    width = retriever
-                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                        ?.toIntOrNull() ?: 0
-
-                    height = retriever
-                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                        ?.toIntOrNull() ?: 0
-
-                    rotation = retriever
-                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-                        ?.toIntOrNull() ?: 0
-
-                    val fpsString = retriever
-                        .extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
-                    fps = parseFps(fpsString) ?: 30f
-
-                    fileName = getFileName(videoUri) ?: "Video"
-                } finally {
-                    retriever.release() // always released — even if extraction throws
-                }
+                val meta = mediaProcessor.extractMetadata(videoUri)
+                val fileName = getFileName(videoUri) ?: "Video"
 
                 // Step 2 — Create project folder in internal storage
                 val projectId = UUID.randomUUID().toString()
-                val projectDir = File(context.filesDir, "projects/$projectId")
-                projectDir.mkdirs()
+                val projectDir = fileStorageManager.getProjectDir(projectId)
 
                 Log.i(TAG, "Created project directory: ${projectDir.absolutePath}")
 
@@ -111,17 +80,13 @@ class ProjectRepository @Inject constructor(
                     // Copy to internal storage so we don't lose the video reference on app restart.
                     Log.w(TAG, "Could not take persistable permission for $videoUri, copying file.", e)
                     val videoFile = File(projectDir, "original_video.mp4")
-                    context.contentResolver.openInputStream(videoUri)?.use { input ->
-                        videoFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
+                    fileStorageManager.copyUriToInternalStorage(videoUri, videoFile)
                     finalVideoPath = videoFile.absolutePath
                 }
 
                 // Step 4 — Extract thumbnail (first frame of video)
                 val thumbnailFile = File(projectDir, "thumbnail.jpg")
-                extractThumbnail(videoUri, thumbnailFile)
+                mediaProcessor.extractThumbnail(videoUri, thumbnailFile)
 
                 // Step 5 — Save project to database
                 val now = System.currentTimeMillis()
@@ -134,11 +99,11 @@ class ProjectRepository @Inject constructor(
                     workingVideoPath = finalVideoPath,
                     thumbnailPath = if (thumbnailFile.exists())
                         thumbnailFile.absolutePath else null,
-                    videoDurationMs = durationMs,
-                    videoWidth = width,
-                    videoHeight = height,
-                    videoRotation = rotation,
-                    videoFps = fps,
+                    videoDurationMs = meta.durationMs,
+                    videoWidth = meta.width,
+                    videoHeight = meta.height,
+                    videoRotation = meta.rotation,
+                    videoFps = meta.fps,
                     status = ProjectStatus.IMPORTED,
                     hasVisitedCaptionEditor = false,
                     createdAt = now,
@@ -163,8 +128,7 @@ class ProjectRepository @Inject constructor(
     suspend fun createEmptyProjectForRecording(): Pair<String, File> {
         return withContext(Dispatchers.IO) {
             val projectId = UUID.randomUUID().toString()
-            val projectDir = File(context.filesDir, "projects/$projectId")
-            projectDir.mkdirs()
+            val projectDir = fileStorageManager.getProjectDir(projectId)
             val videoFile = File(projectDir, "original_video.mp4")
             Pair(projectId, videoFile)
         }
@@ -178,25 +142,11 @@ class ProjectRepository @Inject constructor(
                     return@withContext Result.failure(Exception("Recorded video file not found"))
                 }
                 val videoUri = Uri.fromFile(videoFile)
-                val retriever = MediaMetadataRetriever()
-                retriever.setDataSource(context, videoUri)
-
-                val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                val rotationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-                
-                val durationMs = durationStr?.toLongOrNull() ?: 0L
-                val width = widthStr?.toIntOrNull() ?: 1080
-                val height = heightStr?.toIntOrNull() ?: 1920
-                val rotation = rotationStr?.toIntOrNull() ?: 0
-                val fps = 30f // Assuming 30fps for recordings
-
-                retriever.release()
+                val meta = mediaProcessor.extractMetadata(videoUri)
 
                 val projectDir = videoFile.parentFile
                 val thumbnailFile = File(projectDir, "thumbnail.jpg")
-                extractThumbnail(videoUri, thumbnailFile)
+                mediaProcessor.extractThumbnail(videoUri, thumbnailFile)
 
                 val now = System.currentTimeMillis()
                 val project = ProjectEntity(
@@ -205,11 +155,11 @@ class ProjectRepository @Inject constructor(
                     originalVideoUri = videoFile.absolutePath,
                     workingVideoPath = videoFile.absolutePath,
                     thumbnailPath = if (thumbnailFile.exists()) thumbnailFile.absolutePath else null,
-                    videoDurationMs = durationMs,
-                    videoWidth = width,
-                    videoHeight = height,
-                    videoRotation = rotation,
-                    videoFps = fps,
+                    videoDurationMs = meta.durationMs,
+                    videoWidth = meta.width,
+                    videoHeight = meta.height,
+                    videoRotation = meta.rotation,
+                    videoFps = meta.fps,
                     status = ProjectStatus.IMPORTED,
                     hasVisitedCaptionEditor = false,
                     facelessBackgroundType = backgroundType,
@@ -268,28 +218,10 @@ class ProjectRepository @Inject constructor(
             Log.i(TAG, "Deleted project from DB: $projectId")
 
             // Delete project folder and all its contents
-            // (video, audio, thumbnail, any exports)
-            try {
-                val projectDir = File(context.filesDir, "projects/$projectId")
-                if (projectDir.exists()) {
-                    projectDir.deleteRecursively()
-                    Log.i(TAG, "Deleted project files: ${projectDir.absolutePath}")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to delete project files", e)
-            }
+            fileStorageManager.deleteProjectDir(projectId)
 
             // Clear thumbnail cache
-            try {
-                val videoHash = project.workingVideoPath.hashCode().toString()
-                val cacheDir = File(context.cacheDir, "thumbnails/$videoHash")
-                if (cacheDir.exists()) {
-                    cacheDir.deleteRecursively()
-                    Log.i(TAG, "Deleted thumbnail cache: ${cacheDir.absolutePath}")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to delete thumbnail cache", e)
-            }
+            fileStorageManager.deleteThumbnailCache(project.workingVideoPath)
         }
     }
 
@@ -305,12 +237,7 @@ class ProjectRepository @Inject constructor(
                 val newProjectId = UUID.randomUUID().toString()
 
                 // 3. Duplicate files on disk
-                val originalProjectDir = File(context.filesDir, "projects/$projectId")
-                val newProjectDir = File(context.filesDir, "projects/$newProjectId")
-                
-                if (originalProjectDir.exists()) {
-                    originalProjectDir.copyRecursively(newProjectDir, overwrite = true)
-                }
+                fileStorageManager.duplicateProjectFiles(projectId, newProjectId)
 
                 // 4. Update file paths by swapping the projectId in the path
                 val newOriginalVideoUri = originalProject.originalVideoUri.replace(projectId, newProjectId)
@@ -370,51 +297,6 @@ class ProjectRepository @Inject constructor(
                 crashReporter.recordException(e)
                 Result.failure(e)
             }
-        }
-    }
-
-    // ---- Helper: Extract thumbnail ----
-    // Gets the first frame of the video and saves it as JPEG
-    private fun extractThumbnail(videoUri: Uri, outputFile: File) {
-        try {
-            val retriever = MediaMetadataRetriever()
-            val bitmap = try {
-                retriever.setDataSource(context, videoUri)
-                retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-            } finally {
-                retriever.release() // always released even if getFrameAtTime throws
-            }
-
-            if (bitmap != null) {
-                outputFile.outputStream().use { out ->
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
-                }
-                bitmap.recycle()
-            }
-        } catch (e: Exception) {
-            // Thumbnail failure is non-fatal — app works without it
-            Log.w(TAG, "Failed to extract thumbnail: ${e.message}")
-            crashReporter.recordException(e)
-        }
-    }
-
-    // ---- Helper: Parse FPS string ----
-    // MediaMetadataRetriever returns fps in different formats
-    // "30" → 30.0f
-    // "30/1" → 30.0f
-    // "29.97" → 29.97f
-    private fun parseFps(fpsString: String?): Float? {
-        if (fpsString == null) return null
-        return try {
-            if (fpsString.contains("/")) {
-                // Format: "numerator/denominator"
-                val parts = fpsString.split("/")
-                parts[0].toFloat() / parts[1].toFloat()
-            } else {
-                fpsString.toFloat()
-            }
-        } catch (_: Exception) {
-            null
         }
     }
 

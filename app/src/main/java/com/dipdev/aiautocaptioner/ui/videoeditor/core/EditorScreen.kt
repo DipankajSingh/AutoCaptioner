@@ -43,6 +43,8 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Edit2
 import compose.icons.feathericons.X
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -183,10 +185,10 @@ fun EditorScreen(
                             modifier = Modifier.align(Alignment.Center),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Error: ${step.message}", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.editor_error_prefix, step.message), color = MaterialTheme.colorScheme.error)
                             Spacer(modifier = Modifier.height(16.dp))
                             AppPrimaryButton(onClick = { viewModel.setEvent(VideoEditorUiEvent.LoadProject(projectId)) }) {
-                                Text("Retry")
+                                Text(stringResource(R.string.editor_retry))
                             }
                         }
                     }
@@ -208,7 +210,7 @@ fun EditorScreen(
                                 )
                                 Spacer(modifier = Modifier.height(24.dp))
                                 Text(
-                                    text = "Applying Edits...",
+                                    text = stringResource(R.string.editor_applying_edits),
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -230,7 +232,7 @@ fun EditorScreen(
                                     .padding(bottom = 64.dp)
                             ) {
                                 Text(
-                                    text = "Cancel",
+                                    text = stringResource(R.string.editor_cancel),
                                     color = Color.White.copy(alpha = 0.6f),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium

@@ -22,8 +22,10 @@ import com.dipdev.aiautocaptioner.ui.base.UiState
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+import com.dipdev.aiautocaptioner.ui.navigation.Screen
+
 data class MainUiState(
-    val startDestination: String? = null,
+    val startDestination: Screen? = null,
     val appTheme: AppTheme = AppTheme.TRUE_BLACK,
     val glassmorphismEnabled: Boolean = true
 ) : UiState
@@ -68,8 +70,8 @@ class MainViewModel @Inject constructor(
             val onboardingDone = modelRepository.isOnboardingComplete().first()
 
             val dest = when {
-                !onboardingDone -> "onboarding"
-                else            -> "home"
+                !onboardingDone -> Screen.Onboarding
+                else            -> Screen.Home
             }
             setState { copy(startDestination = dest) }
         }

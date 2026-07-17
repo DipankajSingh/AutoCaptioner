@@ -76,12 +76,9 @@ import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToSmartRecorder: (String) -> Unit,
@@ -108,12 +105,17 @@ fun HomeScreen(
     var hasRequestedNotification by remember { mutableStateOf(false) }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val notificationPermissionState = rememberPermissionState(
-            permission = android.Manifest.permission.POST_NOTIFICATIONS
-        )
+        val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, 
+            android.Manifest.permission.POST_NOTIFICATIONS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        val notificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { _ -> }
         
-        LaunchedEffect(notificationPermissionState.status) {
-            if (!notificationPermissionState.status.isGranted && !hasRequestedNotification) {
+        LaunchedEffect(isGranted) {
+            if (!isGranted && !hasRequestedNotification) {
                 showNotificationRationale = true
             }
         }
@@ -131,7 +133,7 @@ fun HomeScreen(
                         onClick = {
                             showNotificationRationale = false
                             hasRequestedNotification = true
-                            notificationPermissionState.launchPermissionRequest()
+                            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                         }
                     ) {
                         Text(stringResource(R.string.home_enable))
@@ -191,74 +193,11 @@ fun HomeScreen(
     ScreenThemeProvider(accentColor = AccentAmber) {
         Scaffold(
             topBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Brand: icon + wordmark
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_img),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Text(
-                            text = "AutoCaptioner",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    // Right actions: model chip + settings
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val modelText = activeModel?.displayName?.split("—")?.first()?.trim()
-                            ?.let { "Model: $it" } ?: "Select Model"
-                        val buttonColor = if (activeModel != null)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.secondaryContainer
-
-                        FilledTonalButton(
-                            onClick = onNavigateToModelManager,
-                            modifier = Modifier.padding(end = 4.dp),
-                            shape = RoundedCornerShape(20.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = buttonColor),
-                            contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                        ) {
-                            Text(modelText, fontSize = 13.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(FeatherIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-
-                        IconButton(onClick = onNavigateToSettings) {
-                            Icon(
-                                imageVector = FeatherIcons.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
+            HomeTopBar(
+                activeModel = activeModel,
+                onNavigateToModelManager = onNavigateToModelManager,
+                onNavigateToSettings = onNavigateToSettings
+            )
         },
         floatingActionButton = {
             if (projects?.isNotEmpty() == true) {
@@ -345,124 +284,12 @@ fun HomeScreen(
                     )
                 }
             } else if (projects.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.nothing))
-                    LottieAnimation(
-                        composition = composition,
-                        iterations = LottieConstants.IterateForever,
-                        modifier = Modifier.size(160.dp)
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "No projects yet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Choose how you want to start your first video",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(Modifier.height(32.dp))
-
-                    // Record Video card
-                    androidx.compose.material3.Card(
-                        onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) },
-                        modifier = Modifier.fillMaxWidth().semantics {
-                            contentDescription = "Record Video"
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(FeatherIcons.Video, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary)
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column {
-                                Text(stringResource(R.string.home_record_video), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                Text(stringResource(R.string.home_record_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    androidx.compose.material3.Card(
-                        onClick = { quickPicker.launch("video/*") },
-                        modifier = Modifier.fillMaxWidth().semantics {
-                            contentDescription = "Start 1-Tap Captions"
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(FeatherIcons.Zap, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column {
-                                Text(stringResource(R.string.home_1_tap_captions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Text(stringResource(R.string.home_1_tap_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    androidx.compose.material3.Card(
-                        onClick = { videoPicker.launch("video/*") },
-                        modifier = Modifier.fillMaxWidth().semantics {
-                            contentDescription = "Start Advanced Studio"
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(FeatherIcons.Scissors, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
-                            }
-                            Spacer(Modifier.width(16.dp))
-                            Column {
-                                Text(stringResource(R.string.home_advanced_studio), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                                Text(stringResource(R.string.home_advanced_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
-                            }
-                        }
-                    }
-                }
+                EmptyProjectView(
+                    lastRecordingMode = uiState.lastRecordingMode,
+                    onNavigateToSmartRecorder = onNavigateToSmartRecorder,
+                    onQuickCaption = { quickPicker.launch("video/*") },
+                    onAdvancedStudio = { videoPicker.launch("video/*") }
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -625,3 +452,183 @@ fun HomeScreen(
     } // end of ScreenThemeProvider
 } // end of HomeScreen
 
+@Composable
+private fun HomeTopBar(
+    activeModel: com.dipdev.aiautocaptioner.data.model.WhisperModel?,
+    onNavigateToModelManager: () -> Unit,
+    onNavigateToSettings: () -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Brand: icon + wordmark
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_img),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Text(
+                    text = "AutoCaptioner",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            // Right actions: model chip + settings
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val modelText = activeModel?.displayName?.split("—")?.first()?.trim()
+                    ?.let { "Model: $it" } ?: "Select Model"
+                val buttonColor = if (activeModel != null)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.secondaryContainer
+
+                FilledTonalButton(
+                    onClick = onNavigateToModelManager,
+                    modifier = Modifier.padding(end = 4.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = buttonColor),
+                    contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
+                ) {
+                    Text(modelText, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(FeatherIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+
+                IconButton(onClick = onNavigateToSettings) {
+                    Icon(
+                        imageVector = FeatherIcons.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyProjectView(
+    lastRecordingMode: String,
+    onNavigateToSmartRecorder: (String) -> Unit,
+    onQuickCaption: () -> Unit,
+    onAdvancedStudio: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.nothing))
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            modifier = Modifier.size(160.dp)
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "No projects yet",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Choose how you want to start your first video",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(32.dp))
+
+        androidx.compose.material3.Card(
+            onClick = { onNavigateToSmartRecorder(lastRecordingMode) },
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Record Video" },
+            shape = RoundedCornerShape(16.dp),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(FeatherIcons.Video, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary)
+                }
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(stringResource(R.string.home_record_video), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text(stringResource(R.string.home_record_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        androidx.compose.material3.Card(
+            onClick = onQuickCaption,
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Start 1-Tap Captions" },
+            shape = RoundedCornerShape(16.dp),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(FeatherIcons.Zap, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+                }
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(stringResource(R.string.home_1_tap_captions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(stringResource(R.string.home_1_tap_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        androidx.compose.material3.Card(
+            onClick = onAdvancedStudio,
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Start Advanced Studio" },
+            shape = RoundedCornerShape(16.dp),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(FeatherIcons.Scissors, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
+                }
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text(stringResource(R.string.home_advanced_studio), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Text(stringResource(R.string.home_advanced_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                }
+            }
+        }
+    }
+}

@@ -172,7 +172,7 @@ fun CaptionEditorScreen(
                         putExtra(android.content.Intent.EXTRA_STREAM, uri)
                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(android.content.Intent.createChooser(intent, "Share SRT"))
+                    context.startActivity(android.content.Intent.createChooser(intent, "Share Subtitles File"))
                 }
             }
         }
@@ -184,7 +184,7 @@ fun CaptionEditorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = project?.title ?: "Caption Editor",
+                        text = project?.title ?: stringResource(R.string.caption_editor_title),
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
@@ -227,7 +227,7 @@ fun CaptionEditorScreen(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Export Video", maxLines = 1)
+                        Text(stringResource(R.string.caption_export_video), maxLines = 1)
                     }
                 }
             }
@@ -287,7 +287,7 @@ fun CaptionEditorScreen(
                 ) {
                     item {
                         Text(
-                            text = "${filteredSegments.size} segments · tap to edit",
+                            text = stringResource(R.string.caption_segments_count, filteredSegments.size),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                             modifier = Modifier.padding(bottom = 4.dp)

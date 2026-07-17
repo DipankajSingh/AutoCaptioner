@@ -32,6 +32,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.DeepSpaceBackground
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Play
 
@@ -98,7 +99,7 @@ fun FacelessTeleprompterOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A)) // Premium Dark Blue
+            .background(DeepSpaceBackground) // Premium Dark Blue
             .imePadding()
     ) {
         Column(

@@ -60,27 +60,7 @@ class TranscriptionManager @Inject constructor(
     private var transcriptionStartTimeMs: Long = 0L
     private var activeProjectId: String? = null
 
-    private fun updateNotification(text: String?) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-        if (text == null) {
-            notificationManager.cancel(101)
-            return
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(
-                "transcription_channel", "Transcription", android.app.NotificationManager.IMPORTANCE_LOW
-            )
-            notificationManager.createNotificationChannel(channel)
-        }
-        val notification = androidx.core.app.NotificationCompat.Builder(context, "transcription_channel")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("AutoCaptioner Processing")
-            .setContentText(text)
-            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .build()
-        notificationManager.notify(101, notification)
-    }
+    // Notifications are now handled by TranscriptionForegroundService by observing the 'step' stateflow
 
     fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean = false) {
         if (activeJob?.isActive == true) return
@@ -91,14 +71,15 @@ class TranscriptionManager @Inject constructor(
 
         activeJob = managerScope.launch {
             try {
-                // Ensure service is started to host the notification
+                // Ensure service is started to host the notification and hold Wakelock
+                val serviceIntent = Intent(context, TranscriptionForegroundService::class.java)
+                ContextCompat.startForegroundService(context, serviceIntent)
 
                 val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found")
 
                 // Step 1: Download model if needed
                 if (!model.isDownloaded) {
                     _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
-                    updateNotification("Downloading ${model.displayName}...")
                     
                     var downloadSuccess = false
                     modelRepository.downloadModel(modelId).collect { state ->
@@ -110,7 +91,6 @@ class TranscriptionManager @Inject constructor(
                                     downloadedBytes = state.downloadedBytes,
                                     totalBytes = state.totalBytes
                                 )
-                                updateNotification("Downloading model... ${state.progress}%")
                             }
                             is DownloadState.Complete -> {
                                 downloadSuccess = true
@@ -134,7 +114,6 @@ class TranscriptionManager @Inject constructor(
                 Log.e(TAG, "Error: ${e.message}", e)
                 crashReporter.recordException(e)
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
-                updateNotification(null)
                 activeProjectId?.let { pid ->
                     try {
                         val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
@@ -146,6 +125,7 @@ class TranscriptionManager @Inject constructor(
                 }
             } finally {
                 whisperEngine.release()
+                context.stopService(Intent(context, TranscriptionForegroundService::class.java))
             }
         }
     }
@@ -160,17 +140,14 @@ class TranscriptionManager @Inject constructor(
 
         if (!isRegenerating && (project.status == ProjectStatus.TRANSCRIBED || project.status == ProjectStatus.EXPORTED)) {
             _step.value = ProcessingStep.Done
-            updateNotification(null)
             return
         }
 
         _step.value = ProcessingStep.ExtractingAudio
-        updateNotification("Extracting audio...")
         projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
         projectRepository.updateProject(project.copy(transcriptionLanguage = language))
 
         _step.value = ProcessingStep.LoadingModel
-        updateNotification("Loading AI model...")
         val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
             modelRepository.getModelFile(model.id)
         }
@@ -206,7 +183,6 @@ class TranscriptionManager @Inject constructor(
                         (remainingMs / 1000).toInt().coerceAtLeast(1)
                     } else null
                     _step.value = ProcessingStep.Transcribing(progressFraction, etaSecs)
-                    updateNotification("Transcribing video... ${percent}%")
                 },
                 onSegmentDecoded = { text, startMs, endMs ->
                     if (isCancelled) return@transcribeWithWordTimestamps
@@ -224,7 +200,6 @@ class TranscriptionManager @Inject constructor(
         }
 
         _step.value = ProcessingStep.Saving
-        updateNotification("Saving transcription...")
         
         val finalSegments = CaptionSegmenter.buildFinalSegments(allWords)
 
@@ -235,7 +210,6 @@ class TranscriptionManager @Inject constructor(
         _step.value = ProcessingStep.Done
         
         delay(2000.milliseconds)
-        updateNotification(null)
     }
 
     private fun startDripFeed() {
@@ -267,7 +241,6 @@ class TranscriptionManager @Inject constructor(
         activeJob?.cancel()
         activeJob = null
         managerScope.launch(Dispatchers.IO) {
-            updateNotification(null)
             activeProjectId?.let { pid ->
                 val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
                 val status = if (hasCaptions) ProjectStatus.TRANSCRIBED else ProjectStatus.IMPORTED

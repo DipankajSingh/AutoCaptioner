@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AutoCaptionerTheme
+import com.dipdev.aiautocaptioner.ui.theme.WelcomeGradientEnd
+import com.dipdev.aiautocaptioner.ui.theme.WelcomeGradientStart
 
 @Composable
 fun WelcomeScreen(
@@ -103,7 +105,7 @@ fun WelcomeScreen(
                     .fillMaxWidth()
                     .height(340.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFF1C2338), Color(0xFF0B0F19))))
+                    .background(Brush.verticalGradient(listOf(WelcomeGradientStart, WelcomeGradientEnd)))
                     .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(24.dp))
             ) {
                 // Timestamp badge

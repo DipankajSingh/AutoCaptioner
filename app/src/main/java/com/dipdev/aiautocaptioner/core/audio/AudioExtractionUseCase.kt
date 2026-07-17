@@ -41,7 +41,8 @@ class AudioExtractionUseCase @Inject constructor(
                 }
                 extractor.selectTrack(audioTrackIndex)
 
-                val mime = audioFormat.getString(MediaFormat.KEY_MIME)!!
+                val mime = audioFormat.getString(MediaFormat.KEY_MIME)
+                    ?: throw IllegalStateException("Audio MIME type is null")
                 codec = MediaCodec.createDecoderByType(mime)
                 codec.configure(audioFormat, null, null, 0)
                 codec.start()
@@ -60,7 +61,8 @@ class AudioExtractionUseCase @Inject constructor(
                     if (!isEOS) {
                         val inputBufferId = codec.dequeueInputBuffer(10000)
                         if (inputBufferId >= 0) {
-                            val inputBuffer = codec.getInputBuffer(inputBufferId)!!
+                            val inputBuffer = codec.getInputBuffer(inputBufferId)
+                                ?: throw IllegalStateException("Input buffer is null")
                             val sampleSize = extractor.readSampleData(inputBuffer, 0)
                             if (sampleSize < 0) {
                                 codec.queueInputBuffer(inputBufferId, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
@@ -77,7 +79,8 @@ class AudioExtractionUseCase @Inject constructor(
                         audioFormat = codec.outputFormat
                     } else if (outputBufferId >= 0) {
                         if (info.size > 0) {
-                            val outputBuffer = codec.getOutputBuffer(outputBufferId)!!
+                            val outputBuffer = codec.getOutputBuffer(outputBufferId)
+                                ?: throw IllegalStateException("Output buffer is null")
                             if (pcmBytes.size < info.size) {
                                 pcmBytes = ByteArray(info.size)
                             }
@@ -85,7 +88,7 @@ class AudioExtractionUseCase @Inject constructor(
                             outputBuffer.clear()
                             
                             val pcmEncoding = if (audioFormat?.containsKey(MediaFormat.KEY_PCM_ENCODING) == true) {
-                                audioFormat!!.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                                audioFormat?.getInteger(MediaFormat.KEY_PCM_ENCODING) ?: android.media.AudioFormat.ENCODING_PCM_16BIT
                             } else {
                                 android.media.AudioFormat.ENCODING_PCM_16BIT
                             }

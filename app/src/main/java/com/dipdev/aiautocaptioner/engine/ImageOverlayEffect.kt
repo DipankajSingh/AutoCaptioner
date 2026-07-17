@@ -17,27 +17,22 @@ class ImageOverlayEffect(
     private val endTimeMs: Long
 ) : BitmapOverlay() {
 
-    private val transparentBitmap by lazy {
-        Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-    }
-
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
-        val timeMs = presentationTimeUs / 1000
-        return if (timeMs in startTimeMs..endTimeMs) {
-            bitmap
-        } else {
-            transparentBitmap
-        }
+        return bitmap
     }
 
     override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
-        // Map [0.0, 1.0] to [-1.0, 1.0]
+        val timeMs = presentationTimeUs / 1000
+        val isVisible = timeMs in startTimeMs..endTimeMs
+
+        // Map [0.0, 1.0] to [-1.0, 1.0] for X, and [1.0, -1.0] for Y (since Media3 Y is bottom-up)
         val mappedX = positionX * 2f - 1f
-        val mappedY = positionY * 2f - 1f
+        val mappedY = 1f - (positionY * 2f)
 
         return StaticOverlaySettings.Builder()
             .setBackgroundFrameAnchor(mappedX, mappedY)
             .setScale(scaleX, scaleY)
+            .setAlphaScale(if (isVisible) 1f else 0f)
             .build()
     }
 }

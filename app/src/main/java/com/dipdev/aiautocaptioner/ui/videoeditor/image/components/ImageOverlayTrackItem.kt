@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -36,8 +37,9 @@ fun ImageOverlayTrackItem(
     onDragStateChange: (Boolean) -> Unit,
     onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit,
     onDragPointerStart: (screenX: Float) -> Unit,
-    onDragPointerChange: (deltaX: Float) -> Unit,
+    onDragPointerMove: (screenX: Float) -> Unit,
 ) {
+    val density = LocalDensity.current
     val updatedOverlay by rememberUpdatedState(overlay)
     val updatedEndTimeMs by rememberUpdatedState(currentEndTimeMs)
     val updatedPixelsPerMs by rememberUpdatedState(pixelsPerMs)
@@ -51,14 +53,16 @@ fun ImageOverlayTrackItem(
     val activeStartMs = dragStateStartMs ?: overlay.startTimeMs
     val activeEndMs = dragStateEndMs ?: currentEndTimeMs
 
-    val dragOffsetXDp = (activeStartMs * pixelsPerMs).dp
-    val dragWidthDp = maxOf(20.dp, ((activeEndMs - activeStartMs) * pixelsPerMs).dp)
+    val dragOffsetPx = activeStartMs * pixelsPerMs
+    val dragWidthPx = (activeEndMs - activeStartMs) * pixelsPerMs
+    
+    val dragWidthDp = maxOf(20.dp, with(density) { dragWidthPx.toDp() })
 
     val isMoving = dragStateStartMs != null
 
     Box(
         modifier = Modifier
-            .offset { IntOffset(dragOffsetXDp.roundToPx(), 0) }
+            .offset { IntOffset(dragOffsetPx.roundToInt(), 0) }
             .width(dragWidthDp)
             .fillMaxHeight()
             .zIndex(if (isMoving) 1f else 0f)
@@ -91,7 +95,7 @@ fun ImageOverlayTrackItem(
                     onDragStateChange(true)
                 },
                 onDragPointerStart  = onDragPointerStart,
-                onDragPointerChange = onDragPointerChange,
+                onDragPointerMove = onDragPointerMove,
                 onPositionChange = { newStart, newEnd ->
                     dragStateStartMs = newStart
                     dragStateEndMs   = newEnd
@@ -155,7 +159,7 @@ fun ImageOverlayTrackItem(
                         scrollStateValue = { updatedScrollStateValue },
                         onDragStart  = { onDragStateChange(true) },
                         onDragPointerStart  = onDragPointerStart,
-                        onDragPointerChange = onDragPointerChange,
+                        onDragPointerMove = onDragPointerMove,
                         onEdgeChange = { newStart ->
                             dragStateStartMs = newStart
                             dragStateEndMs   = updatedEndTimeMs
@@ -190,7 +194,7 @@ fun ImageOverlayTrackItem(
                         scrollStateValue = { updatedScrollStateValue },
                         onDragStart  = { onDragStateChange(true) },
                         onDragPointerStart  = onDragPointerStart,
-                        onDragPointerChange = onDragPointerChange,
+                        onDragPointerMove = onDragPointerMove,
                         onEdgeChange = { newEnd ->
                             dragStateStartMs = updatedOverlay.startTimeMs
                             dragStateEndMs   = newEnd

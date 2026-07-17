@@ -33,6 +33,14 @@
     <string name="caption_min">Min</string>
     <string name="caption_sec">Sec</string>
     <string name="caption_cancel">Cancel</string>
+    <string name="caption_editor_title">Caption Editor</string>
+    <string name="caption_export_video">Export Video</string>
+    <string name="caption_segments_count">%d segments · tap to edit</string>
+    
+    <string name="editor_error_prefix">Error: %s</string>
+    <string name="editor_retry">Retry</string>
+    <string name="editor_applying_edits">Applying Edits...</string>
+    <string name="editor_cancel">Cancel</string>
 
     <string name="caption_word_emphasis_hint">Long press a word to mark emphasis:</string>
 </resources>

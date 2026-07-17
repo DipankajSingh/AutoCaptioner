@@ -111,33 +111,37 @@ class ThumbnailManager(private val context: Context) {
 
         try {
             for (i in 0 until 3) {
-                val r = MediaMetadataRetriever().apply {
+                val r = MediaMetadataRetriever()
+                try {
                     if (videoPath.startsWith("content://") || videoPath.startsWith("file://")) {
-                        setDataSource(context, videoPath.toUri())
+                        r.setDataSource(context, videoPath.toUri())
                     } else {
-                        setDataSource(videoPath)
-                    }
-                }
-
-                if (i == 0) {
-                    val widthStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                    val heightStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                    val rotationStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
-
-                    val width = widthStr?.toIntOrNull() ?: 1920
-                    val height = heightStr?.toIntOrNull() ?: 1080
-                    val rotation = rotationStr?.toIntOrNull() ?: 0
-
-                    val (actualWidth, actualHeight) = if (rotation == 90 || rotation == 270) {
-                        Pair(height, width)
-                    } else {
-                        Pair(width, height)
+                        r.setDataSource(videoPath)
                     }
 
-                    val aspectRatio = actualWidth.toFloat() / actualHeight.toFloat()
-                    targetThumbWidth = (targetThumbHeight * aspectRatio).toInt()
+                    if (i == 0) {
+                        val widthStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                        val heightStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                        val rotationStr = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+
+                        val width = widthStr?.toIntOrNull() ?: 1920
+                        val height = heightStr?.toIntOrNull() ?: 1080
+                        val rotation = rotationStr?.toIntOrNull() ?: 0
+
+                        val (actualWidth, actualHeight) = if (rotation == 90 || rotation == 270) {
+                            Pair(height, width)
+                        } else {
+                            Pair(width, height)
+                        }
+
+                        val aspectRatio = actualWidth.toFloat() / actualHeight.toFloat()
+                        targetThumbWidth = (targetThumbHeight * aspectRatio).toInt()
+                    }
+                    retrieverPool.add(r)
+                } catch (e: Exception) {
+                    try { r.release() } catch (ignored: Exception) {}
+                    throw e
                 }
-                retrieverPool.add(r)
             }
         } catch (e: Exception) {
             e.printStackTrace()

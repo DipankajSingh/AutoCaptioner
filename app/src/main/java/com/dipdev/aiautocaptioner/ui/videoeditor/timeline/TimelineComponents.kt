@@ -238,7 +238,7 @@ fun VideoClipItem(
                         // Video trim handles report no pointer to the parent edge-scroll loop
                         // (that loop only runs during swap-drags, not trim).
                         onDragPointerStart  = {},
-                        onDragPointerChange = {},
+                        onDragPointerMove = {},
                         onEdgeChange = { newStart -> onTrimClip(clip.id, newStart, updatedClip.endTrimMs) },
                         onDragEnd    = { onDragStateChange(false) },
                     ),
@@ -263,7 +263,7 @@ fun VideoClipItem(
                         scrollStateValue = { updatedScrollStateValue },
                         onDragStart  = { onDragStateChange(true) },
                         onDragPointerStart  = {},
-                        onDragPointerChange = {},
+                        onDragPointerMove = {},
                         onEdgeChange = { newEnd -> onTrimClip(clip.id, updatedClip.startTrimMs, newEnd) },
                         onDragEnd    = { onDragStateChange(false) },
                     ),

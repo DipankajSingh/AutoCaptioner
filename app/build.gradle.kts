@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.firebase.perf)
     alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 
@@ -176,9 +177,10 @@ dependencies {
     implementation(libs.okhttp)
 
     // -------------------------------------------------------
-    // Coroutines
+    // Coroutines & Serialization
     // -------------------------------------------------------
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 
     // -------------------------------------------------------
     // DataStore — settings + onboarding flag
@@ -190,8 +192,6 @@ dependencies {
     // -------------------------------------------------------
     implementation(libs.coil.compose)
     implementation("io.coil-kt.coil3:coil-video:3.5.0")
-    implementation(libs.cloudy)
-
     // -------------------------------------------------------
     // Splash Screen
     // -------------------------------------------------------
@@ -201,11 +201,6 @@ dependencies {
     // Lottie — animations
     // -------------------------------------------------------
     implementation(libs.lottie.compose)
-
-    // -------------------------------------------------------
-    // Accompanist — runtime permissions
-    // -------------------------------------------------------
-    implementation(libs.accompanist.permissions)
 
     // -------------------------------------------------------
     // Firebase

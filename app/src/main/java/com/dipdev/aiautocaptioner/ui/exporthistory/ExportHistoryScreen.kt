@@ -155,11 +155,11 @@ fun ExportHistoryItem(
                         onClick = { menuExpanded = false; onShareVideo() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Save SRT") },
+                        text = { Text("Save Subtitles File") },
                         onClick = { menuExpanded = false; onSaveSrt() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Share SRT") },
+                        text = { Text("Share Subtitles File") },
                         onClick = { menuExpanded = false; onShareSrt() }
                     )
                     HorizontalDivider()

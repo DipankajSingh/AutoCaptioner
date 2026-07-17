@@ -158,7 +158,7 @@ fun ProjectCard(
                             leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Re-transcribe") },
+                            text = { Text("Update Captions") },
                             onClick = { showMenu = false; onRetranscribe() },
                             leadingIcon = { Icon(FeatherIcons.RefreshCw, contentDescription = null) }
                         )

@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +89,8 @@ fun ExportScreen(
     val progress = uiState.progress
     val outputPath = uiState.outputPath
     val workingVideoPath = uiState.workingVideoPath
+    val hasCaptions = uiState.hasCaptions
+    var showNoCaptionsDialog by remember { mutableStateOf(false) }
 
     // Original Video Metadata
     var originalWidth by remember { mutableIntStateOf(1080) }
@@ -104,8 +107,8 @@ fun ExportScreen(
     LaunchedEffect(workingVideoPath) {
         if (workingVideoPath != null) {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val retriever = android.media.MediaMetadataRetriever()
                 try {
-                    val retriever = android.media.MediaMetadataRetriever()
                     retriever.setDataSource(context, workingVideoPath.toUri())
                     
                     val w = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1080
@@ -123,9 +126,12 @@ fun ExportScreen(
                     originalBitrate = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 5_000_000
                     originalDurationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
                     originalFps = 30
-                    retriever.release()
                 } catch (e: Exception) {
                     e.printStackTrace()
+                } finally {
+                    try {
+                        retriever.release()
+                    } catch (e: Exception) {}
                 }
             }
         }
@@ -133,15 +139,19 @@ fun ExportScreen(
 
     // Calculate effective targets
 
-    val computedTargetBitrate = when (selectedQuality) {
-        0 -> (originalBitrate * 0.6).toInt() // Low Quality
-        1 -> originalBitrate                 // Recommended (Match Original)
-        else -> (originalBitrate * 1.5).toInt() // High Quality
+    val computedTargetBitrate = remember(selectedQuality, originalBitrate) {
+        when (selectedQuality) {
+            0 -> (originalBitrate * 0.6).toInt() // Low Quality
+            1 -> originalBitrate                 // Recommended (Match Original)
+            else -> (originalBitrate * 1.5).toInt() // High Quality
+        }
     }
 
     // File Size Estimation: Bitrate (bits per second) * Duration (seconds) / 8 (bytes)
-    val estimatedSizeBytes = (computedTargetBitrate.toLong() * (originalDurationMs / 1000.0)) / 8.0
-    val estimatedSizeMB = estimatedSizeBytes / (1024 * 1024)
+    val estimatedSizeMB = remember(computedTargetBitrate, originalDurationMs) {
+        val estimatedSizeBytes = (computedTargetBitrate.toLong() * (originalDurationMs / 1000.0)) / 8.0
+        estimatedSizeBytes / (1024 * 1024)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.setEvent(ExportUiEvent.PrepareExport(projectId))
@@ -166,7 +176,27 @@ fun ExportScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-
+            if (showNoCaptionsDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showNoCaptionsDialog = false },
+                    title = { Text("No Captions Generated") },
+                    text = { Text("You haven't generated any captions for this video. Do you want to export anyway?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showNoCaptionsDialog = false
+                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        }) {
+                            Text("Export Anyway")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showNoCaptionsDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
             
             Column(
                 modifier = Modifier
@@ -377,8 +407,13 @@ fun ExportScreen(
                     Spacer(modifier = Modifier.weight(1f))
                     
                     AppPrimaryButton(
-                        onClick = { viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        onClick = { 
+                            if (!hasCaptions) {
+                                showNoCaptionsDialog = true
+                            } else {
+                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                            }
                          }
                     ) {
                         Text("Start Export", fontSize = 16.sp, maxLines = 1)
@@ -453,8 +488,13 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     AppPrimaryButton(
-                        onClick = { viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        onClick = { 
+                            if (!hasCaptions) {
+                                showNoCaptionsDialog = true
+                            } else {
+                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                            }
                          }
                     ) { Text("Try Again", maxLines = 1) }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -476,8 +516,13 @@ fun ExportScreen(
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     AppPrimaryButton(
-                        onClick = { viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                        onClick = { 
+                            if (!hasCaptions) {
+                                showNoCaptionsDialog = true
+                            } else {
+                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
+                            }
                          }
                     ) { Text("Retry", maxLines = 1) }
                     Spacer(modifier = Modifier.height(12.dp))

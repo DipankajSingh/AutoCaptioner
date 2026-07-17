@@ -9,6 +9,10 @@ val DeepSpaceBackground = Color(0xFF0F172A)
 val DeepSpaceSurface = Color(0xFF1E293B)
 val DeepSpaceSurfaceVariant = Color(0xFF334155)
 
+// Welcome Screen Colors
+val WelcomeGradientStart = Color(0xFF1C2338)
+val WelcomeGradientEnd = Color(0xFF0B0F19)
+
 // True Black
 val TrueBlackBackground = Color(0xFF000000)
 val TrueBlackSurface = Color(0xFF0F0F0F)

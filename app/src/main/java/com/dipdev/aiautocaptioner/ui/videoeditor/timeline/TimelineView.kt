@@ -456,7 +456,7 @@ fun TimelineView(
                                                 dragPointerScreenX = it 
                                                 draggingOverlayId = overlay.id
                                             },
-                                            onDragPointerChange = { dragPointerScreenX += it }
+                                            onDragPointerMove = { dragPointerScreenX = it }
                                         )
                                     }
                                 }

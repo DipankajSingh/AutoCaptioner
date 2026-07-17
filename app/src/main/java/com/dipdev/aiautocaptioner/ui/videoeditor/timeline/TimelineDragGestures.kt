@@ -20,46 +20,45 @@ fun Modifier.timelineMoveGesture(
     scrollStateValue: () -> Int,
     onDragStart: () -> Unit = {},
     onDragPointerStart: (screenX: Float) -> Unit,
-    onDragPointerChange: (deltaX: Float) -> Unit,
+    onDragPointerMove: (screenX: Float) -> Unit,
     onPositionChange: (newStartMs: Long, newEndMs: Long) -> Unit,
     onDragEnd: (finalStartMs: Long, finalEndMs: Long) -> Unit,
 ): Modifier = this.pointerInput(key1, key2) {
-    var accumulatedPx = 0f
-    var currentStartMs = 0L
-    var currentEndMs = 0L
+    var initialStartMs = 0L
+    var initialEndMs = 0L
+    var gripOffsetPx = 0f
 
     detectDragGesturesAfterLongPress(
         onDragStart = { offset ->
-            currentStartMs = startTimeMs()
-            currentEndMs = endTimeMs()
-            accumulatedPx = 0f
-
-            // Calculate exact touch point based on current physical position
-            val absoluteScreenX = offset.x + (currentStartMs * pixelsPerMs()) - scrollStateValue()
-            onDragPointerStart(absoluteScreenX)
+            initialStartMs = startTimeMs()
+            initialEndMs = endTimeMs()
+            
+            val clipTimelinePx = initialStartMs * pixelsPerMs()
+            val viewportX = offset.x + clipTimelinePx - scrollStateValue()
+            gripOffsetPx = offset.x
+            
+            onDragPointerStart(viewportX)
             onDragStart()
         },
-        onDrag = { change, dragAmount ->
+        onDrag = { change, _ ->
             change.consume()
-            onDragPointerChange(dragAmount.x)
-
-            accumulatedPx += dragAmount.x
-            val ppms = pixelsPerMs()
-            val deltaMs = (accumulatedPx / ppms).toLong()
-            if (deltaMs != 0L) {
-                accumulatedPx -= deltaMs * ppms
-
-                val duration = currentEndMs - currentStartMs
-                val newStart = (currentStartMs + deltaMs).coerceIn(0L, totalDurationMs() - duration)
-                if (newStart != currentStartMs) {
-                    currentStartMs = newStart
-                    currentEndMs = newStart + duration
-                    onPositionChange(currentStartMs, currentEndMs)
-                }
+            
+            val clipTimelinePx = startTimeMs() * pixelsPerMs()
+            val viewportX = change.position.x + clipTimelinePx - scrollStateValue()
+            onDragPointerMove(viewportX)
+            
+            val absoluteTimelinePx = viewportX + scrollStateValue()
+            val targetStartPx = absoluteTimelinePx - gripOffsetPx
+            
+            val duration = initialEndMs - initialStartMs
+            val newStart = (targetStartPx / pixelsPerMs()).toLong().coerceIn(0L, totalDurationMs() - duration)
+            
+            if (newStart != startTimeMs()) {
+                onPositionChange(newStart, newStart + duration)
             }
         },
-        onDragEnd = { onDragEnd(currentStartMs, currentEndMs) },
-        onDragCancel = { onDragEnd(currentStartMs, currentEndMs) },
+        onDragEnd = { onDragEnd(startTimeMs(), endTimeMs()) },
+        onDragCancel = { onDragEnd(startTimeMs(), endTimeMs()) },
     )
 }
 
@@ -76,41 +75,38 @@ fun Modifier.timelineTrimGesture(
     scrollStateValue: () -> Int,
     onDragStart: () -> Unit = {},
     onDragPointerStart: (screenX: Float) -> Unit,
-    onDragPointerChange: (deltaX: Float) -> Unit,
+    onDragPointerMove: (screenX: Float) -> Unit,
     onEdgeChange: (newEdgeMs: Long) -> Unit,
     onDragEnd: (finalEdgeMs: Long) -> Unit,
 ): Modifier = this.pointerInput(key1, key2) {
-    var accumulatedPx = 0f
-    var edgeMs = 0L
+    var gripOffsetPx = 0f
 
     detectDragGestures(
         onDragStart = { offset ->
-            edgeMs = currentEdgeMs()
-            accumulatedPx = 0f
-
-            val edgeScreenX = offset.x + (edgeMs * pixelsPerMs()) - scrollStateValue()
-            onDragPointerStart(edgeScreenX)
+            val edgeTimelinePx = currentEdgeMs() * pixelsPerMs()
+            val viewportX = offset.x + edgeTimelinePx - scrollStateValue()
+            gripOffsetPx = offset.x
+            
+            onDragPointerStart(viewportX)
             onDragStart()
         },
-        onDrag = { change, dragAmount ->
+        onDrag = { change, _ ->
             change.consume()
-            onDragPointerChange(dragAmount.x)
-
-            accumulatedPx += dragAmount.x
-            val ppms = pixelsPerMs()
-            val deltaMs = (accumulatedPx / ppms).toLong()
-            if (deltaMs != 0L) {
-                accumulatedPx -= deltaMs * ppms
-
-                val newEdge = (edgeMs + deltaMs).coerceIn(minEdgeMs(), maxEdgeMs())
-                if (newEdge != edgeMs) {
-                    edgeMs = newEdge
-                    onEdgeChange(edgeMs)
-                }
+            
+            val edgeTimelinePx = currentEdgeMs() * pixelsPerMs()
+            val viewportX = change.position.x + edgeTimelinePx - scrollStateValue()
+            onDragPointerMove(viewportX)
+            
+            val absoluteTimelinePx = viewportX + scrollStateValue()
+            val targetEdgePx = absoluteTimelinePx - gripOffsetPx
+            
+            val newEdge = (targetEdgePx / pixelsPerMs()).toLong().coerceIn(minEdgeMs(), maxEdgeMs())
+            if (newEdge != currentEdgeMs()) {
+                onEdgeChange(newEdge)
             }
         },
-        onDragEnd = { onDragEnd(edgeMs) },
-        onDragCancel = { onDragEnd(edgeMs) },
+        onDragEnd = { onDragEnd(currentEdgeMs()) },
+        onDragCancel = { onDragEnd(currentEdgeMs()) },
     )
 }
 

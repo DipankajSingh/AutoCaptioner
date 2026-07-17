@@ -1,7 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
-import com.skydoves.cloudy.cloudy
-import com.skydoves.cloudy.sky
+
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -62,6 +61,14 @@ import com.dipdev.aiautocaptioner.ui.processing.components.ModelPickerCard
 import com.dipdev.aiautocaptioner.ui.processing.components.SafetyCheckDialogs
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.blur
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.style.TextAlign
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,6 +111,16 @@ fun ProcessingScreen(
         showCancelDialog = true
     }
 
+    var pendingModelIdToDownload by remember { mutableStateOf<String?>(null) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        pendingModelIdToDownload?.let { 
+            viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId))
+            pendingModelIdToDownload = null
+        }
+    }
+
     if (showCancelDialog) {
         CancelProcessDialog(
             onDismiss = { showCancelDialog = false },
@@ -119,7 +136,6 @@ fun ProcessingScreen(
         // --- 1. Immersive Background ---
         val videoUri = uiState.workingVideoPath
         if (videoUri != null) {
-            val sky = com.skydoves.cloudy.rememberSky()
             coil3.compose.AsyncImage(
                 model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                     .data(videoUri)
@@ -127,11 +143,9 @@ fun ProcessingScreen(
                     .build(),
                 contentDescription = null,
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                onSuccess = { sky.invalidate() },
                 modifier = Modifier
                     .fillMaxSize()
-                    .cloudy(radius = 25)
-                    .sky(sky)
+                    .blur(25.dp)
             )
             // Darken overlay for better text readability
             androidx.compose.foundation.layout.Box(
@@ -195,6 +209,7 @@ fun ProcessingScreen(
                     when (currentStep) {
                         is ProcessingStep.SetupAI -> {
                             var selectedModelId by remember { mutableStateOf(currentStep.recommendedModelId) }
+                            val context = androidx.compose.ui.platform.LocalContext.current
                             
                             Text(
                                 text = "Choose AI Accuracy",
@@ -231,9 +246,31 @@ fun ProcessingScreen(
 
                             GradientPrimaryButton(
                                 text = if (isDownloaded) "Generate Captions" else "Download & Generate",
-                                onClick = { selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) } },
+                                onClick = { 
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                                        if (hasPerm == PackageManager.PERMISSION_GRANTED) {
+                                            selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                        } else {
+                                            selectedModelId?.let { 
+                                                pendingModelIdToDownload = it
+                                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            }
+                                        }
+                                    } else {
+                                        selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                    }
+                                },
                                 enabled = selectedModelId != null,
                                 modifier = Modifier.fillMaxWidth().height(56.dp)
+                            )
+                            
+                            Text(
+                                text = "Note: Generating captions runs a heavy AI model on your device. Background processing may consume significant battery.",
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.5f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
                             )
                         }
 

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -165,13 +167,39 @@ private fun BoxScope.OverlayItem(
                 }
             }
     ) {
-        AsyncImage(
-            model = overlay.imageUri,
-            contentDescription = "Image Overlay",
+        var imgAspectRatio by remember { mutableFloatStateOf(1f) }
+        var isLoaded by remember { mutableStateOf(false) }
+
+        Box(
             modifier = Modifier
-                .widthIn(max = 200.dp)
-                .heightIn(max = 200.dp),
-            contentScale = androidx.compose.ui.layout.ContentScale.Fit
-        )
+                .width(
+                    if (isLoaded) {
+                        val canvasAspect = canvasWidth / canvasHeight
+                        if (imgAspectRatio > canvasAspect) with(androidx.compose.ui.platform.LocalDensity.current) { canvasWidth.toDp() }
+                        else with(androidx.compose.ui.platform.LocalDensity.current) { (canvasHeight * imgAspectRatio).toDp() }
+                    } else 100.dp
+                )
+                .height(
+                    if (isLoaded) {
+                        val canvasAspect = canvasWidth / canvasHeight
+                        if (imgAspectRatio > canvasAspect) with(androidx.compose.ui.platform.LocalDensity.current) { (canvasWidth / imgAspectRatio).toDp() }
+                        else with(androidx.compose.ui.platform.LocalDensity.current) { canvasHeight.toDp() }
+                    } else 100.dp
+                )
+        ) {
+            AsyncImage(
+                model = overlay.imageUri,
+                contentDescription = "Image Overlay",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                onSuccess = { state ->
+                    val image = state.result.image
+                    val w = image.width.toFloat()
+                    val h = image.height.toFloat()
+                    if (h > 0) imgAspectRatio = w / h
+                    isLoaded = true
+                }
+            )
+        }
     }
 }

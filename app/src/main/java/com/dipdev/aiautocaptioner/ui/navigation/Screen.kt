@@ -1,86 +1,44 @@
 package com.dipdev.aiautocaptioner.ui.navigation
 
-// Sealed class = a closed set of types
-// Each object inside represents one screen/destination in the app
-// Using sealed class instead of plain strings means:
-// → typos are caught at compile time, not runtime
-// → IDE autocomplete works
-// → refactoring is safe
+import kotlinx.serialization.Serializable
 
-sealed class Screen(val route: String) {
+sealed class Screen {
+    @Serializable
+    data object Onboarding : Screen()
 
-    // ---- Onboarding flow ----
-    // These screens only appear on first launch
+    @Serializable
+    data object DeviceCheck : Screen()
 
+    @Serializable
+    data object ModelManager : Screen()
 
-    // 3-page welcome/intro screen
-    data object Onboarding : Screen("onboarding")
+    @Serializable
+    data class ModelDownload(val modelId: String) : Screen()
 
-    // Checks device RAM/CPU and recommends a model
-    data object DeviceCheck : Screen("device_check")
+    @Serializable
+    data object Home : Screen()
 
-    // Dedicated screen to download, switch, and delete models
-    data object ModelManager : Screen("model_manager")
+    @Serializable
+    data object Settings : Screen()
 
-    // Downloads the selected Whisper model with progress
-    data object ModelDownload : Screen("model_download/{modelId}") {
-        // Helper function to build the route with actual modelId
-        // Usage: Screen.ModelDownload.createRoute("base.en")
-        // Result: "model_download/base.en"
-        fun createRoute(modelId: String) = "model_download/$modelId"
-    }
+    @Serializable
+    data class ExportHistory(val projectId: String) : Screen()
 
-    // ---- Main app flow ----
+    @Serializable
+    data class ProjectEditorGraph(val projectId: String) : Screen()
 
-    // Home screen — shows recent projects + import button
-    data object Home : Screen("home")
+    @Serializable
+    data class VideoEditor(val projectId: String) : Screen()
 
+    @Serializable
+    data class Processing(val projectId: String, val forceModelPicker: Boolean = false, val isRegenerating: Boolean = false) : Screen()
 
-    
-    // Settings screen — app appearance
-    data object Settings : Screen("settings")
-    
-    // Export History — view previous exports for a project
-    data object ExportHistory : Screen("export_history/{projectId}") {
-        fun createRoute(projectId: String) = "export_history/$projectId"
-    }
+    @Serializable
+    data class CaptionEditor(val projectId: String, val fromEditor: Boolean = false) : Screen()
 
-    /**
-     * Nested navigation graph that scopes [SharedPlayerViewModel] across VideoEditor and StyleEditor.
-     * Navigate to the graph by navigating to VideoEditor.createRoute(projectId); the nested graph
-     * is entered automatically.
-     */
-    data object ProjectEditorGraph : Screen("project_editor_graph/{projectId}") {
-        fun createRoute(projectId: String) = "project_editor_graph/$projectId"
-    }
+    @Serializable
+    data class Export(val projectId: String) : Screen()
 
-    // Video Editor — Trim and middle cuts before processing
-    data object VideoEditor : Screen("video_editor/{projectId}") {
-        fun createRoute(projectId: String) = "video_editor/$projectId"
-    }
-
-    // Processing screen — extract audio + transcribe
-    // Takes projectId as argument so it knows which project to process
-    data object Processing : Screen("processing/{projectId}?forceModelPicker={forceModelPicker}&isRegenerating={isRegenerating}") {
-        fun createRoute(projectId: String, forceModelPicker: Boolean = false, isRegenerating: Boolean = false) = "processing/$projectId?forceModelPicker=$forceModelPicker&isRegenerating=$isRegenerating"
-    }
-
-    // Caption editor — fix words, adjust timing, mark emphasis
-    data object CaptionEditor : Screen("caption_editor/{projectId}?fromEditor={fromEditor}") {
-        fun createRoute(projectId: String, fromEditor: Boolean = false) =
-            "caption_editor/$projectId?fromEditor=$fromEditor"
-    }
-
-
-    // Export — FFmpeg / Media3 burns captions into video
-    data object Export : Screen("export/{projectId}") {
-        fun createRoute(projectId: String): String {
-            return "export/$projectId"
-        }
-    }
-
-    // Smart Recorder
-    data object SmartRecorder : Screen("smart_recorder/{mode}") {
-        fun createRoute(mode: String) = "smart_recorder/$mode"
-    }
+    @Serializable
+    data class SmartRecorder(val mode: String) : Screen()
 }

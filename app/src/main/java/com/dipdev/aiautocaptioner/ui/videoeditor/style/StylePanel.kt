@@ -79,38 +79,38 @@ fun StylePanel(
                         StyleTab.TEXT -> {
                             TextTab(
                                 style = style,
-                                onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateFontSize(it)) },
-                                onFontWeightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateFontWeight(it)) },
-                                onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateMaxWordsPerLine(it)) },
-                                onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateMaxLines(it)) },
-                                onRemovePunctuationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateRemovePunctuation(it)) },
-                                onAlignmentChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateAlignment(it)) },
-                                onLetterSpacingChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateLetterSpacing(it)) },
-                                onIsItalicChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateIsItalic(it)) }
+                                onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontSize") { s -> s.copy(fontSize = it) }) },
+                                onFontWeightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontWeight") { s -> s.copy(fontWeight = it) }) },
+                                onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
+                                onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
+                                onRemovePunctuationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("removePunctuation") { s -> s.copy(removePunctuation = it) }) },
+                                onAlignmentChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("alignment") { s -> s.copy(alignment = it) }) },
+                                onLetterSpacingChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("letterSpacing") { s -> s.copy(letterSpacing = it) }) },
+                                onIsItalicChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("isItalic") { s -> s.copy(isItalic = it) }) }
                             )
                         }
                         StyleTab.COLOR -> {
                             ColorTab(
                                 style = style,
-                                onTextColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateTextColor(it)) },
-                                onHighlightColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateHighlightColor(it)) },
-                                onOutlineColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateOutlineColor(it)) },
-                                onOutlineWidthChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateOutlineWidth(it)) },
-                                onBackgroundTypeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundType(it)) },
-                                onBackgroundColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundColor(it)) },
-                                onBackgroundOpacityChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundOpacity(it)) },
-                                onBackgroundPaddingHChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundPaddingH(it)) },
-                                onBackgroundPaddingVChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundPaddingV(it)) },
-                                onBackgroundCornerRadiusChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateBackgroundCornerRadius(it)) }
+                                onTextColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("textColor") { s -> s.copy(textColor = it) }) },
+                                onHighlightColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("highlightColor") { s -> s.copy(highlightColor = it) }) },
+                                onOutlineColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("outlineColor") { s -> s.copy(outlineColor = it) }) },
+                                onOutlineWidthChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("outlineWidth") { s -> s.copy(outlineWidth = it) }) },
+                                onBackgroundTypeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundType") { s -> s.copy(backgroundType = it) }) },
+                                onBackgroundColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundColor") { s -> s.copy(backgroundColor = it) }) },
+                                onBackgroundOpacityChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundOpacity") { s -> s.copy(backgroundOpacity = it) }) },
+                                onBackgroundPaddingHChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundPaddingH") { s -> s.copy(backgroundPaddingH = it) }) },
+                                onBackgroundPaddingVChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundPaddingV") { s -> s.copy(backgroundPaddingV = it) }) },
+                                onBackgroundCornerRadiusChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundCornerRadius") { s -> s.copy(backgroundCornerRadius = it) }) }
                             )
                         }
                         StyleTab.ANIMATION -> {
                                 AnimationTab(
                                     style = style,
-                                    onDisplayModeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateDisplayMode(it)) },
-                                    onWordEnterChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateWordEnterAnimation(it)) },
-                                    onKaraokeHighlightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateKaraokeHighlightMode(it)) },
-                                    onAnimationDurationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateAnimationDurationMs(it)) }
+                                    onDisplayModeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("displayMode") { s -> s.copy(displayMode = it) }) },
+                                    onWordEnterChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("wordEnter") { s -> s.copy(wordEnterAnimation = it) }) },
+                                    onKaraokeHighlightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("karaokeHighlight") { s -> s.copy(karaokeHighlightMode = it) }) },
+                                    onAnimationDurationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("animationDuration") { s -> s.copy(animationDurationMs = it) }) }
                                 )
                         }
                     }
