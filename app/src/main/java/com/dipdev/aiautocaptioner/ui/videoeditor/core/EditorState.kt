@@ -41,10 +41,11 @@ fun rememberEditorState(
         EditorState(player, coroutineScope, onDurationUpdated)
     }
 
-    // Stop progress sync when the composable leaves composition
+    // Stop progress sync and remove listener when the composable leaves composition
     DisposableEffect(player) {
         onDispose {
             state.stopProgressSync()
+            state.removePlayerListener()
             // NOTE: player.release() is NOT called here — SharedPlayerViewModel owns the lifecycle.
         }
     }
@@ -122,36 +123,38 @@ class EditorState(
 
     private var progressJob: kotlinx.coroutines.Job? = null
 
-    init {
-        player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    val duration = player.duration
-                    if (duration > 0 && !hasEmittedOriginalDuration) {
-                        hasEmittedOriginalDuration = true
-                        onDurationUpdated(duration)
-                    }
+    private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) {
+                val duration = player.duration
+                if (duration > 0 && !hasEmittedOriginalDuration) {
+                    hasEmittedOriginalDuration = true
+                    onDurationUpdated(duration)
                 }
             }
+        }
 
-            override fun onIsPlayingChanged(isPlayingParam: Boolean) {
-                isPlaying = isPlayingParam
-                if (isPlayingParam) {
-                    startProgressSync()
-                } else {
-                    stopProgressSync()
-                    updateProgress()
-                }
-            }
-
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int
-            ) {
+        override fun onIsPlayingChanged(isPlayingParam: Boolean) {
+            isPlaying = isPlayingParam
+            if (isPlayingParam) {
+                startProgressSync()
+            } else {
+                stopProgressSync()
                 updateProgress()
             }
-        })
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            updateProgress()
+        }
+    }
+
+    init {
+        player.addListener(playerListener)
     }
 
     fun startProgressSync() {
@@ -167,6 +170,10 @@ class EditorState(
     fun stopProgressSync() {
         progressJob?.cancel()
         progressJob = null
+    }
+
+    fun removePlayerListener() {
+        player.removeListener(playerListener)
     }
 
     private fun updateProgress() {

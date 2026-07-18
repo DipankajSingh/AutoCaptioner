@@ -18,6 +18,7 @@ class OverlayManager(
     private val onOverlaySelected: (String?) -> Unit,
     private val isSelectedOverlay: (String) -> Boolean
 ) {
+    private val zOrderLock = Any()
     fun addOverlay(uri: String, scope: CoroutineScope) {
         val projectId = getProjectId() ?: return
         scope.launch(Dispatchers.IO) {
@@ -34,16 +35,18 @@ class OverlayManager(
                     }
                 }
                 
-                val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
-                val overlay = ImageOverlayEntity(
-                    id = UUID.randomUUID().toString(),
-                    projectId = projectId,
-                    imageUri = destFile.absolutePath,
-                    startTimeMs = 0L,
-                    endTimeMs = 5000L,
-                    zOrder = maxZ + 1,
-                    createdAt = System.currentTimeMillis()
-                )
+                val overlay = synchronized(zOrderLock) {
+                    val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
+                    ImageOverlayEntity(
+                        id = UUID.randomUUID().toString(),
+                        projectId = projectId,
+                        imageUri = destFile.absolutePath,
+                        startTimeMs = 0L,
+                        endTimeMs = 5000L,
+                        zOrder = maxZ + 1,
+                        createdAt = System.currentTimeMillis()
+                    )
+                }
                 overlayRepository.addOverlay(overlay)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -123,16 +126,18 @@ class OverlayManager(
                 }
             }
             
-            val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
-            val duplicate = overlay.copy(
-                id = UUID.randomUUID().toString(),
-                imageUri = newImageUri,
-                zOrder = maxZ + 1,
-                // offset position slightly so it's visible as a copy
-                positionX = overlay.positionX + 0.05f,
-                positionY = overlay.positionY + 0.05f,
-                createdAt = System.currentTimeMillis()
-            )
+            val duplicate = synchronized(zOrderLock) {
+                val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
+                overlay.copy(
+                    id = UUID.randomUUID().toString(),
+                    imageUri = newImageUri,
+                    zOrder = maxZ + 1,
+                    // offset position slightly so it's visible as a copy
+                    positionX = overlay.positionX + 0.05f,
+                    positionY = overlay.positionY + 0.05f,
+                    createdAt = System.currentTimeMillis()
+                )
+            }
             overlayRepository.addOverlay(duplicate)
             onOverlaySelected(duplicate.id) // Auto select the new duplicate
         }
