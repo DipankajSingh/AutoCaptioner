@@ -248,7 +248,7 @@ fun EditorScreen(
                             return@BoxWithConstraints
                         }
 
-                        val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
+                        val totalEditedMs = remember(clips) { clips.sumOf { it.endTrimMs - it.startTrimMs } }
 
                         // Fix A: pass injected player into EditorState (no longer creates its own)
                         val editorState = rememberEditorState(

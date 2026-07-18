@@ -79,7 +79,7 @@ fun TimelineView(
     var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
     var draggingOverlayId by remember { mutableStateOf<String?>(null) }
     var dragPointerScreenX by remember { mutableFloatStateOf(0f) }
-    val totalEditedMs = clips.sumOf { it.endTrimMs - it.startTrimMs }
+    val totalEditedMs = remember(clips) { clips.sumOf { it.endTrimMs - it.startTrimMs } }
 
     val halfWidthPx = boxWidthPx / 2f
     val clipLayoutCenters = remember(clips, pixelsPerMs, halfWidthPx) {
@@ -116,7 +116,7 @@ fun TimelineView(
         }
     }
 
-    LaunchedEffect(draggingClipIndex, draggingOverlayId, dragPointerScreenX) {
+    LaunchedEffect(draggingClipIndex, draggingOverlayId) {
         if (draggingClipIndex != null || draggingOverlayId != null) {
             val edgeThreshold = with(density) { 60.dp.toPx() }
             val speed = 15f
@@ -151,44 +151,46 @@ fun TimelineView(
         }
     }
 
-    LaunchedEffect(scrollState.value, boxWidthPx, pixelsPerMs, clips, thumbnailIntervalMs) {
+    LaunchedEffect(boxWidthPx, pixelsPerMs, clips, thumbnailIntervalMs) {
         if (boxWidthPx == 0 || pixelsPerMs == 0f) return@LaunchedEffect
-        kotlinx.coroutines.delay(80L.milliseconds) // Debounce rapid scroll events
-        
-        val visibleStartMs = (scrollState.value / pixelsPerMs).toLong()
-        val visibleEndMs = ((scrollState.value + boxWidthPx) / pixelsPerMs).toLong()
-        
-        val requested = mutableSetOf<Long>()
-        var currentTimelineMs = 0L
-        
-        for (clip in clips) {
-            val clipDurationMs = clip.endTrimMs - clip.startTrimMs
-            val clipStartTimelineMs = currentTimelineMs
-            val clipEndTimelineMs = currentTimelineMs + clipDurationMs
-            
-            // If the clip intersects with the visible edited timeline
-            if (clipEndTimelineMs > visibleStartMs && clipStartTimelineMs < visibleEndMs) {
-                val visibleClipStartMs = maxOf(clipStartTimelineMs, visibleStartMs)
-                val visibleClipEndMs = minOf(clipEndTimelineMs, visibleEndMs)
-                
-                // Map the visible edited times to original video timestamps
-                val offsetIntoClipStartMs = visibleClipStartMs - clipStartTimelineMs
-                val offsetIntoClipEndMs = visibleClipEndMs - clipStartTimelineMs
-                
-                val originalStartMs = clip.startTrimMs + offsetIntoClipStartMs
-                val originalEndMs = clip.startTrimMs + offsetIntoClipEndMs
-                
-                val startChunk = (originalStartMs / thumbnailIntervalMs) * thumbnailIntervalMs
-                val endChunk = (originalEndMs / thumbnailIntervalMs) * thumbnailIntervalMs
-                
-                for (time in startChunk..endChunk step thumbnailIntervalMs) {
-                    requested.add(time)
+        snapshotFlow { scrollState.value }.collect {
+            kotlinx.coroutines.delay(80L.milliseconds) // Debounce rapid scroll events
+
+            val visibleStartMs = (scrollState.value / pixelsPerMs).toLong()
+            val visibleEndMs = ((scrollState.value + boxWidthPx) / pixelsPerMs).toLong()
+
+            val requested = mutableSetOf<Long>()
+            var currentTimelineMs = 0L
+
+            for (clip in clips) {
+                val clipDurationMs = clip.endTrimMs - clip.startTrimMs
+                val clipStartTimelineMs = currentTimelineMs
+                val clipEndTimelineMs = currentTimelineMs + clipDurationMs
+
+                // If the clip intersects with the visible edited timeline
+                if (clipEndTimelineMs > visibleStartMs && clipStartTimelineMs < visibleEndMs) {
+                    val visibleClipStartMs = maxOf(clipStartTimelineMs, visibleStartMs)
+                    val visibleClipEndMs = minOf(clipEndTimelineMs, visibleEndMs)
+
+                    // Map the visible edited times to original video timestamps
+                    val offsetIntoClipStartMs = visibleClipStartMs - clipStartTimelineMs
+                    val offsetIntoClipEndMs = visibleClipEndMs - clipStartTimelineMs
+
+                    val originalStartMs = clip.startTrimMs + offsetIntoClipStartMs
+                    val originalEndMs = clip.startTrimMs + offsetIntoClipEndMs
+
+                    val startChunk = (originalStartMs / thumbnailIntervalMs) * thumbnailIntervalMs
+                    val endChunk = (originalEndMs / thumbnailIntervalMs) * thumbnailIntervalMs
+
+                    for (time in startChunk..endChunk step thumbnailIntervalMs) {
+                        requested.add(time)
+                    }
                 }
+                currentTimelineMs += clipDurationMs
             }
-            currentTimelineMs += clipDurationMs
+
+            onRequestThumbnails(requested.toList())
         }
-        
-        onRequestThumbnails(requested.toList())
     }
 
     val mergedClips = remember(clips) { mergeContiguousClips(clips) }

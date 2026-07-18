@@ -36,44 +36,57 @@ fun PresetChip(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "preset_preview")
-    
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (style.emphasisAnimation == AnimationType.SCALE_POP || style.emphasisAnimation == AnimationType.BOUNCE) 1.15f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
+    val contentColor = if (isSelected) {
+        val infiniteTransition = rememberInfiniteTransition(label = "preset_preview")
 
-    val baseColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    val highlightColor = MaterialTheme.colorScheme.primary
-    val animColor by infiniteTransition.animateColor(
-        initialValue = baseColor,
-        targetValue = if (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.LINE_HIGHLIGHT) highlightColor else baseColor,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "color"
-    )
+        val baseColor = MaterialTheme.colorScheme.onPrimaryContainer
+        val highlightColor = MaterialTheme.colorScheme.primary
 
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = if (style.wordEnterAnimation == AnimationType.FADE || style.displayMode == DisplayMode.TYPEWRITER) 0.3f else 1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
+        val animColor by infiniteTransition.animateColor(
+            initialValue = baseColor,
+            targetValue = if (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.LINE_HIGHLIGHT) highlightColor else baseColor,
+            animationSpec = infiniteRepeatable(
+                animation = tween(800),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "color"
+        )
+
+        val alpha by infiniteTransition.animateFloat(
+            initialValue = if (style.wordEnterAnimation == AnimationType.FADE || style.displayMode == DisplayMode.TYPEWRITER) 0.3f else 1f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(800),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "alpha"
+        )
+
+        animColor.copy(alpha = alpha)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val scale = if (isSelected && (style.emphasisAnimation == AnimationType.SCALE_POP || style.emphasisAnimation == AnimationType.BOUNCE)) {
+        val infiniteTransition = rememberInfiniteTransition(label = "preset_scale")
+        val animScale by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.15f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(600, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale"
+        )
+        animScale
+    } else {
+        1f
+    }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = animColor,
+        contentColor = contentColor,
         shadowElevation = if (isSelected) 4.dp else 1.dp,
         modifier = Modifier.combinedClickable(
             onClick = onClick,
@@ -89,7 +102,7 @@ fun PresetChip(
                 text = style.name,
                 fontSize = 16.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = animColor.copy(alpha = alpha),
+                color = contentColor,
                 modifier = Modifier.scale(scale)
             )
         }

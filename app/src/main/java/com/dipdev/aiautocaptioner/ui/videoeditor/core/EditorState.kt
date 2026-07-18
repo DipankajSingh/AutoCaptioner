@@ -8,7 +8,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -16,7 +18,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -36,9 +37,10 @@ fun rememberEditorState(
     onDurationUpdated: (Long) -> Unit
 ): EditorState {
     val coroutineScope = rememberCoroutineScope()
+    val updatedOnDurationUpdated by rememberUpdatedState(onDurationUpdated)
 
     val state = remember(player) {
-        EditorState(player, coroutineScope, onDurationUpdated)
+        EditorState(player, coroutineScope) { updatedOnDurationUpdated(it) }
     }
 
     // Stop progress sync and remove listener when the composable leaves composition
@@ -118,8 +120,7 @@ class EditorState(
     
     private var hasEmittedOriginalDuration = false
     
-    // Updated by the composable remember function when clips change
-    var mergedClips: List<Clip> = emptyList()
+    var mergedClips by mutableStateOf<List<Clip>>(emptyList())
 
     private var progressJob: kotlinx.coroutines.Job? = null
 
@@ -162,7 +163,7 @@ class EditorState(
         progressJob = coroutineScope.launch {
             while (isActive) {
                 updateProgress()
-                delay(16L) // ~60fps updates
+                withFrameMillis { }
             }
         }
     }

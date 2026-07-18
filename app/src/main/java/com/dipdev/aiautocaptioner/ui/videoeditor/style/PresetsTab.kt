@@ -40,7 +40,7 @@ fun PresetsTab(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(styles) { style ->
+            items(styles, key = { it.id }) { style ->
                 PresetChip(
                     style = style,
                     isSelected = activeStyle?.name == style.name,
