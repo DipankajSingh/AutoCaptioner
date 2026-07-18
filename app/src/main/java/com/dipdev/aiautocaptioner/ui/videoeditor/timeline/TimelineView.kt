@@ -205,7 +205,7 @@ fun TimelineView(
                     var accumulated = 0L
                     var targetWindowIndex = 0
                     var targetPosInWindow = 0L
-                    
+
                     for (i in mergedClips.indices) {
                         val clipDuration = mergedClips[i].endTrimMs - mergedClips[i].startTrimMs
                         if (seekTimeMs >= accumulated && seekTimeMs < accumulated + clipDuration) {
@@ -215,17 +215,19 @@ fun TimelineView(
                         }
                         accumulated += clipDuration
                     }
-                    
+
                     if (seekTimeMs >= totalEditedMs && mergedClips.isNotEmpty()) {
                         targetWindowIndex = mergedClips.size - 1
                         targetPosInWindow = mergedClips.last().endTrimMs - mergedClips.last().startTrimMs
                     }
-                    
+
                     player.seekTo(targetWindowIndex, targetPosInWindow)
                 }
             }
         } else {
-            onDragStateChange(false)
+            if (draggingClipIndex == null && draggingOverlayId == null) {
+                onDragStateChange(false)
+            }
             snapshotFlow { currentTimelineMs() }.collect { timeMs ->
                 if (player.isPlaying) {
                     val scrollOffset = (timeMs * pixelsPerMs).toInt()
@@ -446,14 +448,15 @@ fun TimelineView(
                                             primaryColor = primaryColor,
                                             scrollStateValue = scrollState.value,
                                             timelineWidthPx = boxWidthPx,
+                                            trackContentOffsetPx = halfWidthPx,
                                             onOverlaySelected = onOverlaySelected,
                                             onDragStateChange = { 
                                                 onDragStateChange(it)
                                                 if (!it) draggingOverlayId = null
                                             },
                                             onOverlayTimingChanged = onOverlayTimingChanged,
-                                            onDragPointerStart = { 
-                                                dragPointerScreenX = it 
+                                            onDragPointerStart = {
+                                                dragPointerScreenX = it
                                                 draggingOverlayId = overlay.id
                                             },
                                             onDragPointerMove = { dragPointerScreenX = it }

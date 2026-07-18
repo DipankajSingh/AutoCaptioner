@@ -18,6 +18,7 @@ fun Modifier.timelineMoveGesture(
     endTimeMs: () -> Long,
     totalDurationMs: () -> Long,
     scrollStateValue: () -> Int,
+    contentOffsetPx: () -> Float = { 0f },
     onDragStart: () -> Unit = {},
     onDragPointerStart: (screenX: Float) -> Unit,
     onDragPointerMove: (screenX: Float) -> Unit,
@@ -41,8 +42,7 @@ fun Modifier.timelineMoveGesture(
             initialEndMs = endTimeMs()
             accumulatedPx = 0f
 
-            val clipTimelinePx = initialStartMs * pixelsPerMs()
-            viewportX = offset.x + clipTimelinePx - scrollStateValue()
+            viewportX = offset.x + contentOffsetPx() + initialStartMs * pixelsPerMs() - scrollStateValue()
 
             onDragPointerStart(viewportX)
             onDragStart()
