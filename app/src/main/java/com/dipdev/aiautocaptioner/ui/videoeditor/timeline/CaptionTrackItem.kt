@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.segmentToTimelineRange
-import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 
 /**
@@ -46,7 +46,8 @@ fun CaptionTrackItem(
     val startDp = with(density) { startPx.toDp() }
     val widthDp = with(density) { widthPx.toDp() }.coerceAtLeast(4.dp)
 
-    val bgColor = if (isSelected) AccentViolet.copy(alpha = 0.65f) else AccentViolet
+    val accentColor = LocalAccentColor.current
+    val bgColor = if (isSelected) accentColor.copy(alpha = 0.65f) else accentColor
 
     Box(
         modifier = Modifier

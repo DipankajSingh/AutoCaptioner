@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.core.utils.MediaManager
+import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
@@ -60,6 +61,7 @@ class ExportUiEffect : UiEffect
 class ExportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
+    private val captionRepository: CaptionRepository,
     private val crashReporter: CrashReporter,
     private val settingsRepository: SettingsRepository,
     private val mediaManager: MediaManager
@@ -123,12 +125,10 @@ class ExportViewModel @Inject constructor(
             
             setState { copy(workingVideoPath = project?.workingVideoPath) }
             
-            // Check if captions exist
+            // Check if captions exist by looking at actual segments in the DB
             try {
-                // In a real app we might inject captionRepository to the viewmodel, but 
-                // project.activeStyleId != null is a good enough proxy for now if we don't want to inject captionRepository just for this
-                val hasCaptions = project?.activeStyleId != null
-                setState { copy(hasCaptions = hasCaptions) }
+                val segments = captionRepository.getSegmentsOnce(projectId)
+                setState { copy(hasCaptions = segments.isNotEmpty()) }
             } catch (e: Exception) {
                 setState { copy(hasCaptions = false) }
             }

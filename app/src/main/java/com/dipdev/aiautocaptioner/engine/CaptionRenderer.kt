@@ -7,10 +7,6 @@ import com.dipdev.aiautocaptioner.engine.CaptionAnimator.TimedWord
 import com.dipdev.aiautocaptioner.engine.CaptionAnimator.WordTransform
 import androidx.core.graphics.withClip
 import androidx.core.graphics.withTranslation
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CaptionRenderer
@@ -46,7 +42,6 @@ object CaptionRenderer {
     data class LineLayout(val words: List<WordLayout>, val lineStartX: Float, val lineWidth: Float)
 
     private var cachedLayouts: List<LineLayout> = emptyList()
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     /** Whether the current segment's text reads right-to-left. */
     private var cachedIsRtl: Boolean = false
 
@@ -106,23 +101,20 @@ object CaptionRenderer {
             val currentIsRtl = isRtl
             val currentAlign = style.alignment
             
-            scope.launch {
-                val newLayouts = lines.map { words ->
-                    val wordLayouts = words.map { w ->
-                        val txt = CaptionUtils.sanitize(w.text, style)
-                        val wordW = CaptionPaints.text.measureText(txt)
-                        WordLayout(w, txt, wordW)
-                    }
-                    val lineW = wordLayouts.sumOf { (it.wordW + currentSpaceW).toDouble() }.toFloat() - currentSpaceW
-
-                    val x = when (currentAlign) {
-                        TextAlignment.CENTER -> (videoWidth - lineW) / 2f
-                        TextAlignment.START  -> if (currentIsRtl) videoWidth * 0.92f - lineW else videoWidth * 0.08f
-                        TextAlignment.END    -> if (currentIsRtl) videoWidth * 0.08f           else videoWidth * 0.92f - lineW
-                    }
-                    LineLayout(wordLayouts, x, lineW)
+            cachedLayouts = lines.map { words ->
+                val wordLayouts = words.map { w ->
+                    val txt = CaptionUtils.sanitize(w.text, style)
+                    val wordW = CaptionPaints.text.measureText(txt)
+                    WordLayout(w, txt, wordW)
                 }
-                cachedLayouts = newLayouts
+                val lineW = wordLayouts.sumOf { (it.wordW + currentSpaceW).toDouble() }.toFloat() - currentSpaceW
+
+                val x = when (currentAlign) {
+                    TextAlignment.CENTER -> (videoWidth - lineW) / 2f
+                    TextAlignment.START  -> if (currentIsRtl) videoWidth * 0.92f - lineW else videoWidth * 0.08f
+                    TextAlignment.END    -> if (currentIsRtl) videoWidth * 0.08f           else videoWidth * 0.92f - lineW
+                }
+                LineLayout(wordLayouts, x, lineW)
             }
         }
 

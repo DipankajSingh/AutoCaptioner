@@ -34,7 +34,6 @@ import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
-import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
 import kotlinx.coroutines.isActive
