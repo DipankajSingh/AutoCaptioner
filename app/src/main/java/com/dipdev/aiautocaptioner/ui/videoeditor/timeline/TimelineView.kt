@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,6 +35,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -129,12 +129,8 @@ fun TimelineView(
                     scrollState.scrollTo((scrollState.value + speed.toInt()).coerceAtMost(scrollState.maxValue))
                     scrolled = true
                 }
-                if (scrolled) {
-                    checkSwaps()
-                    kotlinx.coroutines.delay(16.milliseconds)
-                } else {
-                    break
-                }
+                if (scrolled) checkSwaps()
+                kotlinx.coroutines.delay(16.milliseconds)
             }
         }
     }
@@ -426,7 +422,7 @@ fun TimelineView(
                                         for (row in 0..2) {
                                             for (col in 0..1) {
                                                 drawCircle(
-                                                    color = Color.White.copy(alpha = 0.7f),
+                                                    color = TextSecondary,
                                                     radius = dotRadius,
                                                     center = androidx.compose.ui.geometry.Offset(startX + col * spacingX, startY + row * spacingY)
                                                 )
@@ -435,7 +431,7 @@ fun TimelineView(
                                     }
                                 }
                                 
-                                Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(Color.DarkGray.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
+                                Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
                                     val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
                                     val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
                                     val durationMs = maxOf(0L, endTimeMs - startTimeMs)

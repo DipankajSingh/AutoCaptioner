@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -20,8 +21,9 @@ fun ProcessingStateHeader(
         text = title,
         fontSize = 20.sp,
         fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onBackground,
         maxLines = 1,
-        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        overflow = TextOverflow.Ellipsis
     )
     if (subtitle != null) {
         Spacer(modifier = Modifier.height(8.dp))

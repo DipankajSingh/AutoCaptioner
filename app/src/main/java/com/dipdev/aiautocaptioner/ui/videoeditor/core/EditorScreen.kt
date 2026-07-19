@@ -40,6 +40,7 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Edit2
 import compose.icons.feathericons.X
@@ -196,7 +197,7 @@ fun EditorScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.85f))
+                                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.85f))
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -213,13 +214,13 @@ fun EditorScreen(
                                     text = stringResource(R.string.editor_applying_edits),
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = TextPrimary
                                 )
                                 if (step.progress > 0) {
                                     Text(
                                         text = "${step.progress}%",
                                         fontSize = 16.sp,
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = TextPrimary.copy(alpha = 0.7f),
                                         modifier = Modifier.padding(top = 8.dp)
                                     )
                                 }
@@ -233,7 +234,7 @@ fun EditorScreen(
                             ) {
                                 Text(
                                     text = stringResource(R.string.editor_cancel),
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = TextPrimary.copy(alpha = 0.6f),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -291,7 +292,7 @@ fun EditorScreen(
                                         .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp)
                                         .background(
                                             brush = Brush.verticalGradient(
-                                                colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)
+                                                colors = listOf(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f), Color.Transparent)
                                             )
                                         )
                                         .align(Alignment.TopCenter)

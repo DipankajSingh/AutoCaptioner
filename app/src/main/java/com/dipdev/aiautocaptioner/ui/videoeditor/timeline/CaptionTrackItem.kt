@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -21,9 +20,8 @@ import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.segmentToTimelineRange
-
-private val CaptionTrackColor = Color(0xFF7C4DFF) // deep violet — distinct from amber video clips
-private val CaptionTrackSelectedColor = Color(0xFFB39DDB)
+import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 
 /**
  * A single caption segment block rendered on the caption track.
@@ -48,7 +46,7 @@ fun CaptionTrackItem(
     val startDp = with(density) { startPx.toDp() }
     val widthDp = with(density) { widthPx.toDp() }.coerceAtLeast(4.dp)
 
-    val bgColor = if (isSelected) CaptionTrackSelectedColor else CaptionTrackColor
+    val bgColor = if (isSelected) AccentViolet.copy(alpha = 0.65f) else AccentViolet
 
     Box(
         modifier = Modifier
@@ -62,7 +60,7 @@ fun CaptionTrackItem(
     ) {
         Text(
             text = segment.text,
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 9.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.*
@@ -60,8 +61,8 @@ fun LeftSideControls(
             onClick = {
                 if (hasEdits) onShowBackDialog() else onNavigateBack()
             },
-            tint = Color.Red,
-            containerColor = Color.Red.copy(alpha = 0.15f)
+            tint = AccentRose,
+            containerColor = AccentRose.copy(alpha = 0.15f)
         )
 
         Box {
@@ -282,7 +283,7 @@ fun HamburgerPopup(
                     }
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Text("Delete Project", style = MaterialTheme.typography.bodyMedium, color = Color.Red)
+                Text("Delete Project", style = MaterialTheme.typography.bodyMedium, color = AccentRose)
             }
         }
     }

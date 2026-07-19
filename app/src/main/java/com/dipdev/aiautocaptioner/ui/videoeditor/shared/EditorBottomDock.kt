@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Film
-import compose.icons.feathericons.Music
 import compose.icons.feathericons.Type
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
@@ -118,11 +117,6 @@ fun EditorBottomDock(
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-                EditorMode.AUDIO -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        AudioToolbar()
-                    }
-                }
             }
         }
         
@@ -148,12 +142,6 @@ fun EditorBottomDock(
                     label = "Captions",
                     selected = currentMode == EditorMode.CAPTIONS,
                     onClick = { currentMode = EditorMode.CAPTIONS }
-                )
-                CompactTabItem(
-                    icon = FeatherIcons.Music,
-                    label = "Audio",
-                    selected = currentMode == EditorMode.AUDIO,
-                    onClick = { currentMode = EditorMode.AUDIO }
                 )
             }
         }

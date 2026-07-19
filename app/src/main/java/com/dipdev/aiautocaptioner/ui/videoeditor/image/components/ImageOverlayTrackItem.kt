@@ -19,6 +19,7 @@ import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.timelineMoveGesture
 import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.timelineTrimGesture
 import kotlin.math.roundToInt
@@ -53,6 +54,24 @@ fun ImageOverlayTrackItem(
     var dragStateEndMs by remember { mutableStateOf<Long?>(null) }
     var dragStartScrollPx by remember { mutableIntStateOf(0) }
     var isRepositioning by remember { mutableStateOf(false) }
+    var pendingTargetStartMs by remember { mutableStateOf<Long?>(null) }
+    var pendingTargetEndMs by remember { mutableStateOf<Long?>(null) }
+
+    // Clear transient state once overlay data has caught up after a gesture
+    LaunchedEffect(overlay.startTimeMs) {
+        if (pendingTargetStartMs != null && overlay.startTimeMs == pendingTargetStartMs) {
+            dragStateStartMs = null
+            dragStateEndMs   = null
+            pendingTargetStartMs = null
+        }
+    }
+    LaunchedEffect(overlay.endTimeMs) {
+        if (pendingTargetEndMs != null && overlay.endTimeMs == pendingTargetEndMs) {
+            dragStateStartMs = null
+            dragStateEndMs   = null
+            pendingTargetEndMs = null
+        }
+    }
 
     val activeStartMs = dragStateStartMs ?: overlay.startTimeMs
     val activeEndMs = dragStateEndMs ?: currentEndTimeMs
@@ -81,10 +100,10 @@ fun ImageOverlayTrackItem(
             }
             .padding(horizontal = 1.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelectedOverlay) Color.White else primaryColor.copy(alpha = 0.3f))
+            .background(if (isSelectedOverlay) TextPrimary else primaryColor.copy(alpha = 0.3f))
             .border(
                 width = if (isSelectedOverlay) 2.dp else 1.dp,
-                color = if (isSelectedOverlay) Color.White else primaryColor.copy(alpha = 0.5f),
+                color = if (isSelectedOverlay) TextPrimary else primaryColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(12.dp),
             )
             .timelineMoveGesture(
@@ -115,9 +134,10 @@ fun ImageOverlayTrackItem(
                         val persistedEnd = if (updatedOverlay.endTimeMs == Long.MAX_VALUE)
                             Long.MAX_VALUE else correctedEnd
                         onOverlayTimingChanged(updatedOverlay.id, correctedStart, persistedEnd)
+                        dragStateStartMs = correctedStart
+                        dragStateEndMs   = correctedEnd
+                        pendingTargetStartMs = correctedStart
                     }
-                    dragStateStartMs = null
-                    dragStateEndMs   = null
                     isRepositioning = false
                     onDragStateChange(false)
                 },
@@ -178,9 +198,10 @@ fun ImageOverlayTrackItem(
                         onDragEnd = { finalStart ->
                             if (dragStateStartMs != null) {
                                 onOverlayTimingChanged(updatedOverlay.id, finalStart, updatedEndTimeMs)
+                                dragStateStartMs = finalStart
+                                dragStateEndMs   = updatedEndTimeMs
+                                pendingTargetStartMs = finalStart
                             }
-                            dragStateStartMs = null
-                            dragStateEndMs   = null
                             onDragStateChange(false)
                         },
                     ),
@@ -215,9 +236,10 @@ fun ImageOverlayTrackItem(
                                 val persistedEnd = if (updatedOverlay.endTimeMs == Long.MAX_VALUE
                                     && finalEnd >= updatedTotalEditedMs - 100L) Long.MAX_VALUE else finalEnd
                                 onOverlayTimingChanged(updatedOverlay.id, updatedOverlay.startTimeMs, persistedEnd)
+                                dragStateStartMs = updatedOverlay.startTimeMs
+                                dragStateEndMs   = persistedEnd
+                                pendingTargetEndMs = persistedEnd
                             }
-                            dragStateStartMs = null
-                            dragStateEndMs   = null
                             onDragStateChange(false)
                         },
                     ),

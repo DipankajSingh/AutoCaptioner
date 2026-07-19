@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 
 @SuppressLint("DefaultLocale")
 @Composable
@@ -137,10 +138,10 @@ fun VideoClipItem(
             }
             .padding(horizontal = 1.dp) // slight gap between clips
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelected) Color.White else surfaceVariantColor)
+            .background(if (isSelected) TextPrimary else surfaceVariantColor)
             .border(
                 width = 1.dp,
-                color = if (isSelected) Color.White else outlineColor.copy(alpha = 0.5f),
+                color = if (isSelected) TextPrimary else outlineColor.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(12.dp)
             )
             .timelineClipSwapGesture(
@@ -276,7 +277,7 @@ fun VideoClipItem(
         // Name Label
         Text(
             text = "Clip ${index + 1}",
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 10.sp,
             modifier = Modifier
                 .align(Alignment.BottomStart)

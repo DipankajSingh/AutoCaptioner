@@ -43,7 +43,6 @@ data class StyleEditorUiState(
 ) : UiState
 
 sealed interface StyleEditorUiEvent : UiEvent {
-    data object UnlockPremiumMock : StyleEditorUiEvent
     data class LoadStyles(val projectId: String) : StyleEditorUiEvent
     data class SelectPreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
     data class SelectTab(val tab: StyleTab) : StyleEditorUiEvent
@@ -79,7 +78,6 @@ class StyleViewModel @Inject constructor(
 
     override fun handleEvent(event: StyleEditorUiEvent) {
         when (event) {
-            is StyleEditorUiEvent.UnlockPremiumMock -> unlockPremiumMock()
             is StyleEditorUiEvent.LoadStyles -> loadStyles(event.projectId)
             is StyleEditorUiEvent.SelectPreset -> selectPreset(event.style)
             is StyleEditorUiEvent.SelectTab -> selectTab(event.tab)
@@ -94,10 +92,6 @@ class StyleViewModel @Inject constructor(
             is StyleEditorUiEvent.UpdateSegmentText -> updateSegmentText(event.segmentId, event.newText)
             is StyleEditorUiEvent.MarkCaptionEditorVisited -> markCaptionEditorVisited(event.projectId)
         }
-    }
-
-    private fun unlockPremiumMock() {
-        // No-op, mock is removed. Purchase is handled by RevenueCat Paywall directly in UI.
     }
 
     private fun purchaseLifetime() {

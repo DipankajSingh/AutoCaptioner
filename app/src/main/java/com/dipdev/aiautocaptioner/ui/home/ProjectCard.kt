@@ -44,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,7 +54,7 @@ import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.RenameDialog
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 import java.io.File
 
 @Composable
@@ -179,45 +178,45 @@ fun ProjectCard(
             ) {
                 // Thumbnail
                 Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    project.thumbnailPath?.let { path ->
-                        AsyncImage(
-                            model = File(path),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                    
-                    val videoToPlay = project.workingVideoPath
-                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f))
-                            .clickable(
-                                onClick = { onPlayVideo(videoToPlay) },
-                                onClickLabel = "Play original video"
-                            ),
-                        contentAlignment = Alignment.Center
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        Icon(
-                            imageVector = FeatherIcons.Play,
-                            contentDescription = "Play Video",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        project.thumbnailPath?.let { path ->
+                            AsyncImage(
+                                model = File(path),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        
+                        val videoToPlay = project.workingVideoPath
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
+                                .clickable(
+                                    onClick = { onPlayVideo(videoToPlay) },
+                                    onClickLabel = "Play original video"
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = FeatherIcons.Play,
+                                contentDescription = "Play Video",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Original Video",
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Original Video",
                         style = MaterialTheme.typography.labelMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -284,13 +283,13 @@ fun ProjectCard(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.4f)),
+                                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         FeatherIcons.Play,
                                         contentDescription = "Play Export",
-                                        tint = Color.White,
+                                        tint = TextPrimary,
                                         modifier = Modifier.size(24.dp)
                                     )
                                 }
@@ -329,7 +328,7 @@ fun ProjectCard(
                 }
                 TextButton(
                     onClick = { showDeleteConfirm = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = AccentRose)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Icon(FeatherIcons.Trash2, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))

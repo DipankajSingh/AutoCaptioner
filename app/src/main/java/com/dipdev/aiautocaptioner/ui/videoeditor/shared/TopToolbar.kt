@@ -3,8 +3,6 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -19,19 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 
-
-@Composable
-fun AudioToolbar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("Audio tools coming soon...", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
 
 @Composable
 fun CompactTabItem(

@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -27,7 +28,7 @@ class ExportService @Inject constructor(
 ) {
     private var transformer: Transformer? = null
     private var tempOutputFile: File? = null
-    private var isExporting = false
+    private val isExporting = AtomicBoolean(false)
 
     fun startExport(
         scope: CoroutineScope,
@@ -37,8 +38,7 @@ class ExportService @Inject constructor(
         onSuccess: (File) -> Unit,
         onError: (String) -> Unit
     ) {
-        if (isExporting) return
-        isExporting = true
+        if (!isExporting.compareAndSet(false, true)) return
 
         try {
             tempOutputFile = FileUtils.createTempVideoFile(context)
@@ -66,7 +66,7 @@ class ExportService @Inject constructor(
             transformer = Transformer.Builder(context)
                 .addListener(object : Transformer.Listener {
                     override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                        isExporting = false
+                        isExporting.set(false)
                         onSuccess(tempFile)
                     }
 
@@ -75,7 +75,7 @@ class ExportService @Inject constructor(
                         exportResult: ExportResult,
                         exportException: ExportException
                     ) {
-                        isExporting = false
+                        isExporting.set(false)
                         tempFile.delete()
                         tempOutputFile = null
                         onError(exportException.message ?: "Unknown error during trim")
@@ -87,7 +87,7 @@ class ExportService @Inject constructor(
 
             scope.launch {
                 val progressHolder = androidx.media3.transformer.ProgressHolder()
-                while (transformer != null && isExporting) {
+                while (transformer != null && isExporting.get()) {
                     val progressState = transformer?.getProgress(progressHolder)
                     if (progressState == Transformer.PROGRESS_STATE_AVAILABLE) {
                         onProgress(progressHolder.progress)
@@ -99,13 +99,13 @@ class ExportService @Inject constructor(
             }
 
         } catch (e: Exception) {
-            isExporting = false
+            isExporting.set(false)
             onError(e.message ?: "Failed to process video")
         }
     }
 
     fun cancel() {
-        isExporting = false
+        isExporting.set(false)
         transformer?.cancel()
         transformer = null
         tempOutputFile?.delete()

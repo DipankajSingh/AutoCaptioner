@@ -29,9 +29,10 @@ import androidx.compose.foundation.layout.size
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Play
 import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Alignment
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 /**
  * A reusable Video Player component that binds to an external Media3 [Player].
  *
@@ -102,7 +103,7 @@ fun VideoPlayerCard(
                         modifier = Modifier
                             .size(64.dp)
                             .background(
-                                color = Color.Black.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -110,7 +111,7 @@ fun VideoPlayerCard(
                         Icon(
                             imageVector = FeatherIcons.Play,
                             contentDescription = "Play",
-                            tint = Color.White,
+                            tint = TextPrimary,
                             modifier = Modifier.size(40.dp)
                         )
                     }

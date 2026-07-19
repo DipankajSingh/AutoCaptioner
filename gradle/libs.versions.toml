@@ -31,7 +31,7 @@ lottie = "6.7.1"
 firebaseBom = "34.15.0"
 revenuecat = "10.13.0"
 camerax = "1.6.1"
-mediapipeTasksVision = "0.10.14"
+mediapipeTasksVision = "0.10.29"
 kotlinxSerialization = "1.6.3"
 
 [libraries]

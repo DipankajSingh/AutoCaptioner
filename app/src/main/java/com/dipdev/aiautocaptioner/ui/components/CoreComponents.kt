@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
@@ -81,33 +82,21 @@ fun GradientPrimaryButton(
     enabled: Boolean = true,
     paddingValues: PaddingValues = PaddingValues(horizontal = 24.dp, vertical = 14.dp)
 ) {
-    val primary = MaterialTheme.colorScheme.primary
-    val gradient = Brush.horizontalGradient(
-        colors = listOf(
-            primary.copy(alpha = 0.8f),
-            primary
-        )
-    )
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(
-                if (enabled) gradient
-                else Brush.linearGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.outlineVariant,
-                        MaterialTheme.colorScheme.outlineVariant
-                    )
-                )
-            )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(paddingValues),
-        contentAlignment = Alignment.Center
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        shape = RoundedCornerShape(50),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        contentPadding = paddingValues
     ) {
         Text(
             text = text,
-            color = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
         )
     }
