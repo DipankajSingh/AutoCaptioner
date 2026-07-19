@@ -81,6 +81,8 @@ fun EditorScreen(
         val originalDurationMs = uiState.originalDurationMs
         val selectedLanguage = uiState.selectedLanguage
         val translateToEnglish = uiState.translateToEnglish
+        val videoWidth = uiState.videoWidth
+        val videoHeight = uiState.videoHeight
 
         val styleUiState by styleViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -89,7 +91,7 @@ fun EditorScreen(
 
         var selectedClipId by remember { mutableStateOf<String?>(null) }
         var zoomLevel by remember { mutableFloatStateOf(1f) }
-        var showBackDialog by remember { mutableStateOf(false) }
+
         var showDeleteDialog by remember { mutableStateOf(false) }
         var selectedCaptionSegment by remember { mutableStateOf<CaptionSegmentEntity?>(null) }
         var inlineEditText by remember { mutableStateOf("") }
@@ -118,7 +120,7 @@ fun EditorScreen(
         }
 
         BackHandler {
-            if (hasEdits) showBackDialog = true else onNavigateBack()
+            onNavigateBack()
         }
 
         LaunchedEffect(Unit) {
@@ -279,6 +281,12 @@ fun EditorScreen(
                                     selectedOverlayId = selectedOverlayId,
                                     onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
                                     onSelectOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
+                                    onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
+                                    onBringToFront = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(it, true)) },
+                                    onSendToBack = { viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(it, false)) },
+                                    onFullVideo = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it.copy(endTimeMs = Long.MAX_VALUE))) },
+                                    videoWidth = videoWidth,
+                                    videoHeight = videoHeight,
                                     activeStyle = styleUiState.activeStyle,
                                     segments = styleUiState.segments,
                                     wordsMap = styleUiState.wordsMap,
@@ -301,7 +309,6 @@ fun EditorScreen(
                                 LeftSideControls(
                                     hasEdits = hasEdits,
                                     onNavigateBack = onNavigateBack,
-                                    onShowBackDialog = { showBackDialog = true },
                                     onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
                                     onDeleteProject = { viewModel.setEvent(VideoEditorUiEvent.DeleteProject) },
                                     onShowDeleteDialog = { showDeleteDialog = true },
@@ -430,20 +437,6 @@ fun EditorScreen(
         }
 
         // Fix 10: Extracted dialog composables
-        if (showBackDialog) {
-            UnsavedEditsDialog(
-                onSaveAndContinue = {
-                    showBackDialog = false
-                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false))
-                },
-                onDiscard = {
-                    showBackDialog = false
-                    onNavigateBack()
-                },
-                onDismiss = { showBackDialog = false }
-            )
-        }
-
         if (showDeleteDialog) {
             DeleteProjectDialog(
                 onConfirm = {

@@ -174,6 +174,10 @@ class ExportForegroundService : Service() {
 
                 val textureOverlays = ImmutableList.builder<TextureOverlay>()
 
+                val isPortrait = project.videoRotation == 90 || project.videoRotation == 270
+                val displayWidth  = if (isPortrait) project.videoHeight else project.videoWidth
+                val displayHeight = if (isPortrait) project.videoWidth  else project.videoHeight
+
                 // 1. Process Captions (Optional)
                 val styleId = project.activeStyleId
                 if (styleId != null) {
@@ -182,10 +186,6 @@ class ExportForegroundService : Service() {
                     if (activeStyle != null && segments.isNotEmpty()) {
                         val wordsList = captionRepository.getAllWordsForProject(projectId)
                         val wordsMap = wordsList.groupBy { it.segmentId }
-
-                        val isPortrait = project.videoRotation == 90 || project.videoRotation == 270
-                        val displayWidth  = if (isPortrait) project.videoHeight else project.videoWidth
-                        val displayHeight = if (isPortrait) project.videoWidth  else project.videoHeight
 
                         val captionOverlayEffect = CaptionOverlayEffect(
                             segments = segments,
@@ -219,7 +219,9 @@ class ExportForegroundService : Service() {
                                 scaleX = overlay.scaleX,
                                 scaleY = overlay.scaleY,
                                 startTimeMs = overlay.startTimeMs,
-                                endTimeMs = overlay.endTimeMs
+                                endTimeMs = overlay.endTimeMs,
+                                videoWidth = displayWidth,
+                                videoHeight = displayHeight
                             )
                         } else {
                             null

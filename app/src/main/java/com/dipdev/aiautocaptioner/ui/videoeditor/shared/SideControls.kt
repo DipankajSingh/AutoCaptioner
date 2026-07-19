@@ -34,7 +34,6 @@ import compose.icons.feathericons.*
 fun LeftSideControls(
     hasEdits: Boolean,
     onNavigateBack: () -> Unit,
-    onShowBackDialog: () -> Unit,
     onNavigateToExport: () -> Unit,
     onDeleteProject: () -> Unit,
     onShowDeleteDialog: () -> Unit,
@@ -58,9 +57,7 @@ fun LeftSideControls(
         SideControlButton(
             icon = FeatherIcons.LogOut,
             contentDescription = "Exit Editor", // Replace with stringResource
-            onClick = {
-                if (hasEdits) onShowBackDialog() else onNavigateBack()
-            },
+            onClick = onNavigateBack,
             tint = AccentRose,
             containerColor = AccentRose.copy(alpha = 0.15f)
         )

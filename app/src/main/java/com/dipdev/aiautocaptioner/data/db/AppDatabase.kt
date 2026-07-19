@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false,
     autoMigrations = []
 )
@@ -172,6 +172,14 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE projects ADD COLUMN creationMode TEXT NOT NULL DEFAULT 'ADVANCED'")
+            }
+        }
+
+        /** Add naturalWidth and naturalHeight to image_overlays */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE image_overlays ADD COLUMN naturalWidth INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE image_overlays ADD COLUMN naturalHeight INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.core.managers
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +35,10 @@ class OverlayManager(
                         input.copyTo(output)
                     }
                 }
-                
+
+                val decodeOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(destFile.absolutePath, decodeOpts)
+
                 val overlay = synchronized(zOrderLock) {
                     val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
                     ImageOverlayEntity(
@@ -44,7 +48,9 @@ class OverlayManager(
                         startTimeMs = 0L,
                         endTimeMs = 5000L,
                         zOrder = maxZ + 1,
-                        createdAt = System.currentTimeMillis()
+                        createdAt = System.currentTimeMillis(),
+                        naturalWidth = decodeOpts.outWidth,
+                        naturalHeight = decodeOpts.outHeight
                     )
                 }
                 overlayRepository.addOverlay(overlay)

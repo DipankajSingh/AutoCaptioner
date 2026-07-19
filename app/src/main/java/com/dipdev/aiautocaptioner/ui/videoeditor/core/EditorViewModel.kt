@@ -51,7 +51,9 @@ data class VideoEditorUiState(
     val originalDurationMs: Long = 0L,
     val showTimelineThumbnails: Boolean = false,
     val selectedLanguage: String = "en",
-    val translateToEnglish: Boolean = false
+    val translateToEnglish: Boolean = false,
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0
 ) : UiState
 sealed class VideoEditorUiEvent : UiEvent {
     data class LoadProject(val projectId: String) : VideoEditorUiEvent()
@@ -240,6 +242,8 @@ class EditorViewModel @Inject constructor(
                         canUndo = false,
                         canRedo = false,
                         originalDurationMs = durationMs,
+                        videoWidth = project.videoWidth,
+                        videoHeight = project.videoHeight,
                         step = VideoEditorUiStep.Ready(durationMs = durationMs, originalPath = workingPath)
                     )
                 }

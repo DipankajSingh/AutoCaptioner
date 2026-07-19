@@ -7,10 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -25,25 +24,62 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.math.roundToInt
+
+private const val AUTO_FIT_SCALE = 0.35f
+private const val MIN_SCALE = 0.05f
+private const val MAX_SCALE = 5.0f
+private const val OFF_SCREEN_MIN_ALPHA = 0.25f
+private const val DEBOUNCE_MS = 300L
+
+private fun clampScale(v: Float) = v.coerceIn(MIN_SCALE, MAX_SCALE)
+
+private fun computeOverlapFraction(
+    posX: Float, posY: Float,
+    scaleX: Float, scaleY: Float,
+    boxWidthPx: Float, boxHeightPx: Float,
+    canvasWidth: Float, canvasHeight: Float
+): Float {
+    val imgW = boxWidthPx * scaleX
+    val imgH = boxHeightPx * scaleY
+    val cx = posX * canvasWidth
+    val cy = posY * canvasHeight
+    val overlapW = maxOf(0f, minOf(cx + imgW / 2f, canvasWidth) - maxOf(cx - imgW / 2f, 0f))
+    val overlapH = maxOf(0f, minOf(cy + imgH / 2f, canvasHeight) - maxOf(cy - imgH / 2f, 0f))
+    val total = imgW * imgH
+    return if (total > 0f) (overlapW * overlapH) / total else 1f
+}
 
 /**
- * Renders all currently-visible image overlays on top of the video preview.
- *
- * Fix 1 — Recomposition: Each overlay is isolated in its own [OverlayItem] composable.
- * The parent [BoxWithConstraints] no longer reads [currentTimelineMs] at all — only each
- * child reads it within its own scope, so a visibility change for one overlay only
- * recomposes that one child, not the entire overlay surface.
- *
- * Fix 3 — State loss: A [DisposableEffect] inside [OverlayItem] fires [onUpdateOverlay]
- * synchronously in onDispose, ensuring the last transform is persisted even if the
- * user navigates away before the 300 ms debounce fires.
+ * Compute the actual video display rect within a container, using ContentScale.Fit logic.
+ * Returns (offsetX, offsetY, displayWidth, displayHeight) in pixels.
  */
+private fun computeVideoDisplayRect(
+    containerW: Float, containerH: Float,
+    videoW: Int, videoH: Int
+): Triple<Float, Float, Pair<Float, Float>> {
+    if (videoW <= 0 || videoH <= 0) return Triple(0f, 0f, containerW to containerH)
+    val videoAspect = videoW.toFloat() / videoH.toFloat()
+    val containerAspect = containerW / containerH
+    return if (videoAspect > containerAspect) {
+        val dw = containerW
+        val dh = containerW / videoAspect
+        Triple(0f, (containerH - dh) / 2f, dw to dh)
+    } else {
+        val dh = containerH
+        val dw = containerH * videoAspect
+        Triple((containerW - dw) / 2f, 0f, dw to dh)
+    }
+}
+
 @Composable
 fun OverlayRenderer(
     overlays: List<ImageOverlayEntity>,
@@ -51,31 +87,41 @@ fun OverlayRenderer(
     selectedOverlayId: String?,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String) -> Unit,
+    videoWidth: Int = 0,
+    videoHeight: Int = 0,
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val canvasWidth = constraints.maxWidth.toFloat()
-        val canvasHeight = constraints.maxHeight.toFloat()
+        val containerW = constraints.maxWidth.toFloat()
+        val containerH = constraints.maxHeight.toFloat()
 
-        // Fix 1: iterate all overlays; each child decides its own visibility
-        overlays.forEach { overlay ->
-            OverlayItem(
-                overlay = overlay,
-                canvasWidth = canvasWidth,
-                canvasHeight = canvasHeight,
-                isSelected = overlay.id == selectedOverlayId,
-                currentTimelineMs = currentTimelineMs,
-                onUpdateOverlay = onUpdateOverlay,
-                onSelectOverlay = onSelectOverlay
-            )
+        val (offsetX, offsetY, videoRect) = remember(containerW, containerH, videoWidth, videoHeight) {
+            computeVideoDisplayRect(containerW, containerH, videoWidth, videoHeight)
+        }
+        val canvasWidth = videoRect.first
+        val canvasHeight = videoRect.second
+
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                .width(with(LocalDensity.current) { canvasWidth.toDp() })
+                .height(with(LocalDensity.current) { canvasHeight.toDp() })
+        ) {
+            overlays.forEach { overlay ->
+                OverlayItem(
+                    overlay = overlay,
+                    canvasWidth = canvasWidth,
+                    canvasHeight = canvasHeight,
+                    isSelected = overlay.id == selectedOverlayId,
+                    currentTimelineMs = currentTimelineMs,
+                    onUpdateOverlay = onUpdateOverlay,
+                    onSelectOverlay = onSelectOverlay
+                )
+            }
         }
     }
 }
 
-/**
- * Single overlay item. Reads [currentTimelineMs] in its own isolated scope (Fix 1).
- * Persists transform state on disposal (Fix 3).
- */
 @Composable
 private fun BoxScope.OverlayItem(
     overlay: ImageOverlayEntity,
@@ -86,34 +132,60 @@ private fun BoxScope.OverlayItem(
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String) -> Unit
 ) {
-    // Fix 1: visibility read is isolated to this composable
     val isVisible = currentTimelineMs() in overlay.startTimeMs..overlay.endTimeMs
     if (!isVisible) return
 
-    var localScale by remember(overlay.id) { mutableFloatStateOf(overlay.scaleX) }
+    var localScaleX by remember(overlay.id) { mutableFloatStateOf(overlay.scaleX) }
+    var localScaleY by remember(overlay.id) { mutableFloatStateOf(overlay.scaleY) }
     var localPosX by remember(overlay.id) { mutableFloatStateOf(overlay.positionX) }
     var localPosY by remember(overlay.id) { mutableFloatStateOf(overlay.positionY) }
     var lastTransformTime by remember(overlay.id) { mutableLongStateOf(0L) }
-    // Fix 3: track whether there is a pending unsaved transform
     var hasPendingTransform by remember(overlay.id) { mutableStateOf(false) }
 
-    // Sync external changes back to local state (only when no local edits are in flight)
-    LaunchedEffect(overlay.scaleX, overlay.positionX, overlay.positionY) {
+    var imgAspectRatio by remember { mutableFloatStateOf(1f) }
+    var isLoaded by remember { mutableStateOf(false) }
+
+    val density = LocalDensity.current
+    val boxWidthPx = if (isLoaded) {
+        val canvasAspect = canvasWidth / canvasHeight
+        if (imgAspectRatio > canvasAspect) canvasWidth
+        else canvasHeight * imgAspectRatio
+    } else 0f
+    val boxHeightPx = if (isLoaded) {
+        val canvasAspect = canvasWidth / canvasHeight
+        if (imgAspectRatio > canvasAspect) canvasWidth / imgAspectRatio
+        else canvasHeight
+    } else 0f
+
+    LaunchedEffect(overlay.scaleX, overlay.scaleY, overlay.positionX, overlay.positionY) {
         if (System.currentTimeMillis() - lastTransformTime > 500) {
-            localScale = overlay.scaleX
+            localScaleX = overlay.scaleX
+            localScaleY = overlay.scaleY
             localPosX = overlay.positionX
             localPosY = overlay.positionY
         }
     }
 
-    // Debounced persist — fires 300 ms after the last gesture update
-    LaunchedEffect(lastTransformTime) {
-        if (lastTransformTime > 0) {
-            delay(300.milliseconds)
+    LaunchedEffect(overlay.naturalWidth, overlay.naturalHeight, isLoaded) {
+        if (isLoaded && overlay.naturalWidth > 0 && overlay.scaleX == 1f && overlay.scaleY == 1f) {
+            localScaleX = AUTO_FIT_SCALE
+            localScaleY = AUTO_FIT_SCALE
             onUpdateOverlay(
                 overlay.copy(
-                    scaleX = localScale,
-                    scaleY = localScale,
+                    scaleX = AUTO_FIT_SCALE,
+                    scaleY = AUTO_FIT_SCALE
+                )
+            )
+        }
+    }
+
+    LaunchedEffect(lastTransformTime) {
+        if (lastTransformTime > 0) {
+            delay(DEBOUNCE_MS)
+            onUpdateOverlay(
+                overlay.copy(
+                    scaleX = localScaleX,
+                    scaleY = localScaleY,
                     positionX = localPosX,
                     positionY = localPosY
                 )
@@ -122,15 +194,13 @@ private fun BoxScope.OverlayItem(
         }
     }
 
-    // Fix 3: Flush any pending transform synchronously when this composable leaves composition
-    // (e.g. user navigates away within the 300 ms debounce window)
     DisposableEffect(overlay.id) {
         onDispose {
             if (hasPendingTransform) {
                 onUpdateOverlay(
                     overlay.copy(
-                        scaleX = localScale,
-                        scaleY = localScale,
+                        scaleX = localScaleX,
+                        scaleY = localScaleY,
                         positionX = localPosX,
                         positionY = localPosY
                     )
@@ -139,14 +209,24 @@ private fun BoxScope.OverlayItem(
         }
     }
 
+    val overlapFraction = if (isLoaded && boxWidthPx > 0f && boxHeightPx > 0f) {
+        computeOverlapFraction(
+            localPosX, localPosY, localScaleX, localScaleY,
+            boxWidthPx, boxHeightPx, canvasWidth, canvasHeight
+        )
+    } else 1f
+
+    val overlayAlpha = OFF_SCREEN_MIN_ALPHA + (1f - OFF_SCREEN_MIN_ALPHA) * overlapFraction.coerceIn(0f, 1f)
+
     Box(
         modifier = Modifier
             .align(Alignment.Center)
             .graphicsLayer {
                 translationX = (localPosX - 0.5f) * canvasWidth
                 translationY = (localPosY - 0.5f) * canvasHeight
-                scaleX = localScale
-                scaleY = localScale
+                scaleX = localScaleX
+                scaleY = localScaleY
+                alpha = overlayAlpha
             }
             .border(
                 width = if (isSelected) 2.dp else 0.dp,
@@ -154,7 +234,8 @@ private fun BoxScope.OverlayItem(
             )
             .pointerInput(overlay.id) {
                 detectTransformGestures { _, pan, zoom, _ ->
-                    localScale *= zoom
+                    localScaleX = clampScale(localScaleX * zoom)
+                    localScaleY = clampScale(localScaleY * zoom)
                     localPosX += (pan.x / canvasWidth)
                     localPosY += (pan.y / canvasHeight)
                     lastTransformTime = System.currentTimeMillis()
@@ -162,28 +243,23 @@ private fun BoxScope.OverlayItem(
                 }
             }
             .pointerInput(overlay.id + "_tap") {
-                detectTapGestures {
-                    onSelectOverlay(overlay.id)
-                }
+                detectTapGestures { onSelectOverlay(overlay.id) }
             }
     ) {
-        var imgAspectRatio by remember { mutableFloatStateOf(1f) }
-        var isLoaded by remember { mutableStateOf(false) }
-
         Box(
             modifier = Modifier
                 .width(
                     if (isLoaded) {
                         val canvasAspect = canvasWidth / canvasHeight
-                        if (imgAspectRatio > canvasAspect) with(androidx.compose.ui.platform.LocalDensity.current) { canvasWidth.toDp() }
-                        else with(androidx.compose.ui.platform.LocalDensity.current) { (canvasHeight * imgAspectRatio).toDp() }
+                        if (imgAspectRatio > canvasAspect) with(density) { canvasWidth.toDp() }
+                        else with(density) { (canvasHeight * imgAspectRatio).toDp() }
                     } else 100.dp
                 )
                 .height(
                     if (isLoaded) {
                         val canvasAspect = canvasWidth / canvasHeight
-                        if (imgAspectRatio > canvasAspect) with(androidx.compose.ui.platform.LocalDensity.current) { (canvasWidth / imgAspectRatio).toDp() }
-                        else with(androidx.compose.ui.platform.LocalDensity.current) { canvasHeight.toDp() }
+                        if (imgAspectRatio > canvasAspect) with(density) { (canvasWidth / imgAspectRatio).toDp() }
+                        else with(density) { canvasHeight.toDp() }
                     } else 100.dp
                 )
         ) {
@@ -191,7 +267,7 @@ private fun BoxScope.OverlayItem(
                 model = overlay.imageUri,
                 contentDescription = "Image Overlay",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                contentScale = ContentScale.Fit,
                 onSuccess = { state ->
                     val image = state.result.image
                     val w = image.width.toFloat()
@@ -200,6 +276,21 @@ private fun BoxScope.OverlayItem(
                     isLoaded = true
                 }
             )
+
+            if (isSelected && isLoaded) {
+                OverlayResizeHandles(
+                    boxWidthPx = boxWidthPx,
+                    boxHeightPx = boxHeightPx,
+                    scaleX = localScaleX,
+                    scaleY = localScaleY,
+                    onScaleChange = { sx, sy ->
+                        localScaleX = clampScale(sx)
+                        localScaleY = clampScale(sy)
+                        lastTransformTime = System.currentTimeMillis()
+                        hasPendingTransform = true
+                    }
+                )
+            }
         }
     }
 }

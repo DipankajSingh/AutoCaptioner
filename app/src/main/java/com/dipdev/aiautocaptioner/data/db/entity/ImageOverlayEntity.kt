@@ -30,5 +30,7 @@ data class ImageOverlayEntity(
     val startTimeMs: Long = 0L,
     val endTimeMs: Long = Long.MAX_VALUE,
     val zOrder: Int = 0,
-    val createdAt: Long
+    val createdAt: Long,
+    val naturalWidth: Int = 0,
+    val naturalHeight: Int = 0
 )
