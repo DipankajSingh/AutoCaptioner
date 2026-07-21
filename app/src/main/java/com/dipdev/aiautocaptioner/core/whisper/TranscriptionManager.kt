@@ -5,6 +5,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.dipdev.aiautocaptioner.core.audio.AudioExtractionUseCase
+import com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
@@ -39,7 +40,8 @@ class TranscriptionManager @Inject constructor(
     private val modelRepository: ModelRepository,
     private val whisperEngine: WhisperEngine,
     private val crashReporter: CrashReporter,
-    private val audioExtractionUseCase: AudioExtractionUseCase
+    private val audioExtractionUseCase: AudioExtractionUseCase,
+    private val deviceCapabilityUseCase: DeviceCapabilityUseCase
 ) {
     companion object {
         private const val TAG = "TranscriptionManager"
@@ -52,6 +54,9 @@ class TranscriptionManager @Inject constructor(
 
     private val _streamedSegments = MutableStateFlow<List<StreamedSegment>>(emptyList())
     val streamedSegments: StateFlow<List<StreamedSegment>> = _streamedSegments.asStateFlow()
+
+    private val _detectedLanguage = MutableStateFlow<String?>(null)
+    val detectedLanguage: StateFlow<String?> = _detectedLanguage.asStateFlow()
 
     private val _segmentBuffer = Channel<StreamedSegment>(Channel.UNLIMITED)
     private var dripJob: Job? = null
@@ -74,6 +79,13 @@ class TranscriptionManager @Inject constructor(
                 // Ensure service is started to host the notification and hold Wakelock
                 val serviceIntent = Intent(context, TranscriptionForegroundService::class.java)
                 ContextCompat.startForegroundService(context, serviceIntent)
+
+                // Battery safety: abort if battery is critically low and not charging
+                val batteryLevel = deviceCapabilityUseCase.getBatteryLevel()
+                val charging = deviceCapabilityUseCase.isCharging()
+                if (batteryLevel in 0..10 && !charging) {
+                    throw Exception("Battery too low ($batteryLevel%). Please plug in and try again.")
+                }
 
                 val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found")
 
@@ -199,6 +211,13 @@ class TranscriptionManager @Inject constructor(
             throw Exception("No words transcribed")
         }
 
+        // Surface the language whisper actually used (relevant when user chose "auto")
+        if (language == "auto" || language.isEmpty()) {
+            _detectedLanguage.value = whisperEngine.lastDetectedLanguage
+        } else {
+            _detectedLanguage.value = language
+        }
+
         _step.value = ProcessingStep.Saving
         
         val finalSegments = CaptionSegmenter.buildFinalSegments(allWords)
@@ -253,5 +272,6 @@ class TranscriptionManager @Inject constructor(
     fun clearState() {
         _step.value = ProcessingStep.Idle
         _streamedSegments.value = emptyList()
+        _detectedLanguage.value = null
     }
 }

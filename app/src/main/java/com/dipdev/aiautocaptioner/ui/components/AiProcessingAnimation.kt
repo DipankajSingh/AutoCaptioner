@@ -47,7 +47,7 @@ fun AiProcessingAnimation(
     val primary = MaterialTheme.colorScheme.primary
 
     Box(
-        modifier = modifier.size(120.dp),
+        modifier = modifier.size(160.dp),
         contentAlignment = Alignment.Center
     ) {
         // Outer pulsing ring and progress arc
@@ -98,11 +98,9 @@ fun AiProcessingAnimation(
 
         // App logo inside
         Image(
-            painter = painterResource(id = R.drawable.ic_launcher_img),
+            painter = painterResource(id = R.drawable.ic_logo_ui),
             contentDescription = "AutoCaptioner Logo",
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
+            modifier = Modifier.size(80.dp)
         )
     }
 }

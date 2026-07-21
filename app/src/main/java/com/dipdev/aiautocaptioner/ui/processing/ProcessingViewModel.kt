@@ -88,7 +88,8 @@ data class ProcessingUiState(
     val segmentCount: Int = 0,
     val safetyCheck: ModelSafetyCheck = ModelSafetyCheck.Idle,
     val activeModel: WhisperModel? = null,
-    val availableModels: List<WhisperModel> = emptyList()
+    val availableModels: List<WhisperModel> = emptyList(),
+    val detectedLanguage: String? = null
 ) : UiState
 
 sealed class ProcessingUiEvent : UiEvent {
@@ -193,6 +194,12 @@ class ProcessingViewModel @Inject constructor(
                 setState { copy(streamedSegments = segments, segmentCount = segments.size) }
             }
         }
+
+        viewModelScope.launch {
+            transcriptionManager.detectedLanguage.collect { lang ->
+                if (lang != null) setState { copy(detectedLanguage = lang) }
+            }
+        }
     }
 
     override fun handleEvent(event: ProcessingUiEvent) {
@@ -262,13 +269,12 @@ class ProcessingViewModel @Inject constructor(
         val allModels = modelRepository.getAvailableModels()
 
         val compatibleModels = allModels.filter { model ->
-            if (language == "en") {
-                model.languages.contains("en")
-            } else if (language == "auto") {
-                model.isMultilingual
-            } else {
-                model.isMultilingual || model.languages.contains(language)
+            val langMatch = when {
+                language == "en" -> model.languages.contains("en")
+                language == "auto" -> model.isMultilingual
+                else -> model.isMultilingual || model.languages.contains(language)
             }
+            langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
         }
 
         val recommendedId = deviceCapabilityUseCase.getRecommendedModel(language)
@@ -282,13 +288,12 @@ class ProcessingViewModel @Inject constructor(
         val allModels = modelRepository.getAvailableModels()
 
         val compatibleModels = allModels.filter { model ->
-            if (language == "en") {
-                model.languages.contains("en")
-            } else if (language == "auto") {
-                model.isMultilingual
-            } else {
-                model.isMultilingual || model.languages.contains(language)
+            val langMatch = when {
+                language == "en" -> model.languages.contains("en")
+                language == "auto" -> model.isMultilingual
+                else -> model.isMultilingual || model.languages.contains(language)
             }
+            langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
         }
 
         val currentModelId = currentState.activeModel?.id

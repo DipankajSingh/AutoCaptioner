@@ -475,19 +475,11 @@ private fun HomeTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_img),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.ic_logo_ui),
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp)
+                )
                 Text(
                     text = "AutoCaptioner",
                     style = MaterialTheme.typography.titleMedium,

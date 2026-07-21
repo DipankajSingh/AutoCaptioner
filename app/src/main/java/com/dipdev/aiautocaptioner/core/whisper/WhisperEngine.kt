@@ -1,6 +1,8 @@
 package com.dipdev.aiautocaptioner.core.whisper
 
 import android.content.Context
+import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.Keep
 import kotlinx.coroutines.Dispatchers
@@ -9,17 +11,10 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
+class WhisperEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "WhisperEngine"
-
-        // Cap at 4 — on ARM big.LITTLE chips (Snapdragon, Dimensity, Exynos)
-        // scheduling GGML barrier-synchronized matrix ops across efficiency
-        // cores bottlenecks throughput to the slowest core and causes thermal
-        // throttling.  4 performance cores is the practical sweet spot.
-        private val THREAD_COUNT: Int =
-            Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
 
         init {
             System.loadLibrary("whisper-lib")
@@ -30,6 +25,11 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     // 0L means no model is loaded.  Using @Volatile ensures the write is
     // visible across threads without full synchronisation overhead for reads.
     @Volatile private var nativeHandle: Long = 0L
+
+    // Set after transcription when language = "auto".  Read by TranscriptionManager
+    // to surface the detected language to the UI.
+    @Volatile var lastDetectedLanguage: String? = null
+        private set
 
     // Mutex guards load / unload / transcribe so they never interleave.
     // This is the Kotlin complement to removing the unprotected static g_ctx.
@@ -44,6 +44,7 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
     private external fun transcribe(handle: Long, audioData: FloatArray, language: String, translateToEnglish: Boolean, nThreads: Int, listener: ProgressListener? = null): ByteArray?
     private external fun isModelLoaded(handle: Long): Boolean
     private external fun freeModel(handle: Long)
+    private external fun getDetectedLanguage(handle: Long): String?
     private external fun transcribeWithTimestamps(
         handle: Long,
         audioData: FloatArray,
@@ -123,7 +124,8 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
                     return@withContext ""
                 }
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val resultBytes = transcribe(handle, samples, language, translateToEnglish, THREAD_COUNT, listener)
+                val resultBytes = transcribe(handle, samples, language, translateToEnglish, getOptimalThreads(), listener)
+                lastDetectedLanguage = getDetectedLanguage(handle)
                 if (resultBytes != null) String(resultBytes, Charsets.UTF_8) else ""
             }
         }
@@ -145,8 +147,11 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
-                val rawBytes = transcribeWithTimestamps(handle, samples, language, translateToEnglish, THREAD_COUNT, listener, segListener)
+                val rawBytes = transcribeWithTimestamps(handle, samples, language, translateToEnglish, getOptimalThreads(), listener, segListener)
                     ?: return@withContext emptyList()
+
+                // Capture the language whisper actually used (matters when language = "auto")
+                lastDetectedLanguage = getDetectedLanguage(handle)
                 
                 val rawString = String(rawBytes, Charsets.UTF_8)
                 val entries = rawString.split("\n")
@@ -178,6 +183,25 @@ class WhisperEngine(@Suppress("UNUSED_PARAMETER") context: Context) {
      * Uses the Kotlin-side handle so no JNI round-trip is needed.
      */
     fun isReady(): Boolean = nativeHandle != 0L
+
+    /**
+     * Compute optimal thread count based on available cores and current thermal state.
+     * On ARM big.LITTLE chips, scheduling across all cores bottlenecks to the
+     * slowest core and causes thermal throttling.  When the device is already hot,
+     * we reduce threads further to prevent the OS from aggressively throttling.
+     */
+    private fun getOptimalThreads(): Int {
+        val maxThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return maxThreads
+
+        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return maxThreads
+        return when (pm.currentThermalStatus) {
+            PowerManager.THERMAL_STATUS_NONE     -> maxThreads
+            PowerManager.THERMAL_STATUS_LIGHT    -> (maxThreads - 1).coerceAtLeast(1)
+            PowerManager.THERMAL_STATUS_MODERATE -> (maxThreads / 2).coerceAtLeast(1)
+            else                                 -> 1  // SEVERE, CRITICAL, EMERGENCY, SHUTDOWN
+        }
+    }
 
     /**
      * Releases the native whisper context and frees model memory (75–466 MB).

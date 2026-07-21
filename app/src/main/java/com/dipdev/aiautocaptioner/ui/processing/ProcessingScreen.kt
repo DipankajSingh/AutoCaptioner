@@ -290,6 +290,7 @@ fun ProcessingScreen(
                         else -> {
                             com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionProgressView(
                                 step = currentStep,
+                                detectedLanguage = uiState.detectedLanguage,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

@@ -277,7 +277,9 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     params.print_realtime   = false;
     params.print_timestamps = true;
     params.token_timestamps = true;
-    params.max_len          = 1;
+    params.max_len          = 0;  // Disabled: we iterate tokens below for word-level output.
+                                  // Setting this to 1 caused whisper to wrap every segment to 1
+                                  // character, creating thousands of tiny segments and JNI crossings.
 
     ProgressCallbackContext* cb_ctx = nullptr;
     SegmentCallbackContext* seg_ctx = nullptr;
@@ -316,36 +318,65 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
         return nullptr;
     }
 
-    int n_segments = whisper_full_n_segments(ctx);
+    const int n_segments = whisper_full_n_segments(ctx);
+    const whisper_token eot_id = whisper_token_eot(ctx);
 
     std::string text_result;
+    std::string cur_word;
+    long  word_t0_ms   = -1;
+    long  word_t1_ms   = -1;
+    float word_conf_sum = 0.0f;
+    int   word_tok_cnt  = 0;
+
+    auto flush_word = [&]() {
+        if (cur_word.empty() || word_t0_ms < 0) return;
+
+        // Trim leading whitespace
+        size_t s = cur_word.find_first_not_of(" \t\n\r");
+        if (s == std::string::npos) return;
+        std::string trimmed = cur_word.substr(s);
+        size_t e = trimmed.find_last_not_of(" \t\n\r");
+        if (e != std::string::npos) trimmed = trimmed.substr(0, e + 1);
+
+        if (trimmed.empty()) return;
+        if (trimmed.front() == '[' && trimmed.back() == ']') return;
+
+        float avg_conf = word_tok_cnt > 0 ? word_conf_sum / word_tok_cnt : 1.0f;
+        text_result += trimmed + "\t" + std::to_string(word_t0_ms) + "\t"
+                     + std::to_string(word_t1_ms) + "\t" + std::to_string(avg_conf) + "\n";
+    };
+
     for (int i = 0; i < n_segments; i++) {
-        const char * text = whisper_full_get_segment_text(ctx, i);
-        if (text == nullptr) continue;
+        const int n_tokens = whisper_full_n_tokens(ctx, i);
 
-        // Trim leading/trailing whitespace
-        std::string word(text);
-        size_t start = word.find_first_not_of(" \t\n\r");
-        if (start == std::string::npos) continue;
-        word = word.substr(start);
-        size_t end = word.find_last_not_of(" \t\n\r");
-        if (end != std::string::npos) word = word.substr(0, end + 1);
+        for (int j = 0; j < n_tokens; j++) {
+            const whisper_token_data td = whisper_full_get_token_data(ctx, i, j);
 
-        // Skip special tokens like [_BEG_], [_TT_50], etc.
-        if (!word.empty() && word.front() == '[' && word.back() == ']') continue;
+            if (td.id >= eot_id) continue;
 
-        if (word.empty()) continue;
+            const char * tok_text = whisper_full_get_token_text(ctx, i, j);
+            if (!tok_text) continue;
 
-        long start_ms = whisper_full_get_segment_t0(ctx, i) * 10;
-        long end_ms   = whisper_full_get_segment_t1(ctx, i) * 10;
+            std::string tok(tok_text);
+            if (tok.empty()) continue;
 
-        float confidence = 1.0f;
-        if (whisper_full_n_tokens(ctx, i) > 0) {
-            confidence = whisper_full_get_token_data(ctx, i, 0).p;
+            // A leading space or tab signals a new word boundary in BPE tokenisation.
+            if (!cur_word.empty() && (tok[0] == ' ' || tok[0] == '\t')) {
+                flush_word();
+                cur_word.clear();
+                word_t0_ms = word_t1_ms = -1;
+                word_conf_sum = 0.0f;
+                word_tok_cnt  = 0;
+            }
+
+            cur_word += tok;
+            if (word_t0_ms < 0) word_t0_ms = static_cast<long>(td.t0 * 10);
+            word_t1_ms   = static_cast<long>(td.t1 * 10);
+            word_conf_sum += td.p;
+            word_tok_cnt++;
         }
-
-        text_result += word + "\t" + std::to_string(start_ms) + "\t" + std::to_string(end_ms) + "\t" + std::to_string(confidence) + "\n";
     }
+    flush_word();
 
     LOGI("Total segments: %d", n_segments);
 
@@ -364,6 +395,26 @@ JNIEXPORT jboolean JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_isModelLoaded(
         JNIEnv *, jobject, jlong handle) {
     return handle != 0L ? JNI_TRUE : JNI_FALSE;
+}
+
+// ---------------------------------------------------------------------------
+// getDetectedLanguage — returns the language code detected/used by the last
+// whisper_full() call.  Useful when language was set to "auto".
+// ---------------------------------------------------------------------------
+JNIEXPORT jstring JNICALL
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getDetectedLanguage(
+        JNIEnv * env, jobject, jlong handle) {
+
+    whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
+    if (ctx == nullptr) return nullptr;
+
+    int lang_id = whisper_full_lang_id(ctx);
+    if (lang_id < 0) return nullptr;
+
+    const char * lang_str = whisper_lang_str(lang_id);
+    if (lang_str == nullptr) return nullptr;
+
+    return env->NewStringUTF(lang_str);
 }
 
 // ---------------------------------------------------------------------------

@@ -9,11 +9,9 @@
         windowSplashScreenAnimatedIcon = the animated/static icon in the centre.
     -->
     <style name="Theme.AiAutoCaptioner" parent="Theme.SplashScreen">
-        <!-- Splash screen background colour — use your brand colour -->
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-
-        <item name="windowSplashScreenAnimatedIcon">@drawable/untitled</item>
-        <!-- After splash dismisses, apply Material3 dynamic colour theme -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_logo_ui</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/Theme.AiAutoCaptioner.App</item>
     </style>
     <style name="Theme.AiAutoCaptioner.App" parent="android:Theme.Material.Light.NoActionBar" />

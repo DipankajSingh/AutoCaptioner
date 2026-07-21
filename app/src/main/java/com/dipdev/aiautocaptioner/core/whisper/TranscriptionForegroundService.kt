@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.core.whisper
 
+import android.graphics.BitmapFactory
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -62,7 +63,14 @@ class TranscriptionForegroundService : Service() {
         observeJob = serviceScope.launch {
             transcriptionManager.step.collect { step ->
                 updateNotificationForStep(step)
-                if (step is ProcessingStep.Done || step is ProcessingStep.Error) {
+                if (step is ProcessingStep.Done || step is ProcessingStep.Error || step is ProcessingStep.Cancelled || step is ProcessingStep.Cancelling) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        stopForeground(true)
+                    }
+                    releaseWakeLock()
                     stopSelf()
                 }
             }
@@ -72,7 +80,7 @@ class TranscriptionForegroundService : Service() {
     }
 
     private fun startForegroundServiceGracefully() {
-        val notification = buildNotification("Initializing transcription...")
+        val notification = buildNotification(title = "AutoCaptioner", contentText = "Initializing…")
         
         try {
             if (Build.VERSION.SDK_INT >= 35) { // VANILLA_ICE_CREAM
@@ -131,6 +139,18 @@ class TranscriptionForegroundService : Service() {
         }
     }
 
+    private fun getOpenAppPendingIntent(): PendingIntent {
+        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        } ?: Intent()
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        return PendingIntent.getActivity(this, 1, intent, flags)
+    }
+
     private fun getCancelPendingIntent(): PendingIntent {
         val cancelIntent = Intent(this, TranscriptionForegroundService::class.java).apply {
             action = ACTION_CANCEL
@@ -143,19 +163,55 @@ class TranscriptionForegroundService : Service() {
         return PendingIntent.getService(this, 0, cancelIntent, flags)
     }
 
-    private fun buildNotification(contentText: String, progress: Int? = null, isIndeterminate: Boolean = true): Notification {
+    private fun buildNotification(
+        title: String,
+        contentText: String,
+        bigText: String? = null,
+        progress: Int? = null,
+        isIndeterminate: Boolean = true,
+        isFinished: Boolean = false,
+        isError: Boolean = false,
+        showCancel: Boolean = true
+    ): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(com.dipdev.aiautocaptioner.R.drawable.ic_notification)
-            .setContentTitle("Generating Captions")
+            .setSmallIcon(com.dipdev.aiautocaptioner.R.mipmap.ic_launcher)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, com.dipdev.aiautocaptioner.R.mipmap.ic_launcher))
+            .setContentTitle(title)
             .setContentText(contentText)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel, 
-                "Cancel", 
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(!isFinished)
+            .setAutoCancel(isFinished)
+
+        if (showCancel) {
+            builder.addAction(
+                com.dipdev.aiautocaptioner.R.drawable.ic_logo_ui,
+                "Open App",
+                getOpenAppPendingIntent()
+            )
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Cancel",
                 getCancelPendingIntent()
             )
-            
+        }
+
+        if (bigText != null) {
+            builder.setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(bigText)
+                    .setSummaryText(title)
+            )
+        }
+
+        if (isError) {
+            builder.setColor(0xFFEF4444.toInt()) // red
+        } else if (isFinished) {
+            builder.setColor(0xFF22C55E.toInt()) // green
+        } else {
+            builder.setColor(0xFFF59E0B.toInt()) // amber
+        }
+
         if (progress != null) {
             builder.setProgress(100, progress, false)
         } else if (isIndeterminate) {
@@ -163,45 +219,84 @@ class TranscriptionForegroundService : Service() {
         } else {
             builder.setProgress(0, 0, false)
         }
-            
+
         return builder.build()
     }
 
     private fun updateNotificationForStep(step: ProcessingStep) {
-        var progressValue: Int? = null
-        var isIndeterminate = true
-        
-        val text = when (step) {
+        val notification: Notification = when (step) {
             is ProcessingStep.DownloadingModel -> {
-                if (step.progress != null) {
-                    progressValue = step.progress
-                    isIndeterminate = false
-                    "Downloading model... ${step.progress}%"
-                } else {
-                    "Downloading ${step.modelName}..."
-                }
+                buildNotification(
+                    title = "Downloading Model",
+                    contentText = "Downloading ${step.modelName}… ${step.progress}%",
+                    bigText = "Downloading ${step.modelName}\n${step.progress}% complete",
+                    progress = step.progress,
+                    isIndeterminate = step.progress <= 0
+                )
             }
-            is ProcessingStep.ExtractingAudio -> "Extracting audio..."
-            is ProcessingStep.LoadingModel -> "Loading AI model..."
+            is ProcessingStep.ExtractingAudio -> buildNotification(
+                title = "Extracting Audio",
+                contentText = "Separating audio from video…",
+                bigText = "Analyzing video file and extracting audio track…"
+            )
+            is ProcessingStep.LoadingModel -> buildNotification(
+                title = "Loading AI Model",
+                contentText = "Warming up the AI engine…",
+                bigText = "Loading whisper model into memory…"
+            )
             is ProcessingStep.Transcribing -> {
-                progressValue = (step.progress * 100).toInt()
-                isIndeterminate = false
-                "Transcribing video... $progressValue%"
+                val pct = (step.progress * 100).toInt()
+                val timeLeft = step.estimatedSecondsRemaining?.let { sec ->
+                    if (sec >= 60) "~${sec / 60}m ${sec % 60}s left" else "~${sec}s left"
+                } ?: ""
+                buildNotification(
+                    title = "Transcribing",
+                    contentText = "$pct%${if (timeLeft.isNotEmpty()) " · $timeLeft" else ""}",
+                    bigText = "AI is transcribing your video…\n$pct% complete${if (timeLeft.isNotEmpty()) "\nEstimated: $timeLeft" else ""}",
+                    progress = pct,
+                    isIndeterminate = false
+                )
             }
-            is ProcessingStep.Saving -> "Saving transcription..."
-            is ProcessingStep.Done -> {
-                isIndeterminate = false
-                "Transcription complete"
-            }
-            is ProcessingStep.Error -> {
-                isIndeterminate = false
-                "Error: ${step.message}"
-            }
-            is ProcessingStep.Idle -> "Initializing..."
-            else -> "Processing..."
+            is ProcessingStep.Saving -> buildNotification(
+                title = "Saving",
+                contentText = "Saving transcription…",
+                bigText = "Saving transcription results…"
+            )
+            is ProcessingStep.Done -> buildNotification(
+                title = "Transcription Complete",
+                contentText = "Your captions are ready",
+                bigText = "Transcription finished successfully.\nTap to open your project.",
+                isFinished = true,
+                showCancel = false
+            )
+            is ProcessingStep.Error -> buildNotification(
+                title = "Transcription Failed",
+                contentText = step.message,
+                bigText = "Error: ${step.message}",
+                isError = true,
+                isFinished = true,
+                showCancel = false
+            )
+            is ProcessingStep.Idle -> buildNotification(
+                title = "AutoCaptioner",
+                contentText = "Initializing…"
+            )
+            is ProcessingStep.Cancelling -> buildNotification(
+                title = "Cancelling",
+                contentText = "Stopping transcription…"
+            )
+            is ProcessingStep.Cancelled -> buildNotification(
+                title = "Cancelled",
+                contentText = "Transcription was cancelled",
+                isFinished = true,
+                showCancel = false
+            )
+            else -> buildNotification(
+                title = "AutoCaptioner",
+                contentText = "Processing…"
+            )
         }
-        
-        val notification = buildNotification(text, progressValue, isIndeterminate)
+
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
@@ -209,12 +304,14 @@ class TranscriptionForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         releaseWakeLock()
-        serviceScope.cancel()
+        observeJob?.cancel()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
             @Suppress("DEPRECATION")
             stopForeground(true)
         }
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.cancel(NOTIFICATION_ID)
     }
 }

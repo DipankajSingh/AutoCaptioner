@@ -1,43 +1,56 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.timeline
-import androidx.compose.foundation.gestures.scrollBy
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.Type
-import compose.icons.feathericons.Layers
+import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
-import androidx.compose.foundation.Canvas
-import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Type
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("DefaultLocale")
@@ -68,7 +81,6 @@ fun TimelineView(
 ) {
     val scrollState = rememberScrollState()
     val verticalScrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
     var boxWidthPx by remember { mutableIntStateOf(0) }
     val textMeasurer = rememberTextMeasurer()
     

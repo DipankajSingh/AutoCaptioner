@@ -2,9 +2,13 @@ package com.dipdev.aiautocaptioner.core.device
 
 import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.BatteryManager
 import android.os.Build
+import android.os.PowerManager
 import android.os.StatFs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -52,6 +56,35 @@ class DeviceCapabilityUseCase @Inject constructor(
         val memInfo = ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(memInfo)
         return (memInfo.totalMem / 1024 / 1024).toInt()
+    }
+
+    fun isModelRamCompatible(minRamMb: Int): Boolean = getTotalRamMb() >= minRamMb
+
+    fun getBatteryLevel(): Int {
+        val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        return if (level >= 0 && scale > 0) (level * 100 / scale) else -1
+    }
+
+    fun isCharging(): Boolean {
+        val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        return status == BatteryManager.BATTERY_STATUS_CHARGING ||
+               status == BatteryManager.BATTERY_STATUS_FULL
+    }
+
+    fun getOptimalThreadCount(): Int {
+        val maxThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return maxThreads
+
+        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return maxThreads
+        return when (pm.currentThermalStatus) {
+            PowerManager.THERMAL_STATUS_NONE     -> maxThreads
+            PowerManager.THERMAL_STATUS_LIGHT    -> (maxThreads - 1).coerceAtLeast(1)
+            PowerManager.THERMAL_STATUS_MODERATE -> (maxThreads / 2).coerceAtLeast(1)
+            else                                 -> 1  // SEVERE, CRITICAL, EMERGENCY, SHUTDOWN
+        }
     }
 
     fun getRecommendedModel(language: String): String {

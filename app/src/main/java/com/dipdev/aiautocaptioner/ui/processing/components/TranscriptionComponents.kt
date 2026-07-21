@@ -222,6 +222,7 @@ fun TranscriptionBottomSheet(
 @Composable
 fun TranscriptionOverlay(
     step: ProcessingStep,
+    detectedLanguage: String? = null,
     onCancel: () -> Unit = {}
 ) {
     if (step is ProcessingStep.Idle || step is ProcessingStep.Ready || step is ProcessingStep.SetupAI || 
@@ -232,11 +233,12 @@ fun TranscriptionOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.85f)) // Replaced cloudy with a solid dark overlay for performance
-            .clickable(enabled = false) {} // Block touches
+            .background(Color.Black.copy(alpha = 0.85f))
+            .clickable(enabled = false) {}
     ) {
         TranscriptionProgressView(
             step = step,
+            detectedLanguage = detectedLanguage,
             modifier = Modifier.align(Alignment.Center)
         )
         
@@ -259,6 +261,7 @@ fun TranscriptionOverlay(
 @Composable
 fun TranscriptionProgressView(
     step: ProcessingStep,
+    detectedLanguage: String? = null,
     modifier: Modifier = Modifier
 ) {
     AnimatedContent(
@@ -302,6 +305,14 @@ fun TranscriptionProgressView(
                     AiProcessingAnimation(progress = animatedProgress, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text("Listening & typing...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    if (detectedLanguage != null) {
+                        Text(
+                            text = "Language: $detectedLanguage",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                     if (currentStep.estimatedSecondsRemaining != null) {
                         val secs = currentStep.estimatedSecondsRemaining
                         val timeText = if (secs >= 60) "~${secs / 60}m left" else "~${secs}s left"

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -128,8 +129,20 @@ fun ExportScreen(
             else -> (originalBitrate * 1.5).toInt()
         }
     }
-    val estimatedSizeMB = remember(computedTargetBitrate, originalDurationMs) {
-        (computedTargetBitrate.toLong() * (originalDurationMs / 1000.0)) / 8.0 / (1024 * 1024)
+    val resolutionScale = remember(selectedHeight, originalHeight) {
+        if (selectedHeight == -1 || originalHeight <= 0) 1.0
+        else selectedHeight.toDouble() / originalHeight
+    }
+    val fpsScale = remember(selectedFps, originalDurationMs) {
+        if (selectedFps == -1) 1.0
+        else {
+            val originalFps = if (originalDurationMs > 0) 30.0 else 30.0
+            selectedFps.toDouble() / originalFps
+        }
+    }
+    val estimatedSizeMB = remember(computedTargetBitrate, originalDurationMs, resolutionScale, fpsScale) {
+        val effectiveBitrate = computedTargetBitrate * resolutionScale * fpsScale
+        (effectiveBitrate.toLong() * (originalDurationMs / 1000.0)) / 8.0 / (1024 * 1024)
     }
 
     LaunchedEffect(Unit) { viewModel.setEvent(ExportUiEvent.PrepareExport(projectId)) }
@@ -154,7 +167,6 @@ fun ExportScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -181,63 +193,58 @@ fun ExportScreen(
                     // ── Idle / Ready ─────────────────────────────────────────
                     is ExportState.Idle,
                     is ExportState.Ready -> {
-                        if (workingVideoPath != null) {
-                            VideoPlayerCard(
-                                path = workingVideoPath,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(originalWidth.toFloat() / originalHeight.toFloat().coerceAtLeast(1f))
-                                    .clip(RoundedCornerShape(Dimens.Radius.large))
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Export Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(Dimens.Padding.large))
+
+                            SegmentedSelector(
+                                title = "Resolution",
+                                options = listOf(-1 to "Original", 1080 to "1080p", 720 to "720p"),
+                                selected = selectedHeight,
+                                onSelect = { selectedHeight = it }
+                            )
+                            Spacer(Modifier.height(Dimens.Padding.medium))
+
+                            SegmentedSelector(
+                                title = "Frame Rate",
+                                options = listOf(-1 to "Original", 30 to "30 fps", 60 to "60 fps"),
+                                selected = selectedFps,
+                                onSelect = { selectedFps = it }
+                            )
+                            Spacer(Modifier.height(Dimens.Padding.medium))
+
+                            SegmentedSelector(
+                                title = "Quality",
+                                options = listOf(0 to "Low", 1 to "Recommended", 2 to "High"),
+                                selected = selectedQuality,
+                                onSelect = { selectedQuality = it }
                             )
                             Spacer(Modifier.height(Dimens.Padding.large))
-                        }
 
-                        Text("Export Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(Dimens.Padding.large))
-
-                        SegmentedSelector(
-                            title = "Resolution",
-                            options = listOf(-1 to "Original", 1920 to "1080p", 1280 to "720p"),
-                            selected = selectedHeight,
-                            onSelect = { selectedHeight = it }
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.medium))
-
-                        SegmentedSelector(
-                            title = "Frame Rate",
-                            options = listOf(-1 to "Original", 30 to "30 fps", 60 to "60 fps"),
-                            selected = selectedFps,
-                            onSelect = { selectedFps = it }
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.medium))
-
-                        SegmentedSelector(
-                            title = "Quality",
-                            options = listOf(0 to "Low", 1 to "Recommended", 2 to "High"),
-                            selected = selectedQuality,
-                            onSelect = { selectedQuality = it }
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.large))
-
-                        Surface(
-                            shape = RoundedCornerShape(Dimens.Radius.medium),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Surface(
+                                shape = RoundedCornerShape(Dimens.Radius.medium),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Est. File Size", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(
-                                    "~%.1f MB".format(estimatedSizeMB),
-                                    fontSize = 16.sp, fontWeight = FontWeight.Bold, color = accent
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Est. File Size", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        "~%.1f MB".format(estimatedSizeMB),
+                                        fontSize = 16.sp, fontWeight = FontWeight.Bold, color = accent
+                                    )
+                                }
                             }
                         }
-
-                        Spacer(Modifier.height(Dimens.Padding.large))
 
                         Button(
                             onClick = {
@@ -256,68 +263,76 @@ fun ExportScreen(
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
                         AppOutlinedButton(onClick = onNavigateBack) {
-                            Text("Cancel")
+                            Text("Back")
                         }
                     }
 
                     // ── Running ──────────────────────────────────────────────
                     is ExportState.Running -> {
-                        Spacer(Modifier.height(Dimens.Padding.extraLarge))
-
-                        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.export))
-                        LottieAnimation(
-                            composition = composition,
-                            iterations = LottieConstants.IterateForever,
-                            modifier = Modifier.size(140.dp)
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.large))
-
-                        Text("Rendering Video", fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(Dimens.Padding.small))
-
-                        val animatedProgress by animateFloatAsState(
-                            targetValue = progress,
-                            animationSpec = tween(300),
-                            label = "export_progress"
-                        )
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                ) {
-                                    LinearProgressIndicator(
-                                        progress = { animatedProgress },
-                                        modifier = Modifier.fillMaxSize(),
-                                        color = accent,
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                }
-                                Spacer(Modifier.height(12.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        "${(progress * 100).toInt()}%",
-                                        fontSize = 14.sp, fontWeight = FontWeight.Bold, color = accent
-                                    )
-                                    Text(
-                                        "~%.1f MB".format(estimatedSizeMB),
-                                        fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                            Spacer(Modifier.height(Dimens.Padding.extraLarge))
+
+                            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.export))
+                            LottieAnimation(
+                                composition = composition,
+                                iterations = LottieConstants.IterateForever,
+                                modifier = Modifier.size(140.dp)
+                            )
+                            Spacer(Modifier.height(Dimens.Padding.large))
+
+                            Text("Rendering Video", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                            Spacer(Modifier.height(Dimens.Padding.small))
+
+                            val animatedProgress by animateFloatAsState(
+                                targetValue = progress,
+                                animationSpec = tween(300),
+                                label = "export_progress"
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    ) {
+                                        LinearProgressIndicator(
+                                            progress = { animatedProgress },
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = accent,
+                                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                    }
+                                    Spacer(Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            "${(progress * 100).toInt()}%",
+                                            fontSize = 14.sp, fontWeight = FontWeight.Bold, color = accent
+                                        )
+                                        Text(
+                                            "~%.1f MB".format(estimatedSizeMB),
+                                            fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
 
-                        Spacer(Modifier.height(Dimens.Padding.extraLarge))
                         AppOutlinedButton(onClick = { viewModel.setEvent(ExportUiEvent.CancelExport) }) {
                             Text("Cancel")
                         }
@@ -327,50 +342,58 @@ fun ExportScreen(
                     is ExportState.AlreadyExported,
                     is ExportState.Success,
                     is ExportState.SavedToGallery -> {
-                        Box(
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(accent.copy(alpha = 0.15f), accent.copy(alpha = 0.03f))
-                                    )
-                                )
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(FeatherIcons.CheckCircle, null, tint = accent, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    when (exportState) {
-                                        is ExportState.Success -> "Export Complete"
-                                        is ExportState.SavedToGallery -> "Saved to Gallery"
-                                        else -> "Previously Exported"
-                                    },
-                                    fontWeight = FontWeight.Bold, fontSize = 14.sp, color = accent
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(Dimens.Padding.medium))
-
-                        if (outputPath != null) {
-                            VideoPlayerCard(
-                                path = outputPath,
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(originalWidth.toFloat() / originalHeight.toFloat().coerceAtLeast(1f))
-                                    .clip(RoundedCornerShape(Dimens.Radius.large))
-                            )
-                        } else {
-                            Box(
-                                Modifier.fillMaxWidth().aspectRatio(9f / 16f),
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(accent.copy(alpha = 0.15f), accent.copy(alpha = 0.03f))
+                                        )
+                                    )
+                                    .padding(vertical = 10.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("Video file not found", color = MaterialTheme.colorScheme.error)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(FeatherIcons.CheckCircle, null, tint = accent, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        when (exportState) {
+                                            is ExportState.Success -> "Export Complete"
+                                            is ExportState.SavedToGallery -> "Saved to Gallery"
+                                            else -> "Previously Exported"
+                                        },
+                                        fontWeight = FontWeight.Bold, fontSize = 14.sp, color = accent
+                                    )
+                                }
+                            }
+
+                            if (outputPath != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    VideoPlayerCard(
+                                        path = outputPath,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    Modifier.fillMaxWidth().weight(1f),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Video file not found", color = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
-
-                        Spacer(Modifier.height(Dimens.Padding.large))
 
                         Button(
                             onClick = {
@@ -389,18 +412,15 @@ fun ExportScreen(
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
 
-                        Button(
-                            onClick = { if (outputPath != null) viewModel.shareVideo(outputPath) },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(FeatherIcons.Share2, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Share")
-                        }
-                        Spacer(Modifier.height(Dimens.Padding.small))
-
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AppOutlinedButton(
+                                onClick = { if (outputPath != null) viewModel.shareVideo(outputPath) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(FeatherIcons.Share2, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Share")
+                            }
                             AppOutlinedButton(
                                 onClick = { viewModel.setEvent(ExportUiEvent.ResetForReExport) },
                                 modifier = Modifier.weight(1f)
@@ -409,31 +429,38 @@ fun ExportScreen(
                                 Spacer(Modifier.width(4.dp))
                                 Text("Re-export")
                             }
-                            AppPrimaryButton(
-                                onClick = onNavigateToHome,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Done")
-                            }
+                        }
+                        Spacer(Modifier.height(Dimens.Padding.small))
+
+                        TextButton(onClick = onNavigateBack) {
+                            Text("Done")
                         }
                     }
 
                     // ── Cancelled ────────────────────────────────────────────
                     is ExportState.Cancelled -> {
-                        Spacer(Modifier.height(Dimens.Padding.extraLarge))
-                        Icon(
-                            FeatherIcons.XCircle, contentDescription = "Cancelled",
-                            modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.large))
-                        Text("Export Cancelled", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(Dimens.Padding.small))
-                        Text(
-                            "The export was stopped before completion.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center, fontSize = 14.sp
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.extraLarge))
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Spacer(Modifier.height(Dimens.Padding.extraLarge))
+                            Icon(
+                                FeatherIcons.XCircle, contentDescription = "Cancelled",
+                                modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.height(Dimens.Padding.large))
+                            Text("Export Cancelled", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.height(Dimens.Padding.small))
+                            Text(
+                                "The export was stopped before completion.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center, fontSize = 14.sp
+                            )
+                        }
 
                         Button(
                             onClick = {
@@ -456,21 +483,29 @@ fun ExportScreen(
 
                     // ── Error ────────────────────────────────────────────────
                     is ExportState.Error -> {
-                        Spacer(Modifier.height(Dimens.Padding.extraLarge))
-                        Icon(
-                            FeatherIcons.XCircle, contentDescription = "Error",
-                            modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.large))
-                        Text("Export Failed", fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(Dimens.Padding.small))
-                        Text(
-                            exportState.message,
-                            fontSize = 14.sp, color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(Dimens.Padding.extraLarge))
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Spacer(Modifier.height(Dimens.Padding.extraLarge))
+                            Icon(
+                                FeatherIcons.XCircle, contentDescription = "Error",
+                                modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.height(Dimens.Padding.large))
+                            Text("Export Failed", fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.error)
+                            Spacer(Modifier.height(Dimens.Padding.small))
+                            Text(
+                                exportState.message,
+                                fontSize = 14.sp, color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                        }
 
                         Button(
                             onClick = {

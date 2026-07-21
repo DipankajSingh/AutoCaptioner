@@ -104,11 +104,15 @@ fun DeviceCheckScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(models) { model ->
+                val ramCompatible = deviceInfo?.let {
+                    it.totalRamMb >= model.minRamMb
+                } ?: true
                 ModelCard(
                     model = model,
                     isRecommended = model.id == recommendedModelId,
                     isSelected = model.id == selectedModelId,
-                    onClick = { selectedModelId = model.id }
+                    ramCompatible = ramCompatible,
+                    onClick = { if (ramCompatible) selectedModelId = model.id }
                 )
             }
         }
@@ -122,7 +126,9 @@ fun DeviceCheckScreen(
                     viewModel.setEvent(DeviceCheckUiEvent.CheckSafety(selected.sizeMb.toLong()))
                 }
             },
-            enabled = selectedModelId != null
+            enabled = selectedModelId != null && models.find { it.id == selectedModelId }?.let {
+                deviceInfo != null && deviceInfo.totalRamMb >= it.minRamMb
+            } ?: false
         ) {
             Text(
                 text = "Download Selected Model",
@@ -206,9 +212,11 @@ private fun ModelCard(
     model: WhisperModel,
     isRecommended: Boolean,
     isSelected: Boolean,
+    ramCompatible: Boolean,
     onClick: () -> Unit
 ) {
     val borderColor = when {
+        !ramCompatible -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
         isSelected -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
     }
@@ -279,6 +287,15 @@ private fun ModelCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     lineHeight = 18.sp
                 )
+
+                if (!ramCompatible) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Needs ${model.minRamMb} MB RAM — your device has less",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 

@@ -79,11 +79,9 @@ fun WelcomeScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher_img),
+                    painter = painterResource(id = R.drawable.ic_logo_ui),
                     contentDescription = "AutoCaptioner Logo",
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                    modifier = Modifier.size(38.dp)
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(

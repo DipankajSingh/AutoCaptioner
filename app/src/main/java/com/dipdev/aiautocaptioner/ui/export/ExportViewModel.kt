@@ -141,10 +141,10 @@ class ExportViewModel @Inject constructor(
     }
 
     private fun cancelExport() {
-        // Stop the foreground service
-        val intent = Intent(context, ExportForegroundService::class.java)
-        context.stopService(intent)
-        ExportServiceManager.exportState.value = ExportState.Cancelled
+        val intent = Intent(context, ExportForegroundService::class.java).apply {
+            action = ExportForegroundService.ACTION_CANCEL
+        }
+        context.startService(intent)
     }
 
     private fun resetForReExport() {
