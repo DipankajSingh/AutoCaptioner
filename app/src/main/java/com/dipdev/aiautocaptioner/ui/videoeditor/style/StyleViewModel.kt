@@ -234,19 +234,8 @@ class StyleViewModel @Inject constructor(
 
     private fun selectPreset(style: CaptionStyleEntity) {
         pushState("preset")
-        // Reuse the existing Custom style ID if we already have one,
-        // so we don't accumulate orphaned Custom rows in the DB.
-        val existingCustomId = uiState.value.activeStyle
-            ?.takeIf { !it.isDefault }?.id
-            ?: UUID.randomUUID().toString()
         setState {
-            copy(
-                activeStyle = style.copy(
-                    id = existingCustomId,
-                    isDefault = false,
-                    name = "Custom"
-                )
-            )
+            copy(activeStyle = style)
         }
     }
 
@@ -276,15 +265,16 @@ class StyleViewModel @Inject constructor(
     private fun saveAndApply(projectId: String) {
         viewModelScope.launch {
             val style = uiState.value.activeStyle ?: return@launch
-            val styleToSave = if (style.name == "Custom" || style.isDefault) {
+            val styleToSave = if (style.isDefault || style.name == "Custom") {
                 style.copy(
-                    id = if (style.isDefault) UUID.randomUUID().toString() else style.id,
+                    id = UUID.randomUUID().toString(),
                     name = "Custom ${System.currentTimeMillis() % 1000}",
                     isDefault = false
                 )
             } else style
-            
+
             captionRepository.saveStyle(styleToSave)
+            setState { copy(activeStyle = styleToSave) }
 
             // Link style to project
             val project = projectRepository.getProjectById(projectId) ?: return@launch

@@ -117,39 +117,6 @@ fun LeftSideControls(
     }
 }
 
-@Composable
-fun RightSideControls(
-    canUndo: Boolean,
-    canRedo: Boolean,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-    onAddImage: () -> Unit,
-    onNavigateToExport: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.padding(top = 16.dp, end = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        SideControlButton(
-            icon = FeatherIcons.Download,
-            contentDescription = "Export",
-            onClick = onNavigateToExport,
-            tint = LocalAccentColor.current,
-            containerColor = LocalAccentColor.current.copy(alpha = 0.15f)
-        )
-
-        SideToolbar(
-            canUndo = canUndo,
-            canRedo = canRedo,
-            onUndo = onUndo,
-            onRedo = onRedo,
-            onAddImage = onAddImage
-        )
-    }
-}
-
 // ---------------------------------------------------------------------------
 // REUSABLE COMPONENTS (The Fixes)
 // ---------------------------------------------------------------------------
@@ -372,36 +339,53 @@ fun LanguagePopup(
 }
 
 @Composable
-fun SideToolbar(
+fun EditorTopOverlay(
     canUndo: Boolean,
     canRedo: Boolean,
+    onNavigateBack: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
-    onAddImage: () -> Unit,
+    onNavigateToExport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         SideControlButton(
-            icon = FeatherIcons.CornerUpLeft,
-            contentDescription = "Undo",
-            onClick = onUndo,
-            enabled = canUndo
+            icon = FeatherIcons.LogOut,
+            contentDescription = "Exit Editor",
+            onClick = onNavigateBack,
+            tint = AccentRose,
+            containerColor = AccentRose.copy(alpha = 0.15f)
         )
-        SideControlButton(
-            icon = FeatherIcons.CornerUpRight,
-            contentDescription = "Redo",
-            onClick = onRedo,
-            enabled = canRedo
-        )
-        SideControlButton(
-            icon = FeatherIcons.Image,
-            contentDescription = "Add Image",
-            onClick = onAddImage,
-            enabled = true
-        )
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SideControlButton(
+                icon = FeatherIcons.CornerUpLeft,
+                contentDescription = "Undo",
+                onClick = onUndo,
+                enabled = canUndo
+            )
+            SideControlButton(
+                icon = FeatherIcons.CornerUpRight,
+                contentDescription = "Redo",
+                onClick = onRedo,
+                enabled = canRedo
+            )
+            SideControlButton(
+                icon = FeatherIcons.Download,
+                contentDescription = "Export",
+                onClick = onNavigateToExport,
+                tint = LocalAccentColor.current,
+                containerColor = LocalAccentColor.current.copy(alpha = 0.15f)
+            )
+        }
     }
 }

@@ -285,6 +285,7 @@ class ExportForegroundService : Service() {
                         val wordsList = captionRepository.getAllWordsForProject(projectId)
                         val wordsMap = wordsList.groupBy { it.segmentId }
                         val captionOverlayEffect = CaptionOverlayEffect(
+                            context = this@ExportForegroundService,
                             segments = segments,
                             wordsMap = wordsMap,
                             style = activeStyle,

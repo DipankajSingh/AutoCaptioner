@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Copy
+import compose.icons.feathericons.Image
 import compose.icons.feathericons.Minus
 import compose.icons.feathericons.Plus
 import compose.icons.feathericons.Scissors
@@ -58,6 +59,7 @@ fun VideoTimelinePanel(
     onOverlaySelected: (String?) -> Unit,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onCaptionTap: () -> Unit,
+    onAddImage: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
@@ -174,6 +176,12 @@ fun VideoTimelinePanel(
                     val accentColor = MaterialTheme.colorScheme.primary
                     val grayColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 
+                    Icon(
+                        FeatherIcons.Image,
+                        "Add Image",
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp).clickable { onAddImage() }
+                    )
                     Icon(
                         FeatherIcons.Scissors, 
                         "Split", 

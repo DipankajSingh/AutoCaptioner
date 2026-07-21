@@ -60,6 +60,7 @@ object CaptionAnimator {
         word: TimedWord,
         style: CaptionStyleEntity,
         animMs: Long,
+        baseScale: Float = 1f
     ): WordTransform {
         // Enter progress: 0→1 over [startTimeMs, startTimeMs + animMs]
         val enterRaw = ((posMs - word.startTimeMs).toFloat() / animMs).coerceIn(0f, 1f)
@@ -73,9 +74,9 @@ object CaptionAnimator {
         val exit  = if (isExiting) exitRaw else 0f
 
         // Base enter transform
-        val et = applyAnim(style.wordEnterAnimation, enter, entering = true)
+        val et = applyAnim(style.wordEnterAnimation, enter, entering = true, baseScale)
         // Base exit transform (evaluate backward so 1f = fully visible, 0f = exited)
-        val xt = if (isExiting) applyAnim(style.wordExitAnimation, 1f - exit, entering = false) else RawTransform()
+        val xt = if (isExiting) applyAnim(style.wordExitAnimation, 1f - exit, entering = false, baseScale) else RawTransform()
 
         val alpha  = et.alpha * (if (isExiting) {
             if (style.wordExitAnimation == AnimationType.NONE) (1f - AnimationUtils.easeInCubic(exit)).coerceIn(0f, 1f) else xt.alpha
@@ -97,9 +98,9 @@ object CaptionAnimator {
         if (word.isActive && word.isEmphasized) {
             val phase = (posMs % 600L).toFloat() / 600f * 2f * PI.toFloat()
             when (word.emphasisType) {
-                EmphasisType.BOUNCE    -> ty -= sin(phase) * 12f
+                EmphasisType.BOUNCE    -> ty -= sin(phase) * 12f * baseScale
                 EmphasisType.SCALE     -> { val s = 1f + 0.12f * sin(phase); scaleX *= s; scaleY *= s }
-                EmphasisType.SHAKE     -> tx += sin(phase * 3f) * 8f
+                EmphasisType.SHAKE     -> tx += sin(phase * 3f) * 8f * baseScale
                 EmphasisType.COLOR_POP -> colorOverride = AnimationUtils.blendColor(
                     style.textColor.toInt(), style.highlightColor.toInt(),
                     (sin(phase) + 1f) / 2f
@@ -130,14 +131,14 @@ object CaptionAnimator {
         val clipFraction: Float = 1f
     )
 
-    private fun applyAnim(type: AnimationType, p: Float, entering: Boolean): RawTransform {
+    private fun applyAnim(type: AnimationType, p: Float, entering: Boolean, baseScale: Float = 1f): RawTransform {
         val e = AnimationUtils.easeOutCubic(p)
         val dir = if (entering) 1f else -1f
         return when (type) {
             AnimationType.NONE       -> RawTransform()
             AnimationType.FADE       -> RawTransform(alpha = e)
-            AnimationType.SLIDE_UP   -> RawTransform(alpha = e, translateY = (1f - e) * 40f * dir)
-            AnimationType.SLIDE_DOWN -> RawTransform(alpha = e, translateY = -(1f - e) * 40f * dir)
+            AnimationType.SLIDE_UP   -> RawTransform(alpha = e, translateY = (1f - e) * 40f * baseScale * dir)
+            AnimationType.SLIDE_DOWN -> RawTransform(alpha = e, translateY = -(1f - e) * 40f * baseScale * dir)
             AnimationType.SCALE_POP  -> RawTransform(alpha = e, scaleX = e.coerceAtLeast(0.01f), scaleY = e.coerceAtLeast(0.01f))
             AnimationType.BOUNCE     -> {
                 val s = AnimationUtils.bounceOut(p).coerceAtLeast(0.01f)
@@ -148,7 +149,7 @@ object CaptionAnimator {
                 RawTransform(alpha = if (p > 0.05f) 1f else p * 20f, scaleX = s, scaleY = s)
             }
             AnimationType.TYPEWRITER -> RawTransform(clipFraction = p)
-            AnimationType.SHAKE      -> RawTransform(alpha = e, translateX = sin(p * PI.toFloat() * 5f) * (1f - p) * 20f)
+            AnimationType.SHAKE      -> RawTransform(alpha = e, translateX = sin(p * PI.toFloat() * 5f) * (1f - p) * 20f * baseScale)
             AnimationType.FLIP       -> {
                 val sx = abs(cos(p * PI.toFloat())).coerceAtLeast(0.01f)
                 RawTransform(alpha = if (p > 0.5f) 1f else p * 2f, scaleX = sx)
@@ -171,11 +172,11 @@ object CaptionAnimator {
         DisplayMode.PHRASE,
         DisplayMode.LINE_HIGHLIGHT,
         DisplayMode.KARAOKE_FILL  -> words
-        DisplayMode.TYPEWRITER    -> words.filter { it.startTimeMs <= posMs + animMs }
-        DisplayMode.WORD_BY_WORD  -> words.filter {
-            it.isActive ||
-            (it.isPast && (posMs - it.endTimeMs) < animMs) ||
-            (!it.isPast && (it.startTimeMs - posMs) < animMs)
+        DisplayMode.TYPEWRITER    -> words.filter {
+            val isActiveOrPast = it.isActive || it.isPast
+            val isEnteringSoon = !it.isPast && !it.isActive && (it.startTimeMs - posMs) < animMs
+            isActiveOrPast || isEnteringSoon
         }
+        DisplayMode.WORD_BY_WORD  -> words
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
+import com.dipdev.aiautocaptioner.data.db.entity.EmphasisType
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 
 /**
@@ -63,22 +64,29 @@ fun WordChip(
             onClick = {}
         )
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = word.word,
-                fontSize = 13.sp,
-                color = textColor,
-                fontWeight = if (word.isEmphasized) FontWeight.Bold else FontWeight.Normal
-            )
-            Text(
-                text = formatMs(word.startTimeMs),
-                fontSize = 9.sp,
-                color = textColor.copy(alpha = 0.5f)
-            )
-        }
+                Column(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = word.word,
+                        fontSize = 13.sp,
+                        color = textColor,
+                        fontWeight = if (word.isEmphasized) FontWeight.Bold else FontWeight.Normal
+                    )
+                    Text(
+                        text = formatMs(word.startTimeMs),
+                        fontSize = 9.sp,
+                        color = textColor.copy(alpha = 0.5f)
+                    )
+                    if (word.isEmphasized && word.emphasisType != EmphasisType.NONE) {
+                        Text(
+                            text = emphasisLabel(word.emphasisType),
+                            fontSize = 8.sp,
+                            color = textColor.copy(alpha = 0.6f)
+                        )
+                    }
+                }
     }
 }
 
@@ -91,4 +99,12 @@ internal fun formatMs(ms: Long): String {
     val secs = seconds % 60
     val millis = (ms % 1000) / 10
     return "%d:%02d.%02d".format(minutes, secs, millis)
+}
+
+internal fun emphasisLabel(type: EmphasisType): String = when (type) {
+    EmphasisType.BOUNCE -> "Bounce"
+    EmphasisType.SCALE -> "Scale"
+    EmphasisType.SHAKE -> "Shake"
+    EmphasisType.COLOR_POP -> "Pop"
+    EmphasisType.NONE -> ""
 }

@@ -157,10 +157,18 @@ class CaptionEditorViewModel @Inject constructor(
 
     private fun toggleWordEmphasis(word: CaptionWordEntity) {
         viewModelScope.launch {
+            val nextType = if (!word.isEmphasized) {
+                EmphasisType.BOUNCE
+            } else {
+                val types = EmphasisType.entries.filter { it != EmphasisType.NONE }
+                val currentIdx = types.indexOf(word.emphasisType)
+                if (currentIdx < 0 || currentIdx >= types.lastIndex) EmphasisType.NONE
+                else types[currentIdx + 1]
+            }
             captionRepository.toggleEmphasis(
                 wordId = word.id,
-                isEmphasized = !word.isEmphasized,
-                emphasisType = EmphasisType.BOUNCE
+                isEmphasized = nextType != EmphasisType.NONE,
+                emphasisType = nextType
             )
         }
     }

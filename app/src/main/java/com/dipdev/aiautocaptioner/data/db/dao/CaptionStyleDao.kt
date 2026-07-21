@@ -39,4 +39,8 @@ interface CaptionStyleDao {
     // Check if default styles have been inserted yet
     @Query("SELECT COUNT(*) FROM caption_styles WHERE isDefault = 1")
     suspend fun getDefaultStyleCount(): Int
+
+    // Get names of all default styles — used to skip already-seeded presets
+    @Query("SELECT name FROM caption_styles WHERE isDefault = 1")
+    suspend fun getDefaultStyleNames(): List<String>
 }

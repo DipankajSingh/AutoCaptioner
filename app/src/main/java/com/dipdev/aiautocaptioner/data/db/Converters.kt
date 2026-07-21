@@ -9,6 +9,8 @@ import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
 import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
+import com.dipdev.aiautocaptioner.data.db.entity.TextTransform
+import com.dipdev.aiautocaptioner.data.db.entity.GradientDirection
 
 // TypeConverters tell Room how to convert types it can't store natively
 // Room can store: String, Int, Long, Float, Double, Boolean, ByteArray
@@ -85,4 +87,18 @@ class Converters {
 
     @TypeConverter
     fun toEmphasisType(value: String): EmphasisType = EmphasisType.valueOf(value)
+
+    // ---- TextTransform ----
+    @TypeConverter
+    fun fromTextTransform(transform: TextTransform): String = transform.name
+
+    @TypeConverter
+    fun toTextTransform(value: String): TextTransform = TextTransform.valueOf(value)
+
+    // ---- GradientDirection ----
+    @TypeConverter
+    fun fromGradientDirection(dir: GradientDirection): String = dir.name
+
+    @TypeConverter
+    fun toGradientDirection(value: String): GradientDirection = GradientDirection.valueOf(value)
 }

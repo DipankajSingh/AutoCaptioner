@@ -1,8 +1,37 @@
 package com.dipdev.aiautocaptioner.engine
 
+import android.content.Context
+import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
+
+/** All fonts bundled in assets/fonts/ — kept in sync with actual filenames. */
+object BundledFonts {
+    data class FontEntry(
+        val displayName: String,
+        val assetPath: String,
+        val category: FontCategory,
+    )
+
+    enum class FontCategory { SANS_SERIF, SERIF, DISPLAY, HANDWRITTEN, MONOSPACE }
+
+    val all: List<FontEntry> = listOf(
+        FontEntry("System", "", FontCategory.SANS_SERIF),
+        FontEntry("Montserrat", "fonts/montserrat.ttf", FontCategory.SANS_SERIF),
+        FontEntry("DMSans", "fonts/dm_sans.ttf", FontCategory.SANS_SERIF),
+        FontEntry("Rubik", "fonts/rubik.ttf", FontCategory.SANS_SERIF),
+        FontEntry("Bebas Neue", "fonts/bebas_neue.ttf", FontCategory.DISPLAY),
+        FontEntry("Oswald", "fonts/oswald.ttf", FontCategory.DISPLAY),
+        FontEntry("Bungee", "fonts/bungee.ttf", FontCategory.DISPLAY),
+        FontEntry("Pacifico", "fonts/pacifico.ttf", FontCategory.HANDWRITTEN),
+        FontEntry("Permanent Marker", "fonts/permanent_marker.ttf", FontCategory.HANDWRITTEN),
+        FontEntry("Roboto", "", FontCategory.SANS_SERIF),
+    )
+
+    /** Display names for the font picker — in UI order. */
+    val displayNames: List<String> = all.map { it.displayName }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CaptionPaints
@@ -40,12 +69,13 @@ object CaptionPaints {
      * Must be called once at the top of every [CaptionRenderer.draw] invocation,
      * before any paint is read or drawn with.
      *
+     * @param context   Application context — used to load bundled fonts from assets.
      * @param style     The active caption style.
      * @param baseScale videoHeight / 1920f — used to scale dp-like values to px.
      */
-    fun configure(style: CaptionStyleEntity, baseScale: Float) {
+    fun configure(context: Context, style: CaptionStyleEntity, baseScale: Float) {
         val textSizePx = style.fontSize * baseScale
-        val tf = resolveTypeface(style)
+        val tf = resolveTypeface(context, style)
 
         text.apply {
             textSize      = textSizePx
@@ -53,10 +83,14 @@ object CaptionPaints {
             color         = style.textColor.toInt()
             textAlign     = Paint.Align.LEFT
             letterSpacing = style.letterSpacing
-            this.style    = Paint.Style.FILL
+            this.style    = if (style.outlineOnly) Paint.Style.STROKE else Paint.Style.FILL
+            strokeWidth   = if (style.outlineOnly) style.outlineWidth * baseScale else 0f
+            strokeJoin    = Paint.Join.ROUND
             flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
             textLocale    = java.util.Locale.ROOT
             clearShadowLayer()
+            // Glow mask — applied during background pass, cleared for fill
+            maskFilter = null
         }
 
         outline.apply {
@@ -94,7 +128,7 @@ object CaptionPaints {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun resolveTypeface(style: CaptionStyleEntity): Typeface {
+    private fun resolveTypeface(context: Context, style: CaptionStyleEntity): Typeface {
         // Only recompute if style fields affecting typeface have changed.
         if (cachedTypeface != null &&
             cachedFontFamily == style.fontFamily &&
@@ -102,19 +136,44 @@ object CaptionPaints {
             cachedItalic == style.isItalic) {
             return cachedTypeface!!
         }
-        val base = if (style.fontFamily == "System") Typeface.DEFAULT
-                   else Typeface.create(style.fontFamily, Typeface.NORMAL)
-        val tsStyle = when {
-            style.fontWeight > 600 && style.isItalic -> Typeface.BOLD_ITALIC
-            style.fontWeight > 600                   -> Typeface.BOLD
-            style.isItalic                           -> Typeface.ITALIC
-            else                                     -> Typeface.NORMAL
-        }
-        val tf = Typeface.create(base, tsStyle)
+
+        val tf = loadTypeface(context, style.fontFamily, style.fontWeight, style.isItalic)
+
         cachedTypeface  = tf
         cachedFontFamily = style.fontFamily
         cachedFontWeight = style.fontWeight
         cachedItalic    = style.isItalic
         return tf
+    }
+
+    /**
+     * Resolve a Typeface from the font family name.
+     * Tries bundled assets first, then falls back to system fonts.
+     */
+    fun loadTypeface(context: Context, fontFamily: String, fontWeight: Int, isItalic: Boolean): Typeface {
+        val tsStyle = when {
+            fontWeight > 600 && isItalic -> Typeface.BOLD_ITALIC
+            fontWeight > 600             -> Typeface.BOLD
+            isItalic                     -> Typeface.ITALIC
+            else                         -> Typeface.NORMAL
+        }
+
+        // 1. Try bundled asset font
+        val entry = BundledFonts.all.find { it.displayName == fontFamily }
+        if (entry != null && entry.assetPath.isNotEmpty()) {
+            try {
+                val assetTf = Typeface.createFromAsset(context.assets, entry.assetPath)
+                return Typeface.create(assetTf, tsStyle)
+            } catch (_: Exception) {
+                // Fall through to system font
+            }
+        }
+
+        // 2. System font fallback
+        val base = when (fontFamily) {
+            "System" -> Typeface.DEFAULT
+            else     -> Typeface.create(fontFamily, Typeface.NORMAL)
+        }
+        return Typeface.create(base, tsStyle)
     }
 }

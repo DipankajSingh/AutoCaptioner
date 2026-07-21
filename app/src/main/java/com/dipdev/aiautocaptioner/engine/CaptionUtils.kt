@@ -5,6 +5,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.data.db.entity.EmphasisType
+import com.dipdev.aiautocaptioner.data.db.entity.TextTransform
 
 object CaptionUtils {
 
@@ -48,9 +49,19 @@ object CaptionUtils {
      *   - Japanese: 。、！？
      *   - Greek, Hebrew, Thai, etc.
      */
-    fun sanitize(text: String, style: CaptionStyleEntity): String =
-        if (style.removePunctuation) text.replace(Regex("\\p{P}"), "").trimEnd()
-        else text
+    fun sanitize(text: String, style: CaptionStyleEntity): String {
+        var result = if (style.removePunctuation) text.replace(Regex("\\p{P}"), "").trimEnd() else text
+        result = when (style.textTransform) {
+            TextTransform.UPPERCASE -> result.uppercase()
+            TextTransform.LOWERCASE -> result.lowercase()
+            TextTransform.TITLE_CASE -> result.split(" ").joinToString(" ") {
+                it.replaceFirstChar { c -> c.uppercaseChar() }
+            }
+            TextTransform.SENTENCE_CASE -> result.replaceFirstChar { it.uppercaseChar() }
+            TextTransform.NONE -> result
+        }
+        return result
+    }
 
     /**
      * Returns true if [text] is predominantly right-to-left (Arabic, Hebrew,

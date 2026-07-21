@@ -100,6 +100,8 @@ class ExportService @Inject constructor(
 
         } catch (e: Exception) {
             isExporting.set(false)
+            tempOutputFile?.delete()
+            tempOutputFile = null
             onError(e.message ?: "Failed to process video")
         }
     }

@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = false,
     autoMigrations = []
 )
@@ -180,6 +180,26 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE image_overlays ADD COLUMN naturalWidth INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE image_overlays ADD COLUMN naturalHeight INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Add textOpacity, textTransform, lineHeight, outlineOnly to caption_styles */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN textTransform TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN lineHeight REAL NOT NULL DEFAULT 1.2")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN textOpacity REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN outlineOnly INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Add gradientDirection, glowEnabled, glowColor, glowRadius to caption_styles */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN gradientDirection TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN glowEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN glowColor INTEGER NOT NULL DEFAULT 4294967295")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN glowRadius REAL NOT NULL DEFAULT 0.0")
             }
         }
     }

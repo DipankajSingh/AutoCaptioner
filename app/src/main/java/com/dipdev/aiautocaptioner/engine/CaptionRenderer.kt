@@ -1,7 +1,12 @@
 package com.dipdev.aiautocaptioner.engine
 
+import android.content.Context
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import com.dipdev.aiautocaptioner.data.db.entity.*
 import com.dipdev.aiautocaptioner.engine.CaptionAnimator.TimedWord
 import com.dipdev.aiautocaptioner.engine.CaptionAnimator.WordTransform
@@ -32,9 +37,11 @@ object CaptionRenderer {
 
     private val tempWordRect = RectF()
     private val tempLineRect = RectF()
+    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private var cachedSegmentId: String? = null
     private var cachedStyleId: String? = null
+    private var cachedLayoutFingerprint: Long = 0L
     private var cachedWords: List<TimedWord> = emptyList()
     private var cachedVisibleWords: List<TimedWord> = emptyList()
 
@@ -45,7 +52,34 @@ object CaptionRenderer {
     /** Whether the current segment's text reads right-to-left. */
     private var cachedIsRtl: Boolean = false
 
+    /**
+     * Fingerprint of all style properties that affect text measurement and
+     * line layout. When ANY of these change the cached layouts must be
+     * rebuilt even though the style id is the same (e.g. user drags the
+     * font-size slider on a Custom preset).
+     */
+    private fun layoutFingerprint(style: CaptionStyleEntity): Long {
+        var h = 17L
+        h = 31 * h + java.lang.Float.floatToIntBits(style.fontSize)
+        h = 31 * h + style.fontFamily.hashCode()
+        h = 31 * h + style.fontWeight
+        h = 31 * h + if (style.isItalic) 1 else 0
+        h = 31 * h + java.lang.Float.floatToIntBits(style.letterSpacing)
+        h = 31 * h + style.maxWordsPerLine
+        h = 31 * h + style.maxLines
+        h = 31 * h + java.lang.Float.floatToIntBits(style.lineHeight)
+        h = 31 * h + style.alignment.ordinal
+        h = 31 * h + java.lang.Float.floatToIntBits(style.outlineWidth)
+        h = 31 * h + if (style.outlineOnly) 1 else 0
+        h = 31 * h + if (style.removePunctuation) 1 else 0
+        h = 31 * h + style.textTransform.ordinal
+        h = 31 * h + java.lang.Float.floatToIntBits(style.backgroundPaddingH)
+        h = 31 * h + java.lang.Float.floatToIntBits(style.backgroundPaddingV)
+        return h
+    }
+
     fun draw(
+        context: Context,
         canvas: Canvas,
         currentPositionMs: Long,
         videoWidth: Int,
@@ -60,15 +94,23 @@ object CaptionRenderer {
         val baseScale = videoHeight / 1920f
 
         // ── Configure shared paints ───────────────────────────────────────────
-        CaptionPaints.configure(style, baseScale)
+        CaptionPaints.configure(context, style, baseScale)
 
         // ── Build TimedWord list ──────────────────────────────────────────────
+        val fp = layoutFingerprint(style)
         if (cachedSegmentId != seg.id || cachedStyleId != style.id) {
             cachedSegmentId = seg.id
             cachedStyleId = style.id
             cachedWords = CaptionUtils.buildTimedWords(seg, rawWords)
             cachedIsRtl = CaptionUtils.isRtl(seg.text)
-            cachedVisibleWords = emptyList() // force rebuild
+            cachedVisibleWords = emptyList() // force layout rebuild below
+        }
+
+        // Force layout rebuild when any layout-affecting property changed
+        // (e.g. font-size slider moved on same style id).
+        if (fp != cachedLayoutFingerprint) {
+            cachedLayoutFingerprint = fp
+            cachedVisibleWords = emptyList()
         }
 
         if (cachedWords.isEmpty()) return
@@ -80,7 +122,7 @@ object CaptionRenderer {
 
         // ── Metrics & constants ───────────────────────────────────────────────
         val fm      = CaptionPaints.text.fontMetrics
-        val lineH   = fm.bottom - fm.top
+        val lineH   = (fm.bottom - fm.top) * style.lineHeight
         val padX    = style.backgroundPaddingH * baseScale
         val padY    = style.backgroundPaddingV * baseScale
         val corner  = style.backgroundCornerRadius * baseScale
@@ -124,14 +166,16 @@ object CaptionRenderer {
         val transforms = mutableMapOf<TimedWord, WordTransform>()
         for (line in lineLayouts) {
             for (wl in line.words) {
-                transforms[wl.word] = CaptionAnimator.computeWordTransform(currentPositionMs, wl.word, style, animMs)
+                transforms[wl.word] = CaptionAnimator.computeWordTransform(currentPositionMs, wl.word, style, animMs, baseScale)
             }
         }
 
         canvas.save()
         canvas.clipRect(0f, 0f, videoWidth.toFloat(), videoHeight.toFloat())
         val totalH = lineLayouts.size * lineH + padY * 2f
-        val startY = (videoHeight * style.positionY) - totalH / 2f
+        val rawY = (videoHeight * style.positionY) - totalH / 2f
+        val maxStart = (videoHeight - totalH).coerceAtLeast(0f)
+        val startY = rawY.coerceIn(0f, maxStart)
 
 
         // Pass 1: Background pills, Outlines, Shadows
@@ -240,17 +284,59 @@ object CaptionRenderer {
             val a = (255 * xfm.alpha).toInt()
 
             if (isBgPass) {
+                // Glow layer (drawn first, behind everything)
+                if (style.glowEnabled && style.glowRadius > 0f) {
+                    glowPaint.textSize = CaptionPaints.text.textSize
+                    glowPaint.typeface = CaptionPaints.text.typeface
+                    glowPaint.color = style.glowColor.toInt()
+                    glowPaint.alpha = (a * style.textOpacity * 0.7f).toInt()
+                    glowPaint.textAlign = Paint.Align.LEFT
+                    glowPaint.letterSpacing = style.letterSpacing
+                    glowPaint.maskFilter = BlurMaskFilter(
+                        style.glowRadius * baseScale, BlurMaskFilter.Blur.NORMAL
+                    )
+                    drawText(txt, 0, charsToDraw, x, y, glowPaint)
+                    glowPaint.maskFilter = null
+                }
+
                 if (style.outlineWidth > 0f) {
-                    CaptionPaints.outline.alpha = a
+                    CaptionPaints.outline.alpha = (a * style.textOpacity).toInt()
                     drawText(txt, 0, charsToDraw, x, y, CaptionPaints.outline)
                 } else if (style.shadowRadius > 0f) {
                     CaptionPaints.text.color = fillColor
-                    CaptionPaints.text.alpha = a
+                    CaptionPaints.text.alpha = (a * style.textOpacity).toInt()
                     drawText(txt, 0, charsToDraw, x, y, CaptionPaints.text)
                 }
             } else {
+                // Apply gradient shader if configured
+                if (style.gradientDirection != GradientDirection.NONE) {
+                    val shader = when (style.gradientDirection) {
+                        GradientDirection.LEFT_RIGHT -> LinearGradient(
+                            x, 0f, x + wordW, 0f,
+                            style.textColor.toInt(), style.secondaryColor.toInt(),
+                            Shader.TileMode.CLAMP
+                        )
+                        GradientDirection.TOP_BOTTOM -> LinearGradient(
+                            0f, lineTop, 0f, lineBot,
+                            style.textColor.toInt(), style.secondaryColor.toInt(),
+                            Shader.TileMode.CLAMP
+                        )
+                        GradientDirection.DIAGONAL -> LinearGradient(
+                            x, lineTop, x + wordW, lineBot,
+                            style.textColor.toInt(), style.secondaryColor.toInt(),
+                            Shader.TileMode.CLAMP
+                        )
+                        GradientDirection.NONE -> null
+                    }
+                    CaptionPaints.text.shader = shader
+                } else {
+                    CaptionPaints.text.shader = null
+                }
+
+                // Outline-only mode: draw the fill as outline too for a neon effect
+                val fillAlpha = if (style.outlineOnly) 0 else (a * style.textOpacity).toInt()
                 CaptionPaints.text.color = fillColor
-                CaptionPaints.text.alpha = a
+                CaptionPaints.text.alpha = fillAlpha
                 drawText(txt, 0, charsToDraw, x, y, CaptionPaints.text)
                 CaptionPaints.text.alpha = 255
                 CaptionPaints.outline.alpha = 255

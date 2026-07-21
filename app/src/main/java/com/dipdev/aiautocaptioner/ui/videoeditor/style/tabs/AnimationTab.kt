@@ -5,10 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.Star
-import compose.icons.feathericons.Activity
-import compose.icons.feathericons.Play
-import compose.icons.feathericons.FastForward
+import compose.icons.feathericons.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,13 +20,14 @@ import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.SubToolButton
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.LabeledPremiumSlider
 
-enum class AnimSubTool { MODE, HIGHLIGHT, ENTER, SPEED }
+enum class AnimSubTool { MODE, HIGHLIGHT, ENTER, EXIT, SPEED }
 
 @Composable
 fun AnimationTab(
     style: CaptionStyleEntity,
     onDisplayModeChange: (DisplayMode) -> Unit,
     onWordEnterChange: (AnimationType) -> Unit,
+    onWordExitChange: (AnimationType) -> Unit,
     onKaraokeHighlightChange: (KaraokeHighlightMode) -> Unit,
     onAnimationDurationChange: (Int) -> Unit,
 ) {
@@ -46,7 +44,8 @@ fun AnimationTab(
         ) {
             item { SubToolButton(FeatherIcons.Play, "Display") { activeTool = AnimSubTool.MODE } }
             item { SubToolButton(FeatherIcons.Star, "Karaoke") { activeTool = AnimSubTool.HIGHLIGHT } }
-            item { SubToolButton(FeatherIcons.Activity, "Animation") { activeTool = AnimSubTool.ENTER } }
+            item { SubToolButton(FeatherIcons.Activity, "Enter") { activeTool = AnimSubTool.ENTER } }
+            item { SubToolButton(FeatherIcons.ChevronDown, "Exit") { activeTool = AnimSubTool.EXIT } }
             item { SubToolButton(FeatherIcons.FastForward, "Speed") { activeTool = AnimSubTool.SPEED } }
         }
     } else {
@@ -97,6 +96,21 @@ fun AnimationTab(
                                 FilterChip(
                                     selected = style.wordEnterAnimation == anim,
                                     onClick = { onWordEnterChange(anim) },
+                                    label = { Text(anim.name.split('_').joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercaseChar() } }, fontSize = 12.sp) },
+                                    modifier = Modifier.padding(end = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                    AnimSubTool.EXIT -> {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AnimationType.entries.filter { it != AnimationType.ELASTIC }.forEach { anim ->
+                                FilterChip(
+                                    selected = style.wordExitAnimation == anim,
+                                    onClick = { onWordExitChange(anim) },
                                     label = { Text(anim.name.split('_').joinToString(" ") { word -> word.lowercase().replaceFirstChar { it.uppercaseChar() } }, fontSize = 12.sp) },
                                     modifier = Modifier.padding(end = 6.dp)
                                 )

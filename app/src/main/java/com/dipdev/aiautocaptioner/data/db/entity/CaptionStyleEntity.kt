@@ -99,6 +99,31 @@ data class CaptionStyleEntity(
     // Non-destructively strip punctuation from text rendering
     val removePunctuation: Boolean = false,
 
+    // ---- TEXT TRANSFORM ----
+    // Transform the text casing
+    val textTransform: TextTransform = TextTransform.NONE,
+
+    // ---- LINE HEIGHT ----
+    // Multiplier applied to the default line height (1.0 = default)
+    val lineHeight: Float = 1.2f,
+
+    // ---- TEXT OPACITY ----
+    // Opacity of the text (0.0 = invisible, 1.0 = fully opaque)
+    val textOpacity: Float = 1f,
+
+    // ---- OUTLINE ONLY ----
+    // When true, only outline is drawn (no fill) — neon/sign effect
+    val outlineOnly: Boolean = false,
+
+    // ---- GRADIENT ----
+    // Direction of the gradient from textColor to secondaryColor
+    val gradientDirection: GradientDirection = GradientDirection.NONE,
+
+    // ---- GLOW / NEON ----
+    val glowEnabled: Boolean = false,
+    val glowColor: Long = 0xFFFFD700,   // gold glow by default
+    val glowRadius: Float = 8f,
+
     // ---- DISPLAY MODE ----
 
     // How captions are displayed — core behavior of the app
@@ -166,6 +191,23 @@ enum class AnimationType {
     TYPEWRITER,     // letters appear one at a time
     SHAKE,          // word shakes horizontally
     FLIP            // word flips in like a card
+}
+
+// Direction of the gradient fill from primary text color to secondary color
+enum class GradientDirection {
+    NONE,
+    LEFT_RIGHT,
+    TOP_BOTTOM,
+    DIAGONAL
+}
+
+// Text casing transformation
+enum class TextTransform {
+    NONE,           // no transformation
+    UPPERCASE,      // ALL CAPS
+    LOWERCASE,      // all lowercase
+    TITLE_CASE,     // First Letter Of Each Word Capitalized
+    SENTENCE_CASE   // First letter of the sentence capitalized
 }
 
 // Text alignment within the caption block

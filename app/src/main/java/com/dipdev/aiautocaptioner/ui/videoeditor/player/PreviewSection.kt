@@ -4,9 +4,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
@@ -53,19 +60,33 @@ fun PreviewSection(
             player = player
         )
 
-        if (activeStyle != null && segments.isNotEmpty()) {
+        if (activeStyle != null && segments.isNotEmpty() && videoWidth > 0 && videoHeight > 0) {
+            val context = LocalContext.current
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val srcMs = currentSourceMs()
+
+                val containerW = size.width
+                val containerH = size.height
+                val scale = minOf(containerW / videoWidth.toFloat(), containerH / videoHeight.toFloat())
+                val offsetX = (containerW - videoWidth * scale) / 2f
+                val offsetY = (containerH - videoHeight * scale) / 2f
+
                 drawIntoCanvas { canvas ->
+                    val native = canvas.nativeCanvas
+                    native.save()
+                    native.translate(offsetX, offsetY)
+                    native.scale(scale, scale)
                     CaptionRenderer.draw(
-                        canvas = canvas.nativeCanvas,
+                        context = context,
+                        canvas = native,
                         currentPositionMs = srcMs,
-                        videoWidth = size.width.toInt(),
-                        videoHeight = size.height.toInt(),
+                        videoWidth = videoWidth,
+                        videoHeight = videoHeight,
                         style = activeStyle,
                         segments = segments,
                         wordsMap = wordsMap
                     )
+                    native.restore()
                 }
             }
         }

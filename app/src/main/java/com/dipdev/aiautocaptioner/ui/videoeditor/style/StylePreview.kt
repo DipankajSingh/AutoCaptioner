@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
@@ -35,6 +36,7 @@ fun StylePreview(
     wordsMap: Map<String, List<CaptionWordEntity>>,
     durationMs: Long,
     exoPlayer: ExoPlayer?,
+    onPositionXChange: (Float) -> Unit,
     onPositionYChange: (Float) -> Unit,
     onSeek: (Long) -> Unit
 ) {
@@ -89,6 +91,8 @@ fun StylePreview(
             )
 
             val currentPosY by rememberUpdatedState(style.positionY)
+            val currentPosX by rememberUpdatedState(style.positionX)
+            val context = LocalContext.current
 
             Canvas(modifier = Modifier
                 .fillMaxSize()
@@ -96,13 +100,22 @@ fun StylePreview(
                     detectVerticalDragGestures { change, dragAmount ->
                         change.consume()
                         val heightPixels = size.height.toFloat()
-                        val newRatio = (currentPosY + (dragAmount / heightPixels)).coerceIn(0f, 1f)
+                        val newRatio = (currentPosY + (dragAmount / heightPixels)).coerceIn(0.05f, 0.95f)
                         onPositionYChange(newRatio)
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { change, dragAmount ->
+                        change.consume()
+                        val widthPixels = size.width.toFloat()
+                        val newRatio = (currentPosX + (dragAmount / widthPixels)).coerceIn(0.05f, 0.95f)
+                        onPositionXChange(newRatio)
                     }
                 }
             ) {
                 drawIntoCanvas { canvas ->
                     CaptionRenderer.draw(
+                        context = context,
                         canvas = canvas.nativeCanvas,
                         currentPositionMs = currentPositionMs,
                         videoWidth = size.width.toInt(),

@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.engine
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,6 +16,7 @@ import androidx.core.graphics.createBitmap
 @UnstableApi
 class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
     (
+    private val context: Context,
     private val segments: List<CaptionSegmentEntity>,
     private val wordsMap: Map<String, List<CaptionWordEntity>>,
     private val style: CaptionStyleEntity,
@@ -33,6 +35,7 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
         val currentPositionMs = presentationTimeUs / 1000
 
         CaptionRenderer.draw(
+            context = context,
             canvas = overlayCanvas,
             currentPositionMs = currentPositionMs,
             videoWidth = videoWidth,

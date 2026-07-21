@@ -5,14 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.Maximize2
-import compose.icons.feathericons.Minimize2
-import compose.icons.feathericons.Edit2
-import compose.icons.feathericons.Box
-import compose.icons.feathericons.Type
-import compose.icons.feathericons.Sun
-import compose.icons.feathericons.Droplet
-import compose.icons.feathericons.Square
+import compose.icons.feathericons.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,11 +15,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
+import com.dipdev.aiautocaptioner.data.db.entity.GradientDirection
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.AdvancedColorPicker
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.SubToolButton
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.LabeledPremiumSlider
 
-enum class ColorSubTool { TEXT, HIGHLIGHT, OUTLINE, BACKGROUND, BG_COLOR, PAD_H, PAD_V, CORNER }
+enum class ColorSubTool {
+    TEXT, HIGHLIGHT, OUTLINE, SHADOW, GRADIENT, GLOW,
+    BACKGROUND, BG_COLOR, PAD_H, PAD_V, CORNER
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +33,16 @@ fun ColorTab(
     onHighlightColorChange: (Long) -> Unit,
     onOutlineColorChange: (Long) -> Unit,
     onOutlineWidthChange: (Float) -> Unit,
+    onOutlineOnlyChange: (Boolean) -> Unit,
+    onShadowColorChange: (Long) -> Unit,
+    onShadowRadiusChange: (Float) -> Unit,
+    onShadowOffsetXChange: (Float) -> Unit,
+    onShadowOffsetYChange: (Float) -> Unit,
+    onGradientDirectionChange: (GradientDirection) -> Unit,
+    onSecondaryColorChange: (Long) -> Unit,
+    onGlowEnabledChange: (Boolean) -> Unit,
+    onGlowColorChange: (Long) -> Unit,
+    onGlowRadiusChange: (Float) -> Unit,
     onBackgroundTypeChange: (BackgroundType) -> Unit,
     onBackgroundColorChange: (Long) -> Unit,
     onBackgroundOpacityChange: (Float) -> Unit,
@@ -58,6 +65,9 @@ fun ColorTab(
             item { SubToolButton(FeatherIcons.Type, "Text") { activeTool = ColorSubTool.TEXT } }
             item { SubToolButton(FeatherIcons.Edit2, "Outline") { activeTool = ColorSubTool.OUTLINE } }
             item { SubToolButton(FeatherIcons.Sun, "Highlight") { activeTool = ColorSubTool.HIGHLIGHT } }
+            item { SubToolButton(FeatherIcons.Moon, "Shadow") { activeTool = ColorSubTool.SHADOW } }
+            item { SubToolButton(FeatherIcons.Droplet, "Gradient") { activeTool = ColorSubTool.GRADIENT } }
+            item { SubToolButton(FeatherIcons.Star, "Glow") { activeTool = ColorSubTool.GLOW } }
             item { SubToolButton(FeatherIcons.Box, "Bg Style") { activeTool = ColorSubTool.BACKGROUND } }
             item { SubToolButton(FeatherIcons.Droplet, "Bg Color") { activeTool = ColorSubTool.BG_COLOR } }
             item { SubToolButton(FeatherIcons.Maximize2, "Pad H") { activeTool = ColorSubTool.PAD_H } }
@@ -93,6 +103,16 @@ fun ColorTab(
                             }
                             ColorSubTool.OUTLINE -> {
                                 Column {
+                                    Row(
+                                        modifier = Modifier.padding(bottom = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("Outline Only", fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                        Switch(
+                                            checked = style.outlineOnly,
+                                            onCheckedChange = onOutlineOnlyChange
+                                        )
+                                    }
                                     LabeledPremiumSlider(
                                         label = "Width",
                                         value = style.outlineWidth,
@@ -101,6 +121,84 @@ fun ColorTab(
                                         modifier = Modifier.padding(bottom = 16.dp)
                                     )
                                     AdvancedColorPicker(initialColor = style.outlineColor, onColorChanged = onOutlineColorChange)
+                                }
+                            }
+                            ColorSubTool.SHADOW -> {
+                                Column {
+                                    AdvancedColorPicker(initialColor = style.shadowColor, onColorChanged = onShadowColorChange)
+                                    LabeledPremiumSlider(
+                                        label = "Radius",
+                                        value = style.shadowRadius,
+                                        onValueChange = onShadowRadiusChange,
+                                        valueRange = 0f..20f,
+                                        modifier = Modifier.padding(top = 16.dp)
+                                    )
+                                    LabeledPremiumSlider(
+                                        label = "Offset X",
+                                        value = style.shadowOffsetX,
+                                        onValueChange = onShadowOffsetXChange,
+                                        valueRange = -10f..10f
+                                    )
+                                    LabeledPremiumSlider(
+                                        label = "Offset Y",
+                                        value = style.shadowOffsetY,
+                                        onValueChange = onShadowOffsetYChange,
+                                        valueRange = -10f..10f
+                                    )
+                                }
+                            }
+                            ColorSubTool.GRADIENT -> {
+                                Column {
+                                    Row(
+                                        modifier = Modifier
+                                            .horizontalScroll(rememberScrollState())
+                                            .padding(bottom = 12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        GradientDirection.entries.forEach { dir ->
+                                            FilterChip(
+                                                selected = style.gradientDirection == dir,
+                                                onClick = { onGradientDirectionChange(dir) },
+                                                label = { Text(
+                                                    when (dir) {
+                                                        GradientDirection.NONE -> "None"
+                                                        GradientDirection.LEFT_RIGHT -> "→"
+                                                        GradientDirection.TOP_BOTTOM -> "↓"
+                                                        GradientDirection.DIAGONAL -> "↘"
+                                                    },
+                                                    fontSize = 12.sp
+                                                ) }
+                                            )
+                                        }
+                                    }
+                                    if (style.gradientDirection != GradientDirection.NONE) {
+                                        Text("Secondary Color", fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                                        AdvancedColorPicker(initialColor = style.secondaryColor, onColorChanged = onSecondaryColorChange)
+                                    }
+                                }
+                            }
+                            ColorSubTool.GLOW -> {
+                                Column {
+                                    Row(
+                                        modifier = Modifier.padding(bottom = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("Enable Glow", fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                        Switch(
+                                            checked = style.glowEnabled,
+                                            onCheckedChange = onGlowEnabledChange
+                                        )
+                                    }
+                                    if (style.glowEnabled) {
+                                        AdvancedColorPicker(initialColor = style.glowColor, onColorChanged = onGlowColorChange)
+                                        LabeledPremiumSlider(
+                                            label = "Glow Radius",
+                                            value = style.glowRadius,
+                                            onValueChange = onGlowRadiusChange,
+                                            valueRange = 2f..30f,
+                                            modifier = Modifier.padding(top = 16.dp)
+                                        )
+                                    }
                                 }
                             }
                             ColorSubTool.BACKGROUND -> {
@@ -161,7 +259,7 @@ fun ColorTab(
                             null -> {}
                         }
                     }
-                    
+
                     TextButton(onClick = { activeTool = null }, modifier = Modifier.padding(start = 8.dp)) {
                         Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }

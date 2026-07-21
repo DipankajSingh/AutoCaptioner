@@ -64,6 +64,11 @@ fun EditorBottomDock(
     segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
     selectedCaptionSegmentId: String? = null,
     onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
+    onGenerateCaptions: () -> Unit = {},
+    onAddImage: () -> Unit = {},
+    selectedLanguage: String = "en",
+    translateToEnglish: Boolean = false,
+    onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
@@ -91,6 +96,7 @@ fun EditorBottomDock(
                         onOverlaySelected = onOverlaySelected,
                         onUpdateOverlay = onUpdateOverlay,
                         onCaptionTap = { currentMode = EditorMode.CAPTIONS },
+                        onAddImage = onAddImage,
                         onDragStateChange = onDragStateChange,
                         zoomLevel = zoomLevel,
                         player = player,
@@ -114,6 +120,13 @@ fun EditorBottomDock(
                 EditorMode.CAPTIONS -> {
                     StylePanel(
                         viewModel = styleViewModel,
+                        timelineHeight = timelineHeight,
+                        maxTimelineHeight = maxTimelineHeight,
+                        onTimelineHeightChanged = { timelineHeight = it },
+                        onGenerateCaptions = onGenerateCaptions,
+                        selectedLanguage = selectedLanguage,
+                        translateToEnglish = translateToEnglish,
+                        onLanguageSelected = onLanguageSelected,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

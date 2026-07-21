@@ -32,9 +32,8 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorBottomDock
-import com.dipdev.aiautocaptioner.ui.videoeditor.shared.LeftSideControls
+import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorTopOverlay
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.MiniScrubber
-import com.dipdev.aiautocaptioner.ui.videoeditor.shared.RightSideControls
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.TimerPill
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
@@ -120,7 +119,11 @@ fun EditorScreen(
         }
 
         BackHandler {
-            onNavigateBack()
+            if (hasEdits) {
+                showDeleteDialog = true
+            } else {
+                onNavigateBack()
+            }
         }
 
         LaunchedEffect(Unit) {
@@ -302,34 +305,15 @@ fun EditorScreen(
                                         .align(Alignment.TopCenter)
                                 )
 
-                                LeftSideControls(
-                                    hasEdits = hasEdits,
-                                    onNavigateBack = onNavigateBack,
-                                    onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
-                                    onDeleteProject = { viewModel.setEvent(VideoEditorUiEvent.DeleteProject) },
-                                    onShowDeleteDialog = { showDeleteDialog = true },
-                                    onNavigateToProcessing = { showTranscriptionBottomSheet = true },
-                                    hasCaptions = styleUiState.segments.isNotEmpty(),
-                                    onNavigateToCaptionEditor = onNavigateToCaptionEditor,
-                                    selectedLanguage = selectedLanguage,
-                                    translateToEnglish = translateToEnglish,
-                                    onLanguageSelected = { lang, trans ->
-                                        viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
-                                    },
-                                    modifier = Modifier
-                                        .align(Alignment.TopStart)
-                                        .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
-                                )
-
-                                RightSideControls(
+                                EditorTopOverlay(
                                     canUndo = canUndo,
                                     canRedo = canRedo,
+                                    onNavigateBack = onNavigateBack,
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
-                                    onAddImage = { imagePickerLauncher.launch("image/*") },
                                     onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
                                     modifier = Modifier
-                                        .align(Alignment.TopEnd)
+                                        .align(Alignment.TopCenter)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
                                 )
 
@@ -423,6 +407,13 @@ fun EditorScreen(
                                 onCaptionSegmentTap = { seg ->
                                     selectedCaptionSegment = seg
                                     inlineEditText = seg.text
+                                },
+                                onGenerateCaptions = { showTranscriptionBottomSheet = true },
+                                onAddImage = { imagePickerLauncher.launch("image/*") },
+                                selectedLanguage = selectedLanguage,
+                                translateToEnglish = translateToEnglish,
+                                onLanguageSelected = { lang, trans ->
+                                    viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             )

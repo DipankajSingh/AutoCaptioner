@@ -173,8 +173,6 @@ class CaptionRepository @Inject constructor(
     // Called from SplashScreen ViewModel
     suspend fun initializeDefaultStyles() {
         db.withTransaction {
-                // Only insert if no default styles exist yet
-                if (styleDao.getDefaultStyleCount() == 0) {
                     val defaults = listOf(
                         CaptionStyleEntity(
                             id = UUID.randomUUID().toString(),
@@ -202,7 +200,7 @@ class CaptionRepository @Inject constructor(
                             fontWeight = 900,
                             fontSize = 50f,
                             textColor = 0xFFE0E0E0,
-                            highlightColor = 0xFFFFC107, // Vibrant Amber
+                            highlightColor = 0xFFFFC107,
                             karaokeFillColor = 0xFFFFC107,
                             outlineColor = 0xFF000000,
                             outlineWidth = 5f,
@@ -225,8 +223,8 @@ class CaptionRepository @Inject constructor(
                             fontWeight = 700,
                             fontSize = 48f,
                             isItalic = true,
-                            textColor = 0xFF00FFCC, // Neon Cyan
-                            highlightColor = 0xFFFF0055, // Neon Pink
+                            textColor = 0xFF00FFCC,
+                            highlightColor = 0xFFFF0055,
                             outlineColor = 0xFF000000,
                             outlineWidth = 1f,
                             shadowColor = 0xFF00FFCC,
@@ -236,7 +234,7 @@ class CaptionRepository @Inject constructor(
                             wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.ELASTIC,
                             wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
                             positionX = 0.5f,
-                            positionY = 0.5f // Center screen
+                            positionY = 0.5f
                         ),
                         CaptionStyleEntity(
                             id = UUID.randomUUID().toString(),
@@ -251,12 +249,12 @@ class CaptionRepository @Inject constructor(
                             outlineColor = 0xFF000000,
                             outlineWidth = 0f,
                             backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.BOX,
-                            backgroundColor = 0xAA000000, // Semi-transparent black
+                            backgroundColor = 0xAA000000,
                             backgroundCornerRadius = 12f,
                             backgroundPaddingH = 24f,
                             backgroundPaddingV = 16f,
                             displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
-                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE, // Because phrase
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
                             wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
                             positionX = 0.5f,
                             positionY = 0.90f
@@ -268,7 +266,7 @@ class CaptionRepository @Inject constructor(
                             fontFamily = "Roboto",
                             fontWeight = 700,
                             fontSize = 42f,
-                            textColor = 0xFF00FF00, // Terminal Green
+                            textColor = 0xFF00FF00,
                             highlightColor = 0xFF00FF00,
                             outlineColor = 0xFF000000,
                             outlineWidth = 3f,
@@ -278,12 +276,182 @@ class CaptionRepository @Inject constructor(
                             wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
                             positionX = 0.5f,
                             positionY = 0.85f
-                        )
+                        ),
+                        // ---- New presets ----
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Hormozi",
+                            isDefault = true,
+                            fontFamily = "Bebas Neue",
+                            fontWeight = 700,
+                            fontSize = 52f,
+                            textColor = 0xFFFFFFFF,
+                            highlightColor = 0xFFFFD700,
+                            outlineColor = 0xFFB8860B,
+                            outlineWidth = 3f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.SCALE_POP,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            positionX = 0.5f,
+                            positionY = 0.82f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Neon Glow",
+                            isDefault = true,
+                            fontFamily = "Bebas Neue",
+                            fontWeight = 700,
+                            fontSize = 54f,
+                            textColor = 0xFF00FFFF,
+                            highlightColor = 0xFFFF69B4,
+                            secondaryColor = 0xFF00CED1,
+                            outlineColor = 0xFFFF00FF,
+                            outlineWidth = 2f,
+                            glowEnabled = true,
+                            glowColor = 0xFF00FFFF,
+                            glowRadius = 12f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.BOUNCE,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            positionX = 0.5f,
+                            positionY = 0.85f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Story Time",
+                            isDefault = true,
+                            fontFamily = "Pacifico",
+                            fontWeight = 400,
+                            fontSize = 44f,
+                            textColor = 0xFFF5F5DC,
+                            highlightColor = 0xFFFFD700,
+                            outlineColor = 0xFF8B4513,
+                            outlineWidth = 2f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            positionX = 0.5f,
+                            positionY = 0.80f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Tech Terminal",
+                            isDefault = true,
+                            fontFamily = "Space Mono",
+                            fontWeight = 400,
+                            fontSize = 38f,
+                            textColor = 0xFF00FF41,
+                            highlightColor = 0xFFFFFF00,
+                            outlineColor = 0xFF003300,
+                            outlineWidth = 2f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.FULL_LINE,
+                            backgroundColor = 0xDD0A0A0A,
+                            backgroundOpacity = 0.85f,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.TYPEWRITER,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.TYPEWRITER,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
+                            textTransform = com.dipdev.aiautocaptioner.data.db.entity.TextTransform.UPPERCASE,
+                            positionX = 0.5f,
+                            positionY = 0.88f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Elegant",
+                            isDefault = true,
+                            fontFamily = "Playfair Display",
+                            fontWeight = 700,
+                            fontSize = 40f,
+                            letterSpacing = 0.03f,
+                            textColor = 0xFFD4AF37,
+                            highlightColor = 0xFFFFD700,
+                            secondaryColor = 0xFFF5E6B8,
+                            outlineColor = 0xFF1A0A00,
+                            outlineWidth = 3f,
+                            shadowColor = 0x40000000,
+                            shadowRadius = 4f,
+                            shadowOffsetX = 1f,
+                            shadowOffsetY = 1f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
+                            gradientDirection = com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.LEFT_RIGHT,
+                            positionX = 0.5f,
+                            positionY = 0.88f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Bold Pop",
+                            isDefault = true,
+                            fontFamily = "Montserrat",
+                            fontWeight = 900,
+                            fontSize = 50f,
+                            textColor = 0xFFFFFFFF,
+                            highlightColor = 0xFFFFC107,
+                            outlineColor = 0xFF000000,
+                            outlineWidth = 4f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.BOUNCE,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            positionX = 0.5f,
+                            positionY = 0.82f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Retro Sign",
+                            isDefault = true,
+                            fontFamily = "Bungee",
+                            fontWeight = 400,
+                            fontSize = 46f,
+                            textColor = 0xFFFF4500,
+                            highlightColor = 0xFFFFD700,
+                            outlineColor = 0xFFFF4500,
+                            outlineWidth = 3f,
+                            outlineOnly = true,
+                            glowEnabled = true,
+                            glowColor = 0xFFFF4500,
+                            glowRadius = 10f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
+                            positionX = 0.5f,
+                            positionY = 0.85f
+                        ),
+                        CaptionStyleEntity(
+                            id = UUID.randomUUID().toString(),
+                            name = "Smooth Gradient",
+                            isDefault = true,
+                            fontFamily = "Rubik",
+                            fontWeight = 500,
+                            fontSize = 44f,
+                            textColor = 0xFF6A11CB,
+                            highlightColor = 0xFFFFD700,
+                            secondaryColor = 0xFF2575FC,
+                            outlineColor = 0x00000000,
+                            outlineWidth = 0f,
+                            backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
+                            displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
+                            wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
+                            gradientDirection = com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.DIAGONAL,
+                            positionX = 0.5f,
+                            positionY = 0.83f
+                        ),
                     )
 
-                    styleDao.insertDefaultStyles(defaults)
-                    Log.i(TAG, "Initialized ${defaults.size} default styles")
-                }
+                    val existingNames = styleDao.getDefaultStyleNames().toSet()
+                    val newDefaults = defaults.filter { it.name !in existingNames }
+                    if (newDefaults.isNotEmpty()) {
+                        styleDao.insertDefaultStyles(newDefaults)
+                        Log.i(TAG, "Seeded ${newDefaults.size} new default styles (skipped ${defaults.size - newDefaults.size} existing)")
+                    } else {
+                        Log.i(TAG, "All ${defaults.size} default styles already present")
+                    }
             }
     }
 

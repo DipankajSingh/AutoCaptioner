@@ -3,14 +3,7 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.AlignLeft
-import compose.icons.feathericons.Italic
-import compose.icons.feathericons.Type
-import compose.icons.feathericons.Bold
-import compose.icons.feathericons.List
-import compose.icons.feathericons.Maximize
-import compose.icons.feathericons.Hash
-import compose.icons.feathericons.AlignJustify
+import compose.icons.feathericons.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,14 +13,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
+import com.dipdev.aiautocaptioner.data.db.entity.TextTransform
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.SubToolButton
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.LabeledPremiumSlider
 
-enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION, ITALIC, SPACING }
+enum class TextSubTool { SIZE, WORDS_PER_LINE, MAX_LINES, WEIGHT, ALIGNMENT, PUNCTUATION, ITALIC, SPACING, FONT, OPACITY, TRANSFORM, LINE_HEIGHT, POSITION }
 
 @Composable
 fun TextTab(
     style: CaptionStyleEntity,
+    onFontFamilyChange: (String) -> Unit,
     onFontSizeChange: (Float) -> Unit,
     onFontWeightChange: (Int) -> Unit,
     onMaxWordsChange: (Int) -> Unit,
@@ -36,6 +31,11 @@ fun TextTab(
     onAlignmentChange: (TextAlignment) -> Unit,
     onLetterSpacingChange: (Float) -> Unit,
     onIsItalicChange: (Boolean) -> Unit,
+    onTextOpacityChange: (Float) -> Unit,
+    onTextTransformChange: (TextTransform) -> Unit,
+    onLineHeightChange: (Float) -> Unit,
+    onPositionXChange: (Float) -> Unit,
+    onPositionYChange: (Float) -> Unit,
 ) {
     var activeTool by remember { mutableStateOf<TextSubTool?>(null) }
 
@@ -48,11 +48,16 @@ fun TextTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            item { SubToolButton(FeatherIcons.FileText, "Font") { activeTool = TextSubTool.FONT } }
             item { SubToolButton(FeatherIcons.Type, "Size") { activeTool = TextSubTool.SIZE } }
             item { SubToolButton(FeatherIcons.Bold, "Weight") { activeTool = TextSubTool.WEIGHT } }
             item { SubToolButton(FeatherIcons.AlignLeft, "Align") { activeTool = TextSubTool.ALIGNMENT } }
+            item { SubToolButton(FeatherIcons.Minimize2, "Opacity") { activeTool = TextSubTool.OPACITY } }
+            item { SubToolButton(FeatherIcons.Edit2, "Case") { activeTool = TextSubTool.TRANSFORM } }
+            item { SubToolButton(FeatherIcons.Move, "Position") { activeTool = TextSubTool.POSITION } }
             item { SubToolButton(FeatherIcons.AlignJustify, "Words") { activeTool = TextSubTool.WORDS_PER_LINE } }
             item { SubToolButton(FeatherIcons.List, "Max Lines") { activeTool = TextSubTool.MAX_LINES } }
+            item { SubToolButton(FeatherIcons.Maximize2, "Line Ht") { activeTool = TextSubTool.LINE_HEIGHT } }
             item { SubToolButton(FeatherIcons.Hash, "Symbols") { activeTool = TextSubTool.PUNCTUATION } }
             item { SubToolButton(FeatherIcons.Italic, "Italic") { activeTool = TextSubTool.ITALIC } }
             item { SubToolButton(FeatherIcons.Maximize, "Spacing") { activeTool = TextSubTool.SPACING } }
@@ -65,6 +70,19 @@ fun TextTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             when (activeTool) {
+                TextSubTool.FONT -> {
+                    Box(modifier = Modifier.weight(1f)) {
+                        FontPickerSheet(
+                            currentFont = style.fontFamily,
+                            onFontSelected = { onFontFamilyChange(it) },
+                            onDismiss = { activeTool = null }
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    TextButton(onClick = { activeTool = null }) {
+                        Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 TextSubTool.SIZE -> {
                     LabeledPremiumSlider(
                         label = "Size",
@@ -141,12 +159,68 @@ fun TextTab(
                         modifier = Modifier.weight(1f)
                     )
                 }
+                TextSubTool.OPACITY -> {
+                    LabeledPremiumSlider(
+                        label = "Opacity",
+                        value = style.textOpacity,
+                        onValueChange = onTextOpacityChange,
+                        valueRange = 0.1f..1f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                TextSubTool.TRANSFORM -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                        TextTransform.entries.forEach { transform ->
+                            FilterChip(
+                                selected = style.textTransform == transform,
+                                onClick = { onTextTransformChange(transform) },
+                                label = { Text(
+                                    when (transform) {
+                                        TextTransform.NONE -> "None"
+                                        TextTransform.UPPERCASE -> "ABC"
+                                        TextTransform.LOWERCASE -> "abc"
+                                        TextTransform.TITLE_CASE -> "Abc"
+                                        TextTransform.SENTENCE_CASE -> "Sentence"
+                                    },
+                                    fontSize = 12.sp
+                                ) }
+                            )
+                        }
+                    }
+                }
+                TextSubTool.LINE_HEIGHT -> {
+                    LabeledPremiumSlider(
+                        label = "Line Height",
+                        value = style.lineHeight,
+                        onValueChange = onLineHeightChange,
+                        valueRange = 0.8f..2.5f,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                TextSubTool.POSITION -> {
+                    Column(modifier = Modifier.weight(1f)) {
+                        LabeledPremiumSlider(
+                            label = "X Position",
+                            value = style.positionX,
+                            onValueChange = onPositionXChange,
+                            valueRange = 0.05f..0.95f
+                        )
+                        LabeledPremiumSlider(
+                            label = "Y Position",
+                            value = style.positionY,
+                            onValueChange = onPositionYChange,
+                            valueRange = 0.05f..0.95f
+                        )
+                    }
+                }
                 null -> {}
             }
             
-            Spacer(modifier = Modifier.width(16.dp))
-            TextButton(onClick = { activeTool = null }) {
-                Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            if (activeTool != TextSubTool.FONT) {
+                Spacer(modifier = Modifier.width(16.dp))
+                TextButton(onClick = { activeTool = null }) {
+                    Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
             }
         }
     }
