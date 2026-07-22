@@ -37,7 +37,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.dipdev.aiautocaptioner.R
 
 data class SpeedDialItem(
     val icon: ImageVector,
@@ -130,7 +132,7 @@ fun SpeedDialFab(
         ) {
             Icon(
                 FeatherIcons.Plus,
-                contentDescription = if (expanded) "Close" else "Create",
+                contentDescription = if (expanded) stringResource(R.string.fab_close) else stringResource(R.string.fab_create),
                 modifier = Modifier.rotate(rotation)
             )
         }

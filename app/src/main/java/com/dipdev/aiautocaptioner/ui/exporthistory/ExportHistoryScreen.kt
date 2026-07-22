@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.EmptyState
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -118,7 +120,7 @@ fun ExportHistoryItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Exported Video",
+                    text = stringResource(R.string.export_history_label),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface
@@ -132,7 +134,7 @@ fun ExportHistoryItem(
                 if (export.quality != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Quality: ${export.quality}",
+                        text = stringResource(R.string.export_history_quality_format, export.quality ?: ""),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

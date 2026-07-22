@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -207,21 +208,21 @@ fun HomeScreen(
                     items = listOf(
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
                             icon = FeatherIcons.Video,
-                            label = "Record Video",
+                            label = stringResource(R.string.home_record_video),
                             color = MaterialTheme.colorScheme.tertiaryContainer,
                             onColor = MaterialTheme.colorScheme.onTertiaryContainer,
                             onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
                         ),
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
                             icon = FeatherIcons.Zap,
-                            label = "1-Tap Captions",
+                            label = stringResource(R.string.home_1_tap_captions),
                             color = MaterialTheme.colorScheme.primary,
                             onColor = MaterialTheme.colorScheme.onPrimary,
                             onClick = { quickPicker.launch("video/*") }
                         ),
                         com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
                             icon = FeatherIcons.Scissors,
-                            label = "Advanced Studio",
+                            label = stringResource(R.string.home_advanced_studio),
                             color = MaterialTheme.colorScheme.secondaryContainer,
                             onColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             onClick = { videoPicker.launch("video/*") }
@@ -236,6 +237,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .navigationBarsPadding()
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Temporary fetch and display of Remote Config
@@ -267,7 +269,7 @@ fun HomeScreen(
                             IconButton(onClick = { dismissed = true }) {
                                 Icon(
                                     FeatherIcons.X,
-                                    contentDescription = "Dismiss",
+                                    contentDescription = stringResource(R.string.home_dismiss),
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -308,7 +310,7 @@ fun HomeScreen(
                             modifier = Modifier.padding(bottom = 4.dp)
                         ) {
                             Text(
-                                text = "My Projects",
+                                text = stringResource(R.string.home_my_projects),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
@@ -475,12 +477,12 @@ private fun HomeTopBar(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_logo_ui),
+                    painter = painterResource(id = R.drawable.ic_logo_home),
                     contentDescription = null,
                     modifier = Modifier.size(40.dp)
                 )
                 Text(
-                    text = "AutoCaptioner",
+                    text = stringResource(R.string.home_brand_name),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -489,7 +491,7 @@ private fun HomeTopBar(
             // Right actions: model chip + settings
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val modelText = activeModel?.displayName?.split("—")?.first()?.trim()
-                    ?.let { "Model: $it" } ?: "Select Model"
+                    ?.let { stringResource(R.string.home_model_chip, it) } ?: stringResource(R.string.home_select_model)
                 val buttonColor = if (activeModel != null)
                     MaterialTheme.colorScheme.primary
                 else
@@ -510,7 +512,7 @@ private fun HomeTopBar(
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(
                         imageVector = FeatherIcons.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = stringResource(R.string.home_settings),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -541,23 +543,32 @@ private fun EmptyProjectView(
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            "No projects yet",
+            stringResource(R.string.home_no_projects),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Choose how you want to start your first video",
+            stringResource(R.string.home_no_projects_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.home_quick_tip),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
         Spacer(Modifier.height(32.dp))
 
+        val recordVideoCd = stringResource(R.string.home_record_video)
         androidx.compose.material3.Card(
             onClick = { onNavigateToSmartRecorder(lastRecordingMode) },
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Record Video" },
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = recordVideoCd },
             shape = RoundedCornerShape(16.dp),
             colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
         ) {
@@ -578,9 +589,10 @@ private fun EmptyProjectView(
 
         Spacer(Modifier.height(16.dp))
 
+        val start1TapCd = stringResource(R.string.home_start_1tap)
         androidx.compose.material3.Card(
             onClick = onQuickCaption,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Start 1-Tap Captions" },
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = start1TapCd },
             shape = RoundedCornerShape(16.dp),
             colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
@@ -601,9 +613,10 @@ private fun EmptyProjectView(
 
         Spacer(Modifier.height(16.dp))
 
+        val startAdvancedCd = stringResource(R.string.home_start_advanced)
         androidx.compose.material3.Card(
             onClick = onAdvancedStudio,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Start Advanced Studio" },
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = startAdvancedCd },
             shape = RoundedCornerShape(16.dp),
             colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
         ) {

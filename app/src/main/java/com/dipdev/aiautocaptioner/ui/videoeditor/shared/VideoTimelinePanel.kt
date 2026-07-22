@@ -35,9 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineView
@@ -178,19 +180,19 @@ fun VideoTimelinePanel(
 
                     Icon(
                         FeatherIcons.Image,
-                        "Add Image",
+                        stringResource(R.string.timeline_add_image),
                         tint = accentColor,
                         modifier = Modifier.size(24.dp).clickable { onAddImage() }
                     )
                     Icon(
                         FeatherIcons.Scissors, 
-                        "Split", 
+                        stringResource(R.string.timeline_split), 
                         tint = if (hasClipSelection) accentColor else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasClipSelection) { onSplit() }
                     )
                     Icon(
                         FeatherIcons.Copy, 
-                        "Duplicate", 
+                        stringResource(R.string.timeline_duplicate), 
                         tint = if (hasAnySelection) accentColor else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
                             if (hasOverlaySelection) selectedOverlayId?.let { onDuplicateOverlay(it) }
@@ -199,7 +201,7 @@ fun VideoTimelinePanel(
                     )
                     Icon(
                         FeatherIcons.Trash2, 
-                        "Delete", 
+                        stringResource(R.string.project_delete), 
                         tint = if (hasAnySelection) MaterialTheme.colorScheme.error else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
                             if (hasOverlaySelection) selectedOverlayId?.let { onDeleteOverlay(it) }
@@ -215,7 +217,7 @@ fun VideoTimelinePanel(
                 ) {
                     Icon(
                         FeatherIcons.Minus, 
-                        "Zoom Out", 
+                        stringResource(R.string.timeline_zoom_out), 
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp).clickable { onZoomOut() }
                     )
@@ -227,7 +229,7 @@ fun VideoTimelinePanel(
                     )
                     Icon(
                         FeatherIcons.Plus, 
-                        "Zoom In", 
+                        stringResource(R.string.timeline_zoom_in), 
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(24.dp).clickable { onZoomIn() }
                     )

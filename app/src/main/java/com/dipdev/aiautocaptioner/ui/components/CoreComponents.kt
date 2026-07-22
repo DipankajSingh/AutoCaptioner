@@ -27,9 +27,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.LocalGlassmorphismEnabled
 
 @Composable
@@ -104,11 +106,14 @@ fun GradientPrimaryButton(
 
 @Composable
 fun EmptyState(
-    title: String = "No Projects Yet",
-    subtitle: String = "Import a video to add karaoke captions",
-    buttonText: String = "Import Video",
+    title: String? = null,
+    subtitle: String? = null,
+    buttonText: String? = null,
     onAction: () -> Unit
 ) {
+    val resolvedTitle = title ?: stringResource(R.string.component_no_projects)
+    val resolvedSubtitle = subtitle ?: stringResource(R.string.component_no_projects_desc)
+    val resolvedButtonText = buttonText ?: stringResource(R.string.component_import_video)
     val composition by com.airbnb.lottie.compose.rememberLottieComposition(
         com.airbnb.lottie.compose.LottieCompositionSpec.RawRes(com.dipdev.aiautocaptioner.R.raw.nothing)
     )
@@ -128,17 +133,17 @@ fun EmptyState(
                 .aspectRatio(1f)
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
-        Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(resolvedTitle, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = subtitle,
+            text = resolvedSubtitle,
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(32.dp))
         GradientPrimaryButton(
             onClick = onAction,
-            text = buttonText
+            text = resolvedButtonText
         )
     }
 }
@@ -193,7 +198,7 @@ fun SimpleAppScaffold(
                     androidx.compose.material3.IconButton(onClick = onNavigateBack) {
                         androidx.compose.material3.Icon(
                             FeatherIcons.ArrowLeft,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.cd_go_back)
                         )
                     }
                 }

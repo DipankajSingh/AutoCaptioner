@@ -16,6 +16,7 @@ import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.ClipManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.OverlayManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.export.ExportService
@@ -248,7 +249,7 @@ class EditorViewModel @Inject constructor(
                     )
                 }
             } else {
-                setState { copy(step = VideoEditorUiStep.Error("Project or video not found")) }
+                setState { copy(step = VideoEditorUiStep.Error(context.getString(R.string.editor_not_found))) }
             }
         }
     }

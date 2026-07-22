@@ -11,7 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
@@ -28,14 +30,14 @@ fun ExtractingAudioView(onCancel: () -> Unit) {
         textContent = {
             Spacer(modifier = Modifier.height(32.dp))
             ProcessingStateHeader(
-                title = "Extracting Audio",
-                subtitle = "Pulling audio track from your video..."
+                title = stringResource(R.string.state_extracting_audio),
+                subtitle = stringResource(R.string.state_extracting_audio_desc)
             )
         },
         actionContent = {
             Spacer(modifier = Modifier.height(32.dp))
             AppOutlinedButton(onClick = onCancel) {
-                Text("Cancel", maxLines = 1)
+                Text(stringResource(R.string.processing_cancel), maxLines = 1)
             }
         }
     )
@@ -54,8 +56,8 @@ fun LoadingModelView() {
         textContent = {
             Spacer(modifier = Modifier.height(24.dp))
             ProcessingStateHeader(
-                title = "Loading AI Model",
-                subtitle = "Loading Whisper model into memory..."
+                title = stringResource(R.string.state_loading_model),
+                subtitle = stringResource(R.string.state_loading_model_desc)
             )
         },
         actionContent = {}
@@ -74,7 +76,7 @@ fun SavingView() {
         },
         textContent = {
             Spacer(modifier = Modifier.height(24.dp))
-            ProcessingStateHeader(title = "Saving Captions")
+            ProcessingStateHeader(title = stringResource(R.string.state_saving_captions))
         },
         actionContent = {}
     )
@@ -87,8 +89,8 @@ fun CancellingView() {
         textContent = {
             Spacer(modifier = Modifier.height(24.dp))
             ProcessingStateHeader(
-                title = "Cancelling",
-                subtitle = "Stopping AI processing..."
+                title = stringResource(R.string.state_cancelling),
+                subtitle = stringResource(R.string.state_cancelling_desc)
             )
         },
         actionContent = {}
@@ -101,18 +103,18 @@ fun CancelledView(onRetry: () -> Unit, onGoBack: () -> Unit) {
         graphicContent = {},
         textContent = {
             ProcessingStateHeader(
-                title = "Cancelled",
-                subtitle = "Transcription was stopped."
+                title = stringResource(R.string.state_cancelled),
+                subtitle = stringResource(R.string.state_cancelled_desc)
             )
         },
         actionContent = {
             Spacer(modifier = Modifier.height(24.dp))
             AppPrimaryButton(onClick = onRetry) {
-                Text("Try Again", maxLines = 1)
+                Text(stringResource(R.string.state_try_again), maxLines = 1)
             }
             Spacer(modifier = Modifier.height(12.dp))
             AppOutlinedButton(onClick = onGoBack) {
-                Text("Go Back", maxLines = 1)
+                Text(stringResource(R.string.state_go_back), maxLines = 1)
             }
         }
     )
@@ -132,18 +134,18 @@ fun ErrorView(message: String, onRetry: () -> Unit, onGoBack: () -> Unit) {
         textContent = {
             Spacer(modifier = Modifier.height(16.dp))
             ProcessingStateHeader(
-                title = "Processing Failed",
+                title = stringResource(R.string.state_processing_failed),
                 subtitle = message
             )
         },
         actionContent = {
             Spacer(modifier = Modifier.height(24.dp))
             AppPrimaryButton(onClick = onRetry) {
-                Text("Retry", maxLines = 1)
+                Text(stringResource(R.string.state_retry), maxLines = 1)
             }
             Spacer(modifier = Modifier.height(12.dp))
             AppOutlinedButton(onClick = onGoBack) {
-                Text("Go Back", maxLines = 1)
+                Text(stringResource(R.string.state_go_back), maxLines = 1)
             }
         }
     )

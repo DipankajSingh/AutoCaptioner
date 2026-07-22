@@ -7,7 +7,9 @@ import androidx.compose.runtime.*
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.dipdev.aiautocaptioner.R
 
 /**
  * A generic rename dialog with a pre-filled [OutlinedTextField].
@@ -22,21 +24,23 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RenameDialog(
     initialValue: String,
-    title: String = "Rename",
-    label: String = "Name",
+    title: String? = null,
+    label: String? = null,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val resolvedTitle = title ?: stringResource(R.string.rename_title)
+    val resolvedLabel = label ?: stringResource(R.string.rename_name_label)
     var text by remember(initialValue) { mutableStateOf(initialValue) }
 
     FlatAlertDialog(
         onDismissRequest = onDismiss,
-        title   = { Text(title) },
+        title   = { Text(resolvedTitle) },
         text    = {
             OutlinedTextField(
                 value         = text,
                 onValueChange = { text = it },
-                label         = { Text(label) },
+                label         = { Text(resolvedLabel) },
                 singleLine    = true,
                 shape         = RoundedCornerShape(4.dp), // Flattened shape
                 modifier      = Modifier.fillMaxWidth()
@@ -46,10 +50,10 @@ fun RenameDialog(
             AppPrimaryButton(
                 onClick  = { if (text.isNotBlank()) { onConfirm(text.trim()); onDismiss() } },
                 enabled  = text.isNotBlank()
-            ) { Text("Rename") }
+            ) { Text(stringResource(R.string.rename_title)) }
         },
         dismissButton = {
-            AppOutlinedButton(onClick = onDismiss) { Text("Cancel") }
+            AppOutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
         }
     )
 }

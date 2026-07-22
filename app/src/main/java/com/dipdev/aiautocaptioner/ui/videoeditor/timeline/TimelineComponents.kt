@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
@@ -197,7 +199,7 @@ fun VideoClipItem(
                             androidx.compose.runtime.key(timeMs) {
                                 Image(
                                     bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = "Thumbnail",
+                                    contentDescription = stringResource(R.string.timeline_thumbnail),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .absoluteOffset { IntOffset(localXPx.toInt(), 0) }
@@ -276,7 +278,7 @@ fun VideoClipItem(
         
         // Name Label
         Text(
-            text = "Clip ${index + 1}",
+            text = stringResource(R.string.timeline_clip_format, index + 1),
             color = TextPrimary,
             fontSize = 10.sp,
             modifier = Modifier

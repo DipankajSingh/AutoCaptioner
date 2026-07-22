@@ -116,7 +116,7 @@ fun ModelPickerCard(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Recommended",
+                                        text = stringResource(R.string.model_badge_recommended),
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -132,7 +132,7 @@ fun ModelPickerCard(
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
                                 Text(
-                                    text = "Downloaded",
+                                    text = stringResource(R.string.model_badge_downloaded),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -189,7 +189,7 @@ fun ModelPickerCard(
                 if (isSelected) {
                     Icon(
                         imageVector = FeatherIcons.CheckCircle,
-                        contentDescription = "Selected",
+                        contentDescription = stringResource(R.string.model_selected_cd),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)
                     )
@@ -215,22 +215,22 @@ fun ModelPickerCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Box(modifier = Modifier.weight(1f)) {
-                    MetricBars(label = "Speed", value = model.speed, activeColor = MaterialTheme.colorScheme.primary)
+                    MetricBars(label = stringResource(R.string.model_metric_speed), value = model.speed, activeColor = MaterialTheme.colorScheme.primary)
                 }
                 Box(modifier = Modifier.weight(1f)) {
-                    MetricBars(label = "Accuracy", value = model.accuracy, activeColor = MaterialTheme.colorScheme.primary)
+                    MetricBars(label = stringResource(R.string.model_metric_accuracy), value = model.accuracy, activeColor = MaterialTheme.colorScheme.primary)
                 }
                 
                 Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Size",
+                        text = stringResource(R.string.model_metric_size),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "${model.sizeMb} MB",
+                        text = stringResource(R.string.model_size_format, model.sizeMb),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AutoCaptionerTheme
 import com.dipdev.aiautocaptioner.ui.theme.WelcomeGradientEnd
@@ -85,7 +86,7 @@ fun WelcomeScreen(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    text = "AutoCaptioner",
+                    text = stringResource(R.string.welcome_brand),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -154,7 +155,7 @@ fun WelcomeScreen(
 
             // ── Headline ───────────────────────────────────────────────────────
             Text(
-                text = "Captions that keep\nviewers watching",
+                text = stringResource(R.string.welcome_tagline),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
@@ -165,7 +166,7 @@ fun WelcomeScreen(
 
             // ── Subtitle ───────────────────────────────────────────────────────
             Text(
-                text = "Generated in seconds, right on your phone.",
+                text = stringResource(R.string.welcome_subtitle),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -197,7 +198,7 @@ fun WelcomeScreen(
                         .background(shimmerBrush)
                 )
                 Text(
-                    text = "Get Started",
+                    text = stringResource(R.string.welcome_get_started),
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 17.sp,
@@ -209,7 +210,7 @@ fun WelcomeScreen(
 
             // ── Legal Footer ───────────────────────────────────────────────────
             Text(
-                text = "By continuing, you agree to our Terms of Service and Privacy Policy",
+                text = stringResource(R.string.welcome_terms),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center,

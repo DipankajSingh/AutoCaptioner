@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
@@ -179,7 +181,7 @@ fun CustomPaywallDialog(
 
                     // ── Title + subtitle ───────────────────────────────────
                     Text(
-                        text = "AutoCaptioner Pro",
+                        text = stringResource(R.string.paywall_title),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = textPrimary,
@@ -189,7 +191,7 @@ fun CustomPaywallDialog(
                     Spacer(Modifier.height(6.dp))
 
                     Text(
-                        text = "Unlock all features. Pay once. Own it forever.",
+                        text = stringResource(R.string.paywall_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = textSecondary,
                         textAlign = TextAlign.Center,
@@ -311,7 +313,7 @@ fun CustomPaywallDialog(
                                 )
                             } else {
                                 Text(
-                                    text = "Unlock for ₹99",
+                                    text = stringResource(R.string.paywall_unlock_button),
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 15.sp,
                                     color = MaterialTheme.colorScheme.onPrimary
@@ -326,7 +328,7 @@ fun CustomPaywallDialog(
                         enabled = !isLoading
                     ) {
                         Text(
-                            text = "Restore Purchases",
+                            text = stringResource(R.string.paywall_restore),
                             color = textSecondary,
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -343,7 +345,7 @@ fun CustomPaywallDialog(
                         Text("📱 On-Device AI", style = MaterialTheme.typography.labelSmall, color = textSecondary.copy(alpha = 0.6f))
                     }
                     Text(
-                        text = "Payment processed securely by Google Play",
+                        text = stringResource(R.string.paywall_secure),
                         style = MaterialTheme.typography.labelSmall,
                         color = textSecondary.copy(alpha = 0.5f),
                         modifier = Modifier.padding(bottom = 12.dp)

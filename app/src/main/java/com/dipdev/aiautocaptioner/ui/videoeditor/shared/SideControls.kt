@@ -21,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.LanguageDropdown
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
@@ -56,7 +58,7 @@ fun LeftSideControls(
     ) {
         SideControlButton(
             icon = FeatherIcons.LogOut,
-            contentDescription = "Exit Editor", // Replace with stringResource
+            contentDescription = stringResource(R.string.side_exit_editor),
             onClick = onNavigateBack,
             tint = AccentRose,
             containerColor = AccentRose.copy(alpha = 0.15f)
@@ -65,7 +67,7 @@ fun LeftSideControls(
         Box {
             SideControlButton(
                 icon = FeatherIcons.Menu,
-                contentDescription = "Menu", // Replace with stringResource
+                contentDescription = stringResource(R.string.side_menu),
                 onClick = { showMenu = !showMenu },
                 isActive = showMenu
             )
@@ -83,7 +85,7 @@ fun LeftSideControls(
 
         SideControlButton(
             icon = Icons.Rounded.ClosedCaption,
-            contentDescription = "Generate Captions", // Replace with stringResource
+            contentDescription = stringResource(R.string.side_generate_captions),
             onClick = {
                 if (hasCaptions) {
                     showCollisionDialog = true
@@ -192,19 +194,19 @@ fun CaptionCollisionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Captions Exist")
+            Text(stringResource(R.string.side_captions_exist_title))
         },
         text = {
-            Text("Captions have already been generated for this video. Do you want to edit them, or regenerate with a different AI model?")
+            Text(stringResource(R.string.side_captions_exist_body))
         },
         confirmButton = {
             Button(onClick = onRegenerate) {
-                Text("Regenerate")
+                Text(stringResource(R.string.side_regenerate))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onEdit) {
-                Text("Edit Captions")
+                Text(stringResource(R.string.side_edit_captions))
             }
         }
     )
@@ -236,7 +238,7 @@ fun HamburgerPopup(
                     }
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Text("Export", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.side_export), style = MaterialTheme.typography.bodyMedium)
             }
             Box(
                 modifier = Modifier
@@ -247,7 +249,7 @@ fun HamburgerPopup(
                     }
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Text("Delete Project", style = MaterialTheme.typography.bodyMedium, color = AccentRose)
+                Text(stringResource(R.string.side_delete_project), style = MaterialTheme.typography.bodyMedium, color = AccentRose)
             }
         }
     }
@@ -264,7 +266,7 @@ fun LanguageSelector(
     Box {
         SideControlButton(
             icon = Icons.Rounded.Language,
-            contentDescription = "Select Language",
+            contentDescription = stringResource(R.string.side_select_language),
             onClick = { onExpandedChange(!expanded) },
             isActive = expanded
         )
@@ -301,7 +303,7 @@ fun LanguagePopup(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Language",
+                    text = stringResource(R.string.side_language),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -309,7 +311,7 @@ fun LanguagePopup(
                     onClick = { onExpandedChange(false) },
                     modifier = Modifier.size(24.dp)
                 ) {
-                    Icon(FeatherIcons.X, contentDescription = "Close", modifier = Modifier.size(16.dp))
+                    Icon(FeatherIcons.X, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
             }
             LanguageDropdown(
@@ -325,7 +327,7 @@ fun LanguagePopup(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Translate to EN", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.side_translate_to_en), style = MaterialTheme.typography.labelSmall)
                     Switch(
                         checked = translateToEnglish,
                         onCheckedChange = { v ->
@@ -357,7 +359,7 @@ fun EditorTopOverlay(
     ) {
         SideControlButton(
             icon = FeatherIcons.LogOut,
-            contentDescription = "Exit Editor",
+            contentDescription = stringResource(R.string.side_exit_editor),
             onClick = onNavigateBack,
             tint = AccentRose,
             containerColor = AccentRose.copy(alpha = 0.15f)
@@ -369,20 +371,20 @@ fun EditorTopOverlay(
         ) {
             SideControlButton(
                 icon = FeatherIcons.Download,
-                contentDescription = "Export",
+                contentDescription = stringResource(R.string.side_export),
                 onClick = onNavigateToExport,
                 tint = LocalAccentColor.current,
                 containerColor = LocalAccentColor.current.copy(alpha = 0.15f)
             )
             SideControlButton(
                 icon = FeatherIcons.CornerUpLeft,
-                contentDescription = "Undo",
+                contentDescription = stringResource(R.string.side_undo),
                 onClick = onUndo,
                 enabled = canUndo
             )
             SideControlButton(
                 icon = FeatherIcons.CornerUpRight,
-                contentDescription = "Redo",
+                contentDescription = stringResource(R.string.side_redo),
                 onClick = onRedo,
                 enabled = canRedo
             )

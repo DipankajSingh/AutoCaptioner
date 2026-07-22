@@ -11,6 +11,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
+sealed class WhisperException(message: String) : Exception(message) {
+    class ModelNotFound(path: String) : WhisperException("Model file not found: $path")
+    class ModelLoadFailed : WhisperException("Could not load the AI model")
+    class NotReady : WhisperException("Model is not loaded")
+}
+
 class WhisperEngine(private val context: Context) {
 
     companion object {
@@ -79,29 +85,25 @@ class WhisperEngine(private val context: Context) {
      * If a model is already loaded it is released first, making it safe to
      * call initialize() again when the user switches models.
      */
-    suspend fun initialize(modelFile: File): Boolean {
-        return withContext(Dispatchers.IO) {
+    suspend fun initialize(modelFile: File) {
+        withContext(Dispatchers.IO) {
             engineMutex.withLock {
                 if (!modelFile.exists()) {
-                    Log.e(TAG, "Model file does not exist: ${modelFile.absolutePath}")
-                    return@withContext false
+                    Log.e(TAG, "Model file does not exist")
+                    throw WhisperException.ModelNotFound(modelFile.name)
                 }
 
-                // Release any previously loaded model before loading a new one.
-                // This is the safe path for model switching in V2.
                 if (nativeHandle != 0L) {
                     freeModel(nativeHandle)
                     nativeHandle = 0L
                 }
 
                 val handle = loadModel(modelFile.absolutePath)
-                return@withContext if (handle != 0L) {
-                    nativeHandle = handle
-                    true
-                } else {
+                if (handle == 0L) {
                     Log.e(TAG, "Failed to initialise model")
-                    false
+                    throw WhisperException.ModelLoadFailed()
                 }
+                nativeHandle = handle
             }
         }
     }

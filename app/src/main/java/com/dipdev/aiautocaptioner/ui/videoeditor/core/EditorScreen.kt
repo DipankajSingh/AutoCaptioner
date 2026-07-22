@@ -456,6 +456,7 @@ fun EditorScreen(
 
         com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionOverlay(
             step = processingStep,
+            streamedSegments = processingUiState.streamedSegments,
             onCancel = { processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel) }
         )
     }

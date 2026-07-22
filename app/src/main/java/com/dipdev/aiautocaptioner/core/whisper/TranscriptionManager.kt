@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -59,16 +60,20 @@ class TranscriptionManager @Inject constructor(
     val detectedLanguage: StateFlow<String?> = _detectedLanguage.asStateFlow()
 
     private val _segmentBuffer = Channel<StreamedSegment>(Channel.UNLIMITED)
-    private var dripJob: Job? = null
+    @Volatile private var dripJob: Job? = null
+    private val jobMutex = Mutex()
     private var activeJob: Job? = null
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L
-    private var activeProjectId: String? = null
+    @Volatile private var activeProjectId: String? = null
 
     // Notifications are now handled by TranscriptionForegroundService by observing the 'step' stateflow
 
     fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean = false) {
-        if (activeJob?.isActive == true) return
+        if (activeJob?.isActive == true) {
+            Log.w(TAG, "startProcess called while job active — cancelling previous")
+            activeJob?.cancel()
+        }
         activeProjectId = projectId
         isCancelled = false
         _streamedSegments.value = emptyList()
@@ -87,7 +92,7 @@ class TranscriptionManager @Inject constructor(
                     throw Exception("Battery too low ($batteryLevel%). Please plug in and try again.")
                 }
 
-                val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found")
+                val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found. Please try again.")
 
                 // Step 1: Download model if needed
                 if (!model.isDownloaded) {
@@ -108,12 +113,14 @@ class TranscriptionManager @Inject constructor(
                                 downloadSuccess = true
                             }
                             is DownloadState.Error -> {
-                                throw Exception("Model download failed: ${state.message}")
+                                throw Exception("Could not download the model. Check your internet connection and try again.")
                             }
                             else -> {}
                         }
                     }
-                    if (!downloadSuccess) return@launch
+                    if (!downloadSuccess) {
+                        throw Exception("Model download did not complete")
+                    }
                 }
 
                 // Proceed to processing
@@ -146,7 +153,7 @@ class TranscriptionManager @Inject constructor(
         startDripFeed()
 
         val project = projectRepository.getProjectById(projectId) ?: run {
-            _step.value = ProcessingStep.Error("Project not found")
+            _step.value = ProcessingStep.Error("Project not found. Please try again.")
             return
         }
 
@@ -165,14 +172,11 @@ class TranscriptionManager @Inject constructor(
         }
 
         if (activeModelFile == null || !activeModelFile.exists()) {
-            throw Exception("No model downloaded")
+            throw Exception("No model downloaded. Please download a model first.")
         }
 
         if (!whisperEngine.isReady()) {
-            val success = whisperEngine.initialize(activeModelFile)
-            if (!success) {
-                throw Exception("Failed to load model")
-            }
+            whisperEngine.initialize(activeModelFile)
         }
 
         transcriptionStartTimeMs = System.currentTimeMillis()
@@ -208,7 +212,7 @@ class TranscriptionManager @Inject constructor(
         if (isCancelled) return
 
         if (allWords.isEmpty()) {
-            throw Exception("No words transcribed")
+            throw Exception("Could not detect any speech in this video. Make sure the video has clear audio.")
         }
 
         // Surface the language whisper actually used (relevant when user chose "auto")
@@ -227,8 +231,6 @@ class TranscriptionManager @Inject constructor(
 
         flushDripFeed()
         _step.value = ProcessingStep.Done
-        
-        delay(2000.milliseconds)
     }
 
     private fun startDripFeed() {

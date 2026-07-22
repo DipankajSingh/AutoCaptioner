@@ -10,7 +10,8 @@ import javax.inject.Inject
 import androidx.core.net.toUri
 
 class AudioExtractionUseCase @Inject constructor(
-    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) {
 
     @Suppress("DEPRECATION")
@@ -37,7 +38,7 @@ class AudioExtractionUseCase @Inject constructor(
                     }
                 }
                 if (audioTrackIndex == -1 || audioFormat == null) {
-                    throw IllegalStateException("No audio track found in $videoPath")
+                    throw IllegalStateException("No audio track found in this video file")
                 }
                 extractor.selectTrack(audioTrackIndex)
 
@@ -142,6 +143,12 @@ class AudioExtractionUseCase @Inject constructor(
                 }
 
                 finalFloats
+            } catch (e: Exception) {
+                crashReporter.recordException(e)
+                throw when (e) {
+                    is IllegalStateException -> e
+                    else -> IllegalStateException("Could not extract audio from this video. The file may be corrupted.")
+                }
             } finally {
                 try { codec?.stop() } catch (_: Exception) {}
                 try { codec?.release() } catch (_: Exception) {}

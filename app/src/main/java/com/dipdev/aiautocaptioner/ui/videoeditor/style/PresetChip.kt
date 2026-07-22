@@ -39,7 +39,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.engine.CaptionPaints
@@ -161,7 +163,7 @@ fun PresetChip(
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Icon(
                                 imageVector = Icons.Filled.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.style_selected),
                                 tint = Color(0xFF1A1A2E),
                                 modifier = Modifier.size(14.dp)
                             )

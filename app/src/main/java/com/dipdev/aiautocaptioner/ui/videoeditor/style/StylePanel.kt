@@ -38,10 +38,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dipdev.aiautocaptioner.R
 
 @Composable
 fun StylePanel(
@@ -74,7 +76,7 @@ fun StylePanel(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(24.dp)
+                    .height(18.dp)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures { change, dragAmount ->
                             change.consume()
@@ -88,7 +90,7 @@ fun StylePanel(
             ) {
                 Box(
                     modifier = Modifier
-                        .padding(top = 8.dp)
+                        .padding(top = 4.dp)
                         .width(40.dp)
                         .height(4.dp)
                         .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
@@ -151,17 +153,17 @@ private fun CompactCaptionsHeader(
     onGenerateCaptions: () -> Unit
 ) {
     val languageName = when (selectedLanguage) {
-        "en" -> "English"
-        "hi" -> "Hindi"
-        "es" -> "Spanish"
-        "fr" -> "French"
-        "de" -> "German"
-        "ja" -> "Japanese"
-        "ko" -> "Korean"
-        "pt" -> "Portuguese"
-        "ru" -> "Russian"
-        "ar" -> "Arabic"
-        "multilingual" -> "Auto"
+        "en" -> stringResource(R.string.lang_english)
+        "hi" -> stringResource(R.string.lang_hindi)
+        "es" -> stringResource(R.string.lang_spanish)
+        "fr" -> stringResource(R.string.lang_french)
+        "de" -> stringResource(R.string.lang_german)
+        "ja" -> stringResource(R.string.lang_japanese)
+        "ko" -> stringResource(R.string.lang_korean)
+        "pt" -> stringResource(R.string.lang_portuguese)
+        "ru" -> stringResource(R.string.lang_russian)
+        "ar" -> stringResource(R.string.lang_arabic)
+        "multilingual" -> stringResource(R.string.lang_auto_detect_label)
         else -> selectedLanguage.uppercase()
     }
 
@@ -230,7 +232,7 @@ private fun CompactCaptionsHeader(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Translate to EN", style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.style_translate_to_en), style = MaterialTheme.typography.labelSmall)
                                     Switch(
                                         checked = translateToEnglish,
                                         onCheckedChange = { v ->
@@ -248,7 +250,7 @@ private fun CompactCaptionsHeader(
 
         if (selectedLanguage != "en" && translateToEnglish) {
             Text(
-                text = "→ EN",
+                text = stringResource(R.string.style_to_en_badge),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
@@ -263,7 +265,7 @@ private fun CompactCaptionsHeader(
             color = MaterialTheme.colorScheme.primary
         ) {
             Text(
-                text = if (hasCaptions) "Regenerate" else "Generate",
+                text = stringResource(if (hasCaptions) R.string.style_regenerate else R.string.style_generate),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimary,
@@ -298,11 +300,11 @@ private fun CollapsibleAdjust(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (expanded) "▾ Adjust" else "▸ Adjust",
+                text = stringResource(if (expanded) R.string.style_adjust_expand else R.string.style_adjust_collapse),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
@@ -317,12 +319,12 @@ private fun CollapsibleAdjust(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Size",
+                    text = stringResource(R.string.style_size),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(36.dp)
@@ -345,7 +347,7 @@ private fun CollapsibleAdjust(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -354,7 +356,7 @@ private fun CollapsibleAdjust(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Words",
+                        text = stringResource(R.string.style_words),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.width(40.dp)
@@ -371,7 +373,7 @@ private fun CollapsibleAdjust(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Lines",
+                        text = stringResource(R.string.style_lines),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.width(32.dp)
@@ -388,12 +390,12 @@ private fun CollapsibleAdjust(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Pos",
+                    text = stringResource(R.string.style_pos),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(36.dp)
@@ -434,7 +436,7 @@ private fun StepperControl(
             onClick = { if (value > range.first) onValueChange(value - 1) }
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(Icons.Outlined.Remove, contentDescription = "Decrease", modifier = Modifier.size(14.dp))
+                Icon(Icons.Outlined.Remove, contentDescription = stringResource(R.string.style_decrease), modifier = Modifier.size(14.dp))
             }
         }
 
@@ -452,7 +454,7 @@ private fun StepperControl(
             onClick = { if (value < range.last) onValueChange(value + 1) }
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(Icons.Outlined.Add, contentDescription = "Increase", modifier = Modifier.size(14.dp))
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.style_increase), modifier = Modifier.size(14.dp))
             }
         }
     }

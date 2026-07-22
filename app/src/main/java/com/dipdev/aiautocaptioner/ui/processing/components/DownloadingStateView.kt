@@ -12,9 +12,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 import com.dipdev.aiautocaptioner.ui.components.FullScreenStateContainer
 
@@ -39,7 +41,7 @@ fun DownloadingStateView(step: ProcessingStep.DownloadingModel) {
                     strokeCap = StrokeCap.Round
                 )
                 Text(
-                    text = "${step.progress}%",
+                    text = stringResource(R.string.download_progress_format, step.progress),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -49,7 +51,7 @@ fun DownloadingStateView(step: ProcessingStep.DownloadingModel) {
         textContent = {
             Spacer(modifier = Modifier.height(32.dp))
             Text(
-                text = "Downloading ${step.modelName}",
+                text = stringResource(R.string.downloading_model_name, step.modelName),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -57,7 +59,7 @@ fun DownloadingStateView(step: ProcessingStep.DownloadingModel) {
 
             if (step.totalBytes > 0) {
                 Text(
-                    text = "${formatBytes(step.downloadedBytes)} / ${formatBytes(step.totalBytes)}",
+                    text = stringResource(R.string.download_bytes_format, formatBytes(step.downloadedBytes), formatBytes(step.totalBytes)),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
@@ -65,7 +67,7 @@ fun DownloadingStateView(step: ProcessingStep.DownloadingModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "One-time download · Keep app open",
+                text = stringResource(R.string.download_hint),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )

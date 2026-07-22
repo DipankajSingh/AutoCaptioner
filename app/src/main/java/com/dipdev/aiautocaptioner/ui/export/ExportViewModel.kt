@@ -11,6 +11,7 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
@@ -170,7 +171,7 @@ class ExportViewModel @Inject constructor(
             ContextCompat.startForegroundService(context, intent)
         } catch (e: Exception) {
             crashReporter.recordException(e)
-            ExportServiceManager.exportState.value = ExportState.Error(e.message ?: "Failed to start export service")
+            ExportServiceManager.exportState.value = ExportState.Error(e.message ?: context.getString(R.string.export_start_failed))
         }
     }
 
@@ -181,7 +182,7 @@ class ExportViewModel @Inject constructor(
                 setState { copy(exportState = ExportState.SavedToGallery) }
             } catch (e: Exception) {
                 crashReporter.recordException(e)
-                setState { copy(exportState = ExportState.Error("Failed to save to gallery: ${e.message}")) }
+                setState { copy(exportState = ExportState.Error(context.getString(R.string.export_save_failed) + ": ${e.message}")) }
             }
         }
     }

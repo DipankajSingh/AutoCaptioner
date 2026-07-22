@@ -22,9 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode
@@ -72,7 +74,7 @@ fun EditorBottomDock(
     modifier: Modifier = Modifier
 ) {
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
-    var timelineHeight by remember { mutableStateOf(300.dp) }
+    var timelineHeight by remember { mutableStateOf(220.dp) }
     val maxTimelineHeight = maxHeight * 0.5f
 
     Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
@@ -135,7 +137,7 @@ fun EditorBottomDock(
         
         // Bottom Tab Bar
         Surface(
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
             color = MaterialTheme.colorScheme.background,
             shadowElevation = 8.dp
         ) {
@@ -146,13 +148,13 @@ fun EditorBottomDock(
             ) {
                 CompactTabItem(
                     icon = FeatherIcons.Film,
-                    label = "Video",
+                    label = stringResource(R.string.dock_video),
                     selected = currentMode == EditorMode.VIDEO,
                     onClick = { currentMode = EditorMode.VIDEO }
                 )
                 CompactTabItem(
                     icon = FeatherIcons.Type,
-                    label = "Captions",
+                    label = stringResource(R.string.dock_captions),
                     selected = currentMode == EditorMode.CAPTIONS,
                     onClick = { currentMode = EditorMode.CAPTIONS }
                 )

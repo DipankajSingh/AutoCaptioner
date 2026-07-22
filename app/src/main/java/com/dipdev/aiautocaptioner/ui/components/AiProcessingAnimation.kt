@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.R
 
@@ -99,7 +100,7 @@ fun AiProcessingAnimation(
         // App logo inside
         Image(
             painter = painterResource(id = R.drawable.ic_logo_ui),
-            contentDescription = "AutoCaptioner Logo",
+            contentDescription = stringResource(R.string.ai_animation_logo),
             modifier = Modifier.size(80.dp)
         )
     }

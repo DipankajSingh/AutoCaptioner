@@ -49,6 +49,12 @@ fun TranscriptionBottomSheet(
     var showAllLanguages by remember { mutableStateOf(false) }
     var showModelDropdown by remember { mutableStateOf(false) }
 
+    LaunchedEffect(initialModelId) {
+        if (initialModelId != null && initialModelId != selectedModelId) {
+            selectedModelId = initialModelId
+        }
+    }
+
     val quickLanguages = listOf("auto", "en", "es", "fr", "de")
     val allLanguages = listOf("auto", "en", "es", "fr", "de", "zh", "ja", "ko", "it", "nl", "pt", "ru", "ar") // Add more as needed
 
@@ -81,7 +87,7 @@ fun TranscriptionBottomSheet(
                 val languagesToShow = if (showAllLanguages) allLanguages else quickLanguages
                 items(languagesToShow) { lang ->
                     val isSelected = lang == selectedLanguage
-                    val label = if (lang == "auto") "Auto-Detect" else lang.uppercase()
+                    val label = if (lang == "auto") stringResource(R.string.lang_auto_detect) else lang.uppercase()
                     
                     Surface(
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
@@ -107,7 +113,7 @@ fun TranscriptionBottomSheet(
                             modifier = Modifier.clickable { showAllLanguages = true }
                         ) {
                             Text(
-                                text = "More...",
+                                text = stringResource(R.string.lang_more),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
@@ -234,6 +240,7 @@ fun TranscriptionBottomSheet(
 fun TranscriptionOverlay(
     step: ProcessingStep,
     detectedLanguage: String? = null,
+    streamedSegments: List<com.dipdev.aiautocaptioner.ui.processing.StreamedSegment> = emptyList(),
     onCancel: () -> Unit = {}
 ) {
     if (step is ProcessingStep.Idle || step is ProcessingStep.Ready || step is ProcessingStep.SetupAI || 
@@ -250,6 +257,7 @@ fun TranscriptionOverlay(
         TranscriptionProgressView(
             step = step,
             detectedLanguage = detectedLanguage,
+            streamedSegments = streamedSegments,
             modifier = Modifier.align(Alignment.Center)
         )
         
@@ -273,6 +281,7 @@ fun TranscriptionOverlay(
 fun TranscriptionProgressView(
     step: ProcessingStep,
     detectedLanguage: String? = null,
+    streamedSegments: List<com.dipdev.aiautocaptioner.ui.processing.StreamedSegment> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     AnimatedContent(
@@ -300,11 +309,15 @@ fun TranscriptionProgressView(
                     AiProcessingAnimation(progress = 0f, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_preparing_video), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.processing_tip_extracting), fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
                 }
                 is ProcessingStep.LoadingModel -> {
                     AiProcessingAnimation(progress = 0.1f, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_warming_up), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(stringResource(R.string.processing_tip_loading), fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
                 }
                 is ProcessingStep.Transcribing -> {
                     val rawProgress = currentStep.progress
@@ -318,7 +331,7 @@ fun TranscriptionProgressView(
                     Text(stringResource(R.string.processing_listening), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     if (detectedLanguage != null) {
                         Text(
-                            text = "Language: $detectedLanguage",
+                            text = stringResource(R.string.lang_detected_format, detectedLanguage),
                             fontSize = 13.sp,
                             color = Color.White.copy(alpha = 0.6f),
                             modifier = Modifier.padding(top = 4.dp)
@@ -326,8 +339,30 @@ fun TranscriptionProgressView(
                     }
                     if (currentStep.estimatedSecondsRemaining != null) {
                         val secs = currentStep.estimatedSecondsRemaining
-                        val timeText = if (secs >= 60) "~${secs / 60}m left" else "~${secs}s left"
+                        val timeText = if (secs >= 60) stringResource(R.string.time_remaining_minutes, secs / 60) else stringResource(R.string.time_remaining_seconds, secs)
                         Text(timeText, fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
+                    }
+                    if (streamedSegments.isEmpty() && currentStep.estimatedSecondsRemaining == null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(stringResource(R.string.processing_tip_transcribing), fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
+                    }
+                    if (streamedSegments.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 240.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            streamedSegments.takeLast(10).forEach { segment ->
+                                Text(
+                                    text = segment.text,
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    lineHeight = 20.sp
+                                )
+                            }
+                        }
                     }
                 }
                 is ProcessingStep.Saving -> {

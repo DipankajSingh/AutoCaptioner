@@ -10,7 +10,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
 import com.dipdev.aiautocaptioner.data.db.entity.TextTransform
@@ -48,19 +50,19 @@ fun TextTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item { SubToolButton(FeatherIcons.FileText, "Font") { activeTool = TextSubTool.FONT } }
-            item { SubToolButton(FeatherIcons.Type, "Size") { activeTool = TextSubTool.SIZE } }
-            item { SubToolButton(FeatherIcons.Bold, "Weight") { activeTool = TextSubTool.WEIGHT } }
-            item { SubToolButton(FeatherIcons.AlignLeft, "Align") { activeTool = TextSubTool.ALIGNMENT } }
-            item { SubToolButton(FeatherIcons.Minimize2, "Opacity") { activeTool = TextSubTool.OPACITY } }
-            item { SubToolButton(FeatherIcons.Edit2, "Case") { activeTool = TextSubTool.TRANSFORM } }
-            item { SubToolButton(FeatherIcons.Move, "Position") { activeTool = TextSubTool.POSITION } }
-            item { SubToolButton(FeatherIcons.AlignJustify, "Words") { activeTool = TextSubTool.WORDS_PER_LINE } }
-            item { SubToolButton(FeatherIcons.List, "Max Lines") { activeTool = TextSubTool.MAX_LINES } }
-            item { SubToolButton(FeatherIcons.Maximize2, "Line Ht") { activeTool = TextSubTool.LINE_HEIGHT } }
-            item { SubToolButton(FeatherIcons.Hash, "Symbols") { activeTool = TextSubTool.PUNCTUATION } }
-            item { SubToolButton(FeatherIcons.Italic, "Italic") { activeTool = TextSubTool.ITALIC } }
-            item { SubToolButton(FeatherIcons.Maximize, "Spacing") { activeTool = TextSubTool.SPACING } }
+            item { SubToolButton(FeatherIcons.FileText, stringResource(R.string.text_tab_font)) { activeTool = TextSubTool.FONT } }
+            item { SubToolButton(FeatherIcons.Type, stringResource(R.string.text_tab_size)) { activeTool = TextSubTool.SIZE } }
+            item { SubToolButton(FeatherIcons.Bold, stringResource(R.string.text_tab_weight)) { activeTool = TextSubTool.WEIGHT } }
+            item { SubToolButton(FeatherIcons.AlignLeft, stringResource(R.string.text_tab_align)) { activeTool = TextSubTool.ALIGNMENT } }
+            item { SubToolButton(FeatherIcons.Minimize2, stringResource(R.string.text_tab_opacity)) { activeTool = TextSubTool.OPACITY } }
+            item { SubToolButton(FeatherIcons.Edit2, stringResource(R.string.text_tab_case)) { activeTool = TextSubTool.TRANSFORM } }
+            item { SubToolButton(FeatherIcons.Move, stringResource(R.string.text_tab_position)) { activeTool = TextSubTool.POSITION } }
+            item { SubToolButton(FeatherIcons.AlignJustify, stringResource(R.string.text_tab_words)) { activeTool = TextSubTool.WORDS_PER_LINE } }
+            item { SubToolButton(FeatherIcons.List, stringResource(R.string.text_tab_max_lines)) { activeTool = TextSubTool.MAX_LINES } }
+            item { SubToolButton(FeatherIcons.Maximize2, stringResource(R.string.text_tab_line_ht)) { activeTool = TextSubTool.LINE_HEIGHT } }
+            item { SubToolButton(FeatherIcons.Hash, stringResource(R.string.text_tab_symbols)) { activeTool = TextSubTool.PUNCTUATION } }
+            item { SubToolButton(FeatherIcons.Italic, stringResource(R.string.text_tab_italic)) { activeTool = TextSubTool.ITALIC } }
+            item { SubToolButton(FeatherIcons.Maximize, stringResource(R.string.text_tab_spacing)) { activeTool = TextSubTool.SPACING } }
         }
     } else {
         Row(
@@ -80,12 +82,12 @@ fun TextTab(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     TextButton(onClick = { activeTool = null }) {
-                        Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.text_tab_done), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 TextSubTool.SIZE -> {
                     LabeledPremiumSlider(
-                        label = "Size",
+                        label = stringResource(R.string.text_tab_size),
                         value = style.fontSize,
                         onValueChange = onFontSizeChange,
                         valueRange = 24f..96f,
@@ -94,7 +96,7 @@ fun TextTab(
                 }
                 TextSubTool.WORDS_PER_LINE -> {
                     LabeledPremiumSlider(
-                        label = "Words",
+                        label = stringResource(R.string.text_tab_words),
                         value = style.maxWordsPerLine.toFloat(),
                         onValueChange = { onMaxWordsChange(it.toInt()) },
                         valueRange = 1f..10f,
@@ -103,7 +105,7 @@ fun TextTab(
                 }
                 TextSubTool.MAX_LINES -> {
                     LabeledPremiumSlider(
-                        label = "Lines",
+                        label = stringResource(R.string.style_lines),
                         value = style.maxLines.toFloat(),
                         onValueChange = { onMaxLinesChange(it.toInt()) },
                         valueRange = 1f..10f,
@@ -112,7 +114,7 @@ fun TextTab(
                 }
                 TextSubTool.WEIGHT -> {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                        listOf(400 to "Light", 700 to "Bold", 900 to "Black").forEach { (weight, label) ->
+                        listOf(400 to stringResource(R.string.text_tab_light), 700 to stringResource(R.string.text_tab_bold), 900 to stringResource(R.string.text_tab_black)).forEach { (weight, label) ->
                             FilterChip(
                                 selected = style.fontWeight == weight,
                                 onClick = { onFontWeightChange(weight) },
@@ -133,7 +135,7 @@ fun TextTab(
                     }
                 }
                 TextSubTool.PUNCTUATION -> {
-                    Text("Strip Punctuation", fontSize = 12.sp)
+                    Text(stringResource(R.string.text_tab_strip_punctuation), fontSize = 12.sp)
                     Switch(
                         checked = style.removePunctuation,
                         onCheckedChange = { onRemovePunctuationChange(it) },
@@ -142,7 +144,7 @@ fun TextTab(
                     Spacer(modifier = Modifier.weight(1f))
                 }
                 TextSubTool.ITALIC -> {
-                    Text("Italic", fontSize = 12.sp)
+                    Text(stringResource(R.string.text_tab_italic), fontSize = 12.sp)
                     Switch(
                         checked = style.isItalic,
                         onCheckedChange = { onIsItalicChange(it) },
@@ -152,7 +154,7 @@ fun TextTab(
                 }
                 TextSubTool.SPACING -> {
                     LabeledPremiumSlider(
-                        label = "Spacing",
+                        label = stringResource(R.string.text_tab_spacing),
                         value = style.letterSpacing,
                         onValueChange = onLetterSpacingChange,
                         valueRange = 0f..0.3f,
@@ -161,7 +163,7 @@ fun TextTab(
                 }
                 TextSubTool.OPACITY -> {
                     LabeledPremiumSlider(
-                        label = "Opacity",
+                        label = stringResource(R.string.text_tab_opacity),
                         value = style.textOpacity,
                         onValueChange = onTextOpacityChange,
                         valueRange = 0.1f..1f,
@@ -176,11 +178,11 @@ fun TextTab(
                                 onClick = { onTextTransformChange(transform) },
                                 label = { Text(
                                     when (transform) {
-                                        TextTransform.NONE -> "None"
-                                        TextTransform.UPPERCASE -> "ABC"
+                                        TextTransform.NONE -> stringResource(R.string.text_tab_transform_none)
+                                        TextTransform.UPPERCASE -> stringResource(R.string.text_tab_transform_uppercase)
                                         TextTransform.LOWERCASE -> "abc"
-                                        TextTransform.TITLE_CASE -> "Abc"
-                                        TextTransform.SENTENCE_CASE -> "Sentence"
+                                        TextTransform.TITLE_CASE -> stringResource(R.string.text_tab_transform_titlecase)
+                                        TextTransform.SENTENCE_CASE -> stringResource(R.string.text_tab_transform_sentence)
                                     },
                                     fontSize = 12.sp
                                 ) }
@@ -190,7 +192,7 @@ fun TextTab(
                 }
                 TextSubTool.LINE_HEIGHT -> {
                     LabeledPremiumSlider(
-                        label = "Line Height",
+                        label = stringResource(R.string.text_tab_line_height),
                         value = style.lineHeight,
                         onValueChange = onLineHeightChange,
                         valueRange = 0.8f..2.5f,
@@ -200,13 +202,13 @@ fun TextTab(
                 TextSubTool.POSITION -> {
                     Column(modifier = Modifier.weight(1f)) {
                         LabeledPremiumSlider(
-                            label = "X Position",
+                            label = stringResource(R.string.text_tab_x_position),
                             value = style.positionX,
                             onValueChange = onPositionXChange,
                             valueRange = 0.05f..0.95f
                         )
                         LabeledPremiumSlider(
-                            label = "Y Position",
+                            label = stringResource(R.string.text_tab_y_position),
                             value = style.positionY,
                             onValueChange = onPositionYChange,
                             valueRange = 0.05f..0.95f
@@ -219,7 +221,7 @@ fun TextTab(
             if (activeTool != TextSubTool.FONT) {
                 Spacer(modifier = Modifier.width(16.dp))
                 TextButton(onClick = { activeTool = null }) {
-                    Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.text_tab_done), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

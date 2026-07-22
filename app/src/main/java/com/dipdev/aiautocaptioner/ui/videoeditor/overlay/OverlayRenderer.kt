@@ -27,10 +27,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import kotlinx.coroutines.delay
@@ -264,7 +266,7 @@ private fun BoxScope.OverlayItem(
             ) {
                 AsyncImage(
                     model = overlay.imageUri,
-                    contentDescription = "Image Overlay",
+                    contentDescription = stringResource(R.string.side_image_overlay),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
                     onSuccess = { state ->

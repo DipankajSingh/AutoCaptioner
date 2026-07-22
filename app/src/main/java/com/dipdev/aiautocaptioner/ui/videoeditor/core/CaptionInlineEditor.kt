@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +33,7 @@ import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.R
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Edit2
 import compose.icons.feathericons.X
@@ -89,7 +91,7 @@ fun CaptionInlineEditor(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "Edit Caption",
+                                stringResource(R.string.caption_inline_edit),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
@@ -98,7 +100,7 @@ fun CaptionInlineEditor(
                                 IconButton(onClick = onOpenFullEditor) {
                                     Icon(
                                         FeatherIcons.Edit2,
-                                        contentDescription = "Full Editor",
+                                        contentDescription = stringResource(R.string.caption_inline_full_editor),
                                         tint = AccentAmber,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -107,7 +109,7 @@ fun CaptionInlineEditor(
                                 IconButton(onClick = onDismiss) {
                                     Icon(
                                         FeatherIcons.X,
-                                        contentDescription = "Close",
+                                        contentDescription = stringResource(R.string.caption_inline_close),
                                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -145,11 +147,11 @@ fun CaptionInlineEditor(
                             AppOutlinedButton(
                                 onClick = onDismiss,
                                 modifier = Modifier.weight(1f)
-                            ) { Text("Cancel") }
+                            ) { Text(stringResource(R.string.editor_cancel)) }
                             AppPrimaryButton(
                                 onClick = { onSave(seg.id, editText) },
                                 modifier = Modifier.weight(1f)
-                            ) { Text("Save") }
+                            ) { Text(stringResource(R.string.caption_inline_save)) }
                         }
                     }
                 }

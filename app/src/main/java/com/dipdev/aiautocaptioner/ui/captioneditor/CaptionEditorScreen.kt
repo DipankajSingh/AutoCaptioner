@@ -172,7 +172,7 @@ fun CaptionEditorScreen(
                         putExtra(android.content.Intent.EXTRA_STREAM, uri)
                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(android.content.Intent.createChooser(intent, "Share Subtitles File"))
+                    context.startActivity(android.content.Intent.createChooser(intent, context.getString(R.string.caption_editor_share_srt)))
                 }
             }
         }
@@ -192,7 +192,7 @@ fun CaptionEditorScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
+                        Icon(FeatherIcons.ArrowLeft, contentDescription = stringResource(R.string.cd_go_back))
                     }
                 },
                 actions = {
@@ -204,7 +204,7 @@ fun CaptionEditorScreen(
                     ) {
                         Icon(
                             FeatherIcons.RefreshCw,
-                            contentDescription = "Retranscribe",
+                            contentDescription = stringResource(R.string.caption_editor_retranscribe),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -212,13 +212,13 @@ fun CaptionEditorScreen(
             )
         },
         bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (!fromEditor) {
+            if (!fromEditor) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     AppPrimaryButton(
                         onClick = { onNavigateToExport(projectId) },
                         modifier = Modifier.weight(1f),
@@ -239,12 +239,12 @@ fun CaptionEditorScreen(
                 .padding(padding)
         ) {
             if (player != null) {
-                com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard(
+                com.dipdev.aiautocaptioner.ui.components.                VideoPlayerCard(
                     player = player,
                     showControls = true,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 2.dp)
                         .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(8.dp))
                 )
@@ -255,15 +255,15 @@ fun CaptionEditorScreen(
                 onValueChange = { viewModel.setEvent(CaptionEditorUiEvent.UpdateSearchQuery(it)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 placeholder = { Text(stringResource(R.string.caption_search_segments)) },
                 leadingIcon = {
-                    Icon(FeatherIcons.Search, contentDescription = "Search")
+                    Icon(FeatherIcons.Search, contentDescription = stringResource(R.string.caption_editor_search))
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.setEvent(CaptionEditorUiEvent.UpdateSearchQuery("")) }) {
-                            Icon(FeatherIcons.X, contentDescription = "Clear search")
+                            Icon(FeatherIcons.X, contentDescription = stringResource(R.string.caption_editor_clear_search))
                         }
                     }
                 },
@@ -405,6 +405,7 @@ fun CaptionEditorScreen(
 
     com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionOverlay(
         step = processingStep,
+        streamedSegments = processingUiState.streamedSegments,
         onCancel = { processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel) }
     )
 }

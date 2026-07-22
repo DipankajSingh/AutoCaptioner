@@ -29,11 +29,11 @@ fun CompactTabItem(
     Column(
         modifier = Modifier
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(22.dp))
-        Text(label, fontSize = 10.sp, color = color, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+        Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(20.dp))
+        Text(label, fontSize = 10.sp, color = color, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, maxLines = 1)
     }
 }

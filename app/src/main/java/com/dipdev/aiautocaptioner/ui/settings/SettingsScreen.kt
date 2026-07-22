@@ -34,9 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.dipdev.aiautocaptioner.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.ui.components.SimpleAppScaffold
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
@@ -57,7 +59,7 @@ fun SettingsScreen(
 
     ScreenThemeProvider(accentColor = AccentAmber) {
         SimpleAppScaffold(
-            title = "Settings",
+            title = stringResource(R.string.settings_title),
             onNavigateBack = onNavigateBack
         ) {
             Column(
@@ -67,7 +69,7 @@ fun SettingsScreen(
                     .padding(16.dp)
             ) {
             Text(
-                text = "Appearance",
+                text = stringResource(R.string.settings_appearance),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -86,11 +88,11 @@ fun SettingsScreen(
             ) {
                 Column {
                     Text(
-                        text = "Manage Subscription",
+                        text = stringResource(R.string.settings_manage_subscription),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "View details and manage your AutoCaptioner Pro access",
+                        text = stringResource(R.string.settings_manage_subscription_desc),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -109,11 +111,11 @@ fun SettingsScreen(
             ) {
                 Column {
                     Text(
-                        text = "Glassmorphism UI",
+                        text = stringResource(R.string.settings_glassmorphism),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "Enable translucent backgrounds and blur effects",
+                        text = stringResource(R.string.settings_glassmorphism_desc),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -134,11 +136,11 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
-                        text = "High-Quality Timeline",
+                        text = stringResource(R.string.settings_hq_timeline),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "Show extracted video frames in timeline instead of a lightweight placeholder",
+                        text = stringResource(R.string.settings_hq_timeline_desc),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -153,7 +155,7 @@ fun SettingsScreen(
 
             // About Section
             Text(
-                text = "About",
+                text = stringResource(R.string.settings_about),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -164,7 +166,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "AutoCaptioner",
+                    text = stringResource(R.string.app_name),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -173,7 +175,7 @@ fun SettingsScreen(
                 val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                 val versionName = packageInfo.versionName
                 Text(
-                    text = "Version $versionName",
+                    text = stringResource(R.string.settings_version_format, versionName ?: ""),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
@@ -181,7 +183,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "From DipDev Labs",
+                    text = stringResource(R.string.settings_from_dipdev),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     fontStyle = FontStyle.Italic,
@@ -193,7 +195,7 @@ fun SettingsScreen(
 
             // Legal Section
             Text(
-                text = "Data & Privacy",
+                text = stringResource(R.string.settings_data_privacy),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -209,11 +211,11 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
-                        text = "Share Analytics & Crash Data",
+                        text = stringResource(R.string.settings_analytics),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "Help us improve AutoCaptioner by sharing anonymous usage and crash reports via Firebase. No media is ever sent.",
+                        text = stringResource(R.string.settings_analytics_desc),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -244,14 +246,14 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = "Local Background Processing",
+                        text = stringResource(R.string.settings_bg_processing),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "AutoCaptioner uses a background service to transcribe your videos locally on your device. This allows the app to process data even if you switch apps. None of your video or audio data is ever sent to the cloud.",
+                        text = stringResource(R.string.settings_bg_processing_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -261,7 +263,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             LegalCard(
-                title = "Privacy Policy",
+                title = stringResource(R.string.settings_privacy_policy),
                 icon = FeatherIcons.Shield,
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW,
@@ -269,7 +271,7 @@ fun SettingsScreen(
                     try {
                         context.startActivity(intent)
                     } catch (e: android.content.ActivityNotFoundException) {
-                        android.widget.Toast.makeText(context, "No browser installed", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.settings_no_browser), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             )
@@ -277,7 +279,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             LegalCard(
-                title = "Terms & Conditions",
+                title = stringResource(R.string.settings_terms),
                 icon = FeatherIcons.Info,
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW,
@@ -285,7 +287,7 @@ fun SettingsScreen(
                     try {
                         context.startActivity(intent)
                     } catch (e: android.content.ActivityNotFoundException) {
-                        android.widget.Toast.makeText(context, "No browser installed", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.settings_no_browser), android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             )

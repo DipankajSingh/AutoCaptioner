@@ -108,4 +108,435 @@
     <string name="processing_cancelling">Cancelling…</string>
     <string name="processing_cancel">Cancel</string>
     <string name="processing_error_title">Something went wrong</string>
+
+    <!-- ProcessingScreen content descriptions -->
+    <string name="cd_go_back">Back</string>
+    <string name="cd_edit_video">Edit the video</string>
+    <string name="setupai_language_label">Language</string>
+
+    <!-- TranscriptionComponents -->
+    <string name="lang_auto_detect">Auto-Detect</string>
+    <string name="lang_more">More…</string>
+    <string name="lang_detected_format">Language: %s</string>
+    <string name="time_remaining_minutes">~%dm left</string>
+    <string name="time_remaining_seconds">~%ds left</string>
+
+    <!-- SimpleProcessingStates -->
+    <string name="state_extracting_audio">Extracting Audio</string>
+    <string name="state_extracting_audio_desc">Pulling audio track from your video…</string>
+    <string name="state_loading_model">Loading AI Model</string>
+    <string name="state_loading_model_desc">Loading AI model into memory…</string>
+    <string name="state_saving_captions">Saving Captions</string>
+    <string name="state_cancelling">Cancelling</string>
+    <string name="state_cancelling_desc">Stopping AI processing…</string>
+    <string name="state_cancelled">Cancelled</string>
+    <string name="state_cancelled_desc">Transcription was stopped.</string>
+    <string name="state_try_again">Try Again</string>
+    <string name="state_go_back">Go Back</string>
+    <string name="state_processing_failed">Processing Failed</string>
+    <string name="state_retry">Retry</string>
+
+    <!-- ProcessingDialogs -->
+    <string name="dialog_cancel_title">Cancel Process?</string>
+    <string name="dialog_cancel_body">Are you sure you want to stop? Your progress will be lost.</string>
+    <string name="dialog_stop_exit">Stop &amp; Exit</string>
+    <string name="dialog_keep_processing">Keep Processing</string>
+    <string name="dialog_storage_title">Not enough storage</string>
+    <string name="dialog_storage_body">You need at least %1$d MB of free space. Please free up storage and try again.</string>
+    <string name="dialog_okay">Okay</string>
+    <string name="dialog_cellular_title">Download over Cellular?</string>
+    <string name="dialog_cellular_body">You are about to download %1$d MB over a cellular connection. This may consume a large amount of your data plan.</string>
+    <string name="dialog_download_anyway">Download anyway</string>
+
+    <!-- ModelPickerCard -->
+    <string name="model_badge_recommended">Recommended</string>
+    <string name="model_badge_downloaded">Downloaded</string>
+    <string name="model_selected_cd">Selected</string>
+    <string name="model_metric_speed">Speed</string>
+    <string name="model_metric_accuracy">Accuracy</string>
+    <string name="model_metric_size">Size</string>
+    <string name="model_size_format">%d MB</string>
+
+    <!-- DownloadingStateView -->
+    <string name="download_progress_format">%d%%</string>
+    <string name="downloading_model_name">Downloading %s</string>
+    <string name="download_bytes_format">%1$s / %2$s</string>
+    <string name="download_hint">One-time download · Keep app open</string>
+
+    <!-- TranscriptionForegroundService notifications -->
+    <string name="notif_channel_name">Transcription</string>
+    <string name="notif_channel_desc">Shows progress for AI transcription</string>
+    <string name="notif_title_initializing">Initializing…</string>
+    <string name="notif_action_open">Open App</string>
+    <string name="notif_action_cancel">Cancel</string>
+    <string name="notif_title_downloading">Downloading Model</string>
+    <string name="notif_download_progress">Downloading %1$s… %2$d%%</string>
+    <string name="notif_download_big">Downloading %1$s\n%2$d%% complete</string>
+    <string name="notif_title_extracting">Extracting Audio</string>
+    <string name="notif_extracting_content">Separating audio from video…</string>
+    <string name="notif_extracting_big">Analyzing video file and extracting audio track…</string>
+    <string name="notif_title_loading_model">Loading AI Model</string>
+    <string name="notif_loading_content">Warming up the AI engine…</string>
+    <string name="notif_loading_big">Loading AI model into memory…</string>
+    <string name="notif_title_transcribing">Transcribing</string>
+    <string name="notif_transcribing_content">%1$d%%</string>
+    <string name="notif_transcribing_content_with_time">%1$d%% · %2$s</string>
+    <string name="notif_transcribing_big">AI is transcribing your video…\n%1$d%% complete</string>
+    <string name="notif_transcribing_big_with_time">AI is transcribing your video…\n%1$d%% complete\nEstimated: %2$s</string>
+    <string name="notif_time_minutes_format">~%1$dm %2$ds left</string>
+    <string name="notif_time_seconds_format">~%1$ds left</string>
+    <string name="notif_title_saving">Saving</string>
+    <string name="notif_saving_content">Saving transcription…</string>
+    <string name="notif_saving_big">Saving transcription results…</string>
+    <string name="notif_title_complete">Transcription Complete</string>
+    <string name="notif_complete_content">Your captions are ready</string>
+    <string name="notif_complete_big">Transcription finished successfully.\nTap to open your project.</string>
+    <string name="notif_title_failed">Transcription Failed</string>
+    <string name="notif_error_big_format">Error: %s</string>
+    <string name="notif_title_cancelling">Cancelling</string>
+    <string name="notif_cancelling_content">Stopping transcription…</string>
+    <string name="notif_title_cancelled">Cancelled</string>
+    <string name="notif_cancelled_content">Transcription was cancelled</string>
+    <string name="notif_fallback_processing">Processing…</string>
+
+    <!-- Export Screen -->
+    <string name="export_video_title">Export Video</string>
+    <string name="export_no_captions_title">No Captions</string>
+    <string name="export_no_captions_body">No captions generated for this video. Export without captions?</string>
+    <string name="export_anyway">Export Anyway</string>
+    <string name="export_resolution_label">Resolution</string>
+    <string name="export_resolution_1080p">1080p</string>
+    <string name="export_resolution_720p">720p</string>
+    <string name="export_frame_rate_label">Frame Rate</string>
+    <string name="export_frame_rate_30">30 fps</string>
+    <string name="export_frame_rate_60">60 fps</string>
+    <string name="export_est_file_size">Est. File Size</string>
+    <string name="export_start_button">Start Export</string>
+    <string name="export_rendering">Rendering Video</string>
+    <string name="export_rendering_progress">Rendering… %d%%</string>
+    <string name="export_rendering_big">Exporting your video with captions…\n%d%% complete</string>
+    <string name="export_complete">Export Complete</string>
+    <string name="export_saved_to_gallery">Saved to Gallery</string>
+    <string name="export_previously_exported">Previously Exported</string>
+    <string name="export_file_not_found">Video file not found</string>
+    <string name="export_save_to_gallery">Save to Gallery</string>
+    <string name="export_share">Share</string>
+    <string name="export_reexport">Re-export</string>
+    <string name="export_done">Done</string>
+    <string name="export_cancelled">Cancelled</string>
+    <string name="export_cancelled_title">Export Cancelled</string>
+    <string name="export_cancelled_desc">The export was stopped before completion.</string>
+    <string name="export_try_again">Try Again</string>
+    <string name="export_go_back">Go Back</string>
+    <string name="export_failed">Export Failed</string>
+    <string name="export_retry">Retry</string>
+    <string name="export_channel_name">Video Export</string>
+
+    <!-- Export Foreground Service -->
+    <string name="export_notif_title">Exporting Video</string>
+    <string name="export_notif_content">Preparing your video…</string>
+
+    <!-- Home Screen -->
+    <string name="home_my_projects">My Projects</string>
+    <string name="home_dismiss">Dismiss</string>
+    <string name="home_brand_name">AutoCaptioner</string>
+    <string name="home_model_chip">Model: %s</string>
+    <string name="home_select_model">Select Model</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_no_projects">No projects yet</string>
+    <string name="home_no_projects_desc">Choose how you want to start your first video</string>
+    <string name="home_quick_tip">Quick tip: 1-Tap Captions is the fastest way to add karaoke-style captions to any video.</string>
+    <string name="processing_tip_extracting">This usually takes just a few seconds</string>
+    <string name="processing_tip_loading">Your device is warming up the AI engine</string>
+    <string name="processing_tip_transcribing">You can minimize the app — we\'ll keep working</string>
+    <string name="home_start_1tap">Start 1-Tap Captions</string>
+    <string name="home_start_advanced">Start Advanced Studio</string>
+    <string name="home_share_video">Share Video</string>
+
+    <!-- Project Card -->
+    <string name="project_rename_title">Rename Project</string>
+    <string name="project_name_label">Project name</string>
+    <string name="project_more_options">More options</string>
+    <string name="project_rename">Rename</string>
+    <string name="project_duplicate">Duplicate</string>
+    <string name="project_share">Share</string>
+    <string name="project_update_captions">Update Captions</string>
+    <string name="project_delete">Delete</string>
+    <string name="project_play_original">Play original video</string>
+    <string name="project_play_video">Play Video</string>
+    <string name="project_original_video">Original Video</string>
+    <string name="project_exported_videos">Exported Videos</string>
+    <string name="project_see_all">See All</string>
+    <string name="project_see_all_exported">See all exported videos</string>
+    <string name="project_play_export">Play Export</string>
+    <string name="project_delete_title">Delete project?</string>
+    <string name="project_delete_body">This action cannot be undone.</string>
+    <string name="project_confirm">Confirm</string>
+
+    <!-- Editor Dialogs -->
+    <string name="editor_delete_title">Delete Project?</string>
+    <string name="editor_delete_body">Are you sure you want to delete this project? Your edits will be lost.</string>
+    <string name="editor_delete">Delete</string>
+
+    <!-- Caption Inline Editor -->
+    <string name="caption_inline_edit">Edit Caption</string>
+    <string name="caption_inline_full_editor">Full Editor</string>
+    <string name="caption_inline_close">Close</string>
+    <string name="caption_inline_save">Save</string>
+
+    <!-- Side Controls -->
+    <string name="side_exit_editor">Exit Editor</string>
+    <string name="side_menu">Menu</string>
+    <string name="side_generate_captions">Generate Captions</string>
+    <string name="side_captions_exist_title">Captions Exist</string>
+    <string name="side_captions_exist_body">Captions have already been generated for this video. Do you want to edit them, or regenerate with a different AI model?</string>
+    <string name="side_regenerate">Regenerate</string>
+    <string name="side_edit_captions">Edit Captions</string>
+    <string name="side_export">Export</string>
+    <string name="side_delete_project">Delete Project</string>
+    <string name="side_select_language">Select Language</string>
+    <string name="side_language">Language</string>
+    <string name="side_translate_to_en">Translate to EN</string>
+    <string name="side_undo">Undo</string>
+    <string name="side_redo">Redo</string>
+
+    <!-- Editor Bottom Dock -->
+    <string name="dock_video">Video</string>
+    <string name="dock_captions">Captions</string>
+
+    <!-- Timeline -->
+    <string name="timeline_captions">Captions</string>
+    <string name="timeline_tap_to_trim">Tap the video to trim and split</string>
+    <string name="timeline_thumbnail">Thumbnail</string>
+    <string name="timeline_clip_format">Clip %d</string>
+
+    <!-- Playback Controls -->
+    <string name="playback_pause">Pause</string>
+    <string name="playback_play">Play</string>
+
+    <!-- Caption Editor Screen -->
+    <string name="caption_editor_share_srt">Share Subtitles File</string>
+    <string name="caption_editor_retranscribe">Retranscribe</string>
+    <string name="caption_editor_search">Search</string>
+    <string name="caption_editor_clear_search">Clear search</string>
+
+    <!-- Word Chip -->
+    <string name="emphasis_bounce">Bounce</string>
+    <string name="emphasis_scale">Scale</string>
+    <string name="emphasis_shake">Shake</string>
+    <string name="emphasis_pop">Pop</string>
+
+    <!-- Project Status -->
+    <string name="status_imported">Imported</string>
+    <string name="status_ready_for_ai">Ready for AI</string>
+    <string name="status_extracting">Extracting…</string>
+    <string name="status_transcribing">Transcribing…</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_exported">Exported</string>
+
+    <!-- Language Dropdown -->
+    <string name="lang_auto_detect_label">Auto-detect</string>
+    <string name="lang_english">English</string>
+    <string name="lang_hindi">Hindi</string>
+    <string name="lang_spanish">Spanish</string>
+    <string name="lang_french">French</string>
+    <string name="lang_german">German</string>
+    <string name="lang_chinese_simplified">Chinese (Simplified)</string>
+    <string name="lang_chinese_traditional">Chinese (Traditional)</string>
+    <string name="lang_cantonese">Cantonese</string>
+    <string name="lang_japanese">Japanese</string>
+    <string name="lang_korean">Korean</string>
+    <string name="lang_italian">Italian</string>
+    <string name="lang_arabic">Arabic</string>
+    <string name="lang_russian">Russian</string>
+    <string name="lang_portuguese">Portuguese</string>
+    <string name="lang_tamil">Tamil</string>
+    <string name="lang_telugu">Telugu</string>
+    <string name="lang_dutch">Dutch</string>
+    <string name="lang_turkish">Turkish</string>
+    <string name="lang_polish">Polish</string>
+    <string name="lang_vietnamese">Vietnamese</string>
+    <string name="lang_thai">Thai</string>
+    <string name="lang_indonesian">Indonesian</string>
+    <string name="lang_malay">Malay</string>
+    <string name="lang_select_video">Select video language</string>
+    <string name="lang_specific">Specific</string>
+
+    <!-- Rename Dialog -->
+    <string name="rename_title">Rename</string>
+    <string name="rename_name_label">Name</string>
+
+    <!-- Core Components -->
+    <string name="component_no_projects">No Projects Yet</string>
+    <string name="component_no_projects_desc">Import a video to add karaoke captions</string>
+    <string name="component_import_video">Import Video</string>
+
+    <!-- SpeedDialFab -->
+    <string name="fab_close">Close</string>
+    <string name="fab_create">Create</string>
+
+    <!-- VideoPlayerCard -->
+    <string name="player_play">Play</string>
+
+    <!-- AiProcessingAnimation -->
+    <string name="ai_animation_logo">AutoCaptioner Logo</string>
+
+    <!-- Overlay -->
+    <string name="side_image_overlay">Image Overlay</string>
+
+    <!-- Timeline Tools -->
+    <string name="timeline_add_image">Add Image</string>
+    <string name="timeline_split">Split</string>
+    <string name="timeline_duplicate">Duplicate</string>
+    <string name="timeline_zoom_out">Zoom Out</string>
+    <string name="timeline_zoom_in">Zoom In</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_manage_subscription">Manage Subscription</string>
+    <string name="settings_manage_subscription_desc">View details and manage your AutoCaptioner Pro access</string>
+    <string name="settings_glassmorphism">Glassmorphism UI</string>
+    <string name="settings_glassmorphism_desc">Enable translucent backgrounds and blur effects</string>
+    <string name="settings_hq_timeline">High-Quality Timeline</string>
+    <string name="settings_hq_timeline_desc">Show extracted video frames in timeline instead of a lightweight placeholder</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version_format">Version %s</string>
+    <string name="settings_from_dipdev">From DipDev Labs</string>
+    <string name="settings_data_privacy">Data &amp; Privacy</string>
+    <string name="settings_analytics">Share Analytics &amp; Crash Data</string>
+    <string name="settings_analytics_desc">Help us improve AutoCaptioner by sharing anonymous usage and crash reports via Firebase. No media is ever sent.</string>
+    <string name="settings_bg_processing">Local Background Processing</string>
+    <string name="settings_bg_processing_desc">AutoCaptioner uses a background service to transcribe your videos locally on your device. This allows the app to process data even if you switch apps. None of your video or audio data is ever sent to the cloud.</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_no_browser">No browser installed</string>
+    <string name="settings_terms">Terms &amp; Conditions</string>
+
+    <!-- Style Panel -->
+    <string name="style_translate_to_en">Translate to EN</string>
+    <string name="style_to_en_badge">→ EN</string>
+    <string name="style_regenerate">Regenerate</string>
+    <string name="style_generate">Generate</string>
+    <string name="style_adjust_expand">▾ Adjust</string>
+    <string name="style_adjust_collapse">▸ Adjust</string>
+    <string name="style_size">Size</string>
+    <string name="style_words">Words</string>
+    <string name="style_lines">Lines</string>
+    <string name="style_pos">Pos</string>
+    <string name="style_decrease">Decrease</string>
+    <string name="style_increase">Increase</string>
+    <string name="style_selected">Selected</string>
+
+    <!-- Text Tab -->
+    <string name="text_tab_font">Font</string>
+    <string name="text_tab_size">Size</string>
+    <string name="text_tab_weight">Weight</string>
+    <string name="text_tab_align">Align</string>
+    <string name="text_tab_opacity">Opacity</string>
+    <string name="text_tab_case">Case</string>
+    <string name="text_tab_position">Position</string>
+    <string name="text_tab_words">Words</string>
+    <string name="text_tab_max_lines">Max Lines</string>
+    <string name="text_tab_line_ht">Line Ht</string>
+    <string name="text_tab_symbols">Symbols</string>
+    <string name="text_tab_italic">Italic</string>
+    <string name="text_tab_spacing">Spacing</string>
+    <string name="text_tab_done">Done</string>
+    <string name="text_tab_light">Light</string>
+    <string name="text_tab_bold">Bold</string>
+    <string name="text_tab_black">Black</string>
+    <string name="text_tab_strip_punctuation">Strip Punctuation</string>
+    <string name="text_tab_transform_none">None</string>
+    <string name="text_tab_transform_uppercase">ABC</string>
+    <string name="text_tab_transform_titlecase">Abc</string>
+    <string name="text_tab_transform_sentence">Sentence</string>
+    <string name="text_tab_line_height">Line Height</string>
+    <string name="text_tab_x_position">X Position</string>
+    <string name="text_tab_y_position">Y Position</string>
+
+    <!-- Color Tab -->
+    <string name="color_tab_text">Text</string>
+    <string name="color_tab_outline">Outline</string>
+    <string name="color_tab_highlight">Highlight</string>
+    <string name="color_tab_shadow">Shadow</string>
+    <string name="color_tab_gradient">Gradient</string>
+    <string name="color_tab_glow">Glow</string>
+    <string name="color_tab_bg_style">Bg Style</string>
+    <string name="color_tab_bg_color">Bg Color</string>
+    <string name="color_tab_pad_h">Pad H</string>
+    <string name="color_tab_pad_v">Pad V</string>
+    <string name="color_tab_corners">Corners</string>
+    <string name="color_tab_outline_only">Outline Only</string>
+    <string name="color_tab_width">Width</string>
+    <string name="color_tab_radius">Radius</string>
+    <string name="color_tab_offset_x">Offset X</string>
+    <string name="color_tab_offset_y">Offset Y</string>
+    <string name="color_tab_gradient_none">None</string>
+    <string name="color_tab_secondary_color">Secondary Color</string>
+    <string name="color_tab_enable_glow">Enable Glow</string>
+    <string name="color_tab_glow_radius">Glow Radius</string>
+
+    <!-- Animation Tab -->
+    <string name="anim_tab_display">Display</string>
+    <string name="anim_tab_karaoke">Karaoke</string>
+    <string name="anim_tab_enter">Enter</string>
+    <string name="anim_tab_exit">Exit</string>
+    <string name="anim_tab_speed">Speed</string>
+
+    <!-- Font Picker -->
+    <string name="font_picker_title">Font Family</string>
+
+    <!-- Style ViewModel tabs -->
+    <string name="style_tab_text">Text</string>
+    <string name="style_tab_color">Color</string>
+    <string name="style_tab_animation">Animation</string>
+    <string name="style_tab_presets">Presets</string>
+
+    <!-- Misc -->
+    <string name="timeline_image_overlay">Image Overlay</string>
+    <string name="editor_not_found">Project or video not found</string>
+
+    <!-- Model Download Screen -->
+    <string name="model_download_ready">Model Ready!</string>
+    <string name="model_download_downloading">Downloading</string>
+    <string name="model_download_one_time">This is a one-time download.\nKeep the app open until complete.</string>
+    <string name="model_download_failed">Download Failed</string>
+
+    <!-- Smart Recorder -->
+    <string name="recorder_script">Script</string>
+    <string name="recorder_canvas">Canvas</string>
+    <string name="recorder_flip">Flip</string>
+    <string name="recorder_flash">Flash</string>
+    <string name="recorder_grid">Grid</string>
+    <string name="recorder_palm">Palm</string>
+
+    <!-- Device Check Screen -->
+    <string name="device_check_title_screen">Choose Your AI Model</string>
+    <string name="device_check_subtitle_screen">Downloaded once, processes entirely on-device.</string>
+    <string name="device_check_your_device_screen">Your Device</string>
+    <string name="device_check_available_models_screen">Available Models</string>
+    <string name="device_check_recommended_badge">Recommended</string>
+    <string name="device_check_ram_warning_format">Needs %d MB RAM — your device has less</string>
+
+    <!-- Paywall -->
+    <string name="paywall_title">AutoCaptioner Pro</string>
+    <string name="paywall_subtitle">Unlock all features. Pay once. Own it forever.</string>
+    <string name="paywall_unlock_button">Unlock for ₹99</string>
+    <string name="paywall_restore">Restore Purchases</string>
+    <string name="paywall_secure">Payment processed securely by Google Play</string>
+
+    <!-- Welcome / Onboarding -->
+    <string name="welcome_brand">AutoCaptioner</string>
+    <string name="welcome_tagline">Captions that keep\nviewers watching</string>
+    <string name="welcome_subtitle">Generated in seconds, right on your phone.</string>
+    <string name="welcome_get_started">Get Started</string>
+    <string name="welcome_terms">By continuing, you agree to our Terms of Service and Privacy Policy</string>
+
+    <!-- Export History -->
+    <string name="export_history_label">Exported Video</string>
+    <string name="export_history_quality_format">Quality: %s</string>
+
+    <!-- Export ViewModel errors -->
+    <string name="export_start_failed">Failed to start export service</string>
+    <string name="export_save_failed">Failed to save to gallery</string>
 </resources>

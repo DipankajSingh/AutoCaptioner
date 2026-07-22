@@ -15,6 +15,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -80,7 +81,10 @@ class TranscriptionForegroundService : Service() {
     }
 
     private fun startForegroundServiceGracefully() {
-        val notification = buildNotification(title = "AutoCaptioner", contentText = "Initializing…")
+        val notification = buildNotification(
+            title = getString(R.string.app_name),
+            contentText = getString(R.string.notif_title_initializing)
+        )
         
         try {
             if (Build.VERSION.SDK_INT >= 35) { // VANILLA_ICE_CREAM
@@ -102,6 +106,7 @@ class TranscriptionForegroundService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start foreground service: ${e.message}")
+            stopSelf()
         }
     }
 
@@ -129,10 +134,10 @@ class TranscriptionForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Transcription",
+                getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows progress for AI transcription"
+                description = getString(R.string.notif_channel_desc)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
@@ -174,8 +179,8 @@ class TranscriptionForegroundService : Service() {
         showCancel: Boolean = true
     ): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(com.dipdev.aiautocaptioner.R.mipmap.ic_launcher)
-            .setLargeIcon(BitmapFactory.decodeResource(resources, com.dipdev.aiautocaptioner.R.mipmap.ic_launcher))
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
             .setContentTitle(title)
             .setContentText(contentText)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -185,13 +190,13 @@ class TranscriptionForegroundService : Service() {
 
         if (showCancel) {
             builder.addAction(
-                com.dipdev.aiautocaptioner.R.drawable.ic_logo_ui,
-                "Open App",
+                R.drawable.ic_logo_ui,
+                getString(R.string.notif_action_open),
                 getOpenAppPendingIntent()
             )
             builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                "Cancel",
+                getString(R.string.notif_action_cancel),
                 getCancelPendingIntent()
             )
         }
@@ -227,73 +232,75 @@ class TranscriptionForegroundService : Service() {
         val notification: Notification = when (step) {
             is ProcessingStep.DownloadingModel -> {
                 buildNotification(
-                    title = "Downloading Model",
-                    contentText = "Downloading ${step.modelName}… ${step.progress}%",
-                    bigText = "Downloading ${step.modelName}\n${step.progress}% complete",
+                    title = getString(R.string.notif_title_downloading),
+                    contentText = getString(R.string.notif_download_progress, step.modelName, step.progress),
+                    bigText = getString(R.string.notif_download_big, step.modelName, step.progress),
                     progress = step.progress,
                     isIndeterminate = step.progress <= 0
                 )
             }
             is ProcessingStep.ExtractingAudio -> buildNotification(
-                title = "Extracting Audio",
-                contentText = "Separating audio from video…",
-                bigText = "Analyzing video file and extracting audio track…"
+                title = getString(R.string.notif_title_extracting),
+                contentText = getString(R.string.notif_extracting_content),
+                bigText = getString(R.string.notif_extracting_big)
             )
             is ProcessingStep.LoadingModel -> buildNotification(
-                title = "Loading AI Model",
-                contentText = "Warming up the AI engine…",
-                bigText = "Loading whisper model into memory…"
+                title = getString(R.string.notif_title_loading_model),
+                contentText = getString(R.string.notif_loading_content),
+                bigText = getString(R.string.notif_loading_big)
             )
             is ProcessingStep.Transcribing -> {
                 val pct = (step.progress * 100).toInt()
                 val timeLeft = step.estimatedSecondsRemaining?.let { sec ->
-                    if (sec >= 60) "~${sec / 60}m ${sec % 60}s left" else "~${sec}s left"
+                    if (sec >= 60) getString(R.string.notif_time_minutes_format, sec / 60, sec % 60) else getString(R.string.notif_time_seconds_format, sec)
                 } ?: ""
+                val contentText = if (timeLeft.isNotEmpty()) getString(R.string.notif_transcribing_content_with_time, pct, timeLeft) else getString(R.string.notif_transcribing_content, pct)
+                val bigText = if (timeLeft.isNotEmpty()) getString(R.string.notif_transcribing_big_with_time, pct, timeLeft) else getString(R.string.notif_transcribing_big, pct)
                 buildNotification(
-                    title = "Transcribing",
-                    contentText = "$pct%${if (timeLeft.isNotEmpty()) " · $timeLeft" else ""}",
-                    bigText = "AI is transcribing your video…\n$pct% complete${if (timeLeft.isNotEmpty()) "\nEstimated: $timeLeft" else ""}",
+                    title = getString(R.string.notif_title_transcribing),
+                    contentText = contentText,
+                    bigText = bigText,
                     progress = pct,
                     isIndeterminate = false
                 )
             }
             is ProcessingStep.Saving -> buildNotification(
-                title = "Saving",
-                contentText = "Saving transcription…",
-                bigText = "Saving transcription results…"
+                title = getString(R.string.notif_title_saving),
+                contentText = getString(R.string.notif_saving_content),
+                bigText = getString(R.string.notif_saving_big)
             )
             is ProcessingStep.Done -> buildNotification(
-                title = "Transcription Complete",
-                contentText = "Your captions are ready",
-                bigText = "Transcription finished successfully.\nTap to open your project.",
+                title = getString(R.string.notif_title_complete),
+                contentText = getString(R.string.notif_complete_content),
+                bigText = getString(R.string.notif_complete_big),
                 isFinished = true,
                 showCancel = false
             )
             is ProcessingStep.Error -> buildNotification(
-                title = "Transcription Failed",
+                title = getString(R.string.notif_title_failed),
                 contentText = step.message,
-                bigText = "Error: ${step.message}",
+                bigText = getString(R.string.notif_error_big_format, step.message),
                 isError = true,
                 isFinished = true,
                 showCancel = false
             )
             is ProcessingStep.Idle -> buildNotification(
-                title = "AutoCaptioner",
-                contentText = "Initializing…"
+                title = getString(R.string.app_name),
+                contentText = getString(R.string.notif_title_initializing)
             )
             is ProcessingStep.Cancelling -> buildNotification(
-                title = "Cancelling",
-                contentText = "Stopping transcription…"
+                title = getString(R.string.notif_title_cancelling),
+                contentText = getString(R.string.notif_cancelling_content)
             )
             is ProcessingStep.Cancelled -> buildNotification(
-                title = "Cancelled",
-                contentText = "Transcription was cancelled",
+                title = getString(R.string.notif_title_cancelled),
+                contentText = getString(R.string.notif_cancelled_content),
                 isFinished = true,
                 showCancel = false
             )
             else -> buildNotification(
-                title = "AutoCaptioner",
-                contentText = "Processing…"
+                title = getString(R.string.app_name),
+                contentText = getString(R.string.notif_fallback_processing)
             )
         }
 
@@ -303,8 +310,9 @@ class TranscriptionForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        releaseWakeLock()
         observeJob?.cancel()
+        serviceScope.cancel()
+        releaseWakeLock()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

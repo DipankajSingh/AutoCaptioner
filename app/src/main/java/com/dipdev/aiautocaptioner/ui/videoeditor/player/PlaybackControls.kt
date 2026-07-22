@@ -30,8 +30,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.resolveTimelinePosition
@@ -82,7 +84,7 @@ fun PlayPauseTapOverlay(
             ) {
                 Icon(
                     imageVector = if (player.isPlaying) FeatherIcons.Pause else FeatherIcons.Play,
-                    contentDescription = if (player.isPlaying) "Pause" else "Play",
+                    contentDescription = if (player.isPlaying) stringResource(R.string.playback_pause) else stringResource(R.string.playback_play),
                     tint = AccentAmber.copy(alpha = iconAlpha),
                     modifier = Modifier.size(32.dp)
                 )
@@ -131,11 +133,11 @@ fun MiniScrubber(
     val primaryColor = MaterialTheme.colorScheme.primary
     val trackColor = AccentAmber.copy(alpha = 0.3f)
 
-    // Fix 7: 48 dp outer touch target; visual content drawn at actual size inside Canvas
+    // Outer touch target; visual content drawn at actual size inside Canvas
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)                          // was 24.dp — Fix 7
+            .height(32.dp)
             .padding(horizontal = 16.dp)
             .pointerInput(totalEditedMs) {
                 detectTapGestures { offset ->

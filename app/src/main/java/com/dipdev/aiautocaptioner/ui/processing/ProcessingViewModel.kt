@@ -394,7 +394,15 @@ class ProcessingViewModel @Inject constructor(
         val model = modelRepository.getModelById(modelId) ?: return
 
         if (model.isDownloaded) {
-            pendingProjectId?.let { startProcessing(it) }
+            val projectId = pendingProjectId ?: return
+            val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
+            transcriptionManager.startProcess(
+                projectId = projectId,
+                modelId = modelId,
+                language = currentState.selectedLanguage,
+                translateToEnglish = currentState.translateToEnglish,
+                isRegenerating = isRegenerating
+            )
             return
         }
 
@@ -433,15 +441,15 @@ class ProcessingViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.saveLastLanguageSettings(language, translateToEnglish)
             modelRepository.setActiveModel(modelId)
-        }
 
-        transcriptionManager.startProcess(
-            projectId = projectId,
-            modelId = modelId,
-            language = language,
-            translateToEnglish = translateToEnglish,
-            isRegenerating = isRegenerating
-        )
+            transcriptionManager.startProcess(
+                projectId = projectId,
+                modelId = modelId,
+                language = language,
+                translateToEnglish = translateToEnglish,
+                isRegenerating = isRegenerating
+            )
+        }
     }
 
     private fun resetToIdle() {

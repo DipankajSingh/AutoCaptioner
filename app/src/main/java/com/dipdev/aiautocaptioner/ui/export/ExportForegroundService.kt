@@ -27,6 +27,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
@@ -165,15 +166,15 @@ class ExportForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Video Export",
+                getString(R.string.export_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             )
             notificationManager.createNotificationChannel(channel)
         }
 
         val notification = buildExportNotification(
-            title = "Exporting Video",
-            contentText = "Preparing your video…",
+            title = getString(R.string.export_notif_title),
+            contentText = getString(R.string.export_notif_content),
             isIndeterminate = true
         )
 
@@ -212,12 +213,12 @@ class ExportForegroundService : Service() {
         if (showCancel) {
             builder.addAction(
                 com.dipdev.aiautocaptioner.R.drawable.ic_logo_ui,
-                "Open App",
+                getString(R.string.notif_action_open),
                 getOpenAppPendingIntent()
             )
             builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                "Cancel",
+                getString(R.string.notif_action_cancel),
                 getCancelPendingIntent()
             )
         }
@@ -251,7 +252,7 @@ class ExportForegroundService : Service() {
         if (isFinishing) return
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = buildExportNotification(
-            title = "Exporting Video",
+            title = getString(R.string.export_notif_title),
             contentText = "Rendering… $progress%",
             bigText = "Exporting your video with captions…\n$progress% complete",
             progress = progress,

@@ -4,6 +4,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 
 /**
  * "Delete Project?" confirmation dialog.
@@ -15,16 +17,16 @@ fun DeleteProjectDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Project?") },
-        text = { Text("Are you sure you want to delete this project? Your edits will be lost.") },
+        title = { Text(stringResource(R.string.editor_delete_title)) },
+        text = { Text(stringResource(R.string.editor_delete_body)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete")
+                Text(stringResource(R.string.editor_delete))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.editor_cancel))
             }
         }
     )

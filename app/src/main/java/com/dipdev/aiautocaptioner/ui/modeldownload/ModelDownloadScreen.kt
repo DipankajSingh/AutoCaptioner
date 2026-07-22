@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,7 +105,7 @@ fun ModelDownloadScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Model Ready!",
+                        text = stringResource(R.string.model_download_ready),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -137,7 +139,7 @@ private fun DownloadingContent(
     )
 
     Text(
-        text = "Downloading",
+        text = stringResource(R.string.model_download_downloading),
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold
     )
@@ -196,7 +198,7 @@ private fun DownloadingContent(
     Spacer(modifier = Modifier.height(32.dp))
 
     Text(
-        text = "This is a one-time download.\nKeep the app open until complete.",
+        text = stringResource(R.string.model_download_one_time),
         fontSize = 13.sp,
         textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
@@ -216,7 +218,7 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
     Spacer(modifier = Modifier.height(16.dp))
 
     Text(
-        text = "Download Failed",
+        text = stringResource(R.string.model_download_failed),
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold
     )

@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -48,6 +49,7 @@ import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
+import com.dipdev.aiautocaptioner.R
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Type
 import kotlinx.coroutines.isActive
@@ -298,7 +300,7 @@ fun TimelineView(
                             ) {
                                 Icon(
                                     FeatherIcons.Type,
-                                    contentDescription = "Captions",
+                                    contentDescription = stringResource(R.string.dock_captions),
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -333,7 +335,7 @@ fun TimelineView(
                             Spacer(modifier = Modifier.width(40.dp))
                             Box(modifier = Modifier.fillMaxHeight().weight(1f), contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "Tap the video to trim and split",
+                                    text = stringResource(R.string.timeline_tap_to_trim),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium
                                 )

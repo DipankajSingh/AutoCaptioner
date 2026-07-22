@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
@@ -26,12 +28,12 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 @Composable
 fun ProjectStatusChip(status: ProjectStatus) {
     val (label, color) = when (status) {
-        ProjectStatus.IMPORTED               -> "Imported"      to MaterialTheme.colorScheme.onSurfaceVariant
-        ProjectStatus.READY_FOR_PROCESSING   -> "Ready for AI"  to AccentAmber
-        ProjectStatus.EXTRACTING_AUDIO       -> "Extracting…"   to AccentCyan
-        ProjectStatus.TRANSCRIBING           -> "Transcribing…" to AccentCyan
-        ProjectStatus.TRANSCRIBED            -> "Ready"         to AccentAmber
-        ProjectStatus.EXPORTED               -> "Exported"      to AccentAmber
+        ProjectStatus.IMPORTED               -> stringResource(R.string.status_imported)      to MaterialTheme.colorScheme.onSurfaceVariant
+        ProjectStatus.READY_FOR_PROCESSING   -> stringResource(R.string.status_ready_for_ai)  to AccentAmber
+        ProjectStatus.EXTRACTING_AUDIO       -> stringResource(R.string.status_extracting)    to AccentCyan
+        ProjectStatus.TRANSCRIBING           -> stringResource(R.string.status_transcribing)  to AccentCyan
+        ProjectStatus.TRANSCRIBED            -> stringResource(R.string.status_ready)          to AccentAmber
+        ProjectStatus.EXPORTED               -> stringResource(R.string.status_exported)       to AccentAmber
     }
     Surface(
         color           = color.copy(alpha = 0.15f),

@@ -12,7 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.GradientDirection
@@ -62,17 +64,17 @@ fun ColorTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item { SubToolButton(FeatherIcons.Type, "Text") { activeTool = ColorSubTool.TEXT } }
-            item { SubToolButton(FeatherIcons.Edit2, "Outline") { activeTool = ColorSubTool.OUTLINE } }
-            item { SubToolButton(FeatherIcons.Sun, "Highlight") { activeTool = ColorSubTool.HIGHLIGHT } }
-            item { SubToolButton(FeatherIcons.Moon, "Shadow") { activeTool = ColorSubTool.SHADOW } }
-            item { SubToolButton(FeatherIcons.Droplet, "Gradient") { activeTool = ColorSubTool.GRADIENT } }
-            item { SubToolButton(FeatherIcons.Star, "Glow") { activeTool = ColorSubTool.GLOW } }
-            item { SubToolButton(FeatherIcons.Box, "Bg Style") { activeTool = ColorSubTool.BACKGROUND } }
-            item { SubToolButton(FeatherIcons.Droplet, "Bg Color") { activeTool = ColorSubTool.BG_COLOR } }
-            item { SubToolButton(FeatherIcons.Maximize2, "Pad H") { activeTool = ColorSubTool.PAD_H } }
-            item { SubToolButton(FeatherIcons.Minimize2, "Pad V") { activeTool = ColorSubTool.PAD_V } }
-            item { SubToolButton(FeatherIcons.Square, "Corners") { activeTool = ColorSubTool.CORNER } }
+            item { SubToolButton(FeatherIcons.Type, stringResource(R.string.color_tab_text)) { activeTool = ColorSubTool.TEXT } }
+            item { SubToolButton(FeatherIcons.Edit2, stringResource(R.string.color_tab_outline)) { activeTool = ColorSubTool.OUTLINE } }
+            item { SubToolButton(FeatherIcons.Sun, stringResource(R.string.color_tab_highlight)) { activeTool = ColorSubTool.HIGHLIGHT } }
+            item { SubToolButton(FeatherIcons.Moon, stringResource(R.string.color_tab_shadow)) { activeTool = ColorSubTool.SHADOW } }
+            item { SubToolButton(FeatherIcons.Droplet, stringResource(R.string.color_tab_gradient)) { activeTool = ColorSubTool.GRADIENT } }
+            item { SubToolButton(FeatherIcons.Star, stringResource(R.string.color_tab_glow)) { activeTool = ColorSubTool.GLOW } }
+            item { SubToolButton(FeatherIcons.Box, stringResource(R.string.color_tab_bg_style)) { activeTool = ColorSubTool.BACKGROUND } }
+            item { SubToolButton(FeatherIcons.Droplet, stringResource(R.string.color_tab_bg_color)) { activeTool = ColorSubTool.BG_COLOR } }
+            item { SubToolButton(FeatherIcons.Maximize2, stringResource(R.string.color_tab_pad_h)) { activeTool = ColorSubTool.PAD_H } }
+            item { SubToolButton(FeatherIcons.Minimize2, stringResource(R.string.color_tab_pad_v)) { activeTool = ColorSubTool.PAD_V } }
+            item { SubToolButton(FeatherIcons.Square, stringResource(R.string.color_tab_corners)) { activeTool = ColorSubTool.CORNER } }
         }
     }
 
@@ -107,14 +109,14 @@ fun ColorTab(
                                         modifier = Modifier.padding(bottom = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("Outline Only", fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                        Text(stringResource(R.string.color_tab_outline_only), fontSize = 12.sp, modifier = Modifier.weight(1f))
                                         Switch(
                                             checked = style.outlineOnly,
                                             onCheckedChange = onOutlineOnlyChange
                                         )
                                     }
                                     LabeledPremiumSlider(
-                                        label = "Width",
+                                        label = stringResource(R.string.color_tab_width),
                                         value = style.outlineWidth,
                                         onValueChange = onOutlineWidthChange,
                                         valueRange = 0f..10f,
@@ -127,20 +129,20 @@ fun ColorTab(
                                 Column {
                                     AdvancedColorPicker(initialColor = style.shadowColor, onColorChanged = onShadowColorChange)
                                     LabeledPremiumSlider(
-                                        label = "Radius",
+                                        label = stringResource(R.string.color_tab_radius),
                                         value = style.shadowRadius,
                                         onValueChange = onShadowRadiusChange,
                                         valueRange = 0f..20f,
                                         modifier = Modifier.padding(top = 16.dp)
                                     )
                                     LabeledPremiumSlider(
-                                        label = "Offset X",
+                                        label = stringResource(R.string.color_tab_offset_x),
                                         value = style.shadowOffsetX,
                                         onValueChange = onShadowOffsetXChange,
                                         valueRange = -10f..10f
                                     )
                                     LabeledPremiumSlider(
-                                        label = "Offset Y",
+                                        label = stringResource(R.string.color_tab_offset_y),
                                         value = style.shadowOffsetY,
                                         onValueChange = onShadowOffsetYChange,
                                         valueRange = -10f..10f
@@ -161,7 +163,7 @@ fun ColorTab(
                                                 onClick = { onGradientDirectionChange(dir) },
                                                 label = { Text(
                                                     when (dir) {
-                                                        GradientDirection.NONE -> "None"
+                                                        GradientDirection.NONE -> stringResource(R.string.color_tab_gradient_none)
                                                         GradientDirection.LEFT_RIGHT -> "→"
                                                         GradientDirection.TOP_BOTTOM -> "↓"
                                                         GradientDirection.DIAGONAL -> "↘"
@@ -172,7 +174,7 @@ fun ColorTab(
                                         }
                                     }
                                     if (style.gradientDirection != GradientDirection.NONE) {
-                                        Text("Secondary Color", fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                                        Text(stringResource(R.string.color_tab_secondary_color), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
                                         AdvancedColorPicker(initialColor = style.secondaryColor, onColorChanged = onSecondaryColorChange)
                                     }
                                 }
@@ -183,7 +185,7 @@ fun ColorTab(
                                         modifier = Modifier.padding(bottom = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("Enable Glow", fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                        Text(stringResource(R.string.color_tab_enable_glow), fontSize = 12.sp, modifier = Modifier.weight(1f))
                                         Switch(
                                             checked = style.glowEnabled,
                                             onCheckedChange = onGlowEnabledChange
@@ -192,7 +194,7 @@ fun ColorTab(
                                     if (style.glowEnabled) {
                                         AdvancedColorPicker(initialColor = style.glowColor, onColorChanged = onGlowColorChange)
                                         LabeledPremiumSlider(
-                                            label = "Glow Radius",
+                                            label = stringResource(R.string.color_tab_glow_radius),
                                             value = style.glowRadius,
                                             onValueChange = onGlowRadiusChange,
                                             valueRange = 2f..30f,
@@ -220,7 +222,7 @@ fun ColorTab(
                                     }
                                     if (style.backgroundType != BackgroundType.NONE) {
                                         LabeledPremiumSlider(
-                                            label = "Opacity",
+                                            label = stringResource(R.string.text_tab_opacity),
                                             value = style.backgroundOpacity,
                                             onValueChange = onBackgroundOpacityChange,
                                             valueRange = 0f..1f,
@@ -234,7 +236,7 @@ fun ColorTab(
                             }
                             ColorSubTool.PAD_H -> {
                                 LabeledPremiumSlider(
-                                    label = "Pad H",
+                                    label = stringResource(R.string.color_tab_pad_h),
                                     value = style.backgroundPaddingH,
                                     onValueChange = onBackgroundPaddingHChange,
                                     valueRange = 0f..40f
@@ -242,7 +244,7 @@ fun ColorTab(
                             }
                             ColorSubTool.PAD_V -> {
                                 LabeledPremiumSlider(
-                                    label = "Pad V",
+                                    label = stringResource(R.string.color_tab_pad_v),
                                     value = style.backgroundPaddingV,
                                     onValueChange = onBackgroundPaddingVChange,
                                     valueRange = 0f..40f
@@ -250,7 +252,7 @@ fun ColorTab(
                             }
                             ColorSubTool.CORNER -> {
                                 LabeledPremiumSlider(
-                                    label = "Corners",
+                                    label = stringResource(R.string.color_tab_corners),
                                     value = style.backgroundCornerRadius,
                                     onValueChange = onBackgroundCornerRadiusChange,
                                     valueRange = 0f..60f
@@ -261,7 +263,7 @@ fun ColorTab(
                     }
 
                     TextButton(onClick = { activeTool = null }, modifier = Modifier.padding(start = 8.dp)) {
-                        Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.text_tab_done), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }

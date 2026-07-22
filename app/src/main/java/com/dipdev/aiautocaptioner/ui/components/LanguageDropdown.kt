@@ -7,34 +7,37 @@ import compose.icons.feathericons.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 
-private val LANGUAGES = listOf(
-    "auto" to "Auto-detect",
-    "en"   to "English",
-    "hi"   to "Hindi",
-    "es"   to "Spanish",
-    "fr"   to "French",
-    "de"   to "German",
-    "zh"   to "Chinese (Simplified)",
-    "zh-TW" to "Chinese (Traditional)",
-    "yue"  to "Cantonese",
-    "ja"   to "Japanese",
-    "ko"   to "Korean",
-    "it"   to "Italian",
-    "ar"   to "Arabic",
-    "ru"   to "Russian",
-    "pt"   to "Portuguese",
-    "ta"   to "Tamil",
-    "te"   to "Telugu",
-    "nl"   to "Dutch",
-    "tr"   to "Turkish",
-    "pl"   to "Polish",
-    "vi"   to "Vietnamese",
-    "th"   to "Thai",
-    "id"   to "Indonesian",
-    "ms"   to "Malay"
+@Composable
+private fun languages() = listOf(
+    "auto" to stringResource(R.string.lang_auto_detect_label),
+    "en"   to stringResource(R.string.lang_english),
+    "hi"   to stringResource(R.string.lang_hindi),
+    "es"   to stringResource(R.string.lang_spanish),
+    "fr"   to stringResource(R.string.lang_french),
+    "de"   to stringResource(R.string.lang_german),
+    "zh"   to stringResource(R.string.lang_chinese_simplified),
+    "zh-TW" to stringResource(R.string.lang_chinese_traditional),
+    "yue"  to stringResource(R.string.lang_cantonese),
+    "ja"   to stringResource(R.string.lang_japanese),
+    "ko"   to stringResource(R.string.lang_korean),
+    "it"   to stringResource(R.string.lang_italian),
+    "ar"   to stringResource(R.string.lang_arabic),
+    "ru"   to stringResource(R.string.lang_russian),
+    "pt"   to stringResource(R.string.lang_portuguese),
+    "ta"   to stringResource(R.string.lang_tamil),
+    "te"   to stringResource(R.string.lang_telugu),
+    "nl"   to stringResource(R.string.lang_dutch),
+    "tr"   to stringResource(R.string.lang_turkish),
+    "pl"   to stringResource(R.string.lang_polish),
+    "vi"   to stringResource(R.string.lang_vietnamese),
+    "th"   to stringResource(R.string.lang_thai),
+    "id"   to stringResource(R.string.lang_indonesian),
+    "ms"   to stringResource(R.string.lang_malay)
 )
 
 /**
@@ -55,6 +58,8 @@ fun LanguageDropdown(
     allowedLanguages: List<String> = listOf("multilingual")
 ) {
     val isMultilingual = allowedLanguages.contains("multilingual")
+
+    val LANGUAGES = languages()
 
     // Force selection to the model's supported language if current selection is invalid
     LaunchedEffect(allowedLanguages) {
@@ -77,7 +82,7 @@ fun LanguageDropdown(
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text       = "Select video language",
+            text       = stringResource(R.string.lang_select_video),
             fontSize   = 13.sp,
             color      = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             modifier   = Modifier.padding(bottom = 6.dp)
@@ -120,7 +125,7 @@ fun LanguageDropdown(
         // Helper text shown only for single-language models
         if (!isMultilingual) {
             Spacer(modifier = Modifier.height(4.dp))
-            val modelLangName = visibleLanguages.firstOrNull { it.first != "auto" }?.second ?: "Specific"
+            val modelLangName = visibleLanguages.firstOrNull { it.first != "auto" }?.second ?: stringResource(R.string.lang_specific)
             Text(
                 text     = "$modelLangName-only model active",
                 fontSize = 11.sp,

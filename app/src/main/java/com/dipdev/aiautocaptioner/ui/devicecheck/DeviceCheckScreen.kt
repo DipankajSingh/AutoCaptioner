@@ -19,6 +19,8 @@ import com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
+import androidx.compose.ui.res.stringResource
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.ModelStat
 
 @Composable
@@ -49,7 +51,7 @@ fun DeviceCheckScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Choose Your AI Model",
+            text = stringResource(R.string.device_check_title_screen),
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold
         )
@@ -57,7 +59,7 @@ fun DeviceCheckScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Downloaded once, processes entirely on-device.",
+            text = stringResource(R.string.device_check_subtitle_screen),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
@@ -74,7 +76,7 @@ fun DeviceCheckScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Your Device",
+                        text = stringResource(R.string.device_check_your_device_screen),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -91,7 +93,7 @@ fun DeviceCheckScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Available Models",
+            text = stringResource(R.string.device_check_available_models_screen),
             fontWeight = FontWeight.SemiBold,
             fontSize = 15.sp
         )
@@ -131,7 +133,7 @@ fun DeviceCheckScreen(
             } ?: false
         ) {
             Text(
-                text = "Download Selected Model",
+                text = stringResource(R.string.device_check_download_button),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1
@@ -260,7 +262,7 @@ private fun ModelCard(
                             color = MaterialTheme.colorScheme.primary
                         ) {
                             Text(
-                                text = "Recommended",
+                                text = stringResource(R.string.device_check_recommended_badge),
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 maxLines = 1,
@@ -291,7 +293,7 @@ private fun ModelCard(
                 if (!ramCompatible) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Needs ${model.minRamMb} MB RAM — your device has less",
+                        text = stringResource(R.string.device_check_ram_warning_format, model.minRamMb),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.error
                     )

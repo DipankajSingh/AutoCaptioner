@@ -14,7 +14,9 @@ import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.google.firebase.Firebase
 import com.google.firebase.remoteconfig.remoteConfig
+import android.app.Application
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.dipdev.aiautocaptioner.R
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -32,6 +34,7 @@ data class HomeState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    private val application: Application,
     private val projectRepository: ProjectRepository,
     private val settingsRepository: com.dipdev.aiautocaptioner.data.repository.SettingsRepository,
     modelRepository: ModelRepository
@@ -82,7 +85,7 @@ class HomeViewModel @Inject constructor(
             setState { 
                 copy(importState = result.fold(
                     { projectId -> ImportState.Success(projectId) },
-                    { e -> ImportState.Error(e.message ?: "Import failed") }
+                    { e -> ImportState.Error(e.message ?: application.getString(R.string.home_import_failed)) }
                 ))
             }
         }
@@ -95,7 +98,7 @@ class HomeViewModel @Inject constructor(
             setState { 
                 copy(importState = result.fold(
                     { projectId -> ImportState.QuickSuccess(projectId) },
-                    { e -> ImportState.Error(e.message ?: "Import failed") }
+                    { e -> ImportState.Error(e.message ?: application.getString(R.string.home_import_failed)) }
                 ))
             }
         }

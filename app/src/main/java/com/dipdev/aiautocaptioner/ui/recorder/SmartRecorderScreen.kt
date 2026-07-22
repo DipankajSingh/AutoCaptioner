@@ -62,6 +62,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
@@ -395,14 +396,14 @@ fun SmartRecorderContent(
         ) {
             SidebarButton(
                 icon = FeatherIcons.FileText,
-                text = "Script",
+                text = stringResource(R.string.recorder_script),
                 isActive = showTeleprompter,
                 onClick = { viewModel.toggleTeleprompter() }
             )
             if (mode == RecordingMode.FACELESS && recordingState == RecordingState.IDLE) {
                 SidebarButton(
                     icon = FeatherIcons.Image,
-                    text = "Canvas",
+                    text = stringResource(R.string.recorder_canvas),
                     isActive = false,
                     onClick = { showBgPicker = true }
                 )
@@ -420,7 +421,7 @@ fun SmartRecorderContent(
             if (mode == RecordingMode.CAMERA && recordingState == RecordingState.IDLE) {
                 SidebarButton(
                     icon = FeatherIcons.RefreshCcw,
-                    text = "Flip",
+                    text = stringResource(R.string.recorder_flip),
                     onClick = {
                         val current = cameraController.cameraSelector
                         cameraController.cameraSelector = if (current == CameraSelector.DEFAULT_BACK_CAMERA) {
@@ -432,7 +433,7 @@ fun SmartRecorderContent(
                 )
                 SidebarButton(
                     icon = if (flashEnabled) FeatherIcons.Zap else FeatherIcons.ZapOff,
-                    text = "Flash",
+                    text = stringResource(R.string.recorder_flash),
                     isActive = flashEnabled,
                     onClick = {
                         flashEnabled = !flashEnabled
@@ -441,13 +442,13 @@ fun SmartRecorderContent(
                 )
                 SidebarButton(
                     icon = FeatherIcons.Grid,
-                    text = "Grid",
+                    text = stringResource(R.string.recorder_grid),
                     isActive = showGrid,
                     onClick = { viewModel.toggleGrid() }
                 )
                 SidebarButton(
                     icon = Icons.Rounded.PanTool,
-                    text = "Palm",
+                    text = stringResource(R.string.recorder_palm),
                     isActive = isGestureDetectionEnabled,
                     onClick = { viewModel.toggleGestureDetection() }
                 )

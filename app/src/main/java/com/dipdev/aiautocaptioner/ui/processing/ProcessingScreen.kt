@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,10 +19,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import compose.icons.FeatherIcons
@@ -76,6 +79,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import com.dipdev.aiautocaptioner.R
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,7 +173,7 @@ fun ProcessingScreen(
         }
 
         // --- 2. Main Content Stack ---
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
             // Top Bar
             Row(
                 modifier = Modifier
@@ -183,7 +187,7 @@ fun ProcessingScreen(
                     onClick = { if (isProcessing) showCancelDialog = true else onCancel() },
                     modifier = Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape)
                 ) {
-                    Icon(imageVector = FeatherIcons.X, contentDescription = "Back", tint = Color.White)
+                    Icon(imageVector = FeatherIcons.X, contentDescription = stringResource(R.string.cd_go_back), tint = Color.White)
                 }
                 
                 if (!isProcessing) {
@@ -191,7 +195,7 @@ fun ProcessingScreen(
                         onClick = onNavigateToVideoEditor,
                         modifier = Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape)
                     ) {
-                        Icon(imageVector = FeatherIcons.Edit2, contentDescription = "Edit the video", tint = Color.White)
+                        Icon(imageVector = FeatherIcons.Edit2, contentDescription = stringResource(R.string.cd_edit_video), tint = Color.White)
                     }
                 }
             }
@@ -217,6 +221,15 @@ fun ProcessingScreen(
                         is ProcessingStep.SetupAI -> {
                             var selectedModelId by remember { mutableStateOf(currentStep.recommendedModelId) }
                             val context = LocalContext.current
+
+                            LaunchedEffect(Unit) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                                    if (hasPerm != PackageManager.PERMISSION_GRANTED) {
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+                            }
                             
                             Text(
                                 text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_title),
@@ -229,8 +242,38 @@ fun ProcessingScreen(
                                 text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_subtitle),
                                 fontSize = 14.sp,
                                 color = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(bottom = if (currentStep.autoDetectMode) 16.dp else 32.dp)
+                                modifier = Modifier.padding(bottom = 16.dp)
                             )
+
+                            Text(
+                                text = stringResource(com.dipdev.aiautocaptioner.R.string.setupai_language_label),
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            val quickLanguages = listOf("auto", "en", "es", "fr", "de")
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(bottom = if (currentStep.autoDetectMode) 16.dp else 32.dp)
+                            ) {
+                                items(quickLanguages) { lang ->
+                                    val isSelected = lang == uiState.selectedLanguage
+                                    val label = if (lang == "auto") stringResource(R.string.lang_auto_detect) else lang.uppercase()
+                                    Surface(
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.clickable { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(lang)) }
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.7f),
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
 
                             if (currentStep.autoDetectMode) {
                                 Surface(
@@ -391,10 +434,14 @@ fun ProcessingScreen(
                                 onGoBack = onCancel
                             )
                         }
+                        is ProcessingStep.DownloadingModel -> {
+                            com.dipdev.aiautocaptioner.ui.processing.components.DownloadingStateView(step = currentStep)
+                        }
                         else -> {
                             com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionProgressView(
                                 step = currentStep,
                                 detectedLanguage = uiState.detectedLanguage,
+                                streamedSegments = uiState.streamedSegments,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -402,7 +449,7 @@ fun ProcessingScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1.5f))
+            Spacer(modifier = Modifier.weight(if (isProcessing) 0.3f else 1.5f))
         }
     }
 

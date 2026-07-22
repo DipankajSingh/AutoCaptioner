@@ -50,7 +50,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
 import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.RenameDialog
@@ -78,8 +80,8 @@ fun ProjectCard(
     if (showRenameDialog) {
         RenameDialog(
             initialValue = project.title,
-            title        = "Rename Project",
-            label        = "Project name",
+            title        = stringResource(R.string.project_rename_title),
+            label        = stringResource(R.string.project_name_label),
             onConfirm    = { onRename(it) },
             onDismiss    = { showRenameDialog = false }
         )
@@ -134,21 +136,21 @@ fun ProjectCard(
                 var showMenu by remember { mutableStateOf(false) }
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(FeatherIcons.MoreVertical, contentDescription = "More options")
+                        Icon(FeatherIcons.MoreVertical, contentDescription = stringResource(R.string.project_more_options))
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Rename") },
+                            text = { Text(stringResource(R.string.project_rename)) },
                             onClick = { showMenu = false; showRenameDialog = true },
                             leadingIcon = { Icon(FeatherIcons.Edit2, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Duplicate") },
+                            text = { Text(stringResource(R.string.project_duplicate)) },
                             onClick = { showMenu = false; onDuplicate() },
                             leadingIcon = { Icon(FeatherIcons.Copy, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text(stringResource(R.string.project_share)) },
                             onClick = { 
                                 showMenu = false
                                 val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
@@ -157,12 +159,12 @@ fun ProjectCard(
                             leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Update Captions") },
+                            text = { Text(stringResource(R.string.project_update_captions)) },
                             onClick = { showMenu = false; onRetranscribe() },
                             leadingIcon = { Icon(FeatherIcons.RefreshCw, contentDescription = null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete") },
+                            text = { Text(stringResource(R.string.project_delete)) },
                             onClick = { showMenu = false; showDeleteConfirm = true },
                             leadingIcon = { Icon(FeatherIcons.Trash2, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error)
@@ -199,13 +201,13 @@ fun ProjectCard(
                                 .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
                                 .clickable(
                                     onClick = { onPlayVideo(videoToPlay) },
-                                    onClickLabel = "Play original video"
+                                    onClickLabel = stringResource(R.string.project_play_original)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = FeatherIcons.Play,
-                                contentDescription = "Play Video",
+                                contentDescription = stringResource(R.string.project_play_video),
                                 tint = TextPrimary,
                                 modifier = Modifier.size(32.dp)
                             )
@@ -216,7 +218,7 @@ fun ProjectCard(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Original Video",
+                            text = stringResource(R.string.project_original_video),
                         style = MaterialTheme.typography.labelMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -238,19 +240,19 @@ fun ProjectCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Exported Videos",
+                        text = stringResource(R.string.project_exported_videos),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "See All",
+                        text = stringResource(R.string.project_see_all),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable(
                             onClick = onNavigateToHistory,
-                            onClickLabel = "See all exported videos"
+                            onClickLabel = stringResource(R.string.project_see_all_exported)
                         ).padding(4.dp)
                     )
                 }
@@ -288,7 +290,7 @@ fun ProjectCard(
                                 ) {
                                     Icon(
                                         FeatherIcons.Play,
-                                        contentDescription = "Play Export",
+                                        contentDescription = stringResource(R.string.project_play_export),
                                         tint = TextPrimary,
                                         modifier = Modifier.size(24.dp)
                                     )
@@ -324,7 +326,7 @@ fun ProjectCard(
                 }) {
                     Icon(FeatherIcons.Share2, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Share", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.project_share), style = MaterialTheme.typography.labelMedium)
                 }
                 TextButton(
                     onClick = { showDeleteConfirm = true },
@@ -332,7 +334,7 @@ fun ProjectCard(
                 ) {
                     Icon(FeatherIcons.Trash2, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Delete", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.project_delete), style = MaterialTheme.typography.labelMedium)
                 }
             }
 
@@ -340,8 +342,8 @@ fun ProjectCard(
             if (showDeleteConfirm) {
                 AlertDialog(
                     onDismissRequest = { showDeleteConfirm = false },
-                    title = { Text("Delete project?") },
-                    text = { Text("This action cannot be undone.") },
+                    title = { Text(stringResource(R.string.project_delete_title)) },
+                    text = { Text(stringResource(R.string.project_delete_body)) },
                     confirmButton = {
                         TextButton(
                             onClick = {
@@ -350,12 +352,12 @@ fun ProjectCard(
                             },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("Confirm")
+                            Text(stringResource(R.string.project_confirm))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { showDeleteConfirm = false }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.processing_cancel))
                         }
                     }
                 )

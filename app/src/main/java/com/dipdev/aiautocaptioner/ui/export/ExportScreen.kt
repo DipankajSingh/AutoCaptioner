@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -154,10 +155,10 @@ fun ExportScreen(
             topBar = {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(Color.Transparent),
-                    title = { Text("Export Video", fontWeight = FontWeight.SemiBold) },
+                    title = { Text(stringResource(R.string.export_video_title), fontWeight = FontWeight.SemiBold) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(FeatherIcons.ArrowLeft, contentDescription = "Back")
+                            Icon(FeatherIcons.ArrowLeft, contentDescription = stringResource(R.string.cd_go_back))
                         }
                     }
                 )
@@ -173,17 +174,17 @@ fun ExportScreen(
                 if (showNoCaptionsDialog) {
                     AlertDialog(
                         onDismissRequest = { showNoCaptionsDialog = false },
-                        title = { Text("No Captions") },
-                        text = { Text("No captions generated for this video. Export without captions?") },
+                        title = { Text(stringResource(R.string.export_no_captions_title)) },
+                        text = { Text(stringResource(R.string.export_no_captions_body)) },
                         confirmButton = {
                             TextButton(onClick = {
                                 showNoCaptionsDialog = false
                                 viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
                                 viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                            }) { Text("Export Anyway") }
+                            }) { Text(stringResource(R.string.export_anyway)) }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showNoCaptionsDialog = false }) { Text("Cancel") }
+                            TextButton(onClick = { showNoCaptionsDialog = false }) { Text(stringResource(R.string.processing_cancel)) }
                         }
                     )
                 }
@@ -200,28 +201,28 @@ fun ExportScreen(
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Export Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.export_settings), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(Dimens.Padding.large))
 
                             SegmentedSelector(
-                                title = "Resolution",
-                                options = listOf(-1 to "Original", 1080 to "1080p", 720 to "720p"),
+                                title = stringResource(R.string.export_resolution_label),
+                                options = listOf(-1 to stringResource(R.string.export_original), 1080 to stringResource(R.string.export_resolution_1080p), 720 to stringResource(R.string.export_resolution_720p)),
                                 selected = selectedHeight,
                                 onSelect = { selectedHeight = it }
                             )
                             Spacer(Modifier.height(Dimens.Padding.medium))
 
                             SegmentedSelector(
-                                title = "Frame Rate",
-                                options = listOf(-1 to "Original", 30 to "30 fps", 60 to "60 fps"),
+                                title = stringResource(R.string.export_frame_rate_label),
+                                options = listOf(-1 to stringResource(R.string.export_original), 30 to stringResource(R.string.export_frame_rate_30), 60 to stringResource(R.string.export_frame_rate_60)),
                                 selected = selectedFps,
                                 onSelect = { selectedFps = it }
                             )
                             Spacer(Modifier.height(Dimens.Padding.medium))
 
                             SegmentedSelector(
-                                title = "Quality",
-                                options = listOf(0 to "Low", 1 to "Recommended", 2 to "High"),
+                                title = stringResource(R.string.export_quality),
+                                options = listOf(0 to stringResource(R.string.export_quality_low), 1 to stringResource(R.string.export_quality_recommended), 2 to stringResource(R.string.export_quality_high)),
                                 selected = selectedQuality,
                                 onSelect = { selectedQuality = it }
                             )
@@ -237,7 +238,7 @@ fun ExportScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Est. File Size", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(stringResource(R.string.export_est_file_size), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text(
                                         "~%.1f MB".format(estimatedSizeMB),
                                         fontSize = 16.sp, fontWeight = FontWeight.Bold, color = accent
@@ -259,7 +260,7 @@ fun ExportScreen(
                         ) {
                             Icon(FeatherIcons.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Start Export", fontSize = 16.sp)
+                            Text(stringResource(R.string.export_start_button), fontSize = 16.sp)
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
                         AppOutlinedButton(onClick = onNavigateBack) {
@@ -287,7 +288,7 @@ fun ExportScreen(
                             )
                             Spacer(Modifier.height(Dimens.Padding.large))
 
-                            Text("Rendering Video", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                            Text(stringResource(R.string.export_rendering), fontSize = 18.sp, fontWeight = FontWeight.Medium)
                             Spacer(Modifier.height(Dimens.Padding.small))
 
                             val animatedProgress by animateFloatAsState(
@@ -334,7 +335,7 @@ fun ExportScreen(
                         }
 
                         AppOutlinedButton(onClick = { viewModel.setEvent(ExportUiEvent.CancelExport) }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.processing_cancel))
                         }
                     }
 
@@ -364,9 +365,9 @@ fun ExportScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         when (exportState) {
-                                            is ExportState.Success -> "Export Complete"
-                                            is ExportState.SavedToGallery -> "Saved to Gallery"
-                                            else -> "Previously Exported"
+                                            is ExportState.Success -> stringResource(R.string.export_complete)
+                                            is ExportState.SavedToGallery -> stringResource(R.string.export_saved_to_gallery)
+                                            else -> stringResource(R.string.export_previously_exported)
                                         },
                                         fontWeight = FontWeight.Bold, fontSize = 14.sp, color = accent
                                     )
@@ -390,7 +391,7 @@ fun ExportScreen(
                                     Modifier.fillMaxWidth().weight(1f),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Video file not found", color = MaterialTheme.colorScheme.error)
+                                    Text(stringResource(R.string.export_file_not_found), color = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -408,7 +409,7 @@ fun ExportScreen(
                         ) {
                             Icon(FeatherIcons.Download, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Save to Gallery")
+                            Text(stringResource(R.string.export_save_to_gallery))
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
 
@@ -419,7 +420,7 @@ fun ExportScreen(
                             ) {
                                 Icon(FeatherIcons.Share2, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Share")
+                                Text(stringResource(R.string.export_share))
                             }
                             AppOutlinedButton(
                                 onClick = { viewModel.setEvent(ExportUiEvent.ResetForReExport) },
@@ -427,13 +428,13 @@ fun ExportScreen(
                             ) {
                                 Icon(FeatherIcons.RefreshCw, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Re-export")
+                                Text(stringResource(R.string.export_reexport))
                             }
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
 
                         TextButton(onClick = onNavigateBack) {
-                            Text("Done")
+                            Text(stringResource(R.string.export_done))
                         }
                     }
 
@@ -449,14 +450,14 @@ fun ExportScreen(
                         ) {
                             Spacer(Modifier.height(Dimens.Padding.extraLarge))
                             Icon(
-                                FeatherIcons.XCircle, contentDescription = "Cancelled",
+                                FeatherIcons.XCircle, contentDescription = stringResource(R.string.export_cancelled),
                                 modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error
                             )
                             Spacer(Modifier.height(Dimens.Padding.large))
-                            Text("Export Cancelled", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.export_cancelled_title), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(Dimens.Padding.small))
                             Text(
-                                "The export was stopped before completion.",
+                                stringResource(R.string.export_cancelled_desc),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center, fontSize = 14.sp
                             )
@@ -475,10 +476,10 @@ fun ExportScreen(
                         ) {
                             Icon(FeatherIcons.RefreshCw, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Try Again")
+                            Text(stringResource(R.string.export_try_again))
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
-                        AppOutlinedButton(onClick = onNavigateBack) { Text("Go Back") }
+                        AppOutlinedButton(onClick = onNavigateBack) { Text(stringResource(R.string.export_go_back)) }
                     }
 
                     // ── Error ────────────────────────────────────────────────
@@ -493,11 +494,11 @@ fun ExportScreen(
                         ) {
                             Spacer(Modifier.height(Dimens.Padding.extraLarge))
                             Icon(
-                                FeatherIcons.XCircle, contentDescription = "Error",
+                                FeatherIcons.XCircle, contentDescription = stringResource(R.string.editor_error_prefix, exportState.message),
                                 modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error
                             )
                             Spacer(Modifier.height(Dimens.Padding.large))
-                            Text("Export Failed", fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
+                            Text(stringResource(R.string.export_failed), fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.error)
                             Spacer(Modifier.height(Dimens.Padding.small))
                             Text(
@@ -520,10 +521,10 @@ fun ExportScreen(
                         ) {
                             Icon(FeatherIcons.RefreshCw, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Retry")
+                            Text(stringResource(R.string.export_retry))
                         }
                         Spacer(Modifier.height(Dimens.Padding.small))
-                        AppOutlinedButton(onClick = onNavigateBack) { Text("Go Back") }
+                        AppOutlinedButton(onClick = onNavigateBack) { Text(stringResource(R.string.export_go_back)) }
                     }
                 }
             }

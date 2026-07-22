@@ -26,6 +26,7 @@ import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
+import com.dipdev.aiautocaptioner.R
 import com.revenuecat.purchases.Purchases
 
 data class StyleEditorUiState(
@@ -313,9 +314,9 @@ class StyleViewModel @Inject constructor(
     }
 }
 
-enum class StyleTab(val label: String) {
-    TEXT("Text"),
-    COLOR("Color"),
-    ANIMATION("Animation"),
-    PRESETS("Presets")
+enum class StyleTab(val labelResId: Int) {
+    TEXT(R.string.style_tab_text),
+    COLOR(R.string.style_tab_color),
+    ANIMATION(R.string.style_tab_animation),
+    PRESETS(R.string.style_tab_presets)
 }

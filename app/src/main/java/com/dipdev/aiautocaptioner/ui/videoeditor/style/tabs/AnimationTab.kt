@@ -12,7 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
@@ -42,11 +44,11 @@ fun AnimationTab(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            item { SubToolButton(FeatherIcons.Play, "Display") { activeTool = AnimSubTool.MODE } }
-            item { SubToolButton(FeatherIcons.Star, "Karaoke") { activeTool = AnimSubTool.HIGHLIGHT } }
-            item { SubToolButton(FeatherIcons.Activity, "Enter") { activeTool = AnimSubTool.ENTER } }
-            item { SubToolButton(FeatherIcons.ChevronDown, "Exit") { activeTool = AnimSubTool.EXIT } }
-            item { SubToolButton(FeatherIcons.FastForward, "Speed") { activeTool = AnimSubTool.SPEED } }
+            item { SubToolButton(FeatherIcons.Play, stringResource(R.string.anim_tab_display)) { activeTool = AnimSubTool.MODE } }
+            item { SubToolButton(FeatherIcons.Star, stringResource(R.string.anim_tab_karaoke)) { activeTool = AnimSubTool.HIGHLIGHT } }
+            item { SubToolButton(FeatherIcons.Activity, stringResource(R.string.anim_tab_enter)) { activeTool = AnimSubTool.ENTER } }
+            item { SubToolButton(FeatherIcons.ChevronDown, stringResource(R.string.anim_tab_exit)) { activeTool = AnimSubTool.EXIT } }
+            item { SubToolButton(FeatherIcons.FastForward, stringResource(R.string.anim_tab_speed)) { activeTool = AnimSubTool.SPEED } }
         }
     } else {
         Row(
@@ -119,7 +121,7 @@ fun AnimationTab(
                     }
                     AnimSubTool.SPEED -> {
                         LabeledPremiumSlider(
-                            label = "Speed",
+                            label = stringResource(R.string.anim_tab_speed),
                             value = style.animationDurationMs.toFloat(),
                             onValueChange = { onAnimationDurationChange(it.toInt()) },
                             valueRange = 50f..600f
@@ -131,7 +133,7 @@ fun AnimationTab(
             
             Spacer(modifier = Modifier.width(16.dp))
             TextButton(onClick = { activeTool = null }) {
-                Text("Done", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.text_tab_done), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
