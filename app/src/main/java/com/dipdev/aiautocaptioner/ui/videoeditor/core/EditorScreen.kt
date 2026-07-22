@@ -338,7 +338,7 @@ fun EditorScreen(
                                 )
                             } // end preview Box
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             // Timer Pill
                             TimerPill(
@@ -347,7 +347,7 @@ fun EditorScreen(
                                 formatTime = ::formatTime
                             )
 
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             // Mini scrubber
                             MiniScrubber(

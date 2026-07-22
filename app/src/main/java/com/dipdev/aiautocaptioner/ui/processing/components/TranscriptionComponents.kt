@@ -23,9 +23,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
@@ -61,7 +63,7 @@ fun TranscriptionBottomSheet(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Generate Captions",
+                text = stringResource(R.string.model_sheet_title),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -70,7 +72,7 @@ fun TranscriptionBottomSheet(
 
             // Language Selection
             Text(
-                text = "Language",
+                text = stringResource(R.string.model_sheet_language_label),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -123,7 +125,7 @@ fun TranscriptionBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "AI Model",
+                    text = stringResource(R.string.model_sheet_model_label),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -136,7 +138,7 @@ fun TranscriptionBottomSheet(
                 onExpandedChange = { showModelDropdown = it }
             ) {
                 OutlinedTextField(
-                    value = selectedModel?.displayName ?: "Select Model",
+                    value = selectedModel?.displayName ?: stringResource(R.string.model_sheet_select_model),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown) },
@@ -154,7 +156,7 @@ fun TranscriptionBottomSheet(
                                 Column {
                                     Text(model.displayName, fontWeight = FontWeight.Bold)
                                     val size = "${model.sizeMb}MB"
-                                    val downloaded = if (model.isDownloaded) "Downloaded" else "Tap to download"
+                                    val downloaded = if (model.isDownloaded) stringResource(R.string.model_sheet_downloaded) else stringResource(R.string.model_sheet_tap_to_download)
                                     Text("$size • $downloaded", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             },
@@ -162,7 +164,7 @@ fun TranscriptionBottomSheet(
                                 if (model.id == selectedModelId) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Selected",
+                                        contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -176,6 +178,15 @@ fun TranscriptionBottomSheet(
                 }
             }
 
+            if (selectedLanguage == "auto") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.model_sheet_auto_detect_hint),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Translate Toggle
@@ -186,7 +197,7 @@ fun TranscriptionBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Translate to English",
+                        text = stringResource(R.string.model_sheet_translate_label),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -200,7 +211,7 @@ fun TranscriptionBottomSheet(
             }
 
             val isDownloaded = selectedModel?.isDownloaded == true
-            val buttonText = if (isDownloaded) "Start Transcription" else "Download & Start"
+            val buttonText = if (isDownloaded) stringResource(R.string.model_sheet_start_button) else stringResource(R.string.model_sheet_download_start_button)
 
             GradientPrimaryButton(
                 text = buttonText,
@@ -249,7 +260,7 @@ fun TranscriptionOverlay(
                 .padding(bottom = 64.dp)
         ) {
             Text(
-                text = "Cancel",
+                text = stringResource(R.string.processing_cancel),
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
@@ -282,18 +293,18 @@ fun TranscriptionProgressView(
                 is ProcessingStep.DownloadingModel -> {
                     AiProcessingAnimation(progress = currentStep.progress / 100f, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Downloading AI Model...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.processing_downloading_model), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Text("${currentStep.progress}%", fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
                 }
                 is ProcessingStep.ExtractingAudio -> {
                     AiProcessingAnimation(progress = 0f, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Preparing video...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.processing_preparing_video), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
                 is ProcessingStep.LoadingModel -> {
                     AiProcessingAnimation(progress = 0.1f, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Warming up the AI...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.processing_warming_up), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
                 is ProcessingStep.Transcribing -> {
                     val rawProgress = currentStep.progress
@@ -304,7 +315,7 @@ fun TranscriptionProgressView(
                     )
                     AiProcessingAnimation(progress = animatedProgress, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Listening & typing...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.processing_listening), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     if (detectedLanguage != null) {
                         Text(
                             text = "Language: $detectedLanguage",
@@ -322,15 +333,15 @@ fun TranscriptionProgressView(
                 is ProcessingStep.Saving -> {
                     AiProcessingAnimation(progress = 1f, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text("Finalizing captions...", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.processing_finalizing), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
                 is ProcessingStep.Cancelling -> {
                     CircularProgressIndicator(color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Cancelling...", color = Color.White)
+                    Text(stringResource(R.string.processing_cancelling), color = Color.White)
                 }
                 is ProcessingStep.Error -> {
-                    Text("Error occurred", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.processing_error_title), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                     Text(currentStep.message, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
                 }
                 else -> {}

@@ -10,6 +10,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
 import android.os.StatFs
+import com.dipdev.aiautocaptioner.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,6 +20,11 @@ data class DeviceCapabilityInfo(
     val availableStorageGb: Float,
     val androidVersion: Int,
     val cpuAbi: String
+)
+
+data class RecommendationResult(
+    val modelId: String,
+    val reasonResId: Int
 )
 
 sealed class ModelSafetyCheckState {
@@ -88,17 +94,23 @@ class DeviceCapabilityUseCase @Inject constructor(
     }
 
     fun getRecommendedModel(language: String): String {
+        return getRecommendedModelWithReason(language).modelId
+    }
+
+    fun getRecommendedModelWithReason(language: String): RecommendationResult {
         val totalRamMb = getTotalRamMb()
+        val isAutoDetect = language == "auto"
+
         return when {
-            language != "en" -> when {
-                totalRamMb >= 6000 -> "small"
-                totalRamMb >= 4000 -> "base"
-                else -> "tiny"
+            language != "en" && !isAutoDetect -> when {
+                totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
+                totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
+                else -> RecommendationResult("tiny", R.string.recommend_reason_low_end)
             }
             else -> when {
-                totalRamMb >= 6000 -> "small.en"
-                totalRamMb >= 4000 -> "base.en"
-                else -> "tiny.en"
+                totalRamMb >= 4000 -> RecommendationResult("small.en", R.string.recommend_reason_high_end)
+                totalRamMb >= 2000 -> RecommendationResult("base.en", R.string.recommend_reason_mid_range)
+                else -> RecommendationResult("tiny.en", R.string.recommend_reason_low_end_english)
             }
         }
     }

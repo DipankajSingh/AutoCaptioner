@@ -42,7 +42,12 @@ sealed class ProcessingStep {
     data object Ready : ProcessingStep()
 
     // First-time model setup
-    data class SetupAI(val models: List<WhisperModel>, val recommendedModelId: String?) : ProcessingStep()
+    data class SetupAI(
+        val models: List<WhisperModel>,
+        val recommendedModelId: String?,
+        val recommendedReasonResId: Int? = null,
+        val autoDetectMode: Boolean = false
+    ) : ProcessingStep()
     data class DownloadingModel(
         val modelName: String,
         val progress: Int = 0,
@@ -267,39 +272,85 @@ class ProcessingViewModel @Inject constructor(
     private fun showModelSetup() {
         val language = currentState.selectedLanguage
         val allModels = modelRepository.getAvailableModels()
+        val isAutoDetect = language == "auto"
 
-        val compatibleModels = allModels.filter { model ->
-            val langMatch = when {
-                language == "en" -> model.languages.contains("en")
-                language == "auto" -> model.isMultilingual
-                else -> model.isMultilingual || model.languages.contains(language)
+        val compatibleModels = if (isAutoDetect) {
+            allModels.filter { model ->
+                val langMatch = model.isMultilingual || model.languages.contains("en")
+                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
+            }.sortedByDescending { it.isMultilingual }
+        } else {
+            allModels.filter { model ->
+                val langMatch = when {
+                    language == "en" -> model.languages.contains("en")
+                    else -> model.isMultilingual || model.languages.contains(language)
+                }
+                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
             }
-            langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
         }
 
-        val recommendedId = deviceCapabilityUseCase.getRecommendedModel(language)
-        val finalRec = if (compatibleModels.any { it.id == recommendedId }) recommendedId else compatibleModels.firstOrNull()?.id
+        val recommendation = deviceCapabilityUseCase.getRecommendedModelWithReason(language)
+        val finalRec = if (compatibleModels.any { it.id == recommendation.modelId }) {
+            recommendation.modelId
+        } else {
+            compatibleModels.firstOrNull()?.id
+        }
+        val finalReason = if (compatibleModels.any { it.id == recommendation.modelId }) {
+            recommendation.reasonResId
+        } else {
+            null
+        }
 
-        setState { copy(step = ProcessingStep.SetupAI(models = compatibleModels, recommendedModelId = finalRec)) }
+        setState {
+            copy(
+                step = ProcessingStep.SetupAI(
+                    models = compatibleModels,
+                    recommendedModelId = finalRec,
+                    recommendedReasonResId = finalReason,
+                    autoDetectMode = isAutoDetect
+                )
+            )
+        }
     }
 
     private fun showModelPicker() {
         val language = currentState.selectedLanguage
         val allModels = modelRepository.getAvailableModels()
+        val isAutoDetect = language == "auto"
 
-        val compatibleModels = allModels.filter { model ->
-            val langMatch = when {
-                language == "en" -> model.languages.contains("en")
-                language == "auto" -> model.isMultilingual
-                else -> model.isMultilingual || model.languages.contains(language)
+        val compatibleModels = if (isAutoDetect) {
+            allModels.filter { model ->
+                val langMatch = model.isMultilingual || model.languages.contains("en")
+                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
+            }.sortedByDescending { it.isMultilingual }
+        } else {
+            allModels.filter { model ->
+                val langMatch = when {
+                    language == "en" -> model.languages.contains("en")
+                    else -> model.isMultilingual || model.languages.contains(language)
+                }
+                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
             }
-            langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
         }
 
         val currentModelId = currentState.activeModel?.id
-        val finalRec = currentModelId ?: compatibleModels.firstOrNull()?.id
+        val recommendation = deviceCapabilityUseCase.getRecommendedModelWithReason(language)
+        val finalRec = currentModelId
+            ?: (if (compatibleModels.any { it.id == recommendation.modelId }) recommendation.modelId else compatibleModels.firstOrNull()?.id)
+        val finalReason = if (currentModelId == null && compatibleModels.any { it.id == recommendation.modelId }) {
+            recommendation.reasonResId
+        } else null
 
-        setState { copy(step = ProcessingStep.SetupAI(models = compatibleModels, recommendedModelId = finalRec)) }
+        setState {
+            copy(
+                step = ProcessingStep.SetupAI(
+                    models = compatibleModels,
+                    recommendedModelId = finalRec,
+                    recommendedReasonResId = finalReason,
+                    autoDetectMode = isAutoDetect
+                )
+            )
+        }
     }
 
     private fun checkSafetyAndDownload(modelId: String) {

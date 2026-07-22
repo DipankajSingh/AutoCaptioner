@@ -353,7 +353,7 @@ fun EditorTopOverlay(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         SideControlButton(
             icon = FeatherIcons.LogOut,
@@ -363,10 +363,17 @@ fun EditorTopOverlay(
             containerColor = AccentRose.copy(alpha = 0.15f)
         )
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            SideControlButton(
+                icon = FeatherIcons.Download,
+                contentDescription = "Export",
+                onClick = onNavigateToExport,
+                tint = LocalAccentColor.current,
+                containerColor = LocalAccentColor.current.copy(alpha = 0.15f)
+            )
             SideControlButton(
                 icon = FeatherIcons.CornerUpLeft,
                 contentDescription = "Undo",
@@ -378,13 +385,6 @@ fun EditorTopOverlay(
                 contentDescription = "Redo",
                 onClick = onRedo,
                 enabled = canRedo
-            )
-            SideControlButton(
-                icon = FeatherIcons.Download,
-                contentDescription = "Export",
-                onClick = onNavigateToExport,
-                tint = LocalAccentColor.current,
-                containerColor = LocalAccentColor.current.copy(alpha = 0.15f)
             )
         }
     }

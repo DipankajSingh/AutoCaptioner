@@ -68,6 +68,13 @@ import android.os.Build
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.Surface
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -209,33 +216,127 @@ fun ProcessingScreen(
                     when (currentStep) {
                         is ProcessingStep.SetupAI -> {
                             var selectedModelId by remember { mutableStateOf(currentStep.recommendedModelId) }
-                            val context = androidx.compose.ui.platform.LocalContext.current
+                            val context = LocalContext.current
                             
                             Text(
-                                text = "Choose AI Accuracy",
+                                text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_title),
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                             Text(
-                                text = "Downloaded once, runs fully offline.",
+                                text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_subtitle),
                                 fontSize = 14.sp,
                                 color = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(bottom = 32.dp)
+                                modifier = Modifier.padding(bottom = if (currentStep.autoDetectMode) 16.dp else 32.dp)
                             )
 
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.heightIn(max = 300.dp)
-                            ) {
-                                items(currentStep.models) { model ->
-                                    ModelPickerCard(
-                                        model = model,
-                                        isRecommended = model.id == currentStep.recommendedModelId,
-                                        isSelected = model.id == selectedModelId,
-                                        onClick = { selectedModelId = model.id }
-                                    )
+                            if (currentStep.autoDetectMode) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 24.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .padding(top = 2.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_title),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_body),
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                lineHeight = 17.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (currentStep.autoDetectMode) {
+                                val multilingualModels = currentStep.models.filter { it.isMultilingual }
+                                val englishModels = currentStep.models.filter { !it.isMultilingual }
+
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.heightIn(max = 340.dp)
+                                ) {
+                                    if (multilingualModels.isNotEmpty()) {
+                                        item {
+                                            Text(
+                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_any_language),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White.copy(alpha = 0.8f),
+                                                modifier = Modifier.padding(bottom = 4.dp)
+                                            )
+                                        }
+                                        items(multilingualModels) { model ->
+                                            ModelPickerCard(
+                                                model = model,
+                                                isRecommended = model.id == currentStep.recommendedModelId,
+                                                isSelected = model.id == selectedModelId,
+                                                onClick = { selectedModelId = model.id },
+                                                autoDetectMode = true,
+                                                isMultilingual = true
+                                            )
+                                        }
+                                    }
+                                    if (englishModels.isNotEmpty()) {
+                                        item {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_english),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White.copy(alpha = 0.8f),
+                                                modifier = Modifier.padding(bottom = 4.dp)
+                                            )
+                                        }
+                                        items(englishModels) { model ->
+                                            ModelPickerCard(
+                                                model = model,
+                                                isRecommended = model.id == currentStep.recommendedModelId,
+                                                isSelected = model.id == selectedModelId,
+                                                onClick = { selectedModelId = model.id },
+                                                autoDetectMode = true,
+                                                isMultilingual = false
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.heightIn(max = 300.dp)
+                                ) {
+                                    items(currentStep.models) { model ->
+                                        ModelPickerCard(
+                                            model = model,
+                                            isRecommended = model.id == currentStep.recommendedModelId,
+                                            isSelected = model.id == selectedModelId,
+                                            onClick = { selectedModelId = model.id }
+                                        )
+                                    }
                                 }
                             }
 
@@ -245,7 +346,10 @@ fun ProcessingScreen(
                             val isDownloaded = selectedModel?.isDownloaded == true
 
                             GradientPrimaryButton(
-                                text = if (isDownloaded) "Generate Captions" else "Download & Generate",
+                                text = stringResource(
+                                    if (isDownloaded) com.dipdev.aiautocaptioner.R.string.model_picker_generate_button
+                                    else com.dipdev.aiautocaptioner.R.string.model_picker_download_button
+                                ),
                                 onClick = { 
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                         val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
@@ -266,7 +370,7 @@ fun ProcessingScreen(
                             )
                             
                             Text(
-                                text = "Note: Generating captions runs a heavy AI model on your device. Background processing may consume significant battery.",
+                                text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_battery_note),
                                 fontSize = 12.sp,
                                 color = Color.White.copy(alpha = 0.5f),
                                 textAlign = TextAlign.Center,

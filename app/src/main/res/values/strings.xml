@@ -43,4 +43,69 @@
     <string name="editor_cancel">Cancel</string>
 
     <string name="caption_word_emphasis_hint">Long press a word to mark emphasis:</string>
+
+    <!-- Model Picker (ProcessingScreen) -->
+    <string name="model_picker_title">Choose AI Accuracy</string>
+    <string name="model_picker_subtitle">Downloaded once, runs fully offline.</string>
+    <string name="model_picker_download_button">Download &amp; Generate</string>
+    <string name="model_picker_generate_button">Generate Captions</string>
+    <string name="model_picker_battery_note">Generating captions uses a heavy AI model on your device. It may use a lot of battery.</string>
+
+    <!-- Auto-detect mode -->
+    <string name="auto_detect_info_title">Let the app pick the right language</string>
+    <string name="auto_detect_info_body">The app will figure out the language on its own. Some models work with any language, while others work best for English.</string>
+    <string name="auto_detect_tier_any_language">Works with any language</string>
+    <string name="auto_detect_tier_english">Best for English</string>
+    <string name="auto_detect_chip_any_language">Any language</string>
+    <string name="auto_detect_chip_english">English content</string>
+
+    <!-- Recommendation reasons -->
+    <string name="recommend_reason_high_end">Best quality your device can handle — supports any language</string>
+    <string name="recommend_reason_mid_range">Good balance of speed and quality for your device</string>
+    <string name="recommend_reason_low_end">Fastest option — your device works best with lighter models</string>
+    <string name="recommend_reason_low_end_english">Fastest option — best for English content on your device</string>
+
+    <!-- Model Picker bottom sheet -->
+    <string name="model_sheet_title">Generate Captions</string>
+    <string name="model_sheet_language_label">Language</string>
+    <string name="model_sheet_model_label">AI Model</string>
+    <string name="model_sheet_select_model">Select Model</string>
+    <string name="model_sheet_downloaded">Downloaded</string>
+    <string name="model_sheet_tap_to_download">Tap to download</string>
+    <string name="model_sheet_translate_label">Translate to English</string>
+    <string name="model_sheet_start_button">Start Transcription</string>
+    <string name="model_sheet_download_start_button">Download &amp; Start</string>
+    <string name="model_sheet_auto_detect_hint">Showing models that work with auto-detect</string>
+
+    <!-- ModelManager -->
+    <string name="model_manager_title">AI Models</string>
+    <string name="model_manager_subtitle">Downloaded once, works fully offline.</string>
+
+    <!-- DeviceCheck -->
+    <string name="device_check_title">Choose Your AI Model</string>
+    <string name="device_check_subtitle">Downloaded once, processes entirely on-device.</string>
+    <string name="device_check_your_device">Your Device</string>
+    <string name="device_check_ram">RAM</string>
+    <string name="device_check_storage">Storage Available</string>
+    <string name="device_check_android">Android</string>
+    <string name="device_check_cpu">CPU</string>
+    <string name="device_check_available_models">Available Models</string>
+    <string name="device_check_download_button">Download Selected Model</string>
+    <string name="device_check_recommended">Recommended</string>
+    <string name="device_check_ram_warning">Needs %1$d MB RAM — your device has less</string>
+    <string name="device_check_storage_error">Not enough storage</string>
+    <string name="device_check_storage_error_body">Please free up some space and try again.</string>
+    <string name="device_check_cellular_title">Using Mobile Data</string>
+    <string name="device_check_cellular_body">This download is about %1$d MB. Continue on mobile data?</string>
+    <string name="device_check_cellular_confirm">Download Anyway</string>
+
+    <!-- Processing states -->
+    <string name="processing_downloading_model">Downloading AI Model…</string>
+    <string name="processing_preparing_video">Preparing video…</string>
+    <string name="processing_warming_up">Warming up the AI…</string>
+    <string name="processing_listening">Listening &amp; typing…</string>
+    <string name="processing_finalizing">Finalizing captions…</string>
+    <string name="processing_cancelling">Cancelling…</string>
+    <string name="processing_cancel">Cancel</string>
+    <string name="processing_error_title">Something went wrong</string>
 </resources>

@@ -17,7 +17,7 @@
         android:fillType="evenOdd"
         android:strokeLineCap="round"/>
     <path
-        android:pathData="M78.46,43.04L78.46,43.04A7.62,6.93 0,0 1,86.08 49.97L86.08,57.97A7.62,6.93 0,0 1,78.46 64.9L78.46,64.9A7.62,6.93 0,0 1,70.84 57.97L70.84,49.97A7.62,6.93 0,0 1,78.46 43.04z"
+        android:pathData="M78.46,43.04L78.46,43.04A7.62,6.93 0,0 1,86.08 49.97L86.08,57.97A7.62,6.93 0,0 1,78.46 64.9L78.46,64.9A7.62,6.93 0,0 1,70.84 57.97L70.84,49.97A7.62,6.93 0,0 1,78.46,43.04z"
         android:strokeLineJoin="bevel"
         android:strokeWidth="1.51181"
         android:fillColor="#ffa454"
@@ -25,7 +25,7 @@
         android:fillType="evenOdd"
         android:strokeLineCap="round"/>
     <path
-        android:pathData="M30.04,43.04L30.04,43.04A7.62,6.93 0,0 1,37.66 49.97L37.66,57.97A7.62,6.93 0,0 1,30.04 64.9L30.04,64.9A7.62,6.93 0,0 1,22.42 57.97L22.42,49.97A7.62,6.93 0,0 1,30.04 43.04z"
+        android:pathData="M30.04,43.04L30.04,43.04A7.62,6.93 0,0 1,37.66 49.97L37.66,57.97A7.62,6.93 0,0 1,30.04 64.9L30.04,64.9A7.62,6.93 0,0 1,22.42 57.97L22.42,49.97A7.62,6.93 0,0 1,30.04,43.04z"
         android:strokeLineJoin="bevel"
         android:strokeWidth="1.51181"
         android:fillColor="#ffa454"
@@ -65,14 +65,14 @@
         android:strokeColor="#00000000"
         android:fillType="evenOdd"/>
     <path
-        android:pathData="m66.55,43.43 l0.03,5.68a1.09,1.35 89.78,0 1,-1.35 1.1l-0,0a1.09,1.35 89.78,0 1,-1.36 -1.08L63.85,43.44a1.09,1.35 89.78,0 1,1.35 -1.1,1.09 1.35,89.78 0,1 1.36,1.08z"
+        android:pathData="m66.55,43.43 l0.03,5.68a1.09,1.35 89.78,0 1,-1.35 1.1l-0,0a1.09,1.35 89.78,0 1,-1.36 -1.08L63.85,43.44a1.09,1.35 89.78,0,1,1.35 -1.1,1.09 1.35,89.78,0,1 1.36,1.08z"
         android:strokeLineJoin="bevel"
         android:strokeWidth="0"
         android:fillColor="#fafafa"
         android:strokeColor="#00000000"
         android:fillType="evenOdd"/>
     <path
-        android:pathData="m44.39,43.43 l0.03,5.68a1.09,1.35 89.78,0 1,-1.35 1.1l-0,0a1.09,1.35 89.78,0 1,-1.36 -1.08L41.68,43.44a1.09,1.35 89.78,0 1,1.35 -1.1,1.09 1.35,89.78 0,1 1.36,1.08z"
+        android:pathData="m44.39,43.43 l0.03,5.68a1.09,1.35 89.78,0 1,-1.35 1.1l-0,0a1.09,1.35 89.78,0 1,-1.36 -1.08L41.68,43.44a1.09,1.35 89.78,0,1,1.35 -1.1,1.09 1.35,89.78,0,1 1.36,1.08z"
         android:strokeLineJoin="bevel"
         android:strokeWidth="0"
         android:fillColor="#fafafa"
@@ -94,7 +94,7 @@
         android:fillType="evenOdd"
         android:strokeLineCap="round"/>
     <path
-        android:pathData="M38.52,60.83L68.46,60.83A1.01,1.01 0,0 1,69.47 61.84L69.47,61.84A1.01,1.01 0,0 1,68.46 62.85L38.52,62.85A1.01,1.01 0,0 1,37.51 61.84L37.51,61.84A1.01,1.01 0,0 1,38.52 60.83z"
+        android:pathData="M38.52,60.83L68.46,60.83A1.01,1.01 0,0 1,69.47 61.84L69.47,61.84A1.01,1.01 0,0 1,68.46 62.85L38.52,62.85A1.01,1.01 0,0 1,37.51 61.84L37.51,61.84A1.01,1.01 0,0 1,38.52,60.83z"
         android:strokeLineJoin="miter"
         android:strokeWidth="0"
         android:fillColor="#fafafa"
@@ -110,7 +110,7 @@
         android:fillType="evenOdd"
         android:strokeLineCap="round"/>
     <path
-        android:pathData="M59.43,56.88L67.79,56.88A1.01,1.01 0,0 1,68.8 57.88L68.8,57.88A1.01,1.01 0,0 1,67.79 58.89L59.43,58.89A1.01,1.01 0,0 1,58.43 57.88L58.43,57.88A1.01,1.01 0,0 1,59.43 56.88z"
+        android:pathData="M59.43,56.88L67.79,56.88A1.01,1.01 0,0 1,68.8 57.88L68.8,57.88A1.01,1.01 0,0 1,67.79 58.89L59.43,58.89A1.01,1.01 0,0 1,58.43 57.88L58.43,57.88A1.01,1.01 0,0 1,59.43,56.88z"
         android:strokeLineJoin="miter"
         android:strokeWidth="0"
         android:fillColor="#f59e0b"

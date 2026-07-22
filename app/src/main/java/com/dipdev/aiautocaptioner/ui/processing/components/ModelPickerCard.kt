@@ -18,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.ui.theme.LocalGlassmorphismEnabled
 
@@ -30,7 +32,9 @@ fun ModelPickerCard(
     model: WhisperModel,
     isRecommended: Boolean,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    autoDetectMode: Boolean = false,
+    isMultilingual: Boolean = false
 ) {
     val isGlassEnabled = LocalGlassmorphismEnabled.current
 
@@ -132,6 +136,37 @@ fun ModelPickerCard(
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        if (autoDetectMode) {
+                            val chipText = if (isMultilingual) {
+                                stringResource(R.string.auto_detect_chip_any_language)
+                            } else {
+                                stringResource(R.string.auto_detect_chip_english)
+                            }
+                            val chipColor = if (isMultilingual) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            }
+                            val chipTextColor = if (isMultilingual) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = chipColor,
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            ) {
+                                Text(
+                                    text = chipText,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = chipTextColor,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                 )
                             }
