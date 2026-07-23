@@ -163,7 +163,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
 // ---------------------------------------------------------------------------
 JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jobject listener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jstring initial_prompt, jobject listener) {
 
     whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -175,11 +175,17 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     if (lang_str != nullptr) {
         lang = env->GetStringUTFChars(lang_str, nullptr);
     }
+
+    const char * prompt = nullptr;
+    if (initial_prompt != nullptr) {
+        prompt = env->GetStringUTFChars(initial_prompt, nullptr);
+    }
     
     jsize n_samples   = env->GetArrayLength(audio_data);
     jfloat * samples  = env->GetFloatArrayElements(audio_data, nullptr);
     if (samples == nullptr) {
         if (lang != nullptr) env->ReleaseStringUTFChars(lang_str, lang);
+        if (prompt != nullptr) env->ReleaseStringUTFChars(initial_prompt, prompt);
         return nullptr;
     }
 
@@ -191,6 +197,12 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     params.print_progress   = false;
     params.print_realtime   = false;
     params.print_timestamps = false;
+    params.greedy.best_of   = 1;
+
+    if (prompt != nullptr) {
+        params.initial_prompt       = prompt;
+        params.carry_initial_prompt = true;
+    }
 
     ProgressCallbackContext* cb_ctx = nullptr;
     try {
@@ -212,6 +224,9 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
     env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);
     if (lang != nullptr) {
         env->ReleaseStringUTFChars(lang_str, lang);
+    }
+    if (prompt != nullptr) {
+        env->ReleaseStringUTFChars(initial_prompt, prompt);
     }
 
     if (result != 0) {
@@ -249,7 +264,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
 // ---------------------------------------------------------------------------
 JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jobject listener, jobject segmentListener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jstring initial_prompt, jobject listener, jobject segmentListener) {
 
     whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -261,10 +276,17 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     if (lang_str != nullptr) {
         lang = env->GetStringUTFChars(lang_str, nullptr);
     }
+
+    const char * prompt = nullptr;
+    if (initial_prompt != nullptr) {
+        prompt = env->GetStringUTFChars(initial_prompt, nullptr);
+    }
+
     jsize n_samples   = env->GetArrayLength(audio_data);
     jfloat * samples  = env->GetFloatArrayElements(audio_data, nullptr);
     if (samples == nullptr) {
         if (lang != nullptr) env->ReleaseStringUTFChars(lang_str, lang);
+        if (prompt != nullptr) env->ReleaseStringUTFChars(initial_prompt, prompt);
         return nullptr;
     }
 
@@ -280,6 +302,12 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     params.max_len          = 0;  // Disabled: we iterate tokens below for word-level output.
                                   // Setting this to 1 caused whisper to wrap every segment to 1
                                   // character, creating thousands of tiny segments and JNI crossings.
+    params.greedy.best_of   = 1;
+
+    if (prompt != nullptr) {
+        params.initial_prompt       = prompt;
+        params.carry_initial_prompt = true;
+    }
 
     ProgressCallbackContext* cb_ctx = nullptr;
     SegmentCallbackContext* seg_ctx = nullptr;
@@ -311,6 +339,9 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);
     if (lang != nullptr) {
         env->ReleaseStringUTFChars(lang_str, lang);
+    }
+    if (prompt != nullptr) {
+        env->ReleaseStringUTFChars(initial_prompt, prompt);
     }
 
     if (result != 0) {

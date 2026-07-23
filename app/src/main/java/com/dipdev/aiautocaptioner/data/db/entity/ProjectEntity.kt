@@ -101,6 +101,10 @@ data class ProjectEntity(
     val facelessBackgroundType: String? = null,
     val facelessBackgroundValue: String? = null,
     
+    // Initial prompt text to bias Whisper decoder for domain-specific accuracy
+    // e.g. "React hooks, useState, useEffect" or "John, Sarah, TensorFlow"
+    val initialPrompt: String? = null,
+    
     // Indicates how this project was created to determine routing logic
     val creationMode: CreationMode = CreationMode.ADVANCED
 )

@@ -68,14 +68,16 @@
     <!-- Model Picker bottom sheet -->
     <string name="model_sheet_title">Generate Captions</string>
     <string name="model_sheet_language_label">Language</string>
-    <string name="model_sheet_model_label">AI Model</string>
-    <string name="model_sheet_select_model">Select Model</string>
-    <string name="model_sheet_downloaded">Downloaded</string>
+    <string name="model_sheet_quality_label">Quality</string>
+    <string name="model_sheet_select_model">Select quality</string>
+    <string name="model_sheet_downloaded">Ready</string>
     <string name="model_sheet_tap_to_download">Tap to download</string>
-    <string name="model_sheet_translate_label">Translate to English</string>
-    <string name="model_sheet_start_button">Start Transcription</string>
-    <string name="model_sheet_download_start_button">Download &amp; Start</string>
-    <string name="model_sheet_auto_detect_hint">Showing models that work with auto-detect</string>
+    <string name="model_sheet_translate_label">Also create English version</string>
+    <string name="model_sheet_auto_detect_hint">We\'ll automatically detect the spoken language</string>
+    <string name="sheet_prompt_label">Special words (optional)</string>
+    <string name="sheet_prompt_placeholder">Names, product titles, or topic words</string>
+    <string name="sheet_start_button">Generate Captions</string>
+    <string name="sheet_download_button">Download &amp; Generate</string>
 
     <!-- ModelManager -->
     <string name="model_manager_title">AI Models</string>
@@ -113,6 +115,8 @@
     <string name="cd_go_back">Back</string>
     <string name="cd_edit_video">Edit the video</string>
     <string name="setupai_language_label">Language</string>
+    <string name="setupai_prompt_label">Add words to help accuracy (optional)</string>
+    <string name="setupai_prompt_placeholder">e.g. React hooks, TensorFlow, John Smith</string>
 
     <!-- TranscriptionComponents -->
     <string name="lang_auto_detect">Auto-Detect</string>

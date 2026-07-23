@@ -389,14 +389,16 @@ fun CaptionEditorScreen(
             initialModelId = processingUiState.activeModel?.id,
             initialLanguage = processingUiState.selectedLanguage,
             initialTranslate = processingUiState.translateToEnglish,
-            onStart = { modelId, lang, translate ->
+            initialPrompt = processingUiState.initialPrompt,
+            onStart = { modelId, lang, translate, prompt ->
                 showTranscriptionBottomSheet = false
                 processingViewModel.setEvent(
                     com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.StartTranscriptionExplicit(
                         projectId = projectId,
                         modelId = modelId,
                         language = lang,
-                        translateToEnglish = translate
+                        translateToEnglish = translate,
+                        initialPrompt = prompt
                     )
                 )
             }

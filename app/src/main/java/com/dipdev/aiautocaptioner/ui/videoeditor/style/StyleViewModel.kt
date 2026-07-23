@@ -199,19 +199,31 @@ class StyleViewModel @Inject constructor(
             val projectEntity = projectRepository.getProjectById(projectId)
             setState { copy(project = projectEntity) }
 
+            var styleIdPersisted = projectEntity?.activeStyleId != null
+
             launch {
                 captionRepository.getAllStyles().collect { list ->
                     setState { copy(styles = list) }
                     if (uiState.value.activeStyle == null) {
                         val activeId = projectEntity?.activeStyleId
-                        setState {
-                            copy(
-                                activeStyle = if (activeId != null) {
-                                    list.find { it.id == activeId } ?: list.firstOrNull()
-                                } else {
-                                    list.firstOrNull()
-                                }
-                            )
+                        val resolvedStyle = if (activeId != null) {
+                            list.find { it.id == activeId } ?: list.firstOrNull()
+                        } else {
+                            list.firstOrNull()
+                        }
+                        setState { copy(activeStyle = resolvedStyle) }
+
+                        // Persist activeStyleId once so export always has it
+                        if (resolvedStyle != null && !styleIdPersisted) {
+                            styleIdPersisted = true
+                            projectEntity?.let { proj ->
+                                projectRepository.updateProject(
+                                    proj.copy(
+                                        activeStyleId = resolvedStyle.id,
+                                        updatedAt = System.currentTimeMillis()
+                                    )
+                                )
+                            }
                         }
                     }
                 }

@@ -33,6 +33,25 @@ import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 
+private val languageDisplayNames = mapOf(
+    "auto" to "Auto",
+    "en" to "English",
+    "es" to "Spanish",
+    "fr" to "French",
+    "de" to "German",
+    "zh" to "Chinese",
+    "ja" to "Japanese",
+    "ko" to "Korean",
+    "it" to "Italian",
+    "nl" to "Dutch",
+    "pt" to "Portuguese",
+    "ru" to "Russian",
+    "ar" to "Arabic"
+)
+
+private val quickLanguages = listOf("auto", "en", "es", "fr", "de")
+private val allLanguages = listOf("auto", "en", "es", "fr", "de", "zh", "ja", "ko", "it", "nl", "pt", "ru", "ar")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TranscriptionBottomSheet(
@@ -41,11 +60,13 @@ fun TranscriptionBottomSheet(
     initialModelId: String?,
     initialLanguage: String,
     initialTranslate: Boolean,
-    onStart: (modelId: String, language: String, translate: Boolean) -> Unit
+    initialPrompt: String = "",
+    onStart: (modelId: String, language: String, translate: Boolean, prompt: String) -> Unit
 ) {
     var selectedModelId by remember { mutableStateOf(initialModelId ?: availableModels.firstOrNull()?.id ?: "") }
     var selectedLanguage by remember { mutableStateOf(initialLanguage) }
     var translateToEnglish by remember { mutableStateOf(initialTranslate) }
+    var prompt by remember { mutableStateOf(initialPrompt) }
     var showAllLanguages by remember { mutableStateOf(false) }
     var showModelDropdown by remember { mutableStateOf(false) }
 
@@ -54,9 +75,6 @@ fun TranscriptionBottomSheet(
             selectedModelId = initialModelId
         }
     }
-
-    val quickLanguages = listOf("auto", "en", "es", "fr", "de")
-    val allLanguages = listOf("auto", "en", "es", "fr", "de", "zh", "ja", "ko", "it", "nl", "pt", "ru", "ar") // Add more as needed
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -87,13 +105,13 @@ fun TranscriptionBottomSheet(
                 val languagesToShow = if (showAllLanguages) allLanguages else quickLanguages
                 items(languagesToShow) { lang ->
                     val isSelected = lang == selectedLanguage
-                    val label = if (lang == "auto") stringResource(R.string.lang_auto_detect) else lang.uppercase()
-                    
+                    val label = languageDisplayNames[lang] ?: lang.uppercase()
+
                     Surface(
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         shape = CircleShape,
-                        modifier = Modifier.clickable { 
-                            selectedLanguage = lang 
+                        modifier = Modifier.clickable {
+                            selectedLanguage = lang
                             if (lang == "en") translateToEnglish = false
                         }
                     ) {
@@ -101,7 +119,8 @@ fun TranscriptionBottomSheet(
                             text = label,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp
                         )
                     }
                 }
@@ -124,27 +143,21 @@ fun TranscriptionBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Model Selection
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.model_sheet_model_label),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            
+            // Quality Selection
+            Text(
+                text = stringResource(R.string.model_sheet_quality_label),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             val selectedModel = availableModels.find { it.id == selectedModelId }
             ExposedDropdownMenuBox(
                 expanded = showModelDropdown,
                 onExpandedChange = { showModelDropdown = it }
             ) {
                 OutlinedTextField(
-                    value = selectedModel?.displayName ?: stringResource(R.string.model_sheet_select_model),
+                    value = selectedModel?.description ?: stringResource(R.string.model_sheet_select_model),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown) },
@@ -158,10 +171,10 @@ fun TranscriptionBottomSheet(
                 ) {
                     availableModels.forEach { model ->
                         DropdownMenuItem(
-                            text = { 
+                            text = {
                                 Column {
-                                    Text(model.displayName, fontWeight = FontWeight.Bold)
-                                    val size = "${model.sizeMb}MB"
+                                    Text(model.description, fontWeight = FontWeight.Bold)
+                                    val size = "${model.sizeMb} MB"
                                     val downloaded = if (model.isDownloaded) stringResource(R.string.model_sheet_downloaded) else stringResource(R.string.model_sheet_tap_to_download)
                                     Text("$size • $downloaded", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
@@ -216,14 +229,42 @@ fun TranscriptionBottomSheet(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
+            // Special Words Hint
+            Text(
+                text = stringResource(R.string.sheet_prompt_label),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            OutlinedTextField(
+                value = prompt,
+                onValueChange = { prompt = it },
+                placeholder = { Text(stringResource(R.string.sheet_prompt_placeholder), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                singleLine = false,
+                maxLines = 3
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             val isDownloaded = selectedModel?.isDownloaded == true
-            val buttonText = if (isDownloaded) stringResource(R.string.model_sheet_start_button) else stringResource(R.string.model_sheet_download_start_button)
+            val buttonText = if (isDownloaded) stringResource(R.string.sheet_start_button) else stringResource(R.string.sheet_download_button)
 
             GradientPrimaryButton(
                 text = buttonText,
                 onClick = {
                     if (selectedModelId.isNotEmpty()) {
-                        onStart(selectedModelId, selectedLanguage, translateToEnglish)
+                        onStart(selectedModelId, selectedLanguage, translateToEnglish, prompt)
                     }
                 },
                 modifier = Modifier

@@ -99,42 +99,59 @@ fun StylePanel(
             }
 
             activeStyle?.let { style ->
-                // Compact header: Language + Generate in one row
-                CompactCaptionsHeader(
-                    hasCaptions = hasCaptions,
-                    selectedLanguage = selectedLanguage,
-                    translateToEnglish = translateToEnglish,
-                    showLanguageDropdown = showLanguageDropdown,
-                    onToggleLanguageDropdown = { showLanguageDropdown = it },
-                    onLanguageSelected = onLanguageSelected,
-                    onGenerateCaptions = onGenerateCaptions
-                )
+                if (!hasCaptions) {
+                    // No captions yet — show centered generate prompt
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Surface(
+                            onClick = onGenerateCaptions,
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Text(
+                                text = stringResource(R.string.style_generate),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                } else {
+                    // Captions exist — show full editor
+                    CompactCaptionsHeader(
+                        hasCaptions = hasCaptions,
+                        selectedLanguage = selectedLanguage,
+                        translateToEnglish = translateToEnglish,
+                        showLanguageDropdown = showLanguageDropdown,
+                        onToggleLanguageDropdown = { showLanguageDropdown = it },
+                        onLanguageSelected = onLanguageSelected,
+                        onGenerateCaptions = onGenerateCaptions
+                    )
 
-                // Presets — the hero content
-                PresetsTab(
-                    styles = styles,
-                    activeStyle = style,
-                    onPresetSelected = { viewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
-                    onPresetLongClicked = { },
-                    onAddPreset = { }
-                )
+                    PresetsTab(
+                        styles = styles,
+                        activeStyle = style,
+                        onPresetSelected = { viewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
+                        onPresetLongClicked = { },
+                        onAddPreset = { }
+                    )
 
-                // Collapsible Adjust section
-                CollapsibleAdjust(
-                    expanded = showAdjust,
-                    onToggle = {
-                        showAdjust = it
-                        onAdjustExpanded?.invoke(it)
-                    },
-                    fontSize = style.fontSize,
-                    maxWordsPerLine = style.maxWordsPerLine,
-                    maxLines = style.maxLines,
-                    positionY = style.positionY,
-                    onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontSize") { s -> s.copy(fontSize = it) }) },
-                    onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
-                    onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
-                    onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) }
-                )
+                    CollapsibleAdjust(
+                        expanded = showAdjust,
+                        onToggle = {
+                            showAdjust = it
+                            onAdjustExpanded?.invoke(it)
+                        },
+                        fontSize = style.fontSize,
+                        maxWordsPerLine = style.maxWordsPerLine,
+                        maxLines = style.maxLines,
+                        positionY = style.positionY,
+                        onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontSize") { s -> s.copy(fontSize = it) }) },
+                        onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
+                        onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
+                        onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) }
+                    )
+                }
             } ?: run {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()

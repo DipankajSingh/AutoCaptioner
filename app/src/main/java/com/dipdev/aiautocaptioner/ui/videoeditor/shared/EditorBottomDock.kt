@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 
 import android.graphics.Bitmap
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -76,10 +77,11 @@ fun EditorBottomDock(
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
     var timelineHeight by remember { mutableStateOf(220.dp) }
     val maxTimelineHeight = maxHeight * 0.5f
+    val animatedTimelineHeight by animateDpAsState(targetValue = timelineHeight, label = "timelineHeight")
 
     Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         // Dynamic Tools Window
-        Box(modifier = Modifier.fillMaxWidth().height(timelineHeight)) {
+        Box(modifier = Modifier.fillMaxWidth().height(animatedTimelineHeight)) {
             when (currentMode) {
                 EditorMode.VIDEO -> {
                     VideoTimelinePanel(

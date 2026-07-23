@@ -96,7 +96,7 @@ fun EditorScreen(
         var inlineEditText by remember { mutableStateOf("") }
         
         var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
-        var pendingTranscriptionParams by remember { mutableStateOf<Triple<String, String, Boolean>?>(null) }
+        var pendingTranscriptionParams by remember { mutableStateOf<PendingTranscriptionParams?>(null) }
 
         val imagePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
@@ -132,14 +132,15 @@ fun EditorScreen(
                     is VideoEditorUiEffect.ProjectDeleted -> onNavigateBack()
                     is VideoEditorUiEffect.NavigateToProcessing -> {
                         if (pendingTranscriptionParams != null) {
-                            val (modelId, lang, translate) = pendingTranscriptionParams!!
+                            val params = pendingTranscriptionParams!!
                             pendingTranscriptionParams = null
                             processingViewModel.setEvent(
                                 com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.StartTranscriptionExplicit(
                                     projectId = projectId,
-                                    modelId = modelId,
-                                    language = lang,
-                                    translateToEnglish = translate
+                                    modelId = params.modelId,
+                                    language = params.language,
+                                    translateToEnglish = params.translate,
+                                    initialPrompt = params.prompt
                                 )
                             )
                         } else {
@@ -446,9 +447,10 @@ fun EditorScreen(
                 initialModelId = processingUiState.activeModel?.id,
                 initialLanguage = processingUiState.selectedLanguage,
                 initialTranslate = processingUiState.translateToEnglish,
-                onStart = { modelId, lang, translate ->
+                initialPrompt = processingUiState.initialPrompt,
+                onStart = { modelId, lang, translate, prompt ->
                     showTranscriptionBottomSheet = false
-                    pendingTranscriptionParams = Triple(modelId, lang, translate)
+                    pendingTranscriptionParams = PendingTranscriptionParams(modelId, lang, translate, prompt)
                     viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false))
                 }
             )
@@ -463,6 +465,13 @@ fun EditorScreen(
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+private data class PendingTranscriptionParams(
+    val modelId: String,
+    val language: String,
+    val translate: Boolean,
+    val prompt: String
+)
 
 private fun formatTime(ms: Long): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(ms)

@@ -47,7 +47,7 @@ class WhisperEngine(private val context: Context) {
     // All other functions that operate on the context now accept that handle.
     // -------------------------------------------------------
     private external fun loadModel(modelPath: String): Long
-    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, translateToEnglish: Boolean, nThreads: Int, listener: ProgressListener? = null): ByteArray?
+    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, translateToEnglish: Boolean, nThreads: Int, initialPrompt: String? = null, listener: ProgressListener? = null): ByteArray?
     private external fun isModelLoaded(handle: Long): Boolean
     private external fun freeModel(handle: Long)
     private external fun getDetectedLanguage(handle: Long): String?
@@ -57,6 +57,7 @@ class WhisperEngine(private val context: Context) {
         language: String,
         translateToEnglish: Boolean,
         nThreads: Int,
+        initialPrompt: String? = null,
         listener: ProgressListener? = null,
         segmentListener: SegmentListener? = null
     ): ByteArray?
@@ -116,6 +117,7 @@ class WhisperEngine(private val context: Context) {
         samples: FloatArray,
         language: String = "en",
         translateToEnglish: Boolean = false,
+        initialPrompt: String? = null,
         onProgress: ((Int) -> Unit)? = null
     ): String {
         return withContext(Dispatchers.IO) {
@@ -126,7 +128,7 @@ class WhisperEngine(private val context: Context) {
                     return@withContext ""
                 }
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val resultBytes = transcribe(handle, samples, language, translateToEnglish, getOptimalThreads(), listener)
+                val resultBytes = transcribe(handle, samples, language, translateToEnglish, getOptimalThreads(), initialPrompt, listener)
                 lastDetectedLanguage = getDetectedLanguage(handle)
                 if (resultBytes != null) String(resultBytes, Charsets.UTF_8) else ""
             }
@@ -140,6 +142,7 @@ class WhisperEngine(private val context: Context) {
         samples: FloatArray,
         language: String = "en",
         translateToEnglish: Boolean = false,
+        initialPrompt: String? = null,
         onProgress: ((Int) -> Unit)? = null,
         onSegmentDecoded: ((text: String, startMs: Long, endMs: Long) -> Unit)? = null
     ): List<WordTimestamp> {
@@ -149,7 +152,7 @@ class WhisperEngine(private val context: Context) {
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
-                val rawBytes = transcribeWithTimestamps(handle, samples, language, translateToEnglish, getOptimalThreads(), listener, segListener)
+                val rawBytes = transcribeWithTimestamps(handle, samples, language, translateToEnglish, getOptimalThreads(), initialPrompt, listener, segListener)
                     ?: return@withContext emptyList()
 
                 // Capture the language whisper actually used (matters when language = "auto")

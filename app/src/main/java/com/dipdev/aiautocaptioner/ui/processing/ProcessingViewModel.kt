@@ -88,6 +88,7 @@ data class ProcessingUiState(
     val step: ProcessingStep = ProcessingStep.Idle,
     val selectedLanguage: String = "en",
     val translateToEnglish: Boolean = false,
+    val initialPrompt: String = "",
     val workingVideoPath: String? = null,
     val streamedSegments: List<StreamedSegment> = emptyList(),
     val segmentCount: Int = 0,
@@ -118,8 +119,10 @@ sealed class ProcessingUiEvent : UiEvent {
         val projectId: String,
         val modelId: String,
         val language: String,
-        val translateToEnglish: Boolean
+        val translateToEnglish: Boolean,
+        val initialPrompt: String = ""
     ) : ProcessingUiEvent()
+    data class SetInitialPrompt(val prompt: String) : ProcessingUiEvent()
     data object ResetToIdle : ProcessingUiEvent()
 }
 
@@ -175,7 +178,7 @@ class ProcessingViewModel @Inject constructor(
                 setState { copy(translateToEnglish = translate) }
             }
         }
-        
+
         viewModelScope.launch {
             transcriptionManager.step.collect { step ->
                 if (step !is ProcessingStep.Idle) {
@@ -221,7 +224,10 @@ class ProcessingViewModel @Inject constructor(
             is ProcessingUiEvent.CancelModelSetup -> cancelModelSetup()
             is ProcessingUiEvent.Cancel -> cancel()
             is ProcessingUiEvent.StartProcessing -> startProcessing(event.projectId)
-            is ProcessingUiEvent.StartTranscriptionExplicit -> startTranscriptionExplicit(event.projectId, event.modelId, event.language, event.translateToEnglish)
+            is ProcessingUiEvent.StartTranscriptionExplicit -> startTranscriptionExplicit(event.projectId, event.modelId, event.language, event.translateToEnglish, event.initialPrompt)
+            is ProcessingUiEvent.SetInitialPrompt -> {
+                setState { copy(initialPrompt = event.prompt) }
+            }
             is ProcessingUiEvent.ResetToIdle -> resetToIdle()
         }
     }
@@ -233,7 +239,12 @@ class ProcessingViewModel @Inject constructor(
             val project = projectRepository.getProjectById(projectId)
             val isAlreadyDone = project?.status == ProjectStatus.TRANSCRIBED ||
                                 project?.status == ProjectStatus.EXPORTED
-            setState { copy(workingVideoPath = project?.workingVideoPath) }
+            setState {
+                copy(
+                    workingVideoPath = project?.workingVideoPath,
+                    initialPrompt = project?.initialPrompt ?: ""
+                )
+            }
 
             if (isAlreadyDone && !forceModelPicker && !isRegenerating) {
                 // Project already transcribed — go straight to editor
@@ -252,7 +263,7 @@ class ProcessingViewModel @Inject constructor(
 
             val activeModel = modelRepository.getActiveModel().first()
             if (activeModel != null) {
-                // Model ready — start immediately with saved language
+                // Model ready — start immediately with saved language and prompt
                 startProcessing(projectId)
             } else {
                 // First run — show model setup sheet
@@ -396,23 +407,27 @@ class ProcessingViewModel @Inject constructor(
         if (model.isDownloaded) {
             val projectId = pendingProjectId ?: return
             val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
+            val prompt = currentState.initialPrompt.ifBlank { null }
             transcriptionManager.startProcess(
                 projectId = projectId,
                 modelId = modelId,
                 language = currentState.selectedLanguage,
                 translateToEnglish = currentState.translateToEnglish,
-                isRegenerating = isRegenerating
+                isRegenerating = isRegenerating,
+                initialPrompt = prompt
             )
             return
         }
 
         // We delegate downloading to the transcription manager so it runs in foreground
         pendingProjectId?.let {
+            val prompt = currentState.initialPrompt.ifBlank { null }
             transcriptionManager.startProcess(
                 projectId = it,
                 modelId = modelId,
                 language = currentState.selectedLanguage,
-                translateToEnglish = currentState.translateToEnglish
+                translateToEnglish = currentState.translateToEnglish,
+                initialPrompt = prompt
             )
         }
     }
@@ -425,18 +440,21 @@ class ProcessingViewModel @Inject constructor(
         pendingProjectId = projectId
         val activeModelId = currentState.activeModel?.id ?: return
         val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
+        val prompt = currentState.initialPrompt.ifBlank { null }
         transcriptionManager.startProcess(
             projectId = projectId,
             modelId = activeModelId,
             language = currentState.selectedLanguage,
             translateToEnglish = currentState.translateToEnglish,
-            isRegenerating = isRegenerating
+            isRegenerating = isRegenerating,
+            initialPrompt = prompt
         )
     }
 
-    private fun startTranscriptionExplicit(projectId: String, modelId: String, language: String, translateToEnglish: Boolean) {
+    private fun startTranscriptionExplicit(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, initialPrompt: String = "") {
         pendingProjectId = projectId
         val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
+        val prompt = initialPrompt.ifBlank { null }
         
         viewModelScope.launch {
             settingsRepository.saveLastLanguageSettings(language, translateToEnglish)
@@ -447,7 +465,8 @@ class ProcessingViewModel @Inject constructor(
                 modelId = modelId,
                 language = language,
                 translateToEnglish = translateToEnglish,
-                isRegenerating = isRegenerating
+                isRegenerating = isRegenerating,
+                initialPrompt = prompt
             )
         }
     }

@@ -36,6 +36,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -274,6 +276,43 @@ fun ProcessingScreen(
                                     }
                                 }
                             }
+
+                            var promptText by remember(uiState.initialPrompt) { mutableStateOf(uiState.initialPrompt) }
+
+                            Text(
+                                text = stringResource(R.string.setupai_prompt_label),
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = promptText,
+                                onValueChange = {
+                                    promptText = it
+                                    viewModel.setEvent(ProcessingUiEvent.SetInitialPrompt(it))
+                                },
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(R.string.setupai_prompt_placeholder),
+                                        color = Color.White.copy(alpha = 0.3f),
+                                        fontSize = 14.sp
+                                    )
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    cursorColor = MaterialTheme.colorScheme.primary,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = if (currentStep.autoDetectMode) 16.dp else 24.dp)
+                            )
 
                             if (currentStep.autoDetectMode) {
                                 Surface(

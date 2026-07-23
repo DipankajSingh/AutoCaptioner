@@ -69,7 +69,7 @@ class TranscriptionManager @Inject constructor(
 
     // Notifications are now handled by TranscriptionForegroundService by observing the 'step' stateflow
 
-    fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean = false) {
+    fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean = false, initialPrompt: String? = null) {
         if (activeJob?.isActive == true) {
             Log.w(TAG, "startProcess called while job active — cancelling previous")
             activeJob?.cancel()
@@ -124,7 +124,7 @@ class TranscriptionManager @Inject constructor(
                 }
 
                 // Proceed to processing
-                startTranscription(projectId, language, translateToEnglish, isRegenerating)
+                startTranscription(projectId, language, translateToEnglish, isRegenerating, initialPrompt)
 
             } catch (e: kotlinx.coroutines.CancellationException) {
                 Log.i(TAG, "Process cancelled")
@@ -149,7 +149,7 @@ class TranscriptionManager @Inject constructor(
         }
     }
 
-    private suspend fun startTranscription(projectId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean) {
+    private suspend fun startTranscription(projectId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean, initialPrompt: String? = null) {
         startDripFeed()
 
         val project = projectRepository.getProjectById(projectId) ?: run {
@@ -164,7 +164,7 @@ class TranscriptionManager @Inject constructor(
 
         _step.value = ProcessingStep.ExtractingAudio
         projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
-        projectRepository.updateProject(project.copy(transcriptionLanguage = language))
+        projectRepository.updateProject(project.copy(transcriptionLanguage = language, initialPrompt = initialPrompt))
 
         _step.value = ProcessingStep.LoadingModel
         val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
@@ -189,6 +189,7 @@ class TranscriptionManager @Inject constructor(
                 samples = pcmSamples,
                 language = language,
                 translateToEnglish = translateToEnglish,
+                initialPrompt = initialPrompt,
                 onProgress = { percent ->
                     if (isCancelled) return@transcribeWithWordTimestamps
                     val progressFraction = percent / 100f
