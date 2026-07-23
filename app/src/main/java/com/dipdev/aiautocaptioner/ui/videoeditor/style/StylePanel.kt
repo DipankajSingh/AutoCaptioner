@@ -55,6 +55,7 @@ fun StylePanel(
     selectedLanguage: String = "en",
     translateToEnglish: Boolean = false,
     onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
+    onAdjustExpanded: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val styleUiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -121,7 +122,10 @@ fun StylePanel(
                 // Collapsible Adjust section
                 CollapsibleAdjust(
                     expanded = showAdjust,
-                    onToggle = { showAdjust = it },
+                    onToggle = {
+                        showAdjust = it
+                        onAdjustExpanded?.invoke(it)
+                    },
                     fontSize = style.fontSize,
                     maxWordsPerLine = style.maxWordsPerLine,
                     maxLines = style.maxLines,

@@ -129,6 +129,9 @@ fun EditorBottomDock(
                         selectedLanguage = selectedLanguage,
                         translateToEnglish = translateToEnglish,
                         onLanguageSelected = onLanguageSelected,
+                        onAdjustExpanded = { expanded ->
+                            timelineHeight = if (expanded) maxTimelineHeight else 220.dp
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }

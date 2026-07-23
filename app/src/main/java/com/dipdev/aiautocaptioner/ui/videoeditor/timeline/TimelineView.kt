@@ -30,7 +30,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -44,12 +43,12 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
-import com.dipdev.aiautocaptioner.R
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Type
 import kotlinx.coroutines.isActive
@@ -292,7 +291,7 @@ fun TimelineView(
                                     .fillMaxHeight()
                                     .background(
                                         MaterialTheme.colorScheme.primaryContainer,
-                                        androidx.compose.foundation.shape.RoundedCornerShape(
+                                        RoundedCornerShape(
                                             topStart = 6.dp, bottomStart = 6.dp
                                         )
                                     ),
