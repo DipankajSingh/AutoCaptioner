@@ -134,7 +134,7 @@ fun ExportHistoryItem(
                 if (export.quality != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = stringResource(R.string.export_history_quality_format, export.quality ?: ""),
+                        text = stringResource(R.string.export_history_quality_format, export.quality),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

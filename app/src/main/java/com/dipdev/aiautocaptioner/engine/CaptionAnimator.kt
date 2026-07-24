@@ -7,17 +7,13 @@ import kotlin.math.*
 // CaptionAnimator
 //
 // Pure animation math — no Canvas, no Paint, no Android framework dependencies.
-// Responsible for computing a WordTransform for any word at any point in time.
+// Responsible for computing a WordTransform for any word at any point in time,
+// and for determining which words belong in the current display window.
 // ─────────────────────────────────────────────────────────────────────────────
 object CaptionAnimator {
 
     // ── Public data types ─────────────────────────────────────────────────────
 
-    /**
-     * A word with its timing info, passed to the animator.
-     * Decoupled from [CaptionWordEntity] so the renderer can also
-     * construct fallback words when no timestamps exist.
-     */
     data class TimedWord(
         val text: String,
         val startTimeMs: Long,
@@ -28,11 +24,6 @@ object CaptionAnimator {
         val emphasisType: EmphasisType
     )
 
-    /**
-     * The per-frame transform for a single word.
-     * All fields default to identity (no transform) so callers only need to
-     * check the fields that actually deviate from normal.
-     */
     data class WordTransform(
         val alpha: Float = 1f,
         val scaleX: Float = 1f,
@@ -45,16 +36,152 @@ object CaptionAnimator {
         val colorOverride: Int? = null
     )
 
-    // ── Main entry point ──────────────────────────────────────────────────────
+    /**
+     * The result of [computeDisplayWindow] — contains the subset of words to
+     * lay out and draw for the current playback position, plus page metadata
+     * used to drive inter-page transition animations.
+     */
+    data class DisplayWindow(
+        /** The words to lay out and render for this frame. */
+        val words: List<TimedWord>,
+        /** Which "page" these words belong to (0-based). */
+        val pageIndex: Int,
+        /**
+         * True when the page just changed this frame — used by the renderer
+         * to play a fade-in transition on the entire new page.
+         */
+        val isNewPage: Boolean
+    )
+
+    // ── Display window ────────────────────────────────────────────────────────
 
     /**
-     * Compute the [WordTransform] for [word] at [posMs].
+     * Computes the [DisplayWindow] — the subset of words that should be
+     * laid out and drawn for the current playback position.
      *
-     * @param posMs       Current playback position in milliseconds.
-     * @param word        The word and its timing info.
-     * @param style       Caption style (contains animation type, duration, etc.).
-     * @param animMs      Animation duration in ms (pre-clamped by caller).
+     * Each display mode has its own windowing strategy:
+     *
+     *  - PHRASE         : all words in the segment simultaneously (unchanged)
+     *  - LINE_HIGHLIGHT : "page" of (maxWordsPerLine × maxLines) words; flips
+     *                     forward when the active word crosses a page boundary
+     *  - KARAOKE_FILL   : same paging as LINE_HIGHLIGHT (fill animation is
+     *                     handled separately in the renderer)
+     *  - WORD_BY_WORD   : active word only; the previous word's exit animation
+     *                     overlaps briefly via [animMs]
+     *  - TYPEWRITER     : accumulates past+active words up to page capacity,
+     *                     clears page on overflow
      */
+    fun computeDisplayWindow(
+        words: List<TimedWord>,
+        displayMode: DisplayMode,
+        posMs: Long,
+        animMs: Long,
+        maxWordsPerLine: Int,
+        maxLines: Int,
+        previousPageIndex: Int
+    ): DisplayWindow {
+        if (words.isEmpty()) return DisplayWindow(emptyList(), 0, false)
+
+        return when (displayMode) {
+
+            // ── PHRASE ────────────────────────────────────────────────────────
+            DisplayMode.PHRASE -> DisplayWindow(
+                words = words,
+                pageIndex = 0,
+                isNewPage = false
+            )
+
+            // ── LINE_HIGHLIGHT / KARAOKE_FILL ─────────────────────────────────
+            // Divide the word list into fixed-size "pages".
+            // Show whichever page contains the currently active word.
+            DisplayMode.LINE_HIGHLIGHT,
+            DisplayMode.KARAOKE_FILL -> {
+                val wordsPerPage = (maxWordsPerLine.coerceAtLeast(1) * maxLines.coerceAtLeast(1))
+                    .coerceAtLeast(1)
+
+                // Find the active word index; if none, use the last past word.
+                val activeIdx = words.indexOfFirst { it.isActive }
+                    .takeIf { it >= 0 }
+                    ?: (words.indexOfLast { it.isPast }.takeIf { it >= 0 } ?: 0)
+
+                val pageIndex = activeIdx / wordsPerPage
+                val pageStart = pageIndex * wordsPerPage
+                val pageEnd   = (pageStart + wordsPerPage).coerceAtMost(words.size)
+                val pageWords = words.subList(pageStart, pageEnd)
+                val isNewPage = pageIndex != previousPageIndex
+
+                DisplayWindow(words = pageWords, pageIndex = pageIndex, isNewPage = isNewPage)
+            }
+
+            // ── WORD_BY_WORD ──────────────────────────────────────────────────
+            // Show only the currently active word. The renderer's WordTransform
+            // drives the enter/exit animations. We include one word of "exit
+            // overlap" — the previous word — only while it is still within its
+            // exit animation window (posMs < prevWord.endTimeMs + animMs).
+            DisplayMode.WORD_BY_WORD -> {
+                val activeIdx = words.indexOfFirst { it.isActive }
+
+                if (activeIdx < 0) {
+                    // Between segments or after last word — nothing to show
+                    DisplayWindow(words = emptyList(), pageIndex = 0, isNewPage = false)
+                } else {
+                    val visibleWords = mutableListOf<TimedWord>()
+
+                    // Include previous word if it's still within its exit window
+                    if (activeIdx > 0) {
+                        val prev = words[activeIdx - 1]
+                        if (posMs < prev.endTimeMs + animMs) {
+                            visibleWords.add(prev)
+                        }
+                    }
+                    visibleWords.add(words[activeIdx])
+
+                    DisplayWindow(
+                        words = visibleWords,
+                        pageIndex = activeIdx, // use word index as "page" for transition tracking
+                        isNewPage = activeIdx != previousPageIndex
+                    )
+                }
+            }
+
+            // ── TYPEWRITER ────────────────────────────────────────────────────
+            // Accumulate words from the start of the current "page" up to and
+            // including the active word. Clear the page (start a new one) when
+            // the accumulated count would exceed page capacity.
+            DisplayMode.TYPEWRITER -> {
+                val capacity = (maxWordsPerLine.coerceAtLeast(1) * maxLines.coerceAtLeast(1))
+                    .coerceAtLeast(1)
+
+                val activeIdx = words.indexOfFirst { it.isActive }
+                    .takeIf { it >= 0 }
+                    ?: words.indexOfLast { it.isPast }.takeIf { it >= 0 }
+                    ?: 0
+
+                // Which page does the active word belong to?
+                val pageIndex = activeIdx / capacity
+                val pageStart = pageIndex * capacity
+
+                // Include all words from page start up to active (inclusive),
+                // plus words that entered soon (entering within animMs).
+                val visible = words.subList(pageStart, words.size).filter {
+                    val isActiveOrPast = it.isActive || it.isPast
+                    val isEnteringSoon = !it.isPast && !it.isActive &&
+                            (it.startTimeMs - posMs) < animMs
+                    (isActiveOrPast || isEnteringSoon) &&
+                            words.indexOf(it) < pageStart + capacity
+                }
+
+                DisplayWindow(
+                    words = visible,
+                    pageIndex = pageIndex,
+                    isNewPage = pageIndex != previousPageIndex
+                )
+            }
+        }
+    }
+
+    // ── Main entry point ──────────────────────────────────────────────────────
+
     fun computeWordTransform(
         posMs: Long,
         word: TimedWord,
@@ -73,9 +200,7 @@ object CaptionAnimator {
         val enter = if (isEntering || word.isActive) enterRaw else 1f
         val exit  = if (isExiting) exitRaw else 0f
 
-        // Base enter transform
         val et = applyAnim(style.wordEnterAnimation, enter, entering = true, baseScale)
-        // Base exit transform (evaluate backward so 1f = fully visible, 0f = exited)
         val xt = if (isExiting) applyAnim(style.wordExitAnimation, 1f - exit, entering = false, baseScale) else RawTransform()
 
         val alpha  = et.alpha * (if (isExiting) {
@@ -93,7 +218,7 @@ object CaptionAnimator {
             scaleY *= 1.12f
         }
 
-        // Emphasis oscillations (continuous sin wave while the word is being spoken)
+        // Emphasis oscillations
         var colorOverride: Int? = null
         if (word.isActive && word.isEmphasized) {
             val phase = (posMs % 600L).toFloat() / 600f * 2f * PI.toFloat()
@@ -155,28 +280,5 @@ object CaptionAnimator {
                 RawTransform(alpha = if (p > 0.5f) 1f else p * 2f, scaleX = sx)
             }
         }
-    }
-
-    // ── Visibility filter ─────────────────────────────────────────────────────
-
-    /**
-     * Returns which [words] should be included in the draw pass for [displayMode].
-     * WORD_BY_WORD additionally includes words in their enter/exit animation window.
-     */
-    fun filterVisible(
-        words: List<TimedWord>,
-        displayMode: DisplayMode,
-        posMs: Long,
-        animMs: Long
-    ): List<TimedWord> = when (displayMode) {
-        DisplayMode.PHRASE,
-        DisplayMode.LINE_HIGHLIGHT,
-        DisplayMode.KARAOKE_FILL  -> words
-        DisplayMode.TYPEWRITER    -> words.filter {
-            val isActiveOrPast = it.isActive || it.isPast
-            val isEnteringSoon = !it.isPast && !it.isActive && (it.startTimeMs - posMs) < animMs
-            isActiveOrPast || isEnteringSoon
-        }
-        DisplayMode.WORD_BY_WORD  -> words
     }
 }

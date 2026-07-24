@@ -43,7 +43,10 @@ object CaptionRenderer {
     private var cachedStyleId: String? = null
     private var cachedLayoutFingerprint: Long = 0L
     private var cachedWords: List<TimedWord> = emptyList()
-    private var cachedVisibleWords: List<TimedWord> = emptyList()
+    private var cachedWindowWords: List<TimedWord> = emptyList()
+
+    // Tracks the current page so we can detect page transitions
+    private var cachedPageIndex: Int = -1
 
     data class WordLayout(val word: TimedWord, val txt: String, val wordW: Float)
     data class LineLayout(val words: List<WordLayout>, val lineStartX: Float, val lineWidth: Float)
@@ -53,10 +56,9 @@ object CaptionRenderer {
     private var cachedIsRtl: Boolean = false
 
     /**
-     * Fingerprint of all style properties that affect text measurement and
-     * line layout. When ANY of these change the cached layouts must be
-     * rebuilt even though the style id is the same (e.g. user drags the
-     * font-size slider on a Custom preset).
+     * Fingerprint of all style properties that affect text measurement,
+     * line layout, OR the display window strategy. When ANY of these change
+     * the cached layouts must be rebuilt.
      */
     private fun layoutFingerprint(style: CaptionStyleEntity): Long {
         var h = 17L
@@ -75,6 +77,9 @@ object CaptionRenderer {
         h = 31 * h + style.textTransform.ordinal
         h = 31 * h + java.lang.Float.floatToIntBits(style.backgroundPaddingH)
         h = 31 * h + java.lang.Float.floatToIntBits(style.backgroundPaddingV)
+        // Display mode and karaoke mode affect the window strategy — must bust cache
+        h = 31 * h + style.displayMode.ordinal
+        h = 31 * h + style.karaokeHighlightMode.ordinal
         return h
     }
 
@@ -103,14 +108,15 @@ object CaptionRenderer {
             cachedStyleId = style.id
             cachedWords = CaptionUtils.buildTimedWords(seg, rawWords)
             cachedIsRtl = CaptionUtils.isRtl(seg.text)
-            cachedVisibleWords = emptyList() // force layout rebuild below
+            cachedWindowWords = emptyList() // force layout rebuild below
+            cachedPageIndex = -1
         }
 
         // Force layout rebuild when any layout-affecting property changed
-        // (e.g. font-size slider moved on same style id).
         if (fp != cachedLayoutFingerprint) {
             cachedLayoutFingerprint = fp
-            cachedVisibleWords = emptyList()
+            cachedWindowWords = emptyList()
+            cachedPageIndex = -1
         }
 
         if (cachedWords.isEmpty()) return
@@ -120,21 +126,44 @@ object CaptionRenderer {
             w.isPast = currentPositionMs > w.endTimeMs
         }
 
-        // ── Metrics & constants ───────────────────────────────────────────────
+        // ── Compute display window ────────────────────────────────────────────
+        val window = CaptionAnimator.computeDisplayWindow(
+            words          = cachedWords,
+            displayMode    = style.displayMode,
+            posMs          = currentPositionMs,
+            animMs         = animMs,
+            maxWordsPerLine = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine,
+            maxLines       = if (style.maxLines <= 0) 999 else style.maxLines,
+            previousPageIndex = cachedPageIndex
+        )
+
+        // Update cached page index after window is computed
+        cachedPageIndex = window.pageIndex
+
+        // Page transition alpha: fade the new page in over animMs when page flips
+        val pageAlpha: Float = if (window.isNewPage) {
+            // Find the newest word on this page (the one that just became active)
+            val newestWordStart = window.words.firstOrNull { it.isActive }?.startTimeMs
+                ?: window.words.firstOrNull()?.startTimeMs
+                ?: currentPositionMs
+            ((currentPositionMs - newestWordStart).toFloat() / animMs).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
+
+        // ── Layout ───────────────────────────────────────────────────────────
         val fm      = CaptionPaints.text.fontMetrics
         val lineH   = (fm.bottom - fm.top) * style.lineHeight
         val padX    = style.backgroundPaddingH * baseScale
         val padY    = style.backgroundPaddingV * baseScale
         val corner  = style.backgroundCornerRadius * baseScale
-        // For RTL, the inter-word space is measured the same way; spaces in
-        // Arabic/Hebrew still need a visual gap between word tokens.
         val spaceW  = CaptionPaints.text.measureText(" ")
         val isRtl   = cachedIsRtl
 
-        val visible = CaptionAnimator.filterVisible(cachedWords, style.displayMode, currentPositionMs, animMs)
+        val visible = window.words
 
-        if (visible != cachedVisibleWords) {
-            cachedVisibleWords = visible
+        if (visible != cachedWindowWords) {
+            cachedWindowWords = visible
             val maxW    = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
             val maxL    = if (style.maxLines <= 0) 999 else style.maxLines
             val lines   = visible.chunked(maxW).take(maxL)
@@ -142,7 +171,7 @@ object CaptionRenderer {
             val currentSpaceW = spaceW
             val currentIsRtl = isRtl
             val currentAlign = style.alignment
-            
+
             cachedLayouts = lines.map { words ->
                 val wordLayouts = words.map { w ->
                     val txt = CaptionUtils.sanitize(w.text, style)
@@ -179,47 +208,40 @@ object CaptionRenderer {
 
 
         // Pass 1: Background pills, Outlines, Shadows
+        // Shadows are applied here (in configure()) and NOT cleared before Pass 2.
+        // The outline paint already has its shadow set from CaptionPaints.configure().
         var lineYP1 = startY
         for (line in lineLayouts) {
             val lineTop = lineYP1 + fm.top
             val lineBot = lineYP1 + fm.bottom
-            drawLineBackground(canvas, style, line.lineStartX, line.lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat())
+            drawLineBackground(canvas, style, line.lineStartX, line.lineWidth, lineTop, lineBot, padX, padY, corner, videoWidth.toFloat(), pageAlpha)
 
-            // RTL: start x at the right edge and advance left.
-            // LTR: start x at the left edge and advance right.
             var x = if (isRtl) line.lineStartX + line.lineWidth else line.lineStartX
 
             for (wl in line.words) {
                 val xfm = transforms[wl.word] ?: continue
 
-                // For RTL, move x left by wordW before drawing so that x is
-                // always the LEFT edge of the current word (Paint.Align.LEFT).
                 if (isRtl) x -= wl.wordW
 
                 // Draw per-word background pill
                 if (style.backgroundOpacity > 0f && style.backgroundType == BackgroundType.PER_WORD) {
                     tempWordRect.set(x - padX / 2f, lineTop - padY, x + wl.wordW + padX / 2f, lineBot + padY)
                     canvas.withTranslation(xfm.translateX, xfm.translateY) {
-                        CaptionPaints.bg.alpha = (CaptionPaints.bg.alpha * xfm.alpha).toInt()
+                        CaptionPaints.bg.alpha = (CaptionPaints.bg.alpha * xfm.alpha * pageAlpha).toInt()
                         drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
                         CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
                     }
                 }
 
-                drawWord(canvas, wl.txt, x, lineYP1, lineTop, lineBot, wl.wordW, xfm, style, currentPositionMs, wl.word, baseScale, padX, padY, corner, isBgPass = true, isRtl = isRtl)
+                drawWord(canvas, wl.txt, x, lineYP1, lineTop, lineBot, wl.wordW, xfm, style, currentPositionMs, wl.word, baseScale, padX, padY, corner, isBgPass = true, isRtl = isRtl, pageAlpha = pageAlpha)
 
-                // Advance: LTR adds word+space; RTL already moved left by wordW,
-                // so only subtract the inter-word space.
                 if (isRtl) x -= spaceW else x += wl.wordW + spaceW
             }
             lineYP1 += lineH
         }
 
-        // Disable shadows for text fills so they sit cleanly on top
-        CaptionPaints.text.clearShadowLayer()
-        CaptionPaints.outline.clearShadowLayer()
-
-        // Pass 2: Text Fills and Overlays
+        // Pass 2: Text fills and karaoke overlays
+        // Shadows are already on the outline paint from Pass 1 — no need to clear or re-set.
         var lineYP2 = startY
         for (line in lineLayouts) {
             val lineTop = lineYP2 + fm.top
@@ -231,7 +253,7 @@ object CaptionRenderer {
 
                 if (isRtl) x -= wl.wordW
 
-                drawWord(canvas, wl.txt, x, lineYP2, lineTop, lineBot, wl.wordW, xfm, style, currentPositionMs, wl.word, baseScale, padX, padY, corner, isBgPass = false, isRtl = isRtl)
+                drawWord(canvas, wl.txt, x, lineYP2, lineTop, lineBot, wl.wordW, xfm, style, currentPositionMs, wl.word, baseScale, padX, padY, corner, isBgPass = false, isRtl = isRtl, pageAlpha = pageAlpha)
 
                 if (isRtl) x -= spaceW else x += wl.wordW + spaceW
             }
@@ -254,20 +276,19 @@ object CaptionRenderer {
         baseScale: Float,
         padX: Float, padY: Float, corner: Float,
         isBgPass: Boolean,
-        isRtl: Boolean = false
+        isRtl: Boolean = false,
+        pageAlpha: Float = 1f
     ) {
         val cx = x + wordW / 2f
         val cy = y + (lineBot - lineTop) / 2f + lineTop
 
-        // Determine fill color
         val fillColor: Int = when {
-            xfm.colorOverride != null -> xfm.colorOverride
-            w.isEmphasized            -> style.highlightColor.toInt()
-            w.isActive && style.displayMode != DisplayMode.PHRASE -> style.highlightColor.toInt()
-            else -> style.textColor.toInt()
+            xfm.colorOverride != null                                          -> xfm.colorOverride
+            w.isEmphasized                                                     -> style.highlightColor.toInt()
+            w.isActive && style.displayMode != DisplayMode.PHRASE              -> style.highlightColor.toInt()
+            else                                                               -> style.textColor.toInt()
         }
 
-        // TYPEWRITER clip or standard draw
         val charsToDraw = if (style.wordEnterAnimation == AnimationType.TYPEWRITER ||
                           style.displayMode == DisplayMode.TYPEWRITER) {
             kotlin.math.ceil(txt.length * xfm.clipFraction).toInt().coerceIn(0, txt.length)
@@ -276,12 +297,11 @@ object CaptionRenderer {
         if (charsToDraw == 0 && xfm.alpha < 0.01f) return
 
         canvas.withTranslation(cx, cy) {
-            // Pivot transforms on word center
             scale(xfm.scaleX, xfm.scaleY)
             translate(-cx, -cy)
             translate(xfm.translateX, xfm.translateY)
 
-            val a = (255 * xfm.alpha).toInt()
+            val a = (255 * xfm.alpha * pageAlpha).toInt()
 
             if (isBgPass) {
                 // Glow layer (drawn first, behind everything)
@@ -292,23 +312,24 @@ object CaptionRenderer {
                     glowPaint.alpha = (a * style.textOpacity * 0.7f).toInt()
                     glowPaint.textAlign = Paint.Align.LEFT
                     glowPaint.letterSpacing = style.letterSpacing
-                    glowPaint.maskFilter = BlurMaskFilter(
-                        style.glowRadius * baseScale, BlurMaskFilter.Blur.NORMAL
+                    glowPaint.setShadowLayer(
+                        style.glowRadius * baseScale, 0f, 0f, glowPaint.color
                     )
                     drawText(txt, 0, charsToDraw, x, y, glowPaint)
-                    glowPaint.maskFilter = null
+                    glowPaint.clearShadowLayer()
                 }
 
+                // Outline pass (shadow is already baked into CaptionPaints.outline by configure())
                 if (style.outlineWidth > 0f) {
                     CaptionPaints.outline.alpha = (a * style.textOpacity).toInt()
                     drawText(txt, 0, charsToDraw, x, y, CaptionPaints.outline)
                 } else if (style.shadowRadius > 0f) {
+                    // No outline — shadow is on the text paint itself (set in configure())
                     CaptionPaints.text.color = fillColor
                     CaptionPaints.text.alpha = (a * style.textOpacity).toInt()
                     drawText(txt, 0, charsToDraw, x, y, CaptionPaints.text)
                 }
             } else {
-                // Apply gradient shader if configured
                 if (style.gradientDirection != GradientDirection.NONE) {
                     val shader = when (style.gradientDirection) {
                         GradientDirection.LEFT_RIGHT -> LinearGradient(
@@ -333,7 +354,6 @@ object CaptionRenderer {
                     CaptionPaints.text.shader = null
                 }
 
-                // Outline-only mode: draw the fill as outline too for a neon effect
                 val fillAlpha = if (style.outlineOnly) 0 else (a * style.textOpacity).toInt()
                 CaptionPaints.text.color = fillColor
                 CaptionPaints.text.alpha = fillAlpha
@@ -341,39 +361,38 @@ object CaptionRenderer {
                 CaptionPaints.text.alpha = 255
                 CaptionPaints.outline.alpha = 255
             }
-
         }
 
-        // ── Karaoke / highlight overlays (drawn without transform to stay aligned) ──
+        // ── Karaoke / highlight overlays ──────────────────────────────────────
         if (!isBgPass && w.isActive) {
             when (style.karaokeHighlightMode) {
                 KaraokeHighlightMode.FILL_LEFT_RIGHT,
                 KaraokeHighlightMode.COLOR_CHANGE -> {
-                    if (style.displayMode == DisplayMode.KARAOKE_FILL ||
+                    // FILL_LEFT_RIGHT sweep: only when mode is KARAOKE_FILL AND highlight mode is FILL_LEFT_RIGHT
+                    if (style.displayMode == DisplayMode.KARAOKE_FILL &&
                         style.karaokeHighlightMode == KaraokeHighlightMode.FILL_LEFT_RIGHT) {
                         val dur   = (w.endTimeMs - w.startTimeMs).coerceAtLeast(1L)
                         val fillP = ((posMs - w.startTimeMs).toFloat() / dur).coerceIn(0f, 1f)
-                        // RTL: fill progresses right→left (natural reading direction).
-                        // LTR: fill progresses left→right.
                         if (isRtl) {
                             canvas.withClip(x + wordW * (1f - fillP), lineTop, x + wordW, lineBot) {
-                                CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
+                                CaptionPaints.highlight.alpha = (255 * xfm.alpha * pageAlpha).toInt()
                                 drawText(txt, 0, charsToDraw, x, y, CaptionPaints.highlight)
                                 CaptionPaints.highlight.alpha = 255
                             }
                         } else {
                             canvas.withClip(x, lineTop, x + wordW * fillP, lineBot) {
-                                CaptionPaints.highlight.alpha = (255 * xfm.alpha).toInt()
+                                CaptionPaints.highlight.alpha = (255 * xfm.alpha * pageAlpha).toInt()
                                 drawText(txt, 0, charsToDraw, x, y, CaptionPaints.highlight)
                                 CaptionPaints.highlight.alpha = 255
                             }
                         }
                     }
+                    // COLOR_CHANGE: active word already uses highlightColor via fillColor above — no extra draw needed
                 }
                 KaraokeHighlightMode.UNDERLINE -> {
                     val saved = CaptionPaints.bg.color
                     CaptionPaints.bg.color = style.highlightColor.toInt()
-                    CaptionPaints.bg.alpha = (200 * xfm.alpha).toInt()
+                    CaptionPaints.bg.alpha = (200 * xfm.alpha * pageAlpha).toInt()
                     canvas.drawRect(x, lineBot + 2f * baseScale, x + wordW, lineBot + 5f * baseScale, CaptionPaints.bg)
                     CaptionPaints.bg.color = saved
                     CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
@@ -382,7 +401,7 @@ object CaptionRenderer {
                     tempWordRect.set(x - padX / 2f, lineTop - padY / 2f, x + wordW + padX / 2f, lineBot + padY / 2f)
                     val saved = CaptionPaints.bg.color
                     CaptionPaints.bg.color = style.highlightColor.toInt()
-                    CaptionPaints.bg.alpha = 80
+                    CaptionPaints.bg.alpha = (80 * pageAlpha).toInt()
                     canvas.drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
                     CaptionPaints.bg.color = saved
                     CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
@@ -397,9 +416,12 @@ object CaptionRenderer {
     private fun drawLineBackground(
         canvas: Canvas, style: CaptionStyleEntity,
         x: Float, lineW: Float, lineTop: Float, lineBot: Float,
-        padX: Float, padY: Float, corner: Float, vw: Float
+        padX: Float, padY: Float, corner: Float, vw: Float,
+        pageAlpha: Float = 1f
     ) {
         if (style.backgroundOpacity <= 0f) return
+        val bgAlpha = (style.backgroundOpacity * 255 * pageAlpha).toInt()
+        CaptionPaints.bg.alpha = bgAlpha
         tempLineRect.set(x - padX, lineTop - padY, x + lineW + padX, lineBot + padY)
         when (style.backgroundType) {
             BackgroundType.BOX       -> canvas.drawRoundRect(tempLineRect, corner, corner, CaptionPaints.bg)
@@ -408,6 +430,8 @@ object CaptionRenderer {
             BackgroundType.PER_WORD,
             BackgroundType.NONE      -> {}
         }
+        // Restore full opacity for next draw
+        CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
     }
 
 }

@@ -20,8 +20,8 @@ android {
         applicationId = "com.dipdev.aiautocaptioner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 9
-        versionName = "1.9"
+        versionCode = 10
+        versionName = "2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -83,7 +83,6 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-        freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }
 

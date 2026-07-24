@@ -8,20 +8,11 @@ import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.camera.view.video.AudioConfig
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import compose.icons.FeatherIcons
@@ -35,18 +26,14 @@ import compose.icons.feathericons.Grid
 import compose.icons.feathericons.Clock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PanTool
+import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -58,21 +45,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import java.io.File
-import java.util.concurrent.Executors
-import kotlin.random.Random
-import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
+import java.util.concurrent.Executor
 
 @Composable
 fun SmartRecorderScreen(
@@ -141,6 +122,7 @@ fun SmartRecorderContent(
     val isCountdownActive = uiState.isCountdownActive
     val countdownRemaining = uiState.countdownRemaining
     val isGestureDetectionEnabled = uiState.isGestureDetectionEnabled
+    val showRecorderOnboarding = uiState.showRecorderOnboarding
 
     var showBgPicker by remember { mutableStateOf(false) }
     var flashEnabled by remember { mutableStateOf(false) }
@@ -153,6 +135,15 @@ fun SmartRecorderContent(
     
     var activeRecording by remember { mutableStateOf<androidx.camera.video.Recording?>(null) }
     
+    val hasRequiredPermission = when (mode) {
+        RecordingMode.CAMERA -> cameraGranted
+        RecordingMode.FACELESS -> micGranted
+    }
+    val needsCameraForMode = mode == RecordingMode.CAMERA && !cameraGranted
+    val needsMicForFaceless = mode == RecordingMode.FACELESS && !micGranted
+    val needsMicForCameraRecording = mode == RecordingMode.CAMERA && !isAudioMuted && !micGranted
+    val isPermissionBlocked = needsCameraForMode || needsMicForFaceless
+
     val startRecordingAction: () -> Unit = {
         if (recordingState == RecordingState.IDLE) {
             if (mode == RecordingMode.FACELESS && !micGranted) {
@@ -163,7 +154,6 @@ fun SmartRecorderContent(
                 onRequestMic()
             } else {
                 viewModel.requestStartRecording {
-                    // Start CameraX
                     viewModel.prepareCameraRecordingFile { file ->
                         val outputOptions = FileOutputOptions.Builder(file).build()
                         val executor = ContextCompat.getMainExecutor(context)
@@ -202,21 +192,17 @@ fun SmartRecorderContent(
     val currentRecordingState by rememberUpdatedState(recordingState)
     val currentIsCountdownActive by rememberUpdatedState(isCountdownActive)
 
-    // MediaPipe Gesture Recognizer Setup
     val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
     val gestureListener = remember {
         object : GestureDetectorHelper.GestureListener {
             override fun onPalmDetected() {
                 mainExecutor.execute {
-                    // Start recording only if idle and no countdown active
                     if (currentRecordingState == RecordingState.IDLE && !currentIsCountdownActive) {
                         currentStartAction()
                     }
                 }
             }
-            override fun onError(error: String) {
-                // Silently ignore or log error
-            }
+            override fun onError(error: String) {}
         }
     }
 
@@ -225,7 +211,6 @@ fun SmartRecorderContent(
 
     LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
         if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA) {
-            // Load the ML model on a background thread so it doesn't freeze the UI
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 val helper = GestureDetectorHelper(context, gestureListener)
                 gestureHelper = helper
@@ -250,7 +235,6 @@ fun SmartRecorderContent(
         }
     }
 
-    // Lifecycle handling for backgrounding app during recording
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) {
@@ -290,11 +274,7 @@ fun SmartRecorderContent(
                     }
                 )
             } else {
-                PermissionOverlay(
-                    message = "Camera access is required for Camera Mode.",
-                    onRequest = onRequestCamera,
-                    onOpenSettings = onOpenSettings
-                )
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
             }
         } else {
             SmartRecorderFacelessPreview(
@@ -313,7 +293,6 @@ fun SmartRecorderContent(
         if (mode == RecordingMode.CAMERA && showGrid) {
             GridOverlay()
         }
-
 
         if (showTeleprompter) {
             if (mode == RecordingMode.FACELESS) {
@@ -352,7 +331,7 @@ fun SmartRecorderContent(
         }
 
         // --- 3. UI Controls ---
-        // Top Left: Close
+        // Close button — always visible
         IconButton(
             onClick = onNavigateBack,
             modifier = Modifier.padding(top = 48.dp, start = 16.dp).align(Alignment.TopStart)
@@ -360,7 +339,7 @@ fun SmartRecorderContent(
             Icon(FeatherIcons.X, contentDescription = "Close", tint = Color.White)
         }
 
-        // Top Center: Timer
+        // Top Center: Timer (only during recording)
         if (recordingState == RecordingState.RECORDING) {
             val minutes = elapsedSeconds / 60
             val seconds = elapsedSeconds % 60
@@ -387,91 +366,94 @@ fun SmartRecorderContent(
             }
         }
 
-        // Left Sidebar
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            SidebarButton(
-                icon = FeatherIcons.FileText,
-                text = stringResource(R.string.recorder_script),
-                isActive = showTeleprompter,
-                onClick = { viewModel.toggleTeleprompter() }
-            )
-            if (mode == RecordingMode.FACELESS && recordingState == RecordingState.IDLE) {
+        // Advanced controls — only visible when permission is granted
+        if (!isPermissionBlocked) {
+            // Left Sidebar
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 SidebarButton(
-                    icon = FeatherIcons.Image,
-                    text = stringResource(R.string.recorder_canvas),
-                    isActive = false,
-                    onClick = { showBgPicker = true }
+                    icon = FeatherIcons.FileText,
+                    text = stringResource(R.string.recorder_script),
+                    isActive = showTeleprompter,
+                    onClick = { viewModel.toggleTeleprompter() }
                 )
+                if (mode == RecordingMode.FACELESS && recordingState == RecordingState.IDLE) {
+                    SidebarButton(
+                        icon = FeatherIcons.Image,
+                        text = stringResource(R.string.recorder_canvas),
+                        isActive = false,
+                        onClick = { showBgPicker = true }
+                    )
+                }
+            }
+
+            // Right Sidebar
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (mode == RecordingMode.CAMERA && recordingState == RecordingState.IDLE) {
+                    SidebarButton(
+                        icon = FeatherIcons.RefreshCcw,
+                        text = stringResource(R.string.recorder_flip),
+                        onClick = {
+                            val current = cameraController.cameraSelector
+                            cameraController.cameraSelector = if (current == CameraSelector.DEFAULT_BACK_CAMERA) {
+                                CameraSelector.DEFAULT_FRONT_CAMERA
+                            } else {
+                                CameraSelector.DEFAULT_BACK_CAMERA
+                            }
+                        }
+                    )
+                    SidebarButton(
+                        icon = if (flashEnabled) FeatherIcons.Zap else FeatherIcons.ZapOff,
+                        text = stringResource(R.string.recorder_flash),
+                        isActive = flashEnabled,
+                        onClick = {
+                            flashEnabled = !flashEnabled
+                            cameraController.enableTorch(flashEnabled)
+                        }
+                    )
+                    SidebarButton(
+                        icon = FeatherIcons.Grid,
+                        text = stringResource(R.string.recorder_grid),
+                        isActive = showGrid,
+                        onClick = { viewModel.toggleGrid() }
+                    )
+                    SidebarButton(
+                        icon = Icons.Rounded.PanTool,
+                        text = stringResource(R.string.recorder_palm),
+                        isActive = isGestureDetectionEnabled,
+                        onClick = { viewModel.toggleGestureDetection() }
+                    )
+                }
+                if (recordingState == RecordingState.IDLE) {
+                    val timerText = if (countdownTimer == 0) stringResource(R.string.recorder_timer) else "${countdownTimer}s"
+                    SidebarButton(
+                        icon = FeatherIcons.Clock,
+                        text = timerText,
+                        isActive = countdownTimer > 0,
+                        onClick = {
+                            val next = when (countdownTimer) {
+                                0 -> 3
+                                3 -> 10
+                                else -> 0
+                            }
+                            viewModel.setCountdownTimer(next)
+                        }
+                    )
+                }
             }
         }
 
-        // Right Sidebar
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (mode == RecordingMode.CAMERA && recordingState == RecordingState.IDLE) {
-                SidebarButton(
-                    icon = FeatherIcons.RefreshCcw,
-                    text = stringResource(R.string.recorder_flip),
-                    onClick = {
-                        val current = cameraController.cameraSelector
-                        cameraController.cameraSelector = if (current == CameraSelector.DEFAULT_BACK_CAMERA) {
-                            CameraSelector.DEFAULT_FRONT_CAMERA
-                        } else {
-                            CameraSelector.DEFAULT_BACK_CAMERA
-                        }
-                    }
-                )
-                SidebarButton(
-                    icon = if (flashEnabled) FeatherIcons.Zap else FeatherIcons.ZapOff,
-                    text = stringResource(R.string.recorder_flash),
-                    isActive = flashEnabled,
-                    onClick = {
-                        flashEnabled = !flashEnabled
-                        cameraController.enableTorch(flashEnabled)
-                    }
-                )
-                SidebarButton(
-                    icon = FeatherIcons.Grid,
-                    text = stringResource(R.string.recorder_grid),
-                    isActive = showGrid,
-                    onClick = { viewModel.toggleGrid() }
-                )
-                SidebarButton(
-                    icon = Icons.Rounded.PanTool,
-                    text = stringResource(R.string.recorder_palm),
-                    isActive = isGestureDetectionEnabled,
-                    onClick = { viewModel.toggleGestureDetection() }
-                )
-            }
-            if (recordingState == RecordingState.IDLE) {
-                val timerText = if (countdownTimer == 0) "Timer" else "${countdownTimer}s"
-                SidebarButton(
-                    icon = FeatherIcons.Clock,
-                    text = timerText,
-                    isActive = countdownTimer > 0,
-                    onClick = {
-                        val next = when (countdownTimer) {
-                            0 -> 3
-                            3 -> 10
-                            else -> 0
-                        }
-                        viewModel.setCountdownTimer(next)
-                    }
-                )
-            }
-        }
-
-        // Bottom Area
+        // Bottom Area — always visible: mode selector + permission card or record button
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -479,40 +461,64 @@ fun SmartRecorderContent(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Mode selector — always visible
             if (recordingState == RecordingState.IDLE) {
-                // Mode Selector
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.padding(bottom = 24.dp).width(300.dp)) {
                     SegmentedButton(
                         selected = mode == RecordingMode.CAMERA,
                         onClick = { viewModel.setRecordingMode(RecordingMode.CAMERA) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        icon = {} // Disable default checkmark to prevent text clipping
+                        icon = {}
                     ) {
-                        Text("📷 Camera", fontSize = 14.sp, maxLines = 1)
+                        Text(stringResource(R.string.recorder_mode_camera), fontSize = 14.sp, maxLines = 1)
                     }
                     SegmentedButton(
                         selected = mode == RecordingMode.FACELESS,
                         onClick = { viewModel.setRecordingMode(RecordingMode.FACELESS) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        icon = {} // Disable default checkmark to prevent text clipping
+                        icon = {}
                     ) {
-                        Text("🎭 Faceless", fontSize = 14.sp, maxLines = 1)
+                        Text(stringResource(R.string.recorder_mode_faceless), fontSize = 14.sp, maxLines = 1)
                     }
                 }
             }
 
+            // Inline permission card when permission is blocked
+            if (isPermissionBlocked && recordingState == RecordingState.IDLE) {
+                val permIcon = if (needsCameraForMode) Icons.Rounded.Videocam else Icons.Rounded.Mic
+                val permMessage = if (needsCameraForMode) {
+                    stringResource(R.string.recorder_permission_camera)
+                } else {
+                    stringResource(R.string.recorder_permission_microphone)
+                }
+                PermissionRequestCard(
+                    icon = permIcon,
+                    message = permMessage,
+                    onRequest = if (needsCameraForMode) onRequestCamera else onRequestMic,
+                    onOpenSettings = onOpenSettings
+                )
+            }
+
+            // Audio visualizer for faceless recording
             if (mode == RecordingMode.FACELESS && recordingState == RecordingState.RECORDING) {
                 Box(modifier = Modifier.padding(bottom = 24.dp).height(32.dp).width(100.dp)) {
                     AudioVisualizerOverlay(amplitude = audioAmplitude)
                 }
             }
 
-            // Record Button
-            RecordButton(
-                isRecording = recordingState == RecordingState.RECORDING,
-                onClick = startRecordingAction
-            )
+            // Record button — visible when permission is granted (or during active recording)
+            if (!isPermissionBlocked || recordingState == RecordingState.RECORDING) {
+                RecordButton(
+                    isRecording = recordingState == RecordingState.RECORDING,
+                    onClick = startRecordingAction
+                )
+            }
         }
+    }
+
+    // Recorder onboarding sheet — shown once for first-time users
+    if (showRecorderOnboarding) {
+        RecorderOnboardingSheet(onDismiss = { viewModel.dismissRecorderOnboarding() })
     }
 
     if (showBgPicker) {

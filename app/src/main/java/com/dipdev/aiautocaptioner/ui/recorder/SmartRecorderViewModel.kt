@@ -65,7 +65,8 @@ data class SmartRecorderState(
     val audioAmplitude: Float = 0f,
     val isCountdownActive: Boolean = false,
     val countdownRemaining: Int = 0,
-    val isGestureDetectionEnabled: Boolean = false
+    val isGestureDetectionEnabled: Boolean = false,
+    val showRecorderOnboarding: Boolean = false
 ) : UiState
 
 @HiltViewModel
@@ -90,7 +91,18 @@ class SmartRecorderViewModel @Inject constructor(
     override fun handleEvent(event: UiEvent) {}
 
     init {
-        // No longer restoring mode asynchronously to prevent flicker
+        viewModelScope.launch {
+            settingsRepository.hasSeenRecorderOnboardingFlow.collect { seen ->
+                setState { copy(showRecorderOnboarding = !seen) }
+            }
+        }
+    }
+
+    fun dismissRecorderOnboarding() {
+        setState { copy(showRecorderOnboarding = false) }
+        viewModelScope.launch {
+            settingsRepository.setHasSeenRecorderOnboarding()
+        }
     }
 
     fun setRecordingMode(mode: RecordingMode) {

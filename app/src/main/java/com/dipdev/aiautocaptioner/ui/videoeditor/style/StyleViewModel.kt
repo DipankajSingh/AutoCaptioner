@@ -14,6 +14,8 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -195,17 +197,19 @@ class StyleViewModel @Inject constructor(
 
 
     private fun loadStyles(projectId: String) {
-        viewModelScope.launch {
-            val projectEntity = projectRepository.getProjectById(projectId)
+
+        loadStylesJob?.cancel()
+        loadStylesJob = viewModelScope.launch {
+            val projectEntity = projectRepository.getProjectById(projectId) ?: return@launch
             setState { copy(project = projectEntity) }
 
-            var styleIdPersisted = projectEntity?.activeStyleId != null
+            var styleIdPersisted = projectEntity.activeStyleId != null
 
             launch {
                 captionRepository.getAllStyles().collect { list ->
                     setState { copy(styles = list) }
                     if (uiState.value.activeStyle == null) {
-                        val activeId = projectEntity?.activeStyleId
+                        val activeId = projectEntity.activeStyleId
                         val resolvedStyle = if (activeId != null) {
                             list.find { it.id == activeId } ?: list.firstOrNull()
                         } else {
@@ -216,14 +220,12 @@ class StyleViewModel @Inject constructor(
                         // Persist activeStyleId once so export always has it
                         if (resolvedStyle != null && !styleIdPersisted) {
                             styleIdPersisted = true
-                            projectEntity?.let { proj ->
-                                projectRepository.updateProject(
-                                    proj.copy(
-                                        activeStyleId = resolvedStyle.id,
-                                        updatedAt = System.currentTimeMillis()
-                                    )
+                            projectRepository.updateProject(
+                                projectEntity.copy(
+                                    activeStyleId = resolvedStyle.id,
+                                    updatedAt = System.currentTimeMillis()
                                 )
-                            }
+                            )
                         }
                     }
                 }
@@ -245,10 +247,64 @@ class StyleViewModel @Inject constructor(
 
         // The preview component handles playback position locally now
 
+    private var autoSaveJob: Job? = null
+    private var loadStylesJob: Job? = null
+
+    /**
+     * Schedules a debounced DB write so that any style change (position drag,
+     * font size, etc.) survives back-navigation without the user tapping
+     * "Save & Apply".
+     *
+     * Strategy:
+     *  - If [style] is an unmodified default preset (still has its original ID),
+     *    just update [ProjectEntity.activeStyleId] to point at it.
+     *  - Otherwise, upsert a stable draft row (id = "draft_<projectId>") so
+     *    we never accumulate infinite custom rows on every slider drag.
+     */
+    private fun scheduleAutoSave(style: CaptionStyleEntity) {
+        autoSaveJob?.cancel()
+        autoSaveJob = viewModelScope.launch {
+            delay(500L) // debounce — only save after user stops editing
+            val projectId = uiState.value.project?.id ?: return@launch
+            val isUnmodifiedPreset = style.isDefault
+
+            val styleToLink = if (isUnmodifiedPreset) {
+                style
+            } else {
+                val draftId = "draft_$projectId"
+                val draft = style.copy(
+                    id = draftId,
+                    name = "Draft",
+                    isDefault = false
+                )
+                captionRepository.saveStyle(draft)
+                draft
+            }
+
+            val project = projectRepository.getProjectById(projectId) ?: return@launch
+            projectRepository.updateProject(
+                project.copy(
+                    activeStyleId = styleToLink.id,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
     private fun selectPreset(style: CaptionStyleEntity) {
         pushState("preset")
-        setState {
-            copy(activeStyle = style)
+        setState { copy(activeStyle = style) }
+        // Immediately persist the selected preset so Back doesn't lose it.
+        // No draft needed — the preset already exists in the DB.
+        viewModelScope.launch {
+            val projectId = uiState.value.project?.id ?: return@launch
+            val project = projectRepository.getProjectById(projectId) ?: return@launch
+            projectRepository.updateProject(
+                project.copy(
+                    activeStyleId = style.id,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
         }
     }
 
@@ -273,6 +329,8 @@ class StyleViewModel @Inject constructor(
         }
         
         setState { copy(activeStyle = style) }
+        // Auto-save any property change debounced so Back doesn't lose it
+        scheduleAutoSave(style)
     }
 
     private fun saveAndApply(projectId: String) {
@@ -323,6 +381,11 @@ class StyleViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        autoSaveJob?.cancel()
     }
 }
 

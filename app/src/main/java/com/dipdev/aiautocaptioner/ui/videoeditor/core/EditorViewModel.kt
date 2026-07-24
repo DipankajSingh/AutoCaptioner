@@ -86,6 +86,7 @@ sealed class VideoEditorUiEffect : UiEffect {
 }
 
 @HiltViewModel
+@androidx.annotation.OptIn(UnstableApi::class)
 class EditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
@@ -100,7 +101,7 @@ class EditorViewModel @Inject constructor(
     private val _selectedOverlayId = MutableStateFlow<String?>(null)
     val selectedOverlayId = _selectedOverlayId.asStateFlow()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
     val overlays: StateFlow<List<ImageOverlayEntity>> = projectIdFlow
         .flatMapLatest { id ->
             if (id != null) overlayRepository.getOverlaysForProject(id)

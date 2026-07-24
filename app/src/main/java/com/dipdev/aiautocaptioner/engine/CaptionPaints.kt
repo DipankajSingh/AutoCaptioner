@@ -27,6 +27,8 @@ object BundledFonts {
         FontEntry("Pacifico", "fonts/pacifico.ttf", FontCategory.HANDWRITTEN),
         FontEntry("Permanent Marker", "fonts/permanent_marker.ttf", FontCategory.HANDWRITTEN),
         FontEntry("Roboto", "", FontCategory.SANS_SERIF),
+        FontEntry("Space Mono", "fonts/space_mono.ttf", FontCategory.MONOSPACE),
+        FontEntry("Playfair Display", "fonts/playfair_display.ttf", FontCategory.SERIF),
     )
 
     /** Display names for the font picker — in UI order. */
@@ -88,8 +90,18 @@ object CaptionPaints {
             strokeJoin    = Paint.Join.ROUND
             flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
             textLocale    = java.util.Locale.ROOT
-            clearShadowLayer()
-            // Glow mask — applied during background pass, cleared for fill
+            // Shadow on text paint: only used when there is NO outline, so the text
+            // paint itself is what's drawn in Pass 1 (the shadow pass).
+            if (style.outlineWidth == 0f && style.shadowRadius > 0f) {
+                setShadowLayer(
+                    style.shadowRadius * baseScale,
+                    style.shadowOffsetX * baseScale,
+                    style.shadowOffsetY * baseScale,
+                    style.shadowColor.toInt()
+                )
+            } else {
+                clearShadowLayer()
+            }
             maskFilter = null
         }
 
@@ -104,7 +116,18 @@ object CaptionPaints {
             letterSpacing = style.letterSpacing
             flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
             textLocale    = java.util.Locale.ROOT
-            clearShadowLayer()
+            // Shadow on the outline paint: this is the correct place for drop-shadows
+            // when an outline exists, because outline is drawn in Pass 1 (behind fill).
+            if (style.outlineWidth > 0f && style.shadowRadius > 0f) {
+                setShadowLayer(
+                    style.shadowRadius * baseScale,
+                    style.shadowOffsetX * baseScale,
+                    style.shadowOffsetY * baseScale,
+                    style.shadowColor.toInt()
+                )
+            } else {
+                clearShadowLayer()
+            }
         }
 
         bg.apply {

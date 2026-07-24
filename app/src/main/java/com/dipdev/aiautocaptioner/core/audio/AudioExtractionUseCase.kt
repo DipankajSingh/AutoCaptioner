@@ -89,7 +89,7 @@ class AudioExtractionUseCase @Inject constructor(
                             outputBuffer.clear()
                             
                             val pcmEncoding = if (audioFormat?.containsKey(MediaFormat.KEY_PCM_ENCODING) == true) {
-                                audioFormat?.getInteger(MediaFormat.KEY_PCM_ENCODING) ?: android.media.AudioFormat.ENCODING_PCM_16BIT
+                                audioFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
                             } else {
                                 android.media.AudioFormat.ENCODING_PCM_16BIT
                             }

@@ -62,12 +62,4 @@ fun SmartRecorderFacelessPreview(
             )
         }
     }
-
-    if (!micGranted) {
-        PermissionOverlay(
-            message = "Microphone access is required for Faceless Mode.",
-            onRequest = onRequestMic,
-            onOpenSettings = onOpenSettings
-        )
-    }
 }

@@ -43,4 +43,18 @@ interface CaptionStyleDao {
     // Get names of all default styles — used to skip already-seeded presets
     @Query("SELECT name FROM caption_styles WHERE isDefault = 1")
     suspend fun getDefaultStyleNames(): List<String>
+
+    /**
+     * Patch layout-critical fields on an existing default style identified by name.
+     * Called during [CaptionRepository.initializeDefaultStyles] so that already-seeded
+     * rows are updated to the latest preset values without resetting any fields the
+     * user may have customised (font, color, position, etc.).
+     */
+    @Query("""
+        UPDATE caption_styles
+        SET maxWordsPerLine = :maxWordsPerLine,
+            maxLines        = :maxLines
+        WHERE name = :name AND isDefault = 1
+    """)
+    suspend fun patchDefaultStyleLayout(name: String, maxWordsPerLine: Int, maxLines: Int)
 }

@@ -421,6 +421,8 @@
     <string name="style_to_en_badge">→ EN</string>
     <string name="style_regenerate">Regenerate</string>
     <string name="style_generate">Generate</string>
+    <string name="style_empty_title">No captions yet</string>
+    <string name="style_empty_subtitle">Generate AI captions from your video\'s audio to make it engaging and accessible.</string>
     <string name="style_adjust_expand">▾ Adjust</string>
     <string name="style_adjust_collapse">▸ Adjust</string>
     <string name="style_size">Size</string>
@@ -513,6 +515,20 @@
     <string name="recorder_flash">Flash</string>
     <string name="recorder_grid">Grid</string>
     <string name="recorder_palm">Palm</string>
+    <string name="recorder_timer">Timer</string>
+    <string name="recorder_mode_camera">Camera</string>
+    <string name="recorder_mode_faceless">Faceless</string>
+    <string name="recorder_grant_permission">Grant Permission</string>
+    <string name="recorder_open_settings">Open Settings</string>
+    <string name="recorder_permission_camera">Camera access is needed to record video in Camera mode.</string>
+    <string name="recorder_permission_microphone">Microphone access is needed to record audio in Faceless mode.</string>
+    <string name="recorder_onboarding_title">Smart Recorder</string>
+    <string name="recorder_onboarding_subtitle">Choose how you want to create your video</string>
+    <string name="recorder_onboarding_camera_title">Camera Mode</string>
+    <string name="recorder_onboarding_camera_desc">Record yourself with the camera. Perfect for talking-head videos, tutorials, and vlogs.</string>
+    <string name="recorder_onboarding_faceless_title">Faceless Mode</string>
+    <string name="recorder_onboarding_faceless_desc">Record audio-only with a custom background. Great for narrations and voiceovers.</string>
+    <string name="recorder_onboarding_got_it">Got it</string>
 
     <!-- Device Check Screen -->
     <string name="device_check_title_screen">Choose Your AI Model</string>
@@ -531,10 +547,14 @@
 
     <!-- Welcome / Onboarding -->
     <string name="welcome_brand">AutoCaptioner</string>
-    <string name="welcome_tagline">Captions that keep\nviewers watching</string>
-    <string name="welcome_subtitle">Generated in seconds, right on your phone.</string>
-    <string name="welcome_get_started">Get Started</string>
+    <string name="welcome_tagline_1">Words that stop the scroll.</string>
+    <string name="welcome_tagline_2">Your style. Your rules.</string>
+    <string name="welcome_subtitle_detail">Record, import, or go faceless — captions in 60 seconds</string>
+    <string name="welcome_get_started">Create Your First Video</string>
     <string name="welcome_terms">By continuing, you agree to our Terms of Service and Privacy Policy</string>
+    <string name="welcome_caption_demo_this">this</string>
+    <string name="welcome_caption_demo_actually">actually</string>
+    <string name="welcome_caption_demo_works">WORKS</string>
 
     <!-- Export History -->
     <string name="export_history_label">Exported Video</string>

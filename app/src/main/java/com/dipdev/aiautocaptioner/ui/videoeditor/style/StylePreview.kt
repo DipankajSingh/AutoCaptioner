@@ -36,6 +36,8 @@ fun StylePreview(
     wordsMap: Map<String, List<CaptionWordEntity>>,
     durationMs: Long,
     exoPlayer: ExoPlayer?,
+    videoWidth: Int = 1080,
+    videoHeight: Int = 1920,
     onPositionXChange: (Float) -> Unit,
     onPositionYChange: (Float) -> Unit,
     onSeek: (Long) -> Unit
@@ -47,15 +49,20 @@ fun StylePreview(
     // Poll playback position on every frame when playing; slow-poll when paused
     LaunchedEffect(exoPlayer) {
         while (true) {
-            if (exoPlayer.isPlaying) {
-                // Sync position every display frame while playing
-                withFrameMillis {
+            try {
+                if (exoPlayer.isPlaying) {
+                    // Sync position every display frame while playing
+                    withFrameMillis {
+                        currentPositionMs = exoPlayer.currentPosition
+                    }
+                } else {
+                    // Paused — one update then sleep to avoid constant recomposition
                     currentPositionMs = exoPlayer.currentPosition
+                    delay(250.milliseconds)
                 }
-            } else {
-                // Paused — one update then sleep to avoid constant recomposition
-                currentPositionMs = exoPlayer.currentPosition
-                delay(250.milliseconds)
+            } catch (e: IllegalStateException) {
+                // Player was released while loop was waiting
+                break
             }
         }
     }
@@ -96,7 +103,7 @@ fun StylePreview(
 
             Canvas(modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                .pointerInput("drag-vertical") {
                     detectVerticalDragGestures { change, dragAmount ->
                         change.consume()
                         val heightPixels = size.height.toFloat()
@@ -104,7 +111,7 @@ fun StylePreview(
                         onPositionYChange(newRatio)
                     }
                 }
-                .pointerInput(Unit) {
+                .pointerInput("drag-horizontal") {
                     detectHorizontalDragGestures { change, dragAmount ->
                         change.consume()
                         val widthPixels = size.width.toFloat()
@@ -114,16 +121,30 @@ fun StylePreview(
                 }
             ) {
                 drawIntoCanvas { canvas ->
+                    // Scale the caption coordinate space (which is in video pixels) down
+                    // to fit the preview box — same letterbox math as PreviewSection.
+                    val containerW = size.width
+                    val containerH = size.height
+                    val vw = videoWidth.toFloat()
+                    val vh = videoHeight.toFloat()
+                    val scale = minOf(containerW / vw, containerH / vh)
+                    val offsetX = (containerW - vw * scale) / 2f
+                    val offsetY = (containerH - vh * scale) / 2f
+                    val native = canvas.nativeCanvas
+                    native.save()
+                    native.translate(offsetX, offsetY)
+                    native.scale(scale, scale)
                     CaptionRenderer.draw(
                         context = context,
-                        canvas = canvas.nativeCanvas,
+                        canvas = native,
                         currentPositionMs = currentPositionMs,
-                        videoWidth = size.width.toInt(),
-                        videoHeight = size.height.toInt(),
+                        videoWidth = videoWidth,
+                        videoHeight = videoHeight,
                         style = style,
                         segments = segments,
                         wordsMap = wordsMap
                     )
+                    native.restore()
                 }
             }
         }
