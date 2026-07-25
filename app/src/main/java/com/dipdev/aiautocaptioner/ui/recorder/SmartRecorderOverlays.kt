@@ -1,9 +1,19 @@
 package com.dipdev.aiautocaptioner.ui.recorder
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -13,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
@@ -23,12 +34,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import kotlin.random.Random
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import kotlinx.coroutines.launch
 
 @Composable
 fun GridOverlay() {
@@ -48,7 +59,7 @@ fun AudioVisualizerOverlay(amplitude: Float) {
     val baseColor = when {
         safeAmplitude > 0.85f -> Color.Red
         safeAmplitude < 0.15f -> Color.Yellow
-        else -> AccentCyan
+        else -> AccentRose
     }
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -122,7 +133,7 @@ fun RecorderOnboardingSheet(
                 icon = Icons.Rounded.Videocam,
                 title = stringResource(R.string.recorder_onboarding_camera_title),
                 description = stringResource(R.string.recorder_onboarding_camera_desc),
-                accentColor = AccentCyan
+                accentColor = AccentRose
             )
             Spacer(modifier = Modifier.height(12.dp))
             ModeInfoCard(
@@ -139,7 +150,7 @@ fun RecorderOnboardingSheet(
                     .fillMaxWidth()
                     .height(52.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentCyan,
+                    containerColor = AccentRose,
                     contentColor = Color.Black
                 ),
                 shape = RoundedCornerShape(14.dp)
@@ -206,8 +217,10 @@ private fun ModeInfoCard(
 fun PermissionRequestCard(
     icon: ImageVector,
     message: String,
+    permanentlyDenied: Boolean,
     onRequest: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onPrivacyPolicy: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -242,27 +255,183 @@ fun PermissionRequestCard(
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(18.dp))
-            Button(
-                onClick = onRequest,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentCyan,
-                    contentColor = Color.Black
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.recorder_grant_permission),
-                    fontWeight = FontWeight.SemiBold
-                )
+            if (permanentlyDenied) {
+                Button(
+                    onClick = onOpenSettings,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentRose,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.recorder_open_settings),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onRequest,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentRose,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.recorder_grant_permission),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onOpenSettings) {
+            TextButton(onClick = onPrivacyPolicy) {
                 Text(
-                    text = stringResource(R.string.recorder_open_settings),
-                    color = Color.White.copy(alpha = 0.6f),
+                    text = stringResource(R.string.settings_privacy_policy),
+                    color = Color.White.copy(alpha = 0.5f),
                     style = MaterialTheme.typography.labelMedium
                 )
             }
         }
+    }
+}
+
+@Composable
+fun RecordingIndicator(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "rec_pulse")
+    val pulseFraction by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseFraction"
+    )
+    val pulseAlpha = 0.25f + (1f - pulseFraction) * 0.75f
+
+    Box(modifier = modifier.fillMaxSize()) {
+        // Pulsing red border
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(3.dp, AccentRose.copy(alpha = pulseAlpha))
+        )
+
+        // REC badge — top right
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 52.dp, end = 16.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.5f))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(AccentRose.copy(alpha = pulseAlpha))
+            )
+            Text(
+                text = stringResource(R.string.rec_rec),
+                color = AccentRose.copy(alpha = pulseAlpha),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun PausedIndicator(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pause_blink")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pauseAlpha"
+    )
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(3.dp, Color.White.copy(alpha = 0.4f))
+        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 52.dp, end = 16.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.5f))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = alpha))
+            )
+            Text(
+                text = stringResource(R.string.rec_paused),
+                color = Color.White.copy(alpha = alpha),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedCountdown(
+    value: Int,
+    modifier: Modifier = Modifier
+) {
+    val scale = remember { Animatable(0.5f) }
+    val alpha = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(value) {
+        scale.snapTo(0.5f)
+        alpha.snapTo(1f)
+        coroutineScope.launch {
+            scale.animateTo(1.4f, tween(700, easing = FastOutSlowInEasing))
+        }
+        coroutineScope.launch {
+            alpha.animateTo(0f, tween(700, easing = LinearEasing))
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.displayLarge.copy(fontSize = 120.sp),
+            color = Color.White.copy(alpha = alpha.value),
+            modifier = Modifier.graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+            }
+        )
     }
 }

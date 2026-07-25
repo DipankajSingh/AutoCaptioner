@@ -59,7 +59,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
@@ -241,7 +240,7 @@ fun CustomPaywallDialog(
                             icon = FeatherIcons.Zap,
                             title = "Karaoke & Word Highlight",
                             subtitle = "Words light up as they're spoken",
-                            accentColor = AccentCyan,
+                            accentColor = AccentRose,
                             textPrimary = textPrimary,
                             textSecondary = textSecondary
                         )

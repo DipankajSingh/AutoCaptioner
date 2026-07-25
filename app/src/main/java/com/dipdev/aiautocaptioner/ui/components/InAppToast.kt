@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import compose.icons.FeatherIcons
@@ -62,7 +63,8 @@ fun InAppToast(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 64.dp, start = 16.dp, end = 16.dp),
+            .statusBarsPadding()
+            .padding(top = 16.dp, start = 16.dp, end = 16.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         AnimatedVisibility(
@@ -91,7 +93,8 @@ fun InAppToast(
                         text = message,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 2
                     )
                 }
             }

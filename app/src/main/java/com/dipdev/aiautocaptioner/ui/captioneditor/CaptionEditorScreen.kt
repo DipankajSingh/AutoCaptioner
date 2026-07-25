@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -223,8 +222,8 @@ fun CaptionEditorScreen(
                         onClick = { onNavigateToExport(projectId) },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentAmber,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     ) {
                         Text(stringResource(R.string.caption_export_video), maxLines = 1)
@@ -245,7 +244,6 @@ fun CaptionEditorScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 2.dp)
-                        .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(8.dp))
                 )
             }
@@ -320,10 +318,11 @@ fun CaptionEditorScreen(
     } // end CompositionLocalProvider
 
     if (showJumpDialog) {
-        AlertDialog(
+        com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+            type = com.dipdev.aiautocaptioner.ui.components.DialogType.INFO,
             onDismissRequest = { showJumpDialog = false },
-            title = { Text(stringResource(R.string.caption_jump_time)) },
-            text = {
+            title = stringResource(R.string.caption_jump_time),
+            content = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -347,34 +346,26 @@ fun CaptionEditorScreen(
                     )
                 }
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val m = jumpMinutes.toLongOrNull() ?: 0L
-                        val s = jumpSeconds.toLongOrNull() ?: 0L
-                        val targetMs = (m * 60 + s) * 1000
+            confirmText = stringResource(R.string.caption_jump),
+            onConfirm = {
+                val m = jumpMinutes.toLongOrNull() ?: 0L
+                val s = jumpSeconds.toLongOrNull() ?: 0L
+                val targetMs = (m * 60 + s) * 1000
 
-                        val targetIndex = filteredSegments.indexOfFirst { it.startTimeMs >= targetMs }.let {
-                            if (it == -1) filteredSegments.size - 1 else it
-                        }
-                        
-                        if (targetIndex >= 0) {
-                            coroutineScope.launch {
-                                // +1 because the first item in LazyColumn is the header text
-                                listState.animateScrollToItem(targetIndex + 1)
-                            }
-                        }
-                        showJumpDialog = false
+                val targetIndex = filteredSegments.indexOfFirst { it.startTimeMs >= targetMs }.let {
+                    if (it == -1) filteredSegments.size - 1 else it
+                }
+                
+                if (targetIndex >= 0) {
+                    coroutineScope.launch {
+                        // +1 because the first item in LazyColumn is the header text
+                        listState.animateScrollToItem(targetIndex + 1)
                     }
-                ) {
-                    Text(stringResource(R.string.caption_jump))
                 }
+                showJumpDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showJumpDialog = false }) {
-                    Text(stringResource(R.string.caption_cancel))
-                }
-            }
+            dismissText = stringResource(R.string.caption_cancel),
+            onDismiss = { showJumpDialog = false }
         )
     }
 

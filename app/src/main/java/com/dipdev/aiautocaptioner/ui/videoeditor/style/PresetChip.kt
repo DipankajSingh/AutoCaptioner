@@ -129,7 +129,7 @@ fun PresetChip(
                     modifier = Modifier
                         .matchParentSize()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1A1A2E))
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
                     if (hasBackground) {
                         drawRoundRect(
@@ -164,7 +164,7 @@ fun PresetChip(
                             Icon(
                                 imageVector = Icons.Filled.Check,
                                 contentDescription = stringResource(R.string.style_selected),
-                                tint = Color(0xFF1A1A2E),
+                                tint = MaterialTheme.colorScheme.surface,
                                 modifier = Modifier.size(14.dp)
                             )
                         }

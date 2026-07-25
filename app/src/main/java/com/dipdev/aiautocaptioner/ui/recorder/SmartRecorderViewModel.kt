@@ -5,18 +5,16 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.viewModelScope
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.engine.FacelessVideoRecorder
+import com.dipdev.aiautocaptioner.ui.recorder.model.AspectRatio
+import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingQuality
+import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingSegment
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Job
@@ -30,7 +28,7 @@ enum class RecordingMode {
 }
 
 enum class RecordingState {
-    IDLE, RECORDING, DONE
+    IDLE, RECORDING, PAUSED, DONE
 }
 
 sealed class BackgroundState {
@@ -44,19 +42,19 @@ sealed class BackgroundState {
     data class Gradient(val colors: List<Color>) : BackgroundState()
 }
 
-
 data class SmartRecorderState(
     val recordingMode: RecordingMode = RecordingMode.CAMERA,
     val selectedBackground: BackgroundState = BackgroundState.Gradient(
         listOf(
-            Color(0xFF4158D0.toInt()), 
-            Color(0xFFC850C0.toInt()), 
+            Color(0xFF4158D0.toInt()),
+            Color(0xFFC850C0.toInt()),
             Color(0xFFFFCC70.toInt())
         )
     ),
     val recordingState: RecordingState = RecordingState.IDLE,
     val elapsedSeconds: Int = 0,
     val finishedProjectId: String? = null,
+    val finishedVideoFile: File? = null,
     val isAudioMuted: Boolean = false,
     val showGrid: Boolean = false,
     val countdownTimer: Int = 0,
@@ -66,7 +64,12 @@ data class SmartRecorderState(
     val isCountdownActive: Boolean = false,
     val countdownRemaining: Int = 0,
     val isGestureDetectionEnabled: Boolean = false,
-    val showRecorderOnboarding: Boolean = false
+    val showRecorderOnboarding: Boolean = false,
+    val aspectRatio: AspectRatio = AspectRatio.PORTRAIT_9_16,
+    val recordingQuality: RecordingQuality = RecordingQuality.MEDIUM,
+    val showExitDialog: Boolean = false,
+    val segments: List<RecordingSegment> = emptyList(),
+    val currentSegmentStartMs: Long = 0L
 ) : UiState
 
 @HiltViewModel
@@ -80,13 +83,13 @@ class SmartRecorderViewModel @Inject constructor(
     )
 ) {
 
-
-
     private var facelessRecorder: FacelessVideoRecorder? = null
     private var timerJob: Job? = null
-    
+
     private var currentProjectId: String? = null
     private var currentOutputFile: File? = null
+
+    private var recordingStartTimeMs: Long = 0L
 
     override fun handleEvent(event: UiEvent) {}
 
@@ -94,6 +97,16 @@ class SmartRecorderViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.hasSeenRecorderOnboardingFlow.collect { seen ->
                 setState { copy(showRecorderOnboarding = !seen) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.lastAspectRatioFlow.collect { name ->
+                setState { copy(aspectRatio = AspectRatio.fromName(name)) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.lastRecordingQualityFlow.collect { name ->
+                setState { copy(recordingQuality = RecordingQuality.fromName(name)) }
             }
         }
     }
@@ -114,6 +127,24 @@ class SmartRecorderViewModel @Inject constructor(
         }
     }
 
+    fun cycleAspectRatio() {
+        if (currentState.recordingState != RecordingState.IDLE) return
+        val next = AspectRatio.cycle(currentState.aspectRatio)
+        setState { copy(aspectRatio = next) }
+        viewModelScope.launch {
+            settingsRepository.setLastAspectRatio(next.name)
+        }
+    }
+
+    fun cycleRecordingQuality() {
+        if (currentState.recordingState != RecordingState.IDLE) return
+        val next = RecordingQuality.cycle(currentState.recordingQuality)
+        setState { copy(recordingQuality = next) }
+        viewModelScope.launch {
+            settingsRepository.setLastRecordingQuality(next.name)
+        }
+    }
+
     fun updateImageTransform(scale: Float, offsetX: Float, offsetY: Float) {
         val currentBg = currentState.selectedBackground
         if (currentBg is BackgroundState.ImageBitmap) {
@@ -124,7 +155,7 @@ class SmartRecorderViewModel @Inject constructor(
     fun setSelectedBackground(bg: BackgroundState) {
         setState { copy(selectedBackground = bg) }
     }
-    
+
     fun toggleAudioMuted() {
         setState { copy(isAudioMuted = !currentState.isAudioMuted) }
     }
@@ -135,13 +166,50 @@ class SmartRecorderViewModel @Inject constructor(
     fun updateTeleprompterText(text: String) { setState { copy(teleprompterText = text) } }
     fun toggleGestureDetection() { setState { copy(isGestureDetectionEnabled = !currentState.isGestureDetectionEnabled) } }
 
+    fun requestExitRecording() {
+        val state = currentState.recordingState
+        if (state == RecordingState.IDLE || state == RecordingState.DONE) return
+        setState { copy(showExitDialog = true) }
+    }
+
+    fun dismissExitDialog() {
+        setState { copy(showExitDialog = false) }
+    }
+
+    fun saveAndExit() {
+        setState { copy(showExitDialog = false) }
+        stopRecording()
+    }
+
+    fun discardRecording() {
+        setState { copy(showExitDialog = false) }
+        val projectId = currentProjectId
+        viewModelScope.launch {
+            if (projectId != null) {
+                try { projectRepository.deleteProject(projectId) } catch (_: Exception) {}
+            }
+        }
+        currentProjectId = null
+        currentOutputFile = null
+        facelessRecorder?.stop()
+        facelessRecorder = null
+        stopTimer()
+        setState {
+            copy(
+                recordingState = RecordingState.IDLE,
+                elapsedSeconds = 0,
+                segments = emptyList(),
+                currentSegmentStartMs = 0L
+            )
+        }
+    }
+
     fun requestStartRecording(onProceedToCameraX: () -> Unit) {
         if (currentState.recordingState != RecordingState.IDLE || currentState.isCountdownActive) return
-        
+
         val timer = currentState.countdownTimer
         if (timer > 0) {
-            setState { copy(isCountdownActive = true) }
-            setState { copy(countdownRemaining = timer) }
+            setState { copy(isCountdownActive = true, countdownRemaining = timer) }
             viewModelScope.launch {
                 for (i in timer downTo 1) {
                     setState { copy(countdownRemaining = i) }
@@ -165,13 +233,12 @@ class SmartRecorderViewModel @Inject constructor(
 
     private fun startFacelessRecordingInternal() {
         if (currentState.recordingState != RecordingState.IDLE) return
-        
+
         viewModelScope.launch {
-            // Allocate directly to project directory
             val (projectId, outputFile) = projectRepository.createEmptyProjectForRecording()
             currentProjectId = projectId
             currentOutputFile = outputFile
-            
+
             facelessRecorder = FacelessVideoRecorder()
 
             val bgState = currentState.selectedBackground
@@ -181,14 +248,19 @@ class SmartRecorderViewModel @Inject constructor(
             val offsetY = (bgState as? BackgroundState.ImageBitmap)?.offsetY ?: 0f
             val color = (bgState as? BackgroundState.SolidColor)?.color?.toArgb()
             val gradientColors = (bgState as? BackgroundState.Gradient)?.colors?.map { it.toArgb() }
-            
-            val bgType = if (bgState is BackgroundState.ImageBitmap) "image" else "color"
-            val bgValue = color?.toString() ?: "" // Simple representation
 
-            setState { copy(recordingState = RecordingState.RECORDING) }
+            val quality = currentState.recordingQuality
+            val ratio = currentState.aspectRatio
+
+            setState { copy(recordingState = RecordingState.RECORDING, segments = emptyList(), currentSegmentStartMs = System.currentTimeMillis()) }
             startTimer()
 
             facelessRecorder?.start(
+                width = ratio.width,
+                height = ratio.height,
+                fps = quality.fps,
+                videoBitrate = quality.videoBitrate,
+                audioBitrate = quality.audioBitrate,
                 backgroundBitmap = bitmap,
                 backgroundColor = color,
                 gradientColors = gradientColors,
@@ -197,12 +269,28 @@ class SmartRecorderViewModel @Inject constructor(
                 offsetY = offsetY,
                 outputFile = outputFile,
                 onComplete = { file ->
-                    finalizeRecording(projectId, file, bgType, bgValue)
+                    val pId = currentProjectId ?: return@start
+                    finalizeRecording(pId, file, null, null)
                 },
                 onError = { e ->
                     e.printStackTrace()
-                    setState { copy(recordingState = RecordingState.IDLE) }
+                    val pId = currentProjectId
+                    if (pId != null) {
+                        viewModelScope.launch {
+                            try { projectRepository.deleteProject(pId) } catch (_: Exception) {}
+                        }
+                    }
+                    currentProjectId = null
+                    currentOutputFile = null
                     stopTimer()
+                    setState {
+                        copy(
+                            recordingState = RecordingState.IDLE,
+                            elapsedSeconds = 0,
+                            segments = emptyList(),
+                            currentSegmentStartMs = 0L
+                        )
+                    }
                 },
                 onAmplitude = { amp ->
                     setState { copy(audioAmplitude = amp) }
@@ -211,13 +299,46 @@ class SmartRecorderViewModel @Inject constructor(
         }
     }
 
+    fun pauseRecording() {
+        val state = currentState.recordingState
+        if (state != RecordingState.RECORDING) return
+
+        val elapsed = System.currentTimeMillis() - currentState.currentSegmentStartMs
+        val newSegment = RecordingSegment(
+            index = currentState.segments.size + 1,
+            durationMs = elapsed
+        )
+
+        if (currentState.recordingMode == RecordingMode.FACELESS) {
+            facelessRecorder?.pause()
+        }
+
+        stopTimer()
+        setState {
+            copy(
+                recordingState = RecordingState.PAUSED,
+                segments = segments + newSegment
+            )
+        }
+    }
+
+    fun resumeRecording() {
+        if (currentState.recordingState != RecordingState.PAUSED) return
+
+        if (currentState.recordingMode == RecordingMode.FACELESS) {
+            facelessRecorder?.resume()
+        }
+
+        setState { copy(recordingState = RecordingState.RECORDING, currentSegmentStartMs = System.currentTimeMillis()) }
+        startTimer()
+    }
+
     fun stopFacelessRecording() {
-        if (currentState.recordingState == RecordingState.RECORDING) {
+        if (currentState.recordingState == RecordingState.RECORDING || currentState.recordingState == RecordingState.PAUSED) {
             facelessRecorder?.stop()
         }
     }
-    
-    // For CameraX: Creates the file upfront so UI can configure output options
+
     fun prepareCameraRecordingFile(onReady: (File) -> Unit) {
         viewModelScope.launch {
             val (projectId, outputFile) = projectRepository.createEmptyProjectForRecording()
@@ -228,7 +349,13 @@ class SmartRecorderViewModel @Inject constructor(
     }
 
     fun onCameraRecordingStarted() {
-        setState { copy(recordingState = RecordingState.RECORDING) }
+        setState {
+            copy(
+                recordingState = RecordingState.RECORDING,
+                segments = emptyList(),
+                currentSegmentStartMs = System.currentTimeMillis()
+            )
+        }
         startTimer()
     }
 
@@ -244,47 +371,82 @@ class SmartRecorderViewModel @Inject constructor(
     }
 
     fun onCameraRecordingError() {
-        setState { copy(recordingState = RecordingState.IDLE) }
+        val pId = currentProjectId
+        if (pId != null) {
+            viewModelScope.launch {
+                try { projectRepository.deleteProject(pId) } catch (_: Exception) {}
+            }
+        }
+        currentProjectId = null
+        currentOutputFile = null
         stopTimer()
-    }
-    
-    fun stopRecording() {
-        if (currentState.recordingMode == RecordingMode.FACELESS) {
-            stopFacelessRecording()
-        } else {
-            // CameraX is stopped from UI, but if we need a forced stop from VM:
-            // The UI should really handle stopping CameraX.
-            // We just let the UI call UI-side stop.
+        setState {
+            copy(
+                recordingState = RecordingState.IDLE,
+                elapsedSeconds = 0,
+                segments = emptyList(),
+                currentSegmentStartMs = 0L
+            )
         }
     }
-    
-    private fun finalizeRecording(projectId: String, file: File, bgType: String?, bgValue: String?) {
-        viewModelScope.launch {
-            val result = projectRepository.finalizeRecordedProject(projectId, file, bgType, bgValue)
-            if (result.isSuccess) {
-                setState { copy(recordingState = RecordingState.DONE) }
-                setState { copy(finishedProjectId = result.getOrNull()) }
-            } else {
-                setState { copy(recordingState = RecordingState.IDLE) }
-            }
+
+    fun stopRecording() {
+        if (currentState.recordingState == RecordingState.IDLE || currentState.recordingState == RecordingState.DONE) return
+        if (currentState.recordingMode == RecordingMode.FACELESS) {
+            facelessRecorder?.stop()
         }
     }
 
     fun resetState() {
-        setState { copy(recordingState = RecordingState.IDLE) }
-        setState { copy(finishedProjectId = null) }
-        setState { copy(elapsedSeconds = 0) }
+        setState {
+            copy(
+                recordingState = RecordingState.IDLE,
+                finishedProjectId = null,
+                finishedVideoFile = null,
+                elapsedSeconds = 0,
+                segments = emptyList(),
+                currentSegmentStartMs = 0L
+            )
+        }
         currentProjectId = null
         currentOutputFile = null
     }
 
+    private fun finalizeRecording(projectId: String, file: File, bgType: String?, bgValue: String?) {
+        viewModelScope.launch {
+            val result = projectRepository.finalizeRecordedProject(projectId, file, bgType, bgValue)
+            if (result.isSuccess) {
+                setState {
+                    copy(
+                        recordingState = RecordingState.DONE,
+                        finishedProjectId = result.getOrNull(),
+                        finishedVideoFile = file,
+                        segments = emptyList(),
+                        currentSegmentStartMs = 0L
+                    )
+                }
+            } else {
+                setState {
+                    copy(
+                        recordingState = RecordingState.IDLE,
+                        segments = emptyList(),
+                        currentSegmentStartMs = 0L
+                    )
+                }
+            }
+            stopTimer()
+        }
+    }
+
     private fun startTimer() {
-        setState { copy(elapsedSeconds = 0) }
         timerJob?.cancel()
+        recordingStartTimeMs = System.currentTimeMillis()
+        val startElapsed = currentState.elapsedSeconds
         timerJob = viewModelScope.launch {
             while (true) {
-                delay(1000)
-                setState { copy(elapsedSeconds = currentState.elapsedSeconds + 1) }
+                delay(500)
+                val wallElapsed = ((System.currentTimeMillis() - recordingStartTimeMs) / 1000).toInt()
+                setState { copy(elapsedSeconds = startElapsed + wallElapsed) }
             }
         }
     }
@@ -296,6 +458,7 @@ class SmartRecorderViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        stopFacelessRecording()
+        facelessRecorder?.stop()
+        stopTimer()
     }
 }

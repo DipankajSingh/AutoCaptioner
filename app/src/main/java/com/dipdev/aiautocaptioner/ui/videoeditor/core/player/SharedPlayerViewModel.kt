@@ -48,8 +48,10 @@ class SharedPlayerViewModel @Inject constructor(
 
         loadedPath = videoPath
         _player.value = ExoPlayer.Builder(appContext).build().apply {
+            setMediaItem(androidx.media3.common.MediaItem.fromUri(videoPath))
             repeatMode = Player.REPEAT_MODE_ALL
             playWhenReady = false
+            prepare()
         }
     }
 

@@ -211,7 +211,7 @@ private fun KaraokeDemo() {
                 .drawBehind {
                     drawRect(
                         Brush.radialGradient(
-                            colors = listOf(AccentCyan.copy(alpha = 0.06f), Color.Transparent),
+                            colors = listOf(AccentRose.copy(alpha = 0.06f), Color.Transparent),
                             center = Offset(size.width * 0.5f, size.height * 0.55f),
                             radius = size.width * 0.7f
                         )
@@ -252,7 +252,7 @@ private fun KaraokeDemo() {
 
                     val shadow = when {
                         isHighlighted -> Shadow(
-                            color = AccentCyan.copy(alpha = 0.8f),
+                            color = AccentRose.copy(alpha = 0.8f),
                             offset = Offset.Zero,
                             blurRadius = glowRadius
                         )
@@ -275,7 +275,7 @@ private fun KaraokeDemo() {
                                     Modifier.background(
                                         Brush.horizontalGradient(
                                             listOf(
-                                                AccentCyan.copy(alpha = 0.3f),
+                                                AccentRose.copy(alpha = 0.3f),
                                                 AccentBlue.copy(alpha = 0.3f)
                                             )
                                         )
@@ -341,7 +341,7 @@ private fun StyleMorphDemo() {
                     val glowColor = when (styleIndex) {
                         0 -> AccentViolet
                         1 -> Color.White
-                        else -> AccentCyan
+                        else -> AccentRose
                     }
                     drawRect(
                         Brush.radialGradient(
@@ -413,14 +413,14 @@ private fun StyleMorphDemo() {
                             words.forEach { word ->
                                 Text(
                                     text = word,
-                                    color = AccentCyan,
+                                    color = AccentRose,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 28.sp,
                                     lineHeight = 36.sp,
                                     textAlign = TextAlign.Center,
                                     style = TextStyle(
                                         shadow = Shadow(
-                                            AccentCyan.copy(alpha = 0.9f),
+                                            AccentRose.copy(alpha = 0.9f),
                                             Offset.Zero,
                                             20f
                                         )

@@ -82,6 +82,7 @@ fun EditorScreen(
         val translateToEnglish = uiState.translateToEnglish
         val videoWidth = uiState.videoWidth
         val videoHeight = uiState.videoHeight
+        val allowedLanguages = processingUiState.activeModel?.languages ?: listOf("multilingual")
 
         val styleUiState by styleViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -416,6 +417,7 @@ fun EditorScreen(
                                 onLanguageSelected = { lang, trans ->
                                     viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
                                 },
+                                allowedLanguages = allowedLanguages,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

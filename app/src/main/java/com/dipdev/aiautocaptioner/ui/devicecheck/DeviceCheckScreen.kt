@@ -145,37 +145,30 @@ fun DeviceCheckScreen(
 
     when (val state = safetyState) {
         is ModelSafetyCheckState.StorageError -> {
-            AlertDialog(
+            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                type = com.dipdev.aiautocaptioner.ui.components.DialogType.ERROR,
                 onDismissRequest = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) },
-                title = { Text("Not enough storage") },
-                text = { Text("Not enough storage. Please free up space and try again.") },
-                confirmButton = {
-                    AppPrimaryButton(onClick = {
-                        viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
-                    }) {
-                        Text("OK")
-                    }
+                title = "Not enough storage",
+                body = "Not enough storage. Please free up space and try again.",
+                confirmText = "OK",
+                onConfirm = {
+                    viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
                 }
             )
         }
         is ModelSafetyCheckState.CellularWarning -> {
-            AlertDialog(
+            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
                 onDismissRequest = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) },
-                title = { Text("Cellular Data Warning") },
-                text = { Text("You are on mobile data. This download is around ${state.sizeMb} MB. Continue on mobile data?") },
-                confirmButton = {
-                    AppPrimaryButton(onClick = {
-                        viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
-                        selectedModelId?.let { onModelSelected(it) }
-                    }) {
-                        Text("Download Anyway")
-                    }
+                title = "Cellular Data Warning",
+                body = "You are on mobile data. This download is around ${state.sizeMb} MB. Continue on mobile data?",
+                confirmText = "Download Anyway",
+                onConfirm = {
+                    viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
+                    selectedModelId?.let { onModelSelected(it) }
                 },
-                dismissButton = {
-                    AppOutlinedButton(onClick = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) }) {
-                        Text("Cancel")
-                    }
-                }
+                dismissText = "Cancel",
+                onDismiss = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) }
             )
         }
         is ModelSafetyCheckState.Passed -> {

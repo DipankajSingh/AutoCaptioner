@@ -99,18 +99,26 @@ class DeviceCapabilityUseCase @Inject constructor(
 
     fun getRecommendedModelWithReason(language: String): RecommendationResult {
         val totalRamMb = getTotalRamMb()
-        val isAutoDetect = language == "auto"
 
         return when {
-            language != "en" && !isAutoDetect -> when {
+            // Auto-detect: prefer multilingual so any language works
+            language == "auto" -> when {
                 totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
                 totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
-                else -> RecommendationResult("tiny", R.string.recommend_reason_low_end)
+                else -> RecommendationResult("base", R.string.recommend_reason_low_end)
             }
-            else -> when {
+            // English: prefer English-only models (faster, same accuracy)
+            language == "en" -> when {
                 totalRamMb >= 4000 -> RecommendationResult("small.en", R.string.recommend_reason_high_end)
                 totalRamMb >= 2000 -> RecommendationResult("base.en", R.string.recommend_reason_mid_range)
                 else -> RecommendationResult("tiny.en", R.string.recommend_reason_low_end_english)
+            }
+            // Specific non-English language: recommend multilingual as baseline
+            // (ViewModel upgrades to language-specific fine-tuned model if available)
+            else -> when {
+                totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
+                totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
+                else -> RecommendationResult("base", R.string.recommend_reason_low_end)
             }
         }
     }

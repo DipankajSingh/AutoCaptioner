@@ -34,7 +34,7 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -217,7 +217,7 @@ private fun BoxScope.OverlayItem(
                 }
                 .border(
                     width = if (isSelected) 2.dp else 0.dp,
-                    color = if (isSelected) AccentCyan else Color.Transparent
+                    color = if (isSelected) AccentRose else Color.Transparent
                 )
                 .pointerInput(overlay.id + "_drag") {
                     detectDragGestures(

@@ -45,6 +45,7 @@ fun LeftSideControls(
     selectedLanguage: String,
     translateToEnglish: Boolean,
     onLanguageSelected: (String, Boolean) -> Unit,
+    allowedLanguages: List<String> = listOf("multilingual"),
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -114,7 +115,8 @@ fun LeftSideControls(
             onExpandedChange = { showLanguagePanel = it },
             selectedLanguage = selectedLanguage,
             translateToEnglish = translateToEnglish,
-            onLanguageSelected = onLanguageSelected
+            onLanguageSelected = onLanguageSelected,
+            allowedLanguages = allowedLanguages
         )
     }
 }
@@ -191,24 +193,15 @@ fun CaptionCollisionDialog(
     onEdit: () -> Unit,
     onRegenerate: () -> Unit
 ) {
-    AlertDialog(
+    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+        type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
         onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.side_captions_exist_title))
-        },
-        text = {
-            Text(stringResource(R.string.side_captions_exist_body))
-        },
-        confirmButton = {
-            Button(onClick = onRegenerate) {
-                Text(stringResource(R.string.side_regenerate))
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onEdit) {
-                Text(stringResource(R.string.side_edit_captions))
-            }
-        }
+        title = stringResource(R.string.side_captions_exist_title),
+        body = stringResource(R.string.side_captions_exist_body),
+        confirmText = stringResource(R.string.side_regenerate),
+        onConfirm = onRegenerate,
+        dismissText = stringResource(R.string.side_edit_captions),
+        onDismiss = onEdit
     )
 }
 
@@ -261,7 +254,8 @@ fun LanguageSelector(
     onExpandedChange: (Boolean) -> Unit,
     selectedLanguage: String,
     translateToEnglish: Boolean,
-    onLanguageSelected: (String, Boolean) -> Unit
+    onLanguageSelected: (String, Boolean) -> Unit,
+    allowedLanguages: List<String> = listOf("multilingual")
 ) {
     Box {
         SideControlButton(
@@ -276,7 +270,8 @@ fun LanguageSelector(
                 selectedLanguage = selectedLanguage,
                 translateToEnglish = translateToEnglish,
                 onExpandedChange = onExpandedChange,
-                onLanguageSelected = onLanguageSelected
+                onLanguageSelected = onLanguageSelected,
+                allowedLanguages = allowedLanguages
             )
         }
     }
@@ -287,7 +282,8 @@ fun LanguagePopup(
     selectedLanguage: String,
     translateToEnglish: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onLanguageSelected: (String, Boolean) -> Unit
+    onLanguageSelected: (String, Boolean) -> Unit,
+    allowedLanguages: List<String> = listOf("multilingual")
 ) {
     AnimatedEditorPopup(
         onDismiss = { onExpandedChange(false) },
@@ -319,7 +315,7 @@ fun LanguagePopup(
                 onLanguageSelected = { lang ->
                     onLanguageSelected(lang, if (lang == "en") false else translateToEnglish)
                 },
-                allowedLanguages = listOf("multilingual")
+                allowedLanguages = allowedLanguages
             )
             if (selectedLanguage != "en") {
                 Row(

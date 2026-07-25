@@ -15,20 +15,15 @@ fun CancelProcessDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+        type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.dialog_cancel_title), fontWeight = FontWeight.Bold) },
-        text = { Text(stringResource(R.string.dialog_cancel_body)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.dialog_stop_exit), color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.dialog_keep_processing))
-            }
-        }
+        title = stringResource(R.string.dialog_cancel_title),
+        body = stringResource(R.string.dialog_cancel_body),
+        confirmText = stringResource(R.string.dialog_stop_exit),
+        onConfirm = onConfirm,
+        dismissText = stringResource(R.string.dialog_keep_processing),
+        onDismiss = onDismiss
     )
 }
 
@@ -40,32 +35,25 @@ fun SafetyCheckDialogs(
 ) {
     when (val check = safetyCheck) {
         is ModelSafetyCheck.StorageError -> {
-            AlertDialog(
+            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                type = com.dipdev.aiautocaptioner.ui.components.DialogType.ERROR,
                 onDismissRequest = onDismiss,
-                title = { Text(stringResource(R.string.dialog_storage_title)) },
-                text = { Text(stringResource(R.string.dialog_storage_body, check.requiredMb)) },
-                confirmButton = {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.dialog_okay))
-                    }
-                }
+                title = stringResource(R.string.dialog_storage_title),
+                body = stringResource(R.string.dialog_storage_body, check.requiredMb),
+                confirmText = stringResource(R.string.dialog_okay),
+                onConfirm = onDismiss
             )
         }
         is ModelSafetyCheck.CellularWarning -> {
-            AlertDialog(
+            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
                 onDismissRequest = onDismiss,
-                title = { Text(stringResource(R.string.dialog_cellular_title)) },
-                text = { Text(stringResource(R.string.dialog_cellular_body, check.sizeMb)) },
-                confirmButton = {
-                    TextButton(onClick = { onProceed(check.modelId) }) {
-                        Text(stringResource(R.string.dialog_download_anyway))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.processing_cancel))
-                    }
-                }
+                title = stringResource(R.string.dialog_cellular_title),
+                body = stringResource(R.string.dialog_cellular_body, check.sizeMb),
+                confirmText = stringResource(R.string.dialog_download_anyway),
+                onConfirm = { onProceed(check.modelId) },
+                dismissText = stringResource(R.string.processing_cancel),
+                onDismiss = onDismiss
             )
         }
         else -> {

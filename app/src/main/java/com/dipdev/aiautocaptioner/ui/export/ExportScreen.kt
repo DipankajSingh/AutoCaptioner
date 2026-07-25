@@ -172,20 +172,19 @@ fun ExportScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (showNoCaptionsDialog) {
-                    AlertDialog(
+                    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                        type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
                         onDismissRequest = { showNoCaptionsDialog = false },
-                        title = { Text(stringResource(R.string.export_no_captions_title)) },
-                        text = { Text(stringResource(R.string.export_no_captions_body)) },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                showNoCaptionsDialog = false
-                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                            }) { Text(stringResource(R.string.export_anyway)) }
+                        title = stringResource(R.string.export_no_captions_title),
+                        body = stringResource(R.string.export_no_captions_body),
+                        confirmText = stringResource(R.string.export_anyway),
+                        onConfirm = {
+                            showNoCaptionsDialog = false
+                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
                         },
-                        dismissButton = {
-                            TextButton(onClick = { showNoCaptionsDialog = false }) { Text(stringResource(R.string.processing_cancel)) }
-                        }
+                        dismissText = stringResource(R.string.processing_cancel),
+                        onDismiss = { showNoCaptionsDialog = false }
                     )
                 }
 

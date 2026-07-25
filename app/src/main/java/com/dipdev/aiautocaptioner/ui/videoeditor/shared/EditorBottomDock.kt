@@ -16,6 +16,7 @@ import compose.icons.FeatherIcons
 import compose.icons.feathericons.Film
 import compose.icons.feathericons.Type
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,7 @@ fun EditorBottomDock(
     selectedLanguage: String = "en",
     translateToEnglish: Boolean = false,
     onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
+    allowedLanguages: List<String> = listOf("multilingual"),
     modifier: Modifier = Modifier
 ) {
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
@@ -134,6 +136,7 @@ fun EditorBottomDock(
                         onAdjustExpanded = { expanded ->
                             timelineHeight = if (expanded) maxTimelineHeight else 220.dp
                         },
+                        allowedLanguages = allowedLanguages,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -142,7 +145,7 @@ fun EditorBottomDock(
         
         // Bottom Tab Bar
         Surface(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp).navigationBarsPadding(),
             color = MaterialTheme.colorScheme.background,
             shadowElevation = 8.dp
         ) {

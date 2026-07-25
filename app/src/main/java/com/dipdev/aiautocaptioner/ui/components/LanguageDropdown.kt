@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.CheckCircle
+import compose.icons.feathericons.ChevronDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -96,7 +98,12 @@ fun LanguageDropdown(
             ) {
                 Text(displayName, modifier = Modifier.weight(1f))
                 if (visibleLanguages.size > 1) {
-                    Text("▾", fontSize = 14.sp)
+                    Icon(
+                        imageVector = FeatherIcons.ChevronDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
             DropdownMenu(

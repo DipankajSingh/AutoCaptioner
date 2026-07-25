@@ -19,7 +19,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -115,10 +115,10 @@ fun OverlayResizeHandle(
                 .offset { IntOffset(dotOffset, dotOffset) }
                 .size(HANDLE_VISUAL_DP.dp)
                 .background(
-                    color = if (isDragging) AccentCyan else Color.White,
+                    color = if (isDragging) AccentRose else Color.White,
                     shape = CircleShape
                 )
-                .border(width = 2.dp, color = AccentCyan, shape = CircleShape)
+                .border(width = 2.dp, color = AccentRose, shape = CircleShape)
         )
     }
 }

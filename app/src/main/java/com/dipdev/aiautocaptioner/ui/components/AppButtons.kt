@@ -2,8 +2,8 @@ package com.dipdev.aiautocaptioner.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
@@ -24,7 +24,7 @@ fun AppPrimaryButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
         shape = RoundedCornerShape(12.dp),
         enabled = enabled,
         colors = colors,
@@ -41,7 +41,7 @@ fun AppOutlinedButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp),
         shape = RoundedCornerShape(12.dp),
         enabled = enabled,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),

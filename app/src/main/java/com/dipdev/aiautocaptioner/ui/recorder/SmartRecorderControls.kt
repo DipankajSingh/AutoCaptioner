@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -64,7 +63,7 @@ fun SidebarButton(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(if (isActive) AccentCyan else Color.White.copy(alpha = 0.1f))
+                .background(if (isActive) AccentRose else Color.White.copy(alpha = 0.1f))
                 .border(1.dp, Color.White.copy(alpha = if (isActive) 0.5f else 0.15f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
@@ -110,7 +109,7 @@ fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
         // Outer ring
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
-                color = AccentCyan.copy(alpha = if (isRecording) 0.8f else 0.4f),
+                color = AccentRose.copy(alpha = if (isRecording) 0.8f else 0.4f),
                 radius = size.width / 2 * scale,
                 style = Stroke(width = 8f)
             )

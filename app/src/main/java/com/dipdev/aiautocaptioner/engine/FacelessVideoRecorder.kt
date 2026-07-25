@@ -12,6 +12,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.media.MediaRecorder
+import android.os.Bundle
 import android.util.Log
 import android.view.Surface
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -21,23 +22,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class FacelessVideoRecorder {
 
     private val TAG = "FacelessVideoRecorder"
 
     private val isRecording = AtomicBoolean(false)
+    private val isPaused = AtomicBoolean(false)
     private var isMuxerStarted = false
 
     private var videoCodec: MediaCodec? = null
     private var audioCodec: MediaCodec? = null
     private var muxer: MediaMuxer? = null
-    
+
     private var inputSurface: Surface? = null
     private var audioRecord: AudioRecord? = null
 
@@ -47,11 +48,13 @@ class FacelessVideoRecorder {
     private var videoJob: Job? = null
     private var audioJob: Job? = null
     private var videoEncoderJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private var scope = CoroutineScope(Dispatchers.Default)
 
-    private val VIDEO_WIDTH = 1080
-    private val VIDEO_HEIGHT = 1920
-    private val VIDEO_FPS = 30
+    private var videoWidth = 1080
+    private var videoHeight = 1920
+    private var videoFps = 30
+    private var videoBitrate = 4_000_000
+    private var audioBitrate = 128_000
     private val TIMEOUT_USEC = 10000L
 
     private var onCompleteCallback: ((File) -> Unit)? = null
@@ -59,8 +62,15 @@ class FacelessVideoRecorder {
     private var onAmplitudeCallback: ((Float) -> Unit)? = null
     private var outputFile: File? = null
 
+    fun isPaused(): Boolean = isPaused.get()
+
     @SuppressLint("MissingPermission")
     fun start(
+        width: Int = 1080,
+        height: Int = 1920,
+        fps: Int = 30,
+        videoBitrate: Int = 4_000_000,
+        audioBitrate: Int = 128_000,
         backgroundBitmap: Bitmap?,
         backgroundColor: Int?,
         gradientColors: List<Int>?,
@@ -77,20 +87,26 @@ class FacelessVideoRecorder {
             return
         }
 
+        this.videoWidth = width
+        this.videoHeight = height
+        this.videoFps = fps
+        this.videoBitrate = videoBitrate
+        this.audioBitrate = audioBitrate
         this.onCompleteCallback = onComplete
         this.onErrorCallback = onError
         this.onAmplitudeCallback = onAmplitude
         this.outputFile = outputFile
 
+        scope = CoroutineScope(Dispatchers.Default)
+
         try {
             outputFile.parentFile?.mkdirs()
             muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
-            // Setup Video Codec
-            val videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, VIDEO_WIDTH, VIDEO_HEIGHT)
+            val videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, videoWidth, videoHeight)
             videoFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-            videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5_000_000)
-            videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, VIDEO_FPS)
+            videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, videoBitrate)
+            videoFormat.setInteger(MediaFormat.KEY_FRAME_RATE, videoFps)
             videoFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
 
             videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
@@ -98,26 +114,23 @@ class FacelessVideoRecorder {
             inputSurface = videoCodec?.createInputSurface()
             videoCodec?.start()
 
-            // Setup Audio Codec
             val sampleRate = 44100
             val channelConfig = AudioFormat.CHANNEL_IN_MONO
             val audioFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1)
             audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, 128_000)
+            audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, audioBitrate)
             audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
 
             audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
             audioCodec?.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             audioCodec?.start()
 
-            // Setup AudioRecord
             val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT)
             var bufferSize = minBufferSize * 4
             if (bufferSize < 16384) bufferSize = 16384
             audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
             audioRecord?.startRecording()
 
-            // Start threads
             videoJob = scope.launch(Dispatchers.IO) { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
             videoEncoderJob = scope.launch { videoEncodeLoop() }
             audioJob = scope.launch { audioEncodeLoop() }
@@ -129,10 +142,30 @@ class FacelessVideoRecorder {
         }
     }
 
+    fun pause() {
+        if (!isRecording.get() || isPaused.get()) return
+        isPaused.set(true)
+        videoCodec?.setParameters(Bundle().apply {
+            putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 1)
+        })
+    }
+
+    fun resume() {
+        if (!isRecording.get() || !isPaused.get()) return
+        isPaused.set(false)
+        videoCodec?.setParameters(Bundle().apply {
+            putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
+        })
+    }
+
     fun stop() {
         if (!isRecording.get()) return
+        if (isPaused.get()) {
+            resume()
+            Thread.sleep(50)
+        }
         isRecording.set(false)
-        
+
         scope.launch {
             withTimeoutOrNull(1000) { videoJob?.join() }
             withTimeoutOrNull(2000) { videoEncoderJob?.join() }
@@ -147,47 +180,55 @@ class FacelessVideoRecorder {
         }
     }
 
-    private suspend fun videoDrawLoop(bitmap: Bitmap?, color: Int?, gradientColors: List<Int>?, scale: Float = 1f, offsetX: Float = 0f, offsetY: Float = 0f) {
-        val frameDurationMs = 1000L / VIDEO_FPS
-        val rect = android.graphics.Rect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT)
-        var frameCount = 0L
-        
+    private suspend fun videoDrawLoop(
+        bitmap: Bitmap?,
+        color: Int?,
+        gradientColors: List<Int>?,
+        scale: Float = 1f,
+        offsetX: Float = 0f,
+        offsetY: Float = 0f
+    ) {
+        val frameDurationMs = 1000L / videoFps
+        val rect = Rect(0, 0, videoWidth, videoHeight)
+        var lastFrameTime = System.currentTimeMillis()
+
         var gradientPaint: android.graphics.Paint? = null
         if (gradientColors != null && gradientColors.size >= 2) {
             gradientPaint = android.graphics.Paint().apply {
                 shader = android.graphics.LinearGradient(
-                    0f, 0f, 0f, VIDEO_HEIGHT.toFloat(),
+                    0f, 0f, 0f, videoHeight.toFloat(),
                     gradientColors.toIntArray(),
                     null,
                     android.graphics.Shader.TileMode.CLAMP
                 )
             }
         }
-        
+
         val bitmapMatrix = android.graphics.Matrix()
         if (bitmap != null) {
-            // Replicate ContentScale.Fit logic:
-            val scaleX = VIDEO_WIDTH.toFloat() / bitmap.width
-            val scaleY = VIDEO_HEIGHT.toFloat() / bitmap.height
+            val scaleX = videoWidth.toFloat() / bitmap.width
+            val scaleY = videoHeight.toFloat() / bitmap.height
             val baseScale = Math.min(scaleX, scaleY)
-            val dx = (VIDEO_WIDTH - bitmap.width * baseScale) / 2f
-            val dy = (VIDEO_HEIGHT - bitmap.height * baseScale) / 2f
-            
+            val dx = (videoWidth - bitmap.width * baseScale) / 2f
+            val dy = (videoHeight - bitmap.height * baseScale) / 2f
+
             bitmapMatrix.postScale(baseScale, baseScale)
             bitmapMatrix.postTranslate(dx, dy)
-            
-            // Apply user transform (scale originates from center in UI)
-            bitmapMatrix.postScale(scale, scale, VIDEO_WIDTH / 2f, VIDEO_HEIGHT / 2f)
+            bitmapMatrix.postScale(scale, scale, videoWidth / 2f, videoHeight / 2f)
             bitmapMatrix.postTranslate(offsetX, offsetY)
         }
-        
+
         try {
             while (isRecording.get()) {
-                val startTime = System.currentTimeMillis()
-                
+                if (isPaused.get()) {
+                    delay(16)
+                    lastFrameTime = System.currentTimeMillis()
+                    continue
+                }
+
                 val canvas = inputSurface?.lockCanvas(null)
                 if (canvas != null) {
-                    canvas.drawColor(android.graphics.Color.BLACK) // base background
+                    canvas.drawColor(Color.BLACK)
                     if (bitmap != null) {
                         canvas.drawBitmap(bitmap, bitmapMatrix, null)
                     } else if (gradientPaint != null) {
@@ -197,13 +238,13 @@ class FacelessVideoRecorder {
                     }
                     inputSurface?.unlockCanvasAndPost(canvas)
                 }
-                
-                val elapsed = System.currentTimeMillis() - startTime
+
+                val elapsed = System.currentTimeMillis() - lastFrameTime
                 val sleepTime = frameDurationMs - elapsed
                 if (sleepTime > 0) {
                     delay(sleepTime)
                 }
-                frameCount++
+                lastFrameTime = System.currentTimeMillis()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Video draw error", e)
@@ -245,7 +286,7 @@ class FacelessVideoRecorder {
                 } else if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                     if (!isRecording.get()) {
                         stopTimeOut++
-                        if (stopTimeOut > 100) break // fail-safe (1 sec)
+                        if (stopTimeOut > 100) break
                     }
                 }
             }
@@ -260,7 +301,7 @@ class FacelessVideoRecorder {
         val audioBuffer = ByteArray(4096)
         var audioPts = 0L
         var audioPtsUsBase = -1L
-        
+
         try {
             var eosReceived = false
             var isEosSent = false
@@ -271,12 +312,16 @@ class FacelessVideoRecorder {
                     if (inputBufferIndex >= 0) {
                         val inputBuffer = audioCodec?.getInputBuffer(inputBufferIndex)
                         inputBuffer?.clear()
-                        
-                        val readBytes = if (isRecording.get()) audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0 else 0
+
+                        val readBytes = if (isRecording.get() && !isPaused.get()) {
+                            audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
+                        } else {
+                            0
+                        }
                         if (readBytes > 0) {
                             var sum = 0.0
                             for (i in 0 until readBytes step 2) {
-                                val sample = (audioBuffer[i].toInt() and 0xFF) or (audioBuffer[i+1].toInt() shl 8)
+                                val sample = (audioBuffer[i].toInt() and 0xFF) or (audioBuffer[i + 1].toInt() shl 8)
                                 val shortSample = sample.toShort()
                                 sum += shortSample * shortSample
                             }
@@ -297,12 +342,12 @@ class FacelessVideoRecorder {
                         }
                     }
                 }
-                
+
                 var encoderStatus = audioCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: -1
                 if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                     if (isEosSent) {
                         stopTimeOut++
-                        if (stopTimeOut > 100) break // fail-safe
+                        if (stopTimeOut > 100) break
                     }
                 }
                 while (encoderStatus >= 0 || encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
@@ -348,29 +393,33 @@ class FacelessVideoRecorder {
     }
 
     private fun releaseResources() {
-        try { audioRecord?.stop() } catch (e: Exception) {}
-        try { audioRecord?.release() } catch (e: Exception) {}
+        try { audioRecord?.stop() } catch (_: Exception) {}
+        try { audioRecord?.release() } catch (_: Exception) {}
         audioRecord = null
 
-        try { videoCodec?.stop() } catch (e: Exception) {}
-        try { videoCodec?.release() } catch (e: Exception) {}
+        try { videoCodec?.stop() } catch (_: Exception) {}
+        try { videoCodec?.release() } catch (_: Exception) {}
         videoCodec = null
 
-        try { audioCodec?.stop() } catch (e: Exception) {}
-        try { audioCodec?.release() } catch (e: Exception) {}
+        try { audioCodec?.stop() } catch (_: Exception) {}
+        try { audioCodec?.release() } catch (_: Exception) {}
         audioCodec = null
 
         if (isMuxerStarted) {
-            try { muxer?.stop() } catch (e: Exception) {}
+            try { muxer?.stop() } catch (_: Exception) {}
         }
-        try { muxer?.release() } catch (e: Exception) {}
+        try { muxer?.release() } catch (_: Exception) {}
         muxer = null
         isMuxerStarted = false
 
         videoTrackIndex = -1
         audioTrackIndex = -1
 
-        try { inputSurface?.release() } catch (e: Exception) {}
+        try { inputSurface?.release() } catch (_: Exception) {}
         inputSurface = null
+
+        isPaused.set(false)
+
+        scope.cancel()
     }
 }

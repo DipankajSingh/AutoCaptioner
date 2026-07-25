@@ -35,7 +35,6 @@ val OutlineColor = Color(0xFF3F3F46)
 // These replace the old primary "brand" color with specific domain accents
 val AccentBlue   = Color(0xFF3B82F6)  // Video / Caption Editor
 val AccentViolet = Color(0xFF8B5CF6)  // Style Editor
-val AccentCyan   = Color(0xFF00F0FF)  // Processing / AI Generation
 val AccentAmber  = Color(0xFFF59E0B)  // Export / Save
 val AccentRose   = Color(0xFFF43F5E)  // Errors / Delete
 

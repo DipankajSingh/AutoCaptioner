@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 
@@ -30,8 +29,8 @@ fun ProjectStatusChip(status: ProjectStatus) {
     val (label, color) = when (status) {
         ProjectStatus.IMPORTED               -> stringResource(R.string.status_imported)      to MaterialTheme.colorScheme.onSurfaceVariant
         ProjectStatus.READY_FOR_PROCESSING   -> stringResource(R.string.status_ready_for_ai)  to AccentAmber
-        ProjectStatus.EXTRACTING_AUDIO       -> stringResource(R.string.status_extracting)    to AccentCyan
-        ProjectStatus.TRANSCRIBING           -> stringResource(R.string.status_transcribing)  to AccentCyan
+        ProjectStatus.EXTRACTING_AUDIO       -> stringResource(R.string.status_extracting)    to AccentRose
+        ProjectStatus.TRANSCRIBING           -> stringResource(R.string.status_transcribing)  to AccentRose
         ProjectStatus.TRANSCRIBED            -> stringResource(R.string.status_ready)          to AccentAmber
         ProjectStatus.EXPORTED               -> stringResource(R.string.status_exported)       to AccentAmber
     }

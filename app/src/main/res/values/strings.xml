@@ -530,6 +530,43 @@
     <string name="recorder_onboarding_faceless_desc">Record audio-only with a custom background. Great for narrations and voiceovers.</string>
     <string name="recorder_onboarding_got_it">Got it</string>
 
+    <!-- Teleprompter -->
+    <string name="teleprompter_placeholder">Paste your script here…</string>
+    <string name="teleprompter_tap_to_pause">Tap to pause</string>
+    <string name="teleprompter_mirror">Mirror</string>
+    <string name="teleprompter_font">Aa</string>
+    <string name="teleprompter_back_to_top">Back to top</string>
+    <string name="teleprompter_script_complete">Script complete</string>
+    <string name="teleprompter_words_left">%d words left</string>
+    <string name="teleprompter_minutes_left">~%d min left</string>
+    <string name="teleprompter_font_small">S</string>
+    <string name="teleprompter_font_medium">M</string>
+    <string name="teleprompter_font_large">L</string>
+
+    <!-- Recording Feedback -->
+    <string name="rec_rec">REC</string>
+    <string name="rec_paused">PAUSED</string>
+    <string name="rec_processing">Processing…</string>
+
+    <!-- Recorder Controls -->
+    <string name="recorder_ratio">Ratio</string>
+    <string name="recorder_quality">Quality</string>
+    <string name="recorder_pause">Pause</string>
+    <string name="recorder_resume">Resume</string>
+    <string name="recorder_stop">Stop</string>
+
+    <!-- Exit Recording Dialog -->
+    <string name="recorder_exit_title">Exit Recording?</string>
+    <string name="recorder_exit_message">You have an active recording. What would you like to do?</string>
+    <string name="recorder_save_and_exit">Save &amp; Exit</string>
+    <string name="recorder_discard">Discard</string>
+    <string name="recorder_cancel">Cancel</string>
+
+    <!-- Quick Share Bar -->
+    <string name="recorder_retake">Retake</string>
+    <string name="recorder_share">Share</string>
+    <string name="recorder_edit">Edit</string>
+
     <!-- Device Check Screen -->
     <string name="device_check_title_screen">Choose Your AI Model</string>
     <string name="device_check_subtitle_screen">Downloaded once, processes entirely on-device.</string>

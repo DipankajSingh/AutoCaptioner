@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.components.AudioWaveformAnimation
@@ -48,7 +48,7 @@ fun LoadingModelView() {
     FullScreenStateContainer(
         graphicContent = {
             CircularProgressIndicator(
-                color = AccentCyan,
+                color = AccentRose,
                 modifier = Modifier.size(48.dp),
                 strokeCap = StrokeCap.Round
             )
@@ -69,7 +69,7 @@ fun SavingView() {
     FullScreenStateContainer(
         graphicContent = {
             CircularProgressIndicator(
-                color = AccentCyan,
+                color = AccentRose,
                 modifier = Modifier.size(48.dp),
                 strokeCap = StrokeCap.Round
             )

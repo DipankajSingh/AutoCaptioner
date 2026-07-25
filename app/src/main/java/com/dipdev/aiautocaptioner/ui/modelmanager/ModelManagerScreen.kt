@@ -172,16 +172,23 @@ private fun ModelCard(
                         var showDeleteConfirm by remember { mutableStateOf(false) }
                         
                         if (showDeleteConfirm) {
-                            Text("Delete from storage?", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
-                            TextButton(
-                                onClick = {
-                                    showDeleteConfirm = false
-                                    onDelete()
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                            ) { Text("Confirm") }
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text("Delete from storage?", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                                    TextButton(
+                                        onClick = {
+                                            showDeleteConfirm = false
+                                            onDelete()
+                                        },
+                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    ) { Text("Confirm") }
+                                }
+                            }
                         } else {
                             IconButton(onClick = { showDeleteConfirm = true }) {
                                 Icon(FeatherIcons.Trash2, contentDescription = "Delete model", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))

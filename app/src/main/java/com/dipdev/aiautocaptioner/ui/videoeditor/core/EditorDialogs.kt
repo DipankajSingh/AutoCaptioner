@@ -15,19 +15,14 @@ fun DeleteProjectDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+        type = com.dipdev.aiautocaptioner.ui.components.DialogType.ERROR,
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.editor_delete_title)) },
-        text = { Text(stringResource(R.string.editor_delete_body)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.editor_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.editor_cancel))
-            }
-        }
+        title = stringResource(R.string.editor_delete_title),
+        body = stringResource(R.string.editor_delete_body),
+        confirmText = stringResource(R.string.editor_delete),
+        onConfirm = onConfirm,
+        dismissText = stringResource(R.string.editor_cancel),
+        onDismiss = onDismiss
     )
 }

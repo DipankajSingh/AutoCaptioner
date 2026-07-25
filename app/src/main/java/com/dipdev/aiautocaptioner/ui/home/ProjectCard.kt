@@ -340,26 +340,18 @@ fun ProjectCard(
 
             // Delete Confirmation Dialog
             if (showDeleteConfirm) {
-                AlertDialog(
+                com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                    type = com.dipdev.aiautocaptioner.ui.components.DialogType.ERROR,
                     onDismissRequest = { showDeleteConfirm = false },
-                    title = { Text(stringResource(R.string.project_delete_title)) },
-                    text = { Text(stringResource(R.string.project_delete_body)) },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showDeleteConfirm = false
-                                onDelete()
-                            },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text(stringResource(R.string.project_confirm))
-                        }
+                    title = stringResource(R.string.project_delete_title),
+                    body = stringResource(R.string.project_delete_body),
+                    confirmText = stringResource(R.string.project_confirm),
+                    onConfirm = {
+                        showDeleteConfirm = false
+                        onDelete()
                     },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteConfirm = false }) {
-                            Text(stringResource(R.string.processing_cancel))
-                        }
-                    }
+                    dismissText = stringResource(R.string.processing_cancel),
+                    onDismiss = { showDeleteConfirm = false }
                 )
             }
             } // end Column

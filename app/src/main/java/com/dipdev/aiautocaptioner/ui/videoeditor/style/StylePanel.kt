@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Remove
@@ -54,7 +53,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
 
 @Composable
 fun StylePanel(
@@ -67,6 +65,7 @@ fun StylePanel(
     translateToEnglish: Boolean = false,
     onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
     onAdjustExpanded: ((Boolean) -> Unit)? = null,
+    allowedLanguages: List<String> = listOf("multilingual"),
     modifier: Modifier = Modifier
 ) {
     val styleUiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -80,7 +79,7 @@ fun StylePanel(
 
     Surface(
         modifier = modifier,
-        color = androidx.compose.ui.graphics.Color.Black,
+        color = MaterialTheme.colorScheme.background,
         shadowElevation = 0.dp
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -117,46 +116,38 @@ fun StylePanel(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.padding(horizontal = 32.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .background(AccentCyan.copy(alpha = 0.12f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Subtitles,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = AccentCyan
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.Subtitles,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
                             Text(
                                 text = stringResource(R.string.style_empty_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.style_empty_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                                 lineHeight = 18.sp
                             )
                             Spacer(modifier = Modifier.height(20.dp))
                             Surface(
                                 onClick = onGenerateCaptions,
-                                shape = RoundedCornerShape(12.dp),
-                                color = AccentCyan
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primary
                             ) {
                                 Text(
                                     text = stringResource(R.string.style_generate),
-                                    fontSize = 14.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                                 )
                             }
                         }
@@ -170,7 +161,8 @@ fun StylePanel(
                         showLanguageDropdown = showLanguageDropdown,
                         onToggleLanguageDropdown = { showLanguageDropdown = it },
                         onLanguageSelected = onLanguageSelected,
-                        onGenerateCaptions = onGenerateCaptions
+                        onGenerateCaptions = onGenerateCaptions,
+                        allowedLanguages = allowedLanguages
                     )
 
                     PresetsTab(
@@ -216,7 +208,8 @@ private fun CompactCaptionsHeader(
     showLanguageDropdown: Boolean,
     onToggleLanguageDropdown: (Boolean) -> Unit,
     onLanguageSelected: (String, Boolean) -> Unit,
-    onGenerateCaptions: () -> Unit
+    onGenerateCaptions: () -> Unit,
+    allowedLanguages: List<String> = listOf("multilingual")
 ) {
     val languageName = when (selectedLanguage) {
         "en" -> stringResource(R.string.lang_english)
@@ -288,7 +281,7 @@ private fun CompactCaptionsHeader(
                                     onLanguageSelected(lang, if (lang == "en") false else translateToEnglish)
                                     onToggleLanguageDropdown(false)
                                 },
-                                allowedLanguages = listOf("multilingual")
+                                allowedLanguages = allowedLanguages
                             )
                             if (selectedLanguage != "en") {
                                 Row(

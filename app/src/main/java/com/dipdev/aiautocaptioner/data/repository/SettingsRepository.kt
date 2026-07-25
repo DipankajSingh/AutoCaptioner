@@ -35,6 +35,8 @@ class SettingsRepository @Inject constructor(
 
     private val LAST_RECORDING_MODE_KEY = stringPreferencesKey("last_recording_mode")
     private val HAS_SEEN_RECORDER_ONBOARDING_KEY = booleanPreferencesKey("has_seen_recorder_onboarding")
+    private val LAST_ASPECT_RATIO_KEY = stringPreferencesKey("last_aspect_ratio")
+    private val LAST_RECORDING_QUALITY_KEY = stringPreferencesKey("last_recording_quality")
 
     val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
         val themeName = prefs[THEME_KEY] ?: AppTheme.TRUE_BLACK.name
@@ -75,6 +77,14 @@ class SettingsRepository @Inject constructor(
 
     val hasSeenRecorderOnboardingFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[HAS_SEEN_RECORDER_ONBOARDING_KEY] ?: false
+    }.distinctUntilChanged()
+
+    val lastAspectRatioFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[LAST_ASPECT_RATIO_KEY] ?: "PORTRAIT_9_16"
+    }.distinctUntilChanged()
+
+    val lastRecordingQualityFlow: Flow<String> = dataStore.data.map { prefs ->
+        prefs[LAST_RECORDING_QUALITY_KEY] ?: "MEDIUM"
     }.distinctUntilChanged()
 
     suspend fun setTheme(theme: AppTheme) {
@@ -133,6 +143,18 @@ class SettingsRepository @Inject constructor(
     suspend fun setHasSeenRecorderOnboarding() {
         dataStore.edit { prefs ->
             prefs[HAS_SEEN_RECORDER_ONBOARDING_KEY] = true
+        }
+    }
+
+    suspend fun setLastAspectRatio(aspectRatio: String) {
+        dataStore.edit { prefs ->
+            prefs[LAST_ASPECT_RATIO_KEY] = aspectRatio
+        }
+    }
+
+    suspend fun setLastRecordingQuality(quality: String) {
+        dataStore.edit { prefs ->
+            prefs[LAST_RECORDING_QUALITY_KEY] = quality
         }
     }
 }

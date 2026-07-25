@@ -10,6 +10,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -98,59 +100,6 @@ fun HomeScreen(
     val importState = uiState.importState
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
-
-    // Request Notification Permission on Android 13+
-    var showNotificationRationale by remember { mutableStateOf(false) }
-    var hasRequestedNotification by remember { mutableStateOf(false) }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
-            context, 
-            android.Manifest.permission.POST_NOTIFICATIONS
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-        val notificationPermissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { _ -> }
-        
-        LaunchedEffect(isGranted) {
-            if (!isGranted && !hasRequestedNotification) {
-                showNotificationRationale = true
-            }
-        }
-
-        if (showNotificationRationale) {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { 
-                    showNotificationRationale = false
-                    hasRequestedNotification = true
-                },
-                title = { Text(stringResource(R.string.home_notification_title)) },
-                text = { Text(stringResource(R.string.home_notification_desc)) },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(
-                        onClick = {
-                            showNotificationRationale = false
-                            hasRequestedNotification = true
-                            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    ) {
-                        Text(stringResource(R.string.home_enable))
-                    }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(
-                        onClick = { 
-                            showNotificationRationale = false
-                            hasRequestedNotification = true
-                        }
-                    ) {
-                        Text(stringResource(R.string.home_not_now))
-                    }
-                }
-            )
-        }
-    }
 
     // Advanced import picker → VideoEditor
     val videoPicker = rememberLauncherForActivityResult(
@@ -350,15 +299,18 @@ fun HomeScreen(
                             onDuplicate = { viewModel.duplicateProject(projectWithExports.project.id) },
                             onPlayVideo = { path -> previewVideoPath = path },
                             onShareVideo = { path -> 
-                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "video/mp4"
-                                    putExtra(android.content.Intent.EXTRA_STREAM, androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", java.io.File(path)))
-                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
                                 try {
+                                    val file = java.io.File(path)
+                                    if (!file.exists()) return@ProjectCard
+                                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "video/mp4"
+                                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
                                     context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Video"))
-                                } catch (_: android.content.ActivityNotFoundException) {
-                                    // Handle missing activity gracefully
+                                } catch (_: Exception) {
+                                    // IllegalArgumentException (bad path) or ActivityNotFoundException (no share app)
                                 }
                             },
                             onNavigateToHistory = { onNavigateToHistory(projectWithExports.project.id) },
@@ -404,7 +356,7 @@ fun HomeScreen(
             
             // Video Preview Dialog
             val currentPreviewPath = previewVideoPath
-            if (currentPreviewPath != null) {
+            if (currentPreviewPath != null && java.io.File(currentPreviewPath).exists()) {
                 Dialog(
                     onDismissRequest = { previewVideoPath = null },
                     properties = DialogProperties(
@@ -526,6 +478,7 @@ private fun EmptyProjectView(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

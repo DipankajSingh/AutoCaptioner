@@ -265,8 +265,18 @@ class TranscriptionManager @Inject constructor(
         managerScope.launch(Dispatchers.IO) {
             activeProjectId?.let { pid ->
                 val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
-                val status = if (hasCaptions) ProjectStatus.TRANSCRIBED else ProjectStatus.IMPORTED
-                projectRepository.updateStatus(pid, status)
+                if (hasCaptions) {
+                    projectRepository.updateStatus(pid, ProjectStatus.TRANSCRIBED)
+                } else {
+                    val project = projectRepository.getProjectById(pid)
+                    val isQuickImport = project?.creationMode ==
+                        com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION
+                    if (isQuickImport) {
+                        projectRepository.deleteProject(pid)
+                    } else {
+                        projectRepository.updateStatus(pid, ProjectStatus.IMPORTED)
+                    }
+                }
             }
             _step.value = ProcessingStep.Cancelled
         }

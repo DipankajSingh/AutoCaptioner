@@ -280,12 +280,11 @@ class ProcessingViewModel @Inject constructor(
         }
     }
 
-    private fun showModelSetup() {
-        val language = currentState.selectedLanguage
+    private fun filterCompatibleModels(language: String): List<com.dipdev.aiautocaptioner.data.model.WhisperModel> {
         val allModels = modelRepository.getAvailableModels()
         val isAutoDetect = language == "auto"
 
-        val compatibleModels = if (isAutoDetect) {
+        return if (isAutoDetect) {
             allModels.filter { model ->
                 val langMatch = model.isMultilingual || model.languages.contains("en")
                 langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
@@ -299,18 +298,44 @@ class ProcessingViewModel @Inject constructor(
                 langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
             }
         }
+    }
+
+    private fun resolveRecommendedModel(
+        compatibleModels: List<com.dipdev.aiautocaptioner.data.model.WhisperModel>,
+        language: String
+    ): Pair<String?, Int?> {
+        if (compatibleModels.isEmpty()) return null to null
 
         val recommendation = deviceCapabilityUseCase.getRecommendedModelWithReason(language)
-        val finalRec = if (compatibleModels.any { it.id == recommendation.modelId }) {
-            recommendation.modelId
-        } else {
-            compatibleModels.firstOrNull()?.id
+        val ramBasedId = recommendation.modelId
+
+        // For a specific non-English language, prefer a fine-tuned model if one exists
+        val isSpecificLanguage = language != "en" && language != "auto"
+        val languageSpecificModel = if (isSpecificLanguage) {
+            compatibleModels.firstOrNull { it.languages.contains(language) && !it.isMultilingual }
+        } else null
+
+        // Priority: language-specific fine-tuned > RAM-based recommendation > first compatible
+        val finalRec = when {
+            languageSpecificModel != null -> languageSpecificModel.id
+            compatibleModels.any { it.id == ramBasedId } -> ramBasedId
+            else -> compatibleModels.first().id
         }
-        val finalReason = if (compatibleModels.any { it.id == recommendation.modelId }) {
-            recommendation.reasonResId
-        } else {
-            null
+        val finalReason = when {
+            languageSpecificModel != null -> recommendation.reasonResId
+            compatibleModels.any { it.id == ramBasedId } -> recommendation.reasonResId
+            else -> null
         }
+
+        return finalRec to finalReason
+    }
+
+    private fun showModelSetup() {
+        val language = currentState.selectedLanguage
+        val isAutoDetect = language == "auto"
+        val compatibleModels = filterCompatibleModels(language)
+
+        val (finalRec, finalReason) = resolveRecommendedModel(compatibleModels, language)
 
         setState {
             copy(
@@ -326,31 +351,19 @@ class ProcessingViewModel @Inject constructor(
 
     private fun showModelPicker() {
         val language = currentState.selectedLanguage
-        val allModels = modelRepository.getAvailableModels()
         val isAutoDetect = language == "auto"
-
-        val compatibleModels = if (isAutoDetect) {
-            allModels.filter { model ->
-                val langMatch = model.isMultilingual || model.languages.contains("en")
-                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
-            }.sortedByDescending { it.isMultilingual }
-        } else {
-            allModels.filter { model ->
-                val langMatch = when {
-                    language == "en" -> model.languages.contains("en")
-                    else -> model.isMultilingual || model.languages.contains(language)
-                }
-                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
-            }
-        }
+        val compatibleModels = filterCompatibleModels(language)
 
         val currentModelId = currentState.activeModel?.id
-        val recommendation = deviceCapabilityUseCase.getRecommendedModelWithReason(language)
-        val finalRec = currentModelId
-            ?: (if (compatibleModels.any { it.id == recommendation.modelId }) recommendation.modelId else compatibleModels.firstOrNull()?.id)
-        val finalReason = if (currentModelId == null && compatibleModels.any { it.id == recommendation.modelId }) {
-            recommendation.reasonResId
-        } else null
+        val (recId, recReason) = resolveRecommendedModel(compatibleModels, language)
+
+        // When re-picking, pre-select the current active model if it's in the list
+        val finalRec = if (currentModelId != null && compatibleModels.any { it.id == currentModelId }) {
+            currentModelId
+        } else {
+            recId
+        }
+        val finalReason = if (currentModelId == null) recReason else null
 
         setState {
             copy(

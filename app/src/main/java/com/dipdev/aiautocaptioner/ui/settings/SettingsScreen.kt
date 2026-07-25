@@ -187,7 +187,7 @@ fun SettingsScreen(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     fontStyle = FontStyle.Italic,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

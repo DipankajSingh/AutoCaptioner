@@ -33,10 +33,11 @@ fun RenameDialog(
     val resolvedLabel = label ?: stringResource(R.string.rename_name_label)
     var text by remember(initialValue) { mutableStateOf(initialValue) }
 
-    FlatAlertDialog(
+    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+        type = com.dipdev.aiautocaptioner.ui.components.DialogType.INFO,
         onDismissRequest = onDismiss,
-        title   = { Text(resolvedTitle) },
-        text    = {
+        title = resolvedTitle,
+        content = {
             OutlinedTextField(
                 value         = text,
                 onValueChange = { text = it },
@@ -46,14 +47,10 @@ fun RenameDialog(
                 modifier      = Modifier.fillMaxWidth()
             )
         },
-        confirmButton = {
-            AppPrimaryButton(
-                onClick  = { if (text.isNotBlank()) { onConfirm(text.trim()); onDismiss() } },
-                enabled  = text.isNotBlank()
-            ) { Text(stringResource(R.string.rename_title)) }
-        },
-        dismissButton = {
-            AppOutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
-        }
+        confirmText = stringResource(R.string.rename_title),
+        onConfirm = { if (text.isNotBlank()) { onConfirm(text.trim()); onDismiss() } },
+        isConfirmEnabled = text.isNotBlank(),
+        dismissText = stringResource(R.string.processing_cancel),
+        onDismiss = onDismiss
     )
 }

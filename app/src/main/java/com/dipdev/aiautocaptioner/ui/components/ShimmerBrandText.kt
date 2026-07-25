@@ -45,7 +45,7 @@ fun ShimmerBrandText(
                     baseColor,
                     baseColor,
                     AccentAmber,
-                    Color.White,
+                    baseColor,
                     AccentAmber,
                     baseColor,
                     baseColor

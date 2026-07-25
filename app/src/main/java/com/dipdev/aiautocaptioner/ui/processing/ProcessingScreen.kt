@@ -53,7 +53,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dipdev.aiautocaptioner.ui.theme.AccentCyan
+import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -164,7 +164,7 @@ fun ProcessingScreen(
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.65f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.82f))
             )
         } else {
             androidx.compose.foundation.layout.Box(
@@ -253,14 +253,45 @@ fun ProcessingScreen(
                                 color = Color.White.copy(alpha = 0.6f),
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
-                            val quickLanguages = listOf("auto", "en", "es", "fr", "de")
+                            val quickLanguages = listOf(
+                                "auto", "en", "hi", "es", "fr", "de",
+                                "zh", "zh-TW", "yue", "ja", "ko",
+                                "it", "ar", "ru", "pt", "ta", "te",
+                                "nl", "tr", "pl", "vi", "th", "id", "ms"
+                            )
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.padding(bottom = if (currentStep.autoDetectMode) 16.dp else 32.dp)
                             ) {
                                 items(quickLanguages) { lang ->
                                     val isSelected = lang == uiState.selectedLanguage
-                                    val label = if (lang == "auto") stringResource(R.string.lang_auto_detect) else lang.uppercase()
+                                    val label = when (lang) {
+                                        "auto" -> stringResource(R.string.lang_auto_detect)
+                                        "en" -> stringResource(R.string.lang_english)
+                                        "hi" -> stringResource(R.string.lang_hindi)
+                                        "es" -> stringResource(R.string.lang_spanish)
+                                        "fr" -> stringResource(R.string.lang_french)
+                                        "de" -> stringResource(R.string.lang_german)
+                                        "zh" -> stringResource(R.string.lang_chinese_simplified)
+                                        "zh-TW" -> stringResource(R.string.lang_chinese_traditional)
+                                        "yue" -> stringResource(R.string.lang_cantonese)
+                                        "ja" -> stringResource(R.string.lang_japanese)
+                                        "ko" -> stringResource(R.string.lang_korean)
+                                        "it" -> stringResource(R.string.lang_italian)
+                                        "ar" -> stringResource(R.string.lang_arabic)
+                                        "ru" -> stringResource(R.string.lang_russian)
+                                        "pt" -> stringResource(R.string.lang_portuguese)
+                                        "ta" -> stringResource(R.string.lang_tamil)
+                                        "te" -> stringResource(R.string.lang_telugu)
+                                        "nl" -> stringResource(R.string.lang_dutch)
+                                        "tr" -> stringResource(R.string.lang_turkish)
+                                        "pl" -> stringResource(R.string.lang_polish)
+                                        "vi" -> stringResource(R.string.lang_vietnamese)
+                                        "th" -> stringResource(R.string.lang_thai)
+                                        "id" -> stringResource(R.string.lang_indonesian)
+                                        "ms" -> stringResource(R.string.lang_malay)
+                                        else -> lang.uppercase()
+                                    }
                                     Surface(
                                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                                         shape = CircleShape,

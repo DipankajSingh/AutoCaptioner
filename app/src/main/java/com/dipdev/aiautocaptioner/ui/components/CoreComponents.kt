@@ -59,7 +59,7 @@ fun GlassmorphicCard(
     } else {
         val baseBgColor = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.surface
         val bgColor = baseBgColor.copy(alpha = 0.5f)
-        val borderColor = Color.White.copy(alpha = 0.1f)
+        val borderColor = MaterialTheme.colorScheme.outline
 
         var baseModifier = modifier
             .clip(shape)
@@ -90,8 +90,8 @@ fun GradientPrimaryButton(
         modifier = modifier,
         shape = RoundedCornerShape(50),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             disabledContainerColor = MaterialTheme.colorScheme.outlineVariant,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
