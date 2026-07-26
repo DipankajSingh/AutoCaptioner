@@ -7,7 +7,7 @@
 -renamesourcefileattribute SourceFile
 
 # ============================================================
-# Kotlinx Serialization  (THE CRASH FIX)
+# Kotlinx Serialization
 # R8 renames @Serializable classes & strips their $serializer,
 # breaking kotlinx.serialization at runtime.
 # ============================================================
@@ -21,24 +21,21 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 -keep,includedescriptorclasses class com.dipdev.aiautocaptioner.**$$serializer { *; }
--keepclassmembers class com.dipdev.aiautocaptioner.** {
-    *** Companion;
-}
--keepclassmembers class com.dipdev.aiautocaptioner.ui.navigation.Screen {
-    *** Onboarding;
-    *** DeviceCheck;
-    *** ModelManager;
-    *** ModelDownload;
-    *** Home;
-    *** Settings;
-    *** ExportHistory;
-    *** ProjectEditorGraph;
-    *** VideoEditor;
-    *** Processing;
-    *** CaptionEditor;
-    *** Export;
-    *** SmartRecorder;
-}
+
+# ============================================================
+# Navigation Compose type-safe routes — Screen sealed class
+# data objects generate serializers differently from data classes;
+# both variants must survive R8 to prevent navigation crashes.
+# ============================================================
+-keep class com.dipdev.aiautocaptioner.ui.navigation.Screen { *; }
+-keep class com.dipdev.aiautocaptioner.ui.navigation.Screen$* { *; }
+
+# ============================================================
+# compose-icons-feather (br.com.devsrsouza.compose.icons)
+# Library does NOT ship consumer rules — icon objects get stripped.
+# ============================================================
+-keep class compose.icons.** { *; }
+-dontwarn compose.icons.**
 
 # ============================================================
 # Hilt / Dagger  (reflection-based DI)
@@ -52,7 +49,7 @@
 -keep @dagger.hilt.android.lifecycle.HiltViewModel class * { *; }
 
 -keep @dagger.hilt.InstallIn class * { *; }
--keep @dagger.Module class * { *; }
+-keep @dagger.hilt.Module class * { *; }
 -keep class * extends dagger.hilt.android.internal.** { *; }
 
 -keepclassmembers,allowobfuscation class * {
@@ -77,16 +74,6 @@
 -keep @androidx.room.Embedded class * { *; }
 -keep @androidx.room.Relation class * { *; }
 
--keep class com.dipdev.aiautocaptioner.data.db.entity.** { *; }
--keep class com.dipdev.aiautocaptioner.data.db.dao.** { *; }
--keep class com.dipdev.aiautocaptioner.data.db.Converters { *; }
--keep class com.dipdev.aiautocaptioner.data.db.AppDatabase { *; }
-
--keepclassmembers class * {
-    @androidx.room.* <fields>;
-    @androidx.room.* <methods>;
-}
-
 # ============================================================
 # Kotlin Coroutines
 # ============================================================
@@ -103,16 +90,7 @@
 # ============================================================
 -keep class * extends androidx.lifecycle.ViewModel { *; }
 -keep class * extends androidx.lifecycle.AndroidViewModel { *; }
--keepclassmembers class * extends androidx.lifecycle.ViewModel {
-    <init>(...);
-}
 -keep class * extends androidx.lifecycle.ViewModelProvider$Factory { *; }
-
-# ============================================================
-# Compose Navigation (type-safe routes)
-# ============================================================
--keep class androidx.navigation.compose.** { *; }
--keep class androidx.navigation.** { *; }
 
 # ============================================================
 # JNI / Native — keep WhisperEngine native methods
@@ -120,71 +98,31 @@
 -keep class com.dipdev.aiautocaptioner.core.whisper.WhisperEngine { *; }
 -keep class com.dipdev.aiautocaptioner.core.whisper.WhisperEngine$ProgressListener { *; }
 -keep class com.dipdev.aiautocaptioner.core.whisper.WhisperEngine$SegmentListener { *; }
--keep class com.dipdev.aiautocaptioner.core.whisper.WhisperException { *; }
+-keepnames class com.dipdev.aiautocaptioner.core.whisper.WhisperException { *; }
 
 # ============================================================
-# Firebase
+# Firebase — no consumer rules shipped in AAR
 # ============================================================
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
 
 # ============================================================
-# MediaPipe
-# ============================================================
--keep class com.google.mediapipe.** { *; }
--dontwarn com.google.mediapipe.**
-
-# ============================================================
-# RevenueCat
-# ============================================================
--keep class com.revenuecat.purchases.** { *; }
--keep class com.revenuecat.purchases.models.** { *; }
--dontwarn com.revenuecat.purchases.**
-
-# ============================================================
-# Coil (image loading)
-# ============================================================
--keep class coil3.** { *; }
--keep class io.coil3.** { *; }
--dontwarn coil3.**
--dontwarn io.coil3.**
-
-# ============================================================
-# Lottie
+# Lottie — no consumer rules shipped in AAR
 # ============================================================
 -keep class com.airbnb.lottie.** { *; }
 -dontwarn com.airbnb.lottie.**
 
 # ============================================================
-# OkHttp
-# ============================================================
--dontwarn okhttp3.**
--dontwarn okio.**
--keep class okhttp3.** { *; }
--keep class okio.** { *; }
-
-# ============================================================
-# Media3 / ExoPlayer
+# Media3 / ExoPlayer — no consumer rules shipped in AAR
 # ============================================================
 -keep class androidx.media3.** { *; }
 -dontwarn androidx.media3.**
 
 # ============================================================
-# Splash Screen
+# MediaPipe — no consumer rules shipped in AAR
 # ============================================================
--keep class androidx.core.splashscreen.** { *; }
-
-# ============================================================
-# DataStore
-# ============================================================
--keep class androidx.datastore.** { *; }
--keep class * extends androidx.datastore.preferences.core.Preferences { *; }
-
-# ============================================================
-# Google Play Services (AD_ID, etc.)
-# ============================================================
--dontwarn com.google.android.gms.**
--keep class com.google.android.gms.** { *; }
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
 
 # ============================================================
 # General — keep enums (Room TypeConverters use .valueOf)
@@ -193,6 +131,3 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
-
-# Keep all custom exceptions for crash reporting
--keep class com.dipdev.aiautocaptioner.core.** { *; }
