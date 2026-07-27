@@ -278,23 +278,24 @@ class ExportForegroundService : Service() {
                 val displayWidth  = if (isPortrait) project.videoHeight else project.videoWidth
                 val displayHeight = if (isPortrait) project.videoWidth  else project.videoHeight
 
-                val styleId = project.activeStyleId
-                if (styleId != null) {
-                    val activeStyle = captionRepository.getStyleById(styleId)
-                    val segments = captionRepository.getSegmentsOnce(projectId)
-                    if (activeStyle != null && segments.isNotEmpty()) {
-                        val wordsList = captionRepository.getAllWordsForProject(projectId)
-                        val wordsMap = wordsList.groupBy { it.segmentId }
-                        val captionOverlayEffect = CaptionOverlayEffect(
-                            context = this@ExportForegroundService,
-                            segments = segments,
-                            wordsMap = wordsMap,
-                            style = activeStyle,
-                            videoWidth = displayWidth,
-                            videoHeight = displayHeight
-                        )
-                        textureOverlays.add(captionOverlayEffect)
-                    }
+                val segments = captionRepository.getSegmentsOnce(projectId)
+                val activeStyle = project.activeStyleId?.let { captionRepository.getStyleById(it) }
+                    ?: if (project.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
+                        captionRepository.getFirstStyle()
+                    } else null
+
+                if (activeStyle != null && segments.isNotEmpty()) {
+                    val wordsList = captionRepository.getAllWordsForProject(projectId)
+                    val wordsMap = wordsList.groupBy { it.segmentId }
+                    val captionOverlayEffect = CaptionOverlayEffect(
+                        context = this@ExportForegroundService,
+                        segments = segments,
+                        wordsMap = wordsMap,
+                        style = activeStyle,
+                        videoWidth = displayWidth,
+                        videoHeight = displayHeight
+                    )
+                    textureOverlays.add(captionOverlayEffect)
                 }
 
                 val overlays = overlayRepository.getOverlaysOnce(projectId)

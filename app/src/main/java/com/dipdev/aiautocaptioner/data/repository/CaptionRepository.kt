@@ -153,6 +153,10 @@ class CaptionRepository @Inject constructor(
     suspend fun getStyleById(styleId: String): CaptionStyleEntity? =
         styleDao.getStyleById(styleId)
 
+    // Get the first available style (fallback for projects with no activeStyleId)
+    suspend fun getFirstStyle(): CaptionStyleEntity? =
+        styleDao.getFirstStyle()
+
     // Save a new or modified style
     suspend fun saveStyle(style: CaptionStyleEntity) {
         styleDao.insertStyle(style)

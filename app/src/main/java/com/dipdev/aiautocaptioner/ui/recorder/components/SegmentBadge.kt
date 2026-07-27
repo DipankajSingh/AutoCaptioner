@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun SegmentBadge(
@@ -32,12 +32,12 @@ fun SegmentBadge(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(Color.Black.copy(alpha = 0.5f))
-            .border(1.dp, AccentRose.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(
             text = "Segment $segmentCount · $durationText",
-            color = AccentRose.copy(alpha = 0.9f),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )

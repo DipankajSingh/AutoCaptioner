@@ -34,7 +34,9 @@ fun ModelPickerCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     autoDetectMode: Boolean = false,
-    isMultilingual: Boolean = false
+    isMultilingual: Boolean = false,
+    simplifiedMode: Boolean = false,
+    reasonText: String? = null
 ) {
     val isGlassEnabled = LocalGlassmorphismEnabled.current
 
@@ -181,6 +183,16 @@ fun ModelPickerCard(
                         lineHeight = 20.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    if (isRecommended && reasonText != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = reasonText,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -208,33 +220,78 @@ fun ModelPickerCard(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Metrics Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    MetricBars(label = stringResource(R.string.model_metric_speed), value = model.speed, activeColor = MaterialTheme.colorScheme.primary)
+            if (simplifiedMode) {
+                // Simplified metrics: quality label + download size
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.model_picker_quality_label),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val qualityLabel = when {
+                            model.accuracy >= 4 -> stringResource(R.string.model_picker_quality_best)
+                            model.accuracy == 3 -> stringResource(R.string.model_picker_quality_good)
+                            else -> stringResource(R.string.model_picker_quality_basic)
+                        }
+                        Text(
+                            text = qualityLabel,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.model_metric_size),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.model_size_format, model.sizeMb),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
-                Box(modifier = Modifier.weight(1f)) {
-                    MetricBars(label = stringResource(R.string.model_metric_accuracy), value = model.accuracy, activeColor = MaterialTheme.colorScheme.primary)
-                }
-                
-                Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.model_metric_size),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = stringResource(R.string.model_size_format, model.sizeMb),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+            } else {
+                // Full metrics: speed bars, accuracy bars, download size
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        MetricBars(label = stringResource(R.string.model_metric_speed), value = model.speed, activeColor = MaterialTheme.colorScheme.primary)
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        MetricBars(label = stringResource(R.string.model_metric_accuracy), value = model.accuracy, activeColor = MaterialTheme.colorScheme.primary)
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.model_metric_size),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = stringResource(R.string.model_size_format, model.sizeMb),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }

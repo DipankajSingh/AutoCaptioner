@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import androidx.compose.material3.MaterialTheme
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Pause
 import compose.icons.feathericons.Play
@@ -132,7 +132,7 @@ fun TeleprompterOverlay(
                 LinearProgressIndicator(
                     progress = { scrolledFraction },
                     modifier = Modifier.fillMaxSize(),
-                    color = AccentRose,
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.White.copy(alpha = 0.1f),
                     strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                 )
@@ -174,7 +174,7 @@ fun TeleprompterOverlay(
                             lineHeight = (fontSize * 1.4).sp,
                             textAlign = TextAlign.Center
                         ),
-                        cursorBrush = SolidColor(AccentRose),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
@@ -200,7 +200,7 @@ fun TeleprompterOverlay(
                         onValueChange = onTextChanged,
                         readOnly = isPlaying,
                         textStyle = textStyle,
-                        cursorBrush = SolidColor(AccentRose),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         visualTransformation = BionicReadingTransformation(),
                         modifier = Modifier
                             .fillMaxSize()
@@ -240,7 +240,7 @@ fun TeleprompterOverlay(
                         .fillMaxWidth()
                         .height(2.dp)
                         .align(Alignment.Center)
-                        .background(AccentRose.copy(alpha = if (isPlaying) 0.35f else 0.15f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isPlaying) 0.35f else 0.15f))
                 )
 
                 // Tap to pause when playing
@@ -272,7 +272,7 @@ fun TeleprompterOverlay(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 stringResource(R.string.teleprompter_script_complete),
-                                color = AccentRose,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -286,12 +286,12 @@ fun TeleprompterOverlay(
                                     }
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                color = AccentRose.copy(alpha = 0.15f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, AccentRose.copy(alpha = 0.3f))
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                             ) {
                                 Text(
                                     stringResource(R.string.teleprompter_back_to_top),
-                                    color = AccentRose,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
@@ -340,7 +340,7 @@ fun TeleprompterOverlay(
                                 showCountdown = true
                             },
                             shape = CircleShape,
-                            color = AccentRose,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -359,8 +359,8 @@ fun TeleprompterOverlay(
                             onValueChange = { wpm = it },
                             valueRange = 50f..300f,
                             colors = SliderDefaults.colors(
-                                thumbColor = AccentRose,
-                                activeTrackColor = AccentRose.copy(alpha = 0.7f),
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                                 inactiveTrackColor = Color.White.copy(alpha = 0.15f)
                             ),
                             modifier = Modifier.weight(1f)
@@ -394,7 +394,7 @@ fun TeleprompterOverlay(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text("Aa", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                Text(fontLabel, color = AccentRose, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(fontLabel, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -404,11 +404,11 @@ fun TeleprompterOverlay(
                         Surface(
                             onClick = { mirrorMode = !mirrorMode },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (mirrorMode) AccentRose.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.08f)
+                            color = if (mirrorMode) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.08f)
                         ) {
                             Text(
                                 stringResource(R.string.teleprompter_mirror),
-                                color = if (mirrorMode) AccentRose else Color.White.copy(alpha = 0.6f),
+                                color = if (mirrorMode) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.6f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)

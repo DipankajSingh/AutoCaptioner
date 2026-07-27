@@ -95,7 +95,8 @@ data class ProcessingUiState(
     val safetyCheck: ModelSafetyCheck = ModelSafetyCheck.Idle,
     val activeModel: WhisperModel? = null,
     val availableModels: List<WhisperModel> = emptyList(),
-    val detectedLanguage: String? = null
+    val detectedLanguage: String? = null,
+    val isQuickImport: Boolean = false
 ) : UiState
 
 sealed class ProcessingUiEvent : UiEvent {
@@ -114,6 +115,7 @@ sealed class ProcessingUiEvent : UiEvent {
     data object ResetSafetyCheck : ProcessingUiEvent()
     data object CancelModelSetup : ProcessingUiEvent()
     data object Cancel : ProcessingUiEvent()
+    data object CancelAndCleanup : ProcessingUiEvent()
     data class StartProcessing(val projectId: String) : ProcessingUiEvent()
     data class StartTranscriptionExplicit(
         val projectId: String,
@@ -129,6 +131,7 @@ sealed class ProcessingUiEvent : UiEvent {
 sealed class ProcessingUiEffect : UiEffect {
     data object NavigateToVideoEditor : ProcessingUiEffect()
     data object NavigateToCaptionEditor : ProcessingUiEffect()
+    data object NavigateBack : ProcessingUiEffect()
 }
 
 @HiltViewModel
@@ -141,6 +144,7 @@ class ProcessingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val crashReporter: CrashReporter,
     private val deviceCapabilityUseCase: com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase,
+    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase,
     private val transcriptionManager: com.dipdev.aiautocaptioner.core.whisper.TranscriptionManager
 ) : BaseViewModel<ProcessingUiState, ProcessingUiEvent, ProcessingUiEffect>(ProcessingUiState()) {
 
@@ -223,6 +227,7 @@ class ProcessingViewModel @Inject constructor(
             is ProcessingUiEvent.ResetSafetyCheck -> resetSafetyCheck()
             is ProcessingUiEvent.CancelModelSetup -> cancelModelSetup()
             is ProcessingUiEvent.Cancel -> cancel()
+            is ProcessingUiEvent.CancelAndCleanup -> cancelAndCleanup()
             is ProcessingUiEvent.StartProcessing -> startProcessing(event.projectId)
             is ProcessingUiEvent.StartTranscriptionExplicit -> startTranscriptionExplicit(event.projectId, event.modelId, event.language, event.translateToEnglish, event.initialPrompt)
             is ProcessingUiEvent.SetInitialPrompt -> {
@@ -239,10 +244,13 @@ class ProcessingViewModel @Inject constructor(
             val project = projectRepository.getProjectById(projectId)
             val isAlreadyDone = project?.status == ProjectStatus.TRANSCRIBED ||
                                 project?.status == ProjectStatus.EXPORTED
+            pendingProjectId = projectId
+            val quickImport = project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION
             setState {
                 copy(
                     workingVideoPath = project?.workingVideoPath,
-                    initialPrompt = project?.initialPrompt ?: ""
+                    initialPrompt = project?.initialPrompt ?: "",
+                    isQuickImport = quickImport
                 )
             }
 
@@ -278,72 +286,25 @@ class ProcessingViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.saveLastLanguageSettings(language, translate)
         }
-    }
-
-    private fun filterCompatibleModels(language: String): List<com.dipdev.aiautocaptioner.data.model.WhisperModel> {
-        val allModels = modelRepository.getAvailableModels()
-        val isAutoDetect = language == "auto"
-
-        return if (isAutoDetect) {
-            allModels.filter { model ->
-                val langMatch = model.isMultilingual || model.languages.contains("en")
-                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
-            }.sortedByDescending { it.isMultilingual }
-        } else {
-            allModels.filter { model ->
-                val langMatch = when {
-                    language == "en" -> model.languages.contains("en")
-                    else -> model.isMultilingual || model.languages.contains(language)
-                }
-                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
-            }
+        if (currentState.step is ProcessingStep.SetupAI) {
+            showModelSetup()
         }
-    }
-
-    private fun resolveRecommendedModel(
-        compatibleModels: List<com.dipdev.aiautocaptioner.data.model.WhisperModel>,
-        language: String
-    ): Pair<String?, Int?> {
-        if (compatibleModels.isEmpty()) return null to null
-
-        val recommendation = deviceCapabilityUseCase.getRecommendedModelWithReason(language)
-        val ramBasedId = recommendation.modelId
-
-        // For a specific non-English language, prefer a fine-tuned model if one exists
-        val isSpecificLanguage = language != "en" && language != "auto"
-        val languageSpecificModel = if (isSpecificLanguage) {
-            compatibleModels.firstOrNull { it.languages.contains(language) && !it.isMultilingual }
-        } else null
-
-        // Priority: language-specific fine-tuned > RAM-based recommendation > first compatible
-        val finalRec = when {
-            languageSpecificModel != null -> languageSpecificModel.id
-            compatibleModels.any { it.id == ramBasedId } -> ramBasedId
-            else -> compatibleModels.first().id
-        }
-        val finalReason = when {
-            languageSpecificModel != null -> recommendation.reasonResId
-            compatibleModels.any { it.id == ramBasedId } -> recommendation.reasonResId
-            else -> null
-        }
-
-        return finalRec to finalReason
     }
 
     private fun showModelSetup() {
         val language = currentState.selectedLanguage
-        val isAutoDetect = language == "auto"
-        val compatibleModels = filterCompatibleModels(language)
-
-        val (finalRec, finalReason) = resolveRecommendedModel(compatibleModels, language)
+        val compatibleModels = modelRecommendationUseCase.filterCompatibleModels(
+            modelRepository.getAvailableModels(), language
+        )
+        val recommendation = modelRecommendationUseCase.getRecommendation(compatibleModels, language)
 
         setState {
             copy(
                 step = ProcessingStep.SetupAI(
                     models = compatibleModels,
-                    recommendedModelId = finalRec,
-                    recommendedReasonResId = finalReason,
-                    autoDetectMode = isAutoDetect
+                    recommendedModelId = recommendation.modelId.ifEmpty { null },
+                    recommendedReasonResId = recommendation.reasonResId,
+                    autoDetectMode = language == "auto"
                 )
             )
         }
@@ -351,19 +312,18 @@ class ProcessingViewModel @Inject constructor(
 
     private fun showModelPicker() {
         val language = currentState.selectedLanguage
-        val isAutoDetect = language == "auto"
-        val compatibleModels = filterCompatibleModels(language)
+        val compatibleModels = modelRecommendationUseCase.filterCompatibleModels(
+            modelRepository.getAvailableModels(), language
+        )
+        val recommendation = modelRecommendationUseCase.getRecommendation(compatibleModels, language)
 
         val currentModelId = currentState.activeModel?.id
-        val (recId, recReason) = resolveRecommendedModel(compatibleModels, language)
-
-        // When re-picking, pre-select the current active model if it's in the list
         val finalRec = if (currentModelId != null && compatibleModels.any { it.id == currentModelId }) {
             currentModelId
         } else {
-            recId
+            recommendation.modelId.ifEmpty { null }
         }
-        val finalReason = if (currentModelId == null) recReason else null
+        val finalReason = if (currentModelId == null) recommendation.reasonResId else null
 
         setState {
             copy(
@@ -371,7 +331,7 @@ class ProcessingViewModel @Inject constructor(
                     models = compatibleModels,
                     recommendedModelId = finalRec,
                     recommendedReasonResId = finalReason,
-                    autoDetectMode = isAutoDetect
+                    autoDetectMode = language == "auto"
                 )
             )
         }
@@ -447,6 +407,18 @@ class ProcessingViewModel @Inject constructor(
 
     private fun cancel() {
         transcriptionManager.cancel()
+    }
+
+    private fun cancelAndCleanup() {
+        val projectId = pendingProjectId
+        if (projectId != null && currentState.isQuickImport) {
+            viewModelScope.launch {
+                projectRepository.deleteProject(projectId)
+                setEffect(ProcessingUiEffect.NavigateBack)
+            }
+        } else {
+            setEffect(ProcessingUiEffect.NavigateBack)
+        }
     }
 
     private fun startProcessing(projectId: String) {

@@ -18,8 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.MaterialTheme
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 
 @Composable
 fun QuickShareBar(
@@ -56,7 +56,7 @@ private fun ActionChip(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isAccent) AccentRose else Color.White.copy(alpha = 0.1f)
+    val bgColor = if (isAccent) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f)
     val textColor = if (isAccent) Color.Black else Color.White
 
     Row(

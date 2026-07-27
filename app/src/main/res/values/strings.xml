@@ -51,6 +51,16 @@
     <string name="model_picker_generate_button">Generate Captions</string>
     <string name="model_picker_battery_note">Generating captions uses a heavy AI model on your device. It may use a lot of battery.</string>
 
+    <!-- Simplified Model Picker (Quick Import) -->
+    <string name="model_picker_simplified_title">Generate Captions</string>
+    <string name="model_picker_simplified_subtitle">Pick a quality level. One-time download, runs on your device.</string>
+    <string name="model_picker_simplified_button">Start Generating</string>
+    <string name="model_picker_simplified_battery_note">Runs on your device. May use battery.</string>
+    <string name="model_picker_quality_label">Quality</string>
+    <string name="model_picker_quality_basic">Basic</string>
+    <string name="model_picker_quality_good">Good</string>
+    <string name="model_picker_quality_best">Best</string>
+
     <!-- Auto-detect mode -->
     <string name="auto_detect_info_title">Let the app pick the right language</string>
     <string name="auto_detect_info_body">The app will figure out the language on its own. Some models work with any language, while others work best for English.</string>
@@ -559,7 +569,7 @@
     <string name="recorder_exit_title">Exit Recording?</string>
     <string name="recorder_exit_message">You have an active recording. What would you like to do?</string>
     <string name="recorder_save_and_exit">Save &amp; Exit</string>
-    <string name="recorder_discard">Discard</string>
+    <string name="recorder_discard">Discard &amp; Exit</string>
     <string name="recorder_cancel">Cancel</string>
 
     <!-- Quick Share Bar -->

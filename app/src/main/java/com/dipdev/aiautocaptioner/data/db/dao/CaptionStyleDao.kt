@@ -14,6 +14,9 @@ interface CaptionStyleDao {
     // ORDER BY isDefault DESC = default/preset styles appear first
     // then alphabetical by name
 
+    @Query("SELECT * FROM caption_styles ORDER BY isDefault DESC, name ASC LIMIT 1")
+    suspend fun getFirstStyle(): CaptionStyleEntity?
+
     // Get a specific style by id
     // Used when loading the project's active style
     @Query("SELECT * FROM caption_styles WHERE id = :styleId")

@@ -204,10 +204,10 @@ class SmartRecorderViewModel @Inject constructor(
         }
     }
 
-    fun requestStartRecording(onProceedToCameraX: () -> Unit) {
+    fun requestStartRecording(forceCountdown: Int = 0, onProceedToCameraX: () -> Unit) {
         if (currentState.recordingState != RecordingState.IDLE || currentState.isCountdownActive) return
 
-        val timer = currentState.countdownTimer
+        val timer = maxOf(currentState.countdownTimer, forceCountdown)
         if (timer > 0) {
             setState { copy(isCountdownActive = true, countdownRemaining = timer) }
             viewModelScope.launch {
@@ -398,6 +398,7 @@ class SmartRecorderViewModel @Inject constructor(
     }
 
     fun resetState() {
+        val projectIdToDelete = currentProjectId
         setState {
             copy(
                 recordingState = RecordingState.IDLE,
@@ -410,6 +411,14 @@ class SmartRecorderViewModel @Inject constructor(
         }
         currentProjectId = null
         currentOutputFile = null
+        facelessRecorder?.stop()
+        facelessRecorder = null
+        stopTimer()
+        if (projectIdToDelete != null) {
+            viewModelScope.launch {
+                projectRepository.deleteProject(projectIdToDelete)
+            }
+        }
     }
 
     private fun finalizeRecording(projectId: String, file: File, bgType: String?, bgValue: String?) {

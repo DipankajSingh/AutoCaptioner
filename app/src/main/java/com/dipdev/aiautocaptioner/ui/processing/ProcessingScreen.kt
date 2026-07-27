@@ -108,6 +108,7 @@ fun ProcessingScreen(
             when (effect) {
                 is ProcessingUiEffect.NavigateToVideoEditor -> onNavigateToVideoEditor()
                 is ProcessingUiEffect.NavigateToCaptionEditor -> onNavigateToCaptionEditor()
+                is ProcessingUiEffect.NavigateBack -> onCancel()
             }
         }
     }
@@ -120,8 +121,12 @@ fun ProcessingScreen(
 
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = isProcessing) {
-        showCancelDialog = true
+    BackHandler(enabled = isProcessing || uiState.isQuickImport) {
+        if (isProcessing) {
+            showCancelDialog = true
+        } else {
+            viewModel.setEvent(ProcessingUiEvent.CancelAndCleanup)
+        }
     }
 
     var pendingModelIdToDownload by remember { mutableStateOf<String?>(null) }
@@ -186,7 +191,15 @@ fun ProcessingScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { if (isProcessing) showCancelDialog = true else onCancel() },
+                    onClick = {
+                        if (isProcessing) {
+                            showCancelDialog = true
+                        } else if (uiState.isQuickImport) {
+                            viewModel.setEvent(ProcessingUiEvent.CancelAndCleanup)
+                        } else {
+                            onCancel()
+                        }
+                    },
                     modifier = Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape)
                 ) {
                     Icon(imageVector = FeatherIcons.X, contentDescription = stringResource(R.string.cd_go_back), tint = Color.White)
@@ -223,6 +236,7 @@ fun ProcessingScreen(
                         is ProcessingStep.SetupAI -> {
                             var selectedModelId by remember { mutableStateOf(currentStep.recommendedModelId) }
                             val context = LocalContext.current
+                            val recommendationReason = currentStep.recommendedReasonResId?.let { stringResource(it) }
 
                             LaunchedEffect(Unit) {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -232,263 +246,425 @@ fun ProcessingScreen(
                                     }
                                 }
                             }
-                            
-                            Text(
-                                text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_title),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            Text(
-                                text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_subtitle),
-                                fontSize = 14.sp,
-                                color = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
 
-                            Text(
-                                text = stringResource(com.dipdev.aiautocaptioner.R.string.setupai_language_label),
-                                fontSize = 13.sp,
-                                color = Color.White.copy(alpha = 0.6f),
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            val quickLanguages = listOf(
-                                "auto", "en", "hi", "es", "fr", "de",
-                                "zh", "zh-TW", "yue", "ja", "ko",
-                                "it", "ar", "ru", "pt", "ta", "te",
-                                "nl", "tr", "pl", "vi", "th", "id", "ms"
-                            )
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(bottom = if (currentStep.autoDetectMode) 16.dp else 32.dp)
-                            ) {
-                                items(quickLanguages) { lang ->
-                                    val isSelected = lang == uiState.selectedLanguage
-                                    val label = when (lang) {
-                                        "auto" -> stringResource(R.string.lang_auto_detect)
-                                        "en" -> stringResource(R.string.lang_english)
-                                        "hi" -> stringResource(R.string.lang_hindi)
-                                        "es" -> stringResource(R.string.lang_spanish)
-                                        "fr" -> stringResource(R.string.lang_french)
-                                        "de" -> stringResource(R.string.lang_german)
-                                        "zh" -> stringResource(R.string.lang_chinese_simplified)
-                                        "zh-TW" -> stringResource(R.string.lang_chinese_traditional)
-                                        "yue" -> stringResource(R.string.lang_cantonese)
-                                        "ja" -> stringResource(R.string.lang_japanese)
-                                        "ko" -> stringResource(R.string.lang_korean)
-                                        "it" -> stringResource(R.string.lang_italian)
-                                        "ar" -> stringResource(R.string.lang_arabic)
-                                        "ru" -> stringResource(R.string.lang_russian)
-                                        "pt" -> stringResource(R.string.lang_portuguese)
-                                        "ta" -> stringResource(R.string.lang_tamil)
-                                        "te" -> stringResource(R.string.lang_telugu)
-                                        "nl" -> stringResource(R.string.lang_dutch)
-                                        "tr" -> stringResource(R.string.lang_turkish)
-                                        "pl" -> stringResource(R.string.lang_polish)
-                                        "vi" -> stringResource(R.string.lang_vietnamese)
-                                        "th" -> stringResource(R.string.lang_thai)
-                                        "id" -> stringResource(R.string.lang_indonesian)
-                                        "ms" -> stringResource(R.string.lang_malay)
-                                        else -> lang.uppercase()
-                                    }
-                                    Surface(
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                        shape = CircleShape,
-                                        modifier = Modifier.clickable { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(lang)) }
-                                    ) {
-                                        Text(
-                                            text = label,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.7f),
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                            fontSize = 13.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    }
-                                }
-                            }
+                            if (uiState.isQuickImport) {
+                                // ── Simplified Quick Import Setup ──
+                                Text(
+                                    text = stringResource(R.string.model_picker_simplified_title),
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                Text(
+                                    text = stringResource(R.string.model_picker_simplified_subtitle),
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(bottom = 24.dp)
+                                )
 
-                            var promptText by remember(uiState.initialPrompt) { mutableStateOf(uiState.initialPrompt) }
-
-                            Text(
-                                text = stringResource(R.string.setupai_prompt_label),
-                                fontSize = 13.sp,
-                                color = Color.White.copy(alpha = 0.6f),
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            OutlinedTextField(
-                                value = promptText,
-                                onValueChange = {
-                                    promptText = it
-                                    viewModel.setEvent(ProcessingUiEvent.SetInitialPrompt(it))
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = stringResource(R.string.setupai_prompt_placeholder),
-                                        color = Color.White.copy(alpha = 0.3f),
-                                        fontSize = 14.sp
-                                    )
-                                },
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    cursorColor = MaterialTheme.colorScheme.primary,
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = if (currentStep.autoDetectMode) 16.dp else 24.dp)
-                            )
-
-                            if (currentStep.autoDetectMode) {
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 24.dp)
+                                val quickLanguages = listOf(
+                                    "auto", "en", "hi", "es", "fr", "de",
+                                    "zh", "zh-TW", "yue", "ja", "ko",
+                                    "it", "ar", "ru", "pt", "ta", "te",
+                                    "nl", "tr", "pl", "vi", "th", "id", "ms"
+                                )
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(bottom = 28.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalAlignment = Alignment.Top
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Info,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier
-                                                .size(20.dp)
-                                                .padding(top = 2.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
+                                    items(quickLanguages) { lang ->
+                                        val isSelected = lang == uiState.selectedLanguage
+                                        val label = when (lang) {
+                                            "auto" -> stringResource(R.string.lang_auto_detect)
+                                            "en" -> stringResource(R.string.lang_english)
+                                            "hi" -> stringResource(R.string.lang_hindi)
+                                            "es" -> stringResource(R.string.lang_spanish)
+                                            "fr" -> stringResource(R.string.lang_french)
+                                            "de" -> stringResource(R.string.lang_german)
+                                            "zh" -> stringResource(R.string.lang_chinese_simplified)
+                                            "zh-TW" -> stringResource(R.string.lang_chinese_traditional)
+                                            "yue" -> stringResource(R.string.lang_cantonese)
+                                            "ja" -> stringResource(R.string.lang_japanese)
+                                            "ko" -> stringResource(R.string.lang_korean)
+                                            "it" -> stringResource(R.string.lang_italian)
+                                            "ar" -> stringResource(R.string.lang_arabic)
+                                            "ru" -> stringResource(R.string.lang_russian)
+                                            "pt" -> stringResource(R.string.lang_portuguese)
+                                            "ta" -> stringResource(R.string.lang_tamil)
+                                            "te" -> stringResource(R.string.lang_telugu)
+                                            "nl" -> stringResource(R.string.lang_dutch)
+                                            "tr" -> stringResource(R.string.lang_turkish)
+                                            "pl" -> stringResource(R.string.lang_polish)
+                                            "vi" -> stringResource(R.string.lang_vietnamese)
+                                            "th" -> stringResource(R.string.lang_thai)
+                                            "id" -> stringResource(R.string.lang_indonesian)
+                                            "ms" -> stringResource(R.string.lang_malay)
+                                            else -> lang.uppercase()
+                                        }
+                                        Surface(
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            shape = CircleShape,
+                                            modifier = Modifier.clickable { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(lang)) }
+                                        ) {
                                             Text(
-                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_title),
+                                                text = label,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.7f),
+                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                                 fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_body),
-                                                fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                                lineHeight = 17.sp
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                             )
                                         }
                                     }
                                 }
-                            }
-
-                            if (currentStep.autoDetectMode) {
-                                val multilingualModels = currentStep.models.filter { it.isMultilingual }
-                                val englishModels = currentStep.models.filter { !it.isMultilingual }
 
                                 LazyColumn(
                                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.heightIn(max = 340.dp)
+                                    modifier = Modifier.heightIn(max = 280.dp)
                                 ) {
-                                    if (multilingualModels.isNotEmpty()) {
-                                        item {
-                                            Text(
-                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_any_language),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White.copy(alpha = 0.8f),
-                                                modifier = Modifier.padding(bottom = 4.dp)
-                                            )
+                                    if (currentStep.autoDetectMode) {
+                                        val multilingualModels = currentStep.models.filter { it.isMultilingual }
+                                        val englishModels = currentStep.models.filter { !it.isMultilingual }
+                                        if (multilingualModels.isNotEmpty()) {
+                                            items(multilingualModels) { model ->
+                                                ModelPickerCard(
+                                                    model = model,
+                                                    isRecommended = model.id == currentStep.recommendedModelId,
+                                                    isSelected = model.id == selectedModelId,
+                                                    onClick = { selectedModelId = model.id },
+                                                    autoDetectMode = true,
+                                                    isMultilingual = true,
+                                                    simplifiedMode = true,
+                                                    reasonText = if (model.id == currentStep.recommendedModelId) recommendationReason else null
+                                                )
+                                            }
                                         }
-                                        items(multilingualModels) { model ->
-                                            ModelPickerCard(
-                                                model = model,
-                                                isRecommended = model.id == currentStep.recommendedModelId,
-                                                isSelected = model.id == selectedModelId,
-                                                onClick = { selectedModelId = model.id },
-                                                autoDetectMode = true,
-                                                isMultilingual = true
-                                            )
-                                        }
-                                    }
-                                    if (englishModels.isNotEmpty()) {
-                                        item {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Text(
-                                                text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_english),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White.copy(alpha = 0.8f),
-                                                modifier = Modifier.padding(bottom = 4.dp)
-                                            )
-                                        }
-                                        items(englishModels) { model ->
-                                            ModelPickerCard(
-                                                model = model,
-                                                isRecommended = model.id == currentStep.recommendedModelId,
-                                                isSelected = model.id == selectedModelId,
-                                                onClick = { selectedModelId = model.id },
-                                                autoDetectMode = true,
-                                                isMultilingual = false
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                LazyColumn(
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.heightIn(max = 300.dp)
-                                ) {
-                                    items(currentStep.models) { model ->
-                                        ModelPickerCard(
-                                            model = model,
-                                            isRecommended = model.id == currentStep.recommendedModelId,
-                                            isSelected = model.id == selectedModelId,
-                                            onClick = { selectedModelId = model.id }
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(32.dp))
-
-                            val selectedModel = currentStep.models.find { it.id == selectedModelId }
-                            val isDownloaded = selectedModel?.isDownloaded == true
-
-                            GradientPrimaryButton(
-                                text = stringResource(
-                                    if (isDownloaded) com.dipdev.aiautocaptioner.R.string.model_picker_generate_button
-                                    else com.dipdev.aiautocaptioner.R.string.model_picker_download_button
-                                ),
-                                onClick = { 
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                                        if (hasPerm == PackageManager.PERMISSION_GRANTED) {
-                                            selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
-                                        } else {
-                                            selectedModelId?.let { 
-                                                pendingModelIdToDownload = it
-                                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        if (englishModels.isNotEmpty()) {
+                                            items(englishModels) { model ->
+                                                ModelPickerCard(
+                                                    model = model,
+                                                    isRecommended = model.id == currentStep.recommendedModelId,
+                                                    isSelected = model.id == selectedModelId,
+                                                    onClick = { selectedModelId = model.id },
+                                                    autoDetectMode = true,
+                                                    isMultilingual = false,
+                                                    simplifiedMode = true,
+                                                    reasonText = if (model.id == currentStep.recommendedModelId) recommendationReason else null
+                                                )
                                             }
                                         }
                                     } else {
-                                        selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                        items(currentStep.models) { model ->
+                                            ModelPickerCard(
+                                                model = model,
+                                                isRecommended = model.id == currentStep.recommendedModelId,
+                                                isSelected = model.id == selectedModelId,
+                                                onClick = { selectedModelId = model.id },
+                                                simplifiedMode = true,
+                                                reasonText = if (model.id == currentStep.recommendedModelId) recommendationReason else null
+                                            )
+                                        }
                                     }
-                                },
-                                enabled = selectedModelId != null,
-                                modifier = Modifier.fillMaxWidth().height(56.dp)
-                            )
-                            
-                            Text(
-                                text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_battery_note),
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.5f),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
-                            )
+                                }
+
+                                Spacer(modifier = Modifier.height(32.dp))
+
+                                val selectedModel = currentStep.models.find { it.id == selectedModelId }
+                                val isDownloaded = selectedModel?.isDownloaded == true
+
+                                GradientPrimaryButton(
+                                    text = stringResource(
+                                        if (isDownloaded) R.string.model_picker_simplified_button
+                                        else R.string.model_picker_download_button
+                                    ),
+                                    onClick = { 
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                                            if (hasPerm == PackageManager.PERMISSION_GRANTED) {
+                                                selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                            } else {
+                                                selectedModelId?.let { 
+                                                    pendingModelIdToDownload = it
+                                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                                }
+                                            }
+                                        } else {
+                                            selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                        }
+                                    },
+                                    enabled = selectedModelId != null,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                                )
+                                
+                                Text(
+                                    text = stringResource(R.string.model_picker_simplified_battery_note),
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+                                )
+                            } else {
+                                // ── Full Setup (Advanced / Re-pick) ──
+                                Text(
+                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_title),
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                Text(
+                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_subtitle),
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                Text(
+                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.setupai_language_label),
+                                    fontSize = 13.sp,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                val quickLanguages = listOf(
+                                    "auto", "en", "hi", "es", "fr", "de",
+                                    "zh", "zh-TW", "yue", "ja", "ko",
+                                    "it", "ar", "ru", "pt", "ta", "te",
+                                    "nl", "tr", "pl", "vi", "th", "id", "ms"
+                                )
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(bottom = if (currentStep.autoDetectMode) 16.dp else 32.dp)
+                                ) {
+                                    items(quickLanguages) { lang ->
+                                        val isSelected = lang == uiState.selectedLanguage
+                                        val label = when (lang) {
+                                            "auto" -> stringResource(R.string.lang_auto_detect)
+                                            "en" -> stringResource(R.string.lang_english)
+                                            "hi" -> stringResource(R.string.lang_hindi)
+                                            "es" -> stringResource(R.string.lang_spanish)
+                                            "fr" -> stringResource(R.string.lang_french)
+                                            "de" -> stringResource(R.string.lang_german)
+                                            "zh" -> stringResource(R.string.lang_chinese_simplified)
+                                            "zh-TW" -> stringResource(R.string.lang_chinese_traditional)
+                                            "yue" -> stringResource(R.string.lang_cantonese)
+                                            "ja" -> stringResource(R.string.lang_japanese)
+                                            "ko" -> stringResource(R.string.lang_korean)
+                                            "it" -> stringResource(R.string.lang_italian)
+                                            "ar" -> stringResource(R.string.lang_arabic)
+                                            "ru" -> stringResource(R.string.lang_russian)
+                                            "pt" -> stringResource(R.string.lang_portuguese)
+                                            "ta" -> stringResource(R.string.lang_tamil)
+                                            "te" -> stringResource(R.string.lang_telugu)
+                                            "nl" -> stringResource(R.string.lang_dutch)
+                                            "tr" -> stringResource(R.string.lang_turkish)
+                                            "pl" -> stringResource(R.string.lang_polish)
+                                            "vi" -> stringResource(R.string.lang_vietnamese)
+                                            "th" -> stringResource(R.string.lang_thai)
+                                            "id" -> stringResource(R.string.lang_indonesian)
+                                            "ms" -> stringResource(R.string.lang_malay)
+                                            else -> lang.uppercase()
+                                        }
+                                        Surface(
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            shape = CircleShape,
+                                            modifier = Modifier.clickable { viewModel.setEvent(ProcessingUiEvent.SelectLanguage(lang)) }
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.7f),
+                                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                                fontSize = 13.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    }
+                                }
+
+                                var promptText by remember(uiState.initialPrompt) { mutableStateOf(uiState.initialPrompt) }
+
+                                Text(
+                                    text = stringResource(R.string.setupai_prompt_label),
+                                    fontSize = 13.sp,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                OutlinedTextField(
+                                    value = promptText,
+                                    onValueChange = {
+                                        promptText = it
+                                        viewModel.setEvent(ProcessingUiEvent.SetInitialPrompt(it))
+                                    },
+                                    placeholder = {
+                                        Text(
+                                            text = stringResource(R.string.setupai_prompt_placeholder),
+                                            color = Color.White.copy(alpha = 0.3f),
+                                            fontSize = 14.sp
+                                        )
+                                    },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        cursorColor = MaterialTheme.colorScheme.primary,
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                        focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = if (currentStep.autoDetectMode) 16.dp else 24.dp)
+                                )
+
+                                if (currentStep.autoDetectMode) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 24.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.Top
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Info,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .padding(top = 2.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Column {
+                                                Text(
+                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_title),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_body),
+                                                    fontSize = 12.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                                    lineHeight = 17.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (currentStep.autoDetectMode) {
+                                    val multilingualModels = currentStep.models.filter { it.isMultilingual }
+                                    val englishModels = currentStep.models.filter { !it.isMultilingual }
+
+                                    LazyColumn(
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.heightIn(max = 340.dp)
+                                    ) {
+                                        if (multilingualModels.isNotEmpty()) {
+                                            item {
+                                                Text(
+                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_any_language),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color.White.copy(alpha = 0.8f),
+                                                    modifier = Modifier.padding(bottom = 4.dp)
+                                                )
+                                            }
+                                            items(multilingualModels) { model ->
+                                                ModelPickerCard(
+                                                    model = model,
+                                                    isRecommended = model.id == currentStep.recommendedModelId,
+                                                    isSelected = model.id == selectedModelId,
+                                                    onClick = { selectedModelId = model.id },
+                                                    autoDetectMode = true,
+                                                    isMultilingual = true,
+                                                    reasonText = if (model.id == currentStep.recommendedModelId) recommendationReason else null
+                                                )
+                                            }
+                                        }
+                                        if (englishModels.isNotEmpty()) {
+                                            item {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_english),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color.White.copy(alpha = 0.8f),
+                                                    modifier = Modifier.padding(bottom = 4.dp)
+                                                )
+                                            }
+                                            items(englishModels) { model ->
+                                                ModelPickerCard(
+                                                    model = model,
+                                                    isRecommended = model.id == currentStep.recommendedModelId,
+                                                    isSelected = model.id == selectedModelId,
+                                                    onClick = { selectedModelId = model.id },
+                                                    autoDetectMode = true,
+                                                    isMultilingual = false,
+                                                    reasonText = if (model.id == currentStep.recommendedModelId) recommendationReason else null
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.heightIn(max = 300.dp)
+                                    ) {
+                                        items(currentStep.models) { model ->
+                                            ModelPickerCard(
+                                                model = model,
+                                                isRecommended = model.id == currentStep.recommendedModelId,
+                                                isSelected = model.id == selectedModelId,
+                                                onClick = { selectedModelId = model.id },
+                                                reasonText = if (model.id == currentStep.recommendedModelId) recommendationReason else null
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(32.dp))
+
+                                val selectedModel = currentStep.models.find { it.id == selectedModelId }
+                                val isDownloaded = selectedModel?.isDownloaded == true
+
+                                GradientPrimaryButton(
+                                    text = stringResource(
+                                        if (isDownloaded) com.dipdev.aiautocaptioner.R.string.model_picker_generate_button
+                                        else com.dipdev.aiautocaptioner.R.string.model_picker_download_button
+                                    ),
+                                    onClick = { 
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                                            if (hasPerm == PackageManager.PERMISSION_GRANTED) {
+                                                selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                            } else {
+                                                selectedModelId?.let { 
+                                                    pendingModelIdToDownload = it
+                                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                                }
+                                            }
+                                        } else {
+                                            selectedModelId?.let { viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId)) }
+                                        }
+                                    },
+                                    enabled = selectedModelId != null,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                                )
+                                
+                                Text(
+                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_battery_note),
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+                                )
+                            }
                         }
 
                         is ProcessingStep.Cancelled -> {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -225,13 +226,13 @@ private fun DialogCard(
 
             // ── Action buttons ─────────────────────────────────────────────
             if (dismissText != null) {
-                Row(
+                Column(
                     modifier          = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OutlinedButton(
                         onClick  = onDismiss,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(12.dp),
                         border   = BorderStroke(
                             1.dp,
@@ -244,11 +245,10 @@ private fun DialogCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(Modifier.width(10.dp))
                     Button(
                         onClick  = onConfirm,
                         enabled  = isConfirmEnabled,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(12.dp),
                         colors   = primaryButtonColors(accent)
                     ) {

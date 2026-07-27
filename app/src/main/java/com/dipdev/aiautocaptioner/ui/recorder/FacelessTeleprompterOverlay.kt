@@ -38,7 +38,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import androidx.compose.material3.MaterialTheme
 import com.dipdev.aiautocaptioner.ui.theme.DeepSpaceBackground
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Play
@@ -80,8 +80,9 @@ fun FacelessTeleprompterOverlay(
     }
     val totalWordCount = wordRanges.size
     val activeWords = (scrolledFraction * totalWordCount).toInt()
+    val karaokeHighlightColor = MaterialTheme.colorScheme.primary
     val karaokeTransformation = remember(activeWords, wordRanges) {
-        KaraokeBionicTransformation(activeWords, wordRanges)
+        KaraokeBionicTransformation(activeWords, wordRanges, karaokeHighlightColor)
     }
 
     // Auto-scroll
@@ -142,7 +143,7 @@ fun FacelessTeleprompterOverlay(
                 LinearProgressIndicator(
                     progress = { scrolledFraction },
                     modifier = Modifier.fillMaxSize(),
-                    color = AccentRose,
+                    color = MaterialTheme.colorScheme.primary,
                     trackColor = Color.White.copy(alpha = 0.1f),
                     strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                 )
@@ -186,7 +187,7 @@ fun FacelessTeleprompterOverlay(
                             lineHeight = (fontSize * 1.4).sp,
                             textAlign = TextAlign.Center
                         ),
-                        cursorBrush = SolidColor(AccentRose),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(scrollState)
@@ -212,7 +213,7 @@ fun FacelessTeleprompterOverlay(
                         onValueChange = onTextChanged,
                         readOnly = isPlaying,
                         textStyle = textStyle,
-                        cursorBrush = SolidColor(AccentRose),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         visualTransformation = if (isPlaying) karaokeTransformation else BionicReadingTransformation(),
                         modifier = Modifier
                             .fillMaxSize()
@@ -227,7 +228,7 @@ fun FacelessTeleprompterOverlay(
                         .fillMaxWidth()
                         .height(2.dp)
                         .align(Alignment.Center)
-                        .background(AccentRose.copy(alpha = if (isPlaying) 0.4f else 0.15f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = if (isPlaying) 0.4f else 0.15f))
                 )
 
                 // Tap to pause when playing
@@ -259,7 +260,7 @@ fun FacelessTeleprompterOverlay(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 stringResource(R.string.teleprompter_script_complete),
-                                color = AccentRose,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -273,12 +274,12 @@ fun FacelessTeleprompterOverlay(
                                     }
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                color = AccentRose.copy(alpha = 0.15f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, AccentRose.copy(alpha = 0.3f))
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                             ) {
                                 Text(
                                     stringResource(R.string.teleprompter_back_to_top),
-                                    color = AccentRose,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
@@ -320,7 +321,7 @@ fun FacelessTeleprompterOverlay(
                                 showCountdown = true
                             },
                             shape = CircleShape,
-                            color = AccentRose,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -338,8 +339,8 @@ fun FacelessTeleprompterOverlay(
                             onValueChange = { wpm = it },
                             valueRange = 50f..300f,
                             colors = SliderDefaults.colors(
-                                thumbColor = AccentRose,
-                                activeTrackColor = AccentRose.copy(alpha = 0.7f),
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                                 inactiveTrackColor = Color.White.copy(alpha = 0.15f)
                             ),
                             modifier = Modifier.weight(1f)
@@ -371,7 +372,7 @@ fun FacelessTeleprompterOverlay(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text("Aa", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                Text(fontLabel, color = AccentRose, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(fontLabel, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -415,7 +416,8 @@ data class WordRange(val start: Int, val end: Int, val word: String)
 
 class KaraokeBionicTransformation(
     private val activeWordCount: Int,
-    private val wordRanges: List<WordRange>
+    private val wordRanges: List<WordRange>,
+    private val highlightColor: Color = Color.White
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val original = text.text
@@ -432,7 +434,7 @@ class KaraokeBionicTransformation(
             }
 
             val isHighlighted = currentWordIndex < activeWordCount
-            val baseColor = if (isHighlighted) AccentRose else Color.White.copy(alpha = 0.3f)
+            val baseColor = if (isHighlighted) highlightColor else Color.White.copy(alpha = 0.3f)
             val word = range.word
             val boldLength = ceil(word.length / 2.0).toInt()
 

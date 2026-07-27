@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,13 +69,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.recorder.components.AspectRatioButton
-import com.dipdev.aiautocaptioner.ui.recorder.components.ExitRecordingDialog
+import com.dipdev.aiautocaptioner.ui.components.UniversalDialog
+import com.dipdev.aiautocaptioner.ui.components.DialogType
 import com.dipdev.aiautocaptioner.ui.recorder.components.PauseResumeControls
 import com.dipdev.aiautocaptioner.ui.recorder.components.QualityButton
 import com.dipdev.aiautocaptioner.ui.recorder.components.QuickShareBar
 import com.dipdev.aiautocaptioner.ui.recorder.components.SegmentBadge
 import com.dipdev.aiautocaptioner.ui.recorder.components.StorageIndicator
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Clock
 import compose.icons.feathericons.FileText
@@ -84,6 +87,7 @@ import compose.icons.feathericons.Zap
 import compose.icons.feathericons.ZapOff
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SmartRecorderScreen(
@@ -156,6 +160,7 @@ fun SmartRecorderContent(
     val elapsedSeconds = uiState.elapsedSeconds
     val selectedBackground = uiState.selectedBackground
     val finishedProjectId = uiState.finishedProjectId
+    val finishedVideoFile = uiState.finishedVideoFile
     val isAudioMuted = uiState.isAudioMuted
     val showGrid = uiState.showGrid
     val countdownTimer = uiState.countdownTimer
@@ -178,6 +183,7 @@ fun SmartRecorderContent(
     val cameraController = remember {
         LifecycleCameraController(context).apply {
             setEnabledUseCases(CameraController.VIDEO_CAPTURE or CameraController.IMAGE_ANALYSIS)
+            cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
         }
     }
 
@@ -191,14 +197,14 @@ fun SmartRecorderContent(
     val needsMicForFaceless = mode == RecordingMode.FACELESS && !micGranted
     val isPermissionBlocked = needsCameraForMode || needsMicForFaceless
 
-    val startRecordingAction: () -> Unit = {
+    val startRecordingAction: (forceCountdown: Int) -> Unit = { forceCountdown ->
         if (recordingState == RecordingState.IDLE) {
             when (mode) {
                 RecordingMode.FACELESS if !micGranted -> onRequestMic()
                 RecordingMode.CAMERA if !cameraGranted -> onRequestCamera()
                 RecordingMode.CAMERA if !isAudioMuted && !micGranted -> onRequestMic()
                 else -> {
-                    viewModel.requestStartRecording {
+                    viewModel.requestStartRecording(forceCountdown = forceCountdown) {
                         viewModel.prepareCameraRecordingFile { file ->
                             val outputOptions = FileOutputOptions.Builder(file).build()
                             val executor = ContextCompat.getMainExecutor(context)
@@ -255,6 +261,8 @@ fun SmartRecorderContent(
     val currentStartAction by rememberUpdatedState(startRecordingAction)
     val currentRecordingState by rememberUpdatedState(recordingState)
     val currentIsCountdownActive by rememberUpdatedState(isCountdownActive)
+    val currentMode by rememberUpdatedState(mode)
+    val currentActiveRecording by rememberUpdatedState(activeRecording)
 
     val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
     val gestureListener = remember {
@@ -262,7 +270,7 @@ fun SmartRecorderContent(
             override fun onPalmDetected() {
                 mainExecutor.execute {
                     if (currentRecordingState == RecordingState.IDLE && !currentIsCountdownActive) {
-                        currentStartAction()
+                        currentStartAction(3)
                     }
                 }
             }
@@ -275,42 +283,45 @@ fun SmartRecorderContent(
 
     LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
         if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val helper = GestureDetectorHelper(context, gestureListener)
-                gestureHelper = helper
-                cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
+            val helper = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                GestureDetectorHelper(context, gestureListener)
             }
+            gestureHelper = helper
+            cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
         } else {
             cameraController.clearImageAnalysisAnalyzer()
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                gestureHelper?.clearGestureRecognizer()
-                gestureHelper = null
+            withContext(kotlinx.coroutines.Dispatchers.IO) {
+                gestureHelper?.close()
             }
+            gestureHelper = null
         }
     }
 
     DisposableEffect(Unit) {
         onDispose {
+            activeRecording?.stop()
+            activeRecording = null
             cameraController.clearImageAnalysisAnalyzer()
-            val helperToClean = gestureHelper
-            backgroundExecutor.execute {
-                helperToClean?.clearGestureRecognizer()
-            }
+            gestureHelper?.close()
+            gestureHelper = null
         }
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE) {
-                if (recordingState == RecordingState.RECORDING || recordingState == RecordingState.PAUSED) {
-                    if (mode == RecordingMode.FACELESS) {
+                val state = currentRecordingState
+                val m = currentMode
+                val rec = currentActiveRecording
+                if (state == RecordingState.RECORDING || state == RecordingState.PAUSED) {
+                    if (m == RecordingMode.FACELESS) {
                         viewModel.stopFacelessRecording()
                     } else {
-                        if (recordingState == RecordingState.PAUSED) {
-                            activeRecording?.resume()
+                        if (state == RecordingState.PAUSED) {
+                            rec?.resume()
                             Thread.sleep(50)
                         }
-                        activeRecording?.stop()
+                        rec?.stop()
                     }
                 }
             }
@@ -325,7 +336,15 @@ fun SmartRecorderContent(
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         // --- 1. Background / Preview Area ---
-        if (mode == RecordingMode.CAMERA) {
+        if (recordingState == RecordingState.DONE && finishedVideoFile != null && finishedVideoFile.exists()) {
+            com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard(
+                path = finishedVideoFile.absolutePath,
+                modifier = Modifier.fillMaxSize(),
+                loop = true,
+                autoPlay = true,
+                showControls = false
+            )
+        } else if (mode == RecordingMode.CAMERA) {
             if (cameraGranted) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
@@ -393,7 +412,6 @@ fun SmartRecorderContent(
                 if (recordingState == RecordingState.IDLE) {
                     onNavigateBack()
                 } else if (recordingState == RecordingState.DONE) {
-                    viewModel.resetState()
                     onNavigateBack()
                 } else {
                     viewModel.requestExitRecording()
@@ -425,7 +443,7 @@ fun SmartRecorderContent(
                         modifier = Modifier.size(8.dp).clip(CircleShape)
                             .background(
                                 if (recordingState == RecordingState.PAUSED) Color.White
-                                else AccentRose
+                                else MaterialTheme.colorScheme.primary
                             )
                     )
                     Text(
@@ -463,11 +481,13 @@ fun SmartRecorderContent(
 
         // Advanced controls — only visible when permission is granted
         if (!isPermissionBlocked) {
-            // Left Sidebar
+            // Left Sidebar — settings (before shooting)
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 16.dp),
+                    .fillMaxHeight(0.55f)
+                    .padding(start = 16.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SidebarButton(
@@ -489,14 +509,34 @@ fun SmartRecorderContent(
                         currentRatio = aspectRatio,
                         onClick = { viewModel.cycleAspectRatio() }
                     )
+                    QualityButton(
+                        currentQuality = recordingQuality,
+                        onClick = { viewModel.cycleRecordingQuality() }
+                    )
+                    val timerText = if (countdownTimer == 0) stringResource(R.string.recorder_timer) else "${countdownTimer}s"
+                    SidebarButton(
+                        icon = FeatherIcons.Clock,
+                        text = timerText,
+                        isActive = countdownTimer > 0,
+                        onClick = {
+                            val next = when (countdownTimer) {
+                                0 -> 3
+                                3 -> 10
+                                else -> 0
+                            }
+                            viewModel.setCountdownTimer(next)
+                        }
+                    )
                 }
             }
 
-            // Right Sidebar
+            // Right Sidebar — quick actions (during shooting)
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
+                    .fillMaxHeight(0.55f)
+                    .padding(end = 16.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -533,26 +573,6 @@ fun SmartRecorderContent(
                         text = stringResource(R.string.recorder_palm),
                         isActive = isGestureDetectionEnabled,
                         onClick = { viewModel.toggleGestureDetection() }
-                    )
-                }
-                if (recordingState == RecordingState.IDLE) {
-                    QualityButton(
-                        currentQuality = recordingQuality,
-                        onClick = { viewModel.cycleRecordingQuality() }
-                    )
-                    val timerText = if (countdownTimer == 0) stringResource(R.string.recorder_timer) else "${countdownTimer}s"
-                    SidebarButton(
-                        icon = FeatherIcons.Clock,
-                        text = timerText,
-                        isActive = countdownTimer > 0,
-                        onClick = {
-                            val next = when (countdownTimer) {
-                                0 -> 3
-                                3 -> 10
-                                else -> 0
-                            }
-                            viewModel.setCountdownTimer(next)
-                        }
                     )
                 }
             }
@@ -626,7 +646,7 @@ fun SmartRecorderContent(
                     if (!isPermissionBlocked) {
                         RecordButton(
                             isRecording = false,
-                            onClick = startRecordingAction
+                            onClick = { startRecordingAction(0) }
                         )
                     }
                 }
@@ -679,7 +699,6 @@ fun SmartRecorderContent(
                         },
                         onEdit = {
                             finishedProjectId?.let { pId ->
-                                viewModel.resetState()
                                 onVideoReady(pId)
                             }
                         },
@@ -704,10 +723,15 @@ fun SmartRecorderContent(
 
     // Exit recording dialog
     if (showExitDialog) {
-        ExitRecordingDialog(
-            onSaveAndExit = { viewModel.saveAndExit() },
-            onDiscard = { viewModel.discardRecording() },
-            onDismiss = { viewModel.dismissExitDialog() }
+        UniversalDialog(
+            type = DialogType.WARNING,
+            title = stringResource(R.string.recorder_exit_title),
+            body = stringResource(R.string.recorder_exit_message),
+            confirmText = stringResource(R.string.recorder_save_and_exit),
+            onConfirm = { viewModel.saveAndExit() },
+            dismissText = stringResource(R.string.recorder_discard),
+            onDismiss = { viewModel.discardRecording(); onNavigateBack() },
+            onDismissRequest = { viewModel.dismissExitDialog() }
         )
     }
 }

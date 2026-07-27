@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import kotlin.random.Random
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,7 +58,7 @@ fun AudioVisualizerOverlay(amplitude: Float) {
     val baseColor = when {
         safeAmplitude > 0.85f -> Color.Red
         safeAmplitude < 0.15f -> Color.Yellow
-        else -> AccentRose
+        else -> MaterialTheme.colorScheme.primary
     }
     Row(
         modifier = Modifier.fillMaxSize(),
@@ -111,7 +110,7 @@ fun RecorderOnboardingSheet(
                 imageVector = Icons.Rounded.FiberManualRecord,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = AccentRose
+                tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -133,14 +132,14 @@ fun RecorderOnboardingSheet(
                 icon = Icons.Rounded.Videocam,
                 title = stringResource(R.string.recorder_onboarding_camera_title),
                 description = stringResource(R.string.recorder_onboarding_camera_desc),
-                accentColor = AccentRose
+                accentColor = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(12.dp))
             ModeInfoCard(
                 icon = Icons.Rounded.Mic,
                 title = stringResource(R.string.recorder_onboarding_faceless_title),
                 description = stringResource(R.string.recorder_onboarding_faceless_desc),
-                accentColor = AccentRose
+                accentColor = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -150,7 +149,7 @@ fun RecorderOnboardingSheet(
                     .fillMaxWidth()
                     .height(52.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentRose,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.Black
                 ),
                 shape = RoundedCornerShape(14.dp)
@@ -259,7 +258,7 @@ fun PermissionRequestCard(
                 Button(
                     onClick = onOpenSettings,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentRose,
+                        containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = Color.Black
                     ),
                     shape = RoundedCornerShape(12.dp)
@@ -273,7 +272,7 @@ fun PermissionRequestCard(
                 Button(
                     onClick = onRequest,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentRose,
+                        containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = Color.Black
                     ),
                     shape = RoundedCornerShape(12.dp)
@@ -315,7 +314,7 @@ fun RecordingIndicator(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .border(3.dp, AccentRose.copy(alpha = pulseAlpha))
+                .border(3.dp, MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha))
         )
 
         // REC badge — top right
@@ -333,11 +332,11 @@ fun RecordingIndicator(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(AccentRose.copy(alpha = pulseAlpha))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha))
             )
             Text(
                 text = stringResource(R.string.rec_rec),
-                color = AccentRose.copy(alpha = pulseAlpha),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.sp

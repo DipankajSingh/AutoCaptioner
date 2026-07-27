@@ -37,6 +37,7 @@ data class DeviceCheckUiState(
     val deviceInfo: DeviceInfo? = null,
     val models: List<WhisperModel> = emptyList(),
     val recommendedModelId: String? = null,
+    val recommendedReasonResId: Int? = null,
     val safetyState: ModelSafetyCheckState = ModelSafetyCheckState.Idle
 ) : UiState
 
@@ -51,7 +52,8 @@ sealed interface DeviceCheckUiEffect : UiEffect
 class DeviceCheckViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val modelRepository: ModelRepository,
-    private val deviceCapabilityUseCase: DeviceCapabilityUseCase
+    private val deviceCapabilityUseCase: DeviceCapabilityUseCase,
+    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase
 ) : BaseViewModel<DeviceCheckUiState, DeviceCheckUiEvent, DeviceCheckUiEffect>(DeviceCheckUiState()) {
 
     init {
@@ -78,17 +80,16 @@ class DeviceCheckViewModel @Inject constructor(
             cpuAbi = info.cpuAbi
         )
 
-        // Load models enriched with download status
         val allModels = modelRepository.getAvailableModels()
-
-        // Recommend based on RAM
-        val recommendedModelId = deviceCapabilityUseCase.getRecommendedModel("en")
+        val compatibleModels = modelRecommendationUseCase.filterCompatibleModels(allModels, "en")
+        val recommendation = modelRecommendationUseCase.getRecommendation(compatibleModels, "en")
 
         setState { 
             copy(
                 deviceInfo = deviceInfo,
                 models = allModels,
-                recommendedModelId = recommendedModelId
+                recommendedModelId = recommendation.modelId.ifEmpty { null },
+                recommendedReasonResId = recommendation.reasonResId
             )
         }
     }
