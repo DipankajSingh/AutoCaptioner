@@ -317,15 +317,13 @@ class StyleViewModel @Inject constructor(
         var style = uiState.value.activeStyle?.let(transform) ?: return
         
         if (propertyName == "displayMode") {
-            if (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.PHRASE) {
-                style = style.copy(
-                    wordEnterAnimation = AnimationType.NONE,
-                    wordExitAnimation = AnimationType.NONE
-                )
-            }
-            if (style.displayMode == DisplayMode.TYPEWRITER) {
-                style = style.copy(wordEnterAnimation = AnimationType.TYPEWRITER)
-            }
+            // Enforce forced animations per DisplayModeBehavior rules
+            val forcedEnter = com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.forcedEnterAnimation(style.displayMode)
+            val forcedExit = com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.forcedExitAnimation(style.displayMode)
+            style = style.copy(
+                wordEnterAnimation = forcedEnter ?: style.wordEnterAnimation,
+                wordExitAnimation = forcedExit ?: style.wordExitAnimation
+            )
         }
         
         setState { copy(activeStyle = style) }

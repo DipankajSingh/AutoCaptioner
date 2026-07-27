@@ -54,6 +54,7 @@ fun ColorTab(
 ) {
     var activeTool by remember { mutableStateOf<ColorSubTool?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val capabilities = remember(style) { com.dipdev.aiautocaptioner.engine.style.StyleCapabilityResolver.resolve(style) }
 
     if (activeTool == null) {
         LazyRow(
@@ -70,11 +71,15 @@ fun ColorTab(
             item { SubToolButton(FeatherIcons.Moon, stringResource(R.string.color_tab_shadow)) { activeTool = ColorSubTool.SHADOW } }
             item { SubToolButton(FeatherIcons.Droplet, stringResource(R.string.color_tab_gradient)) { activeTool = ColorSubTool.GRADIENT } }
             item { SubToolButton(FeatherIcons.Star, stringResource(R.string.color_tab_glow)) { activeTool = ColorSubTool.GLOW } }
-            item { SubToolButton(FeatherIcons.Box, stringResource(R.string.color_tab_bg_style)) { activeTool = ColorSubTool.BACKGROUND } }
-            item { SubToolButton(FeatherIcons.Droplet, stringResource(R.string.color_tab_bg_color)) { activeTool = ColorSubTool.BG_COLOR } }
-            item { SubToolButton(FeatherIcons.Maximize2, stringResource(R.string.color_tab_pad_h)) { activeTool = ColorSubTool.PAD_H } }
-            item { SubToolButton(FeatherIcons.Minimize2, stringResource(R.string.color_tab_pad_v)) { activeTool = ColorSubTool.PAD_V } }
-            item { SubToolButton(FeatherIcons.Square, stringResource(R.string.color_tab_corners)) { activeTool = ColorSubTool.CORNER } }
+            if (capabilities.showBackgroundStyleControl) {
+                item { SubToolButton(FeatherIcons.Box, stringResource(R.string.color_tab_bg_style)) { activeTool = ColorSubTool.BACKGROUND } }
+            }
+            if (capabilities.showBackgroundDetailSliders) {
+                item { SubToolButton(FeatherIcons.Droplet, stringResource(R.string.color_tab_bg_color)) { activeTool = ColorSubTool.BG_COLOR } }
+                item { SubToolButton(FeatherIcons.Maximize2, stringResource(R.string.color_tab_pad_h)) { activeTool = ColorSubTool.PAD_H } }
+                item { SubToolButton(FeatherIcons.Minimize2, stringResource(R.string.color_tab_pad_v)) { activeTool = ColorSubTool.PAD_V } }
+                item { SubToolButton(FeatherIcons.Square, stringResource(R.string.color_tab_corners)) { activeTool = ColorSubTool.CORNER } }
+            }
         }
     }
 

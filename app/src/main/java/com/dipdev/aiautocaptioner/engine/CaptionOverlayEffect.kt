@@ -28,13 +28,16 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
     private var recycledBitmap: Bitmap = createBitmap(videoWidth, videoHeight)
     private var overlayCanvas: Canvas = Canvas(recycledBitmap)
 
+    // Use the new modular engine for export — same rendering as preview
+    private val captionEngine = CaptionEngine()
+
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
         // Obliterate the previous frame
         overlayCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
 
         val currentPositionMs = presentationTimeUs / 1000
 
-        CaptionRenderer.draw(
+        captionEngine.draw(
             context = context,
             canvas = overlayCanvas,
             currentPositionMs = currentPositionMs,

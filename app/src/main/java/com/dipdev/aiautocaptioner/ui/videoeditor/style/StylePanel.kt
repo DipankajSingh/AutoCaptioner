@@ -179,6 +179,8 @@ fun StylePanel(
                             showAdjust = it
                             onAdjustExpanded?.invoke(it)
                         },
+                        displayMode = style.displayMode,
+                        showLayoutControls = com.dipdev.aiautocaptioner.engine.style.StyleCapabilityResolver.resolve(style).showLayoutSliders,
                         fontSize = style.fontSize,
                         maxWordsPerLine = style.maxWordsPerLine,
                         maxLines = style.maxLines,
@@ -340,6 +342,8 @@ private fun CompactCaptionsHeader(
 private fun CollapsibleAdjust(
     expanded: Boolean,
     onToggle: (Boolean) -> Unit,
+    displayMode: com.dipdev.aiautocaptioner.data.db.entity.DisplayMode,
+    showLayoutControls: Boolean,
     fontSize: Float,
     maxWordsPerLine: Int,
     maxLines: Int,
@@ -349,6 +353,10 @@ private fun CollapsibleAdjust(
     onMaxLinesChange: (Int) -> Unit,
     onPositionYChange: (Float) -> Unit
 ) {
+    val showMaxWords = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
+        com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_WORDS_PER_LINE, displayMode)
+    val showMaxLines = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
+        com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_LINES, displayMode)
     // Toggle row — always visible
     Surface(
         onClick = { onToggle(!expanded) },
@@ -391,7 +399,7 @@ private fun CollapsibleAdjust(
                 PremiumSlider(
                     value = fontSize,
                     onValueChange = onFontSizeChange,
-                    valueRange = 24f..96f,
+                    valueRange = 12f..160f,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -402,7 +410,8 @@ private fun CollapsibleAdjust(
                 )
             }
 
-            // Words + Lines
+            // Words + Lines (hidden for WORD_BY_WORD mode)
+            if (showMaxWords || showMaxLines) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -410,6 +419,7 @@ private fun CollapsibleAdjust(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                if (showMaxWords) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -426,7 +436,9 @@ private fun CollapsibleAdjust(
                         onValueChange = onMaxWordsChange
                     )
                 }
+                }
 
+                if (showMaxLines) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -443,6 +455,8 @@ private fun CollapsibleAdjust(
                         onValueChange = onMaxLinesChange
                     )
                 }
+                }
+            }
             }
 
             // Position

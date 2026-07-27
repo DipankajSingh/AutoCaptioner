@@ -58,6 +58,9 @@ object CaptionPaints {
     /** Karaoke highlight fill (FILL_LEFT_RIGHT, BACKGROUND_HIGHLIGHT) */
     val highlight = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    /** Solid background pill/box fill behind an active highlighted word (BACKGROUND_HIGHLIGHT) */
+    val activeBg  = Paint(Paint.ANTI_ALIAS_FLAG)
+
     // Typeface cache — avoids allocating new Typeface objects on every draw().
     // At 60fps with a complex style this saves ~120 allocations/sec and
     // eliminates the GC pressure that causes jank in the style editor preview.
@@ -88,10 +91,11 @@ object CaptionPaints {
             this.style    = if (style.outlineOnly) Paint.Style.STROKE else Paint.Style.FILL
             strokeWidth   = if (style.outlineOnly) style.outlineWidth * baseScale else 0f
             strokeJoin    = Paint.Join.ROUND
-            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
+            strokeCap     = Paint.Cap.ROUND
+            isFilterBitmap = true
+            isDither      = true
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
             textLocale    = java.util.Locale.ROOT
-            // Shadow on text paint: only used when there is NO outline, so the text
-            // paint itself is what's drawn in Pass 1 (the shadow pass).
             if (style.outlineWidth == 0f && style.shadowRadius > 0f) {
                 setShadowLayer(
                     style.shadowRadius * baseScale,
@@ -112,12 +116,13 @@ object CaptionPaints {
             this.style    = Paint.Style.STROKE
             strokeWidth   = style.outlineWidth * baseScale
             strokeJoin    = Paint.Join.ROUND
+            strokeCap     = Paint.Cap.ROUND
             textAlign     = Paint.Align.LEFT
             letterSpacing = style.letterSpacing
-            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
+            isFilterBitmap = true
+            isDither      = true
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
             textLocale    = java.util.Locale.ROOT
-            // Shadow on the outline paint: this is the correct place for drop-shadows
-            // when an outline exists, because outline is drawn in Pass 1 (behind fill).
             if (style.outlineWidth > 0f && style.shadowRadius > 0f) {
                 setShadowLayer(
                     style.shadowRadius * baseScale,
@@ -136,16 +141,32 @@ object CaptionPaints {
             this.style    = Paint.Style.FILL
         }
 
+        val highlightCol = if (style.displayMode == com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.KARAOKE_FILL) {
+            style.karaokeFillColor.toInt()
+        } else {
+            style.highlightColor.toInt()
+        }
+
         highlight.apply {
             textSize      = textSizePx
             typeface      = tf
-            color         = style.highlightColor.toInt()
+            color         = highlightCol
             this.style    = Paint.Style.FILL
             textAlign     = Paint.Align.LEFT
             letterSpacing = style.letterSpacing
-            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG
+            strokeCap     = Paint.Cap.ROUND
+            isFilterBitmap = true
+            isDither      = true
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
             textLocale    = java.util.Locale.ROOT
             clearShadowLayer()
+        }
+
+        activeBg.apply {
+            color         = style.activeWordBgColor.toInt()
+            this.style    = Paint.Style.FILL
+            isFilterBitmap = true
+            isDither      = true
         }
     }
 
@@ -174,29 +195,42 @@ object CaptionPaints {
      * Tries bundled assets first, then falls back to system fonts.
      */
     fun loadTypeface(context: Context, fontFamily: String, fontWeight: Int, isItalic: Boolean): Typeface {
-        val tsStyle = when {
-            fontWeight > 600 && isItalic -> Typeface.BOLD_ITALIC
-            fontWeight > 600             -> Typeface.BOLD
-            isItalic                     -> Typeface.ITALIC
-            else                         -> Typeface.NORMAL
-        }
-
         // 1. Try bundled asset font
         val entry = BundledFonts.all.find { it.displayName == fontFamily }
         if (entry != null && entry.assetPath.isNotEmpty()) {
             try {
                 val assetTf = Typeface.createFromAsset(context.assets, entry.assetPath)
+                // API 28+: variable fonts support exact weight extraction
+                if (android.os.Build.VERSION.SDK_INT >= 28) {
+                    return Typeface.create(assetTf, fontWeight.coerceIn(100, 900), isItalic)
+                }
+                // Pre-28: fallback to BOLD/NORMAL
+                val tsStyle = resolveStyle(fontWeight, isItalic)
                 return Typeface.create(assetTf, tsStyle)
             } catch (_: Exception) {
                 // Fall through to system font
             }
         }
 
-        // 2. System font fallback
+        // 2. System font — API 28+ has full weight support
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            val systemTf = Typeface.create(fontFamily, Typeface.NORMAL)
+            return Typeface.create(systemTf, fontWeight.coerceIn(100, 900), isItalic)
+        }
+
+        // 3. Legacy fallback
+        val tsStyle = resolveStyle(fontWeight, isItalic)
         val base = when (fontFamily) {
             "System" -> Typeface.DEFAULT
             else     -> Typeface.create(fontFamily, Typeface.NORMAL)
         }
         return Typeface.create(base, tsStyle)
+    }
+
+    private fun resolveStyle(fontWeight: Int, isItalic: Boolean): Int = when {
+        fontWeight > 600 && isItalic -> Typeface.BOLD_ITALIC
+        fontWeight > 600             -> Typeface.BOLD
+        isItalic                     -> Typeface.ITALIC
+        else                         -> Typeface.NORMAL
     }
 }

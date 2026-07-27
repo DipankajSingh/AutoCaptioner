@@ -6,10 +6,8 @@ import com.dipdev.aiautocaptioner.data.db.AppDatabase
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionSegmentDao
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionStyleDao
 import com.dipdev.aiautocaptioner.data.db.dao.CaptionWordDao
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
-import com.dipdev.aiautocaptioner.data.db.entity.EmphasisType
+import com.dipdev.aiautocaptioner.data.db.entity.*
+import com.dipdev.aiautocaptioner.engine.style.PresetFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -179,173 +177,147 @@ class CaptionRepository @Inject constructor(
         db.withTransaction {
             // ── Preset definitions ────────────────────────────────────────────
             // maxWordsPerLine / maxLines follow industry conventions:
-            //   WORD_BY_WORD presets: 1 line, 3–4 words max (punchy, TikTok-style)
-            //   KARAOKE_FILL presets: 1 line, 5–7 words (enough for a phrase)
-            //   PHRASE/CINEMATIC:     2 lines, 6–8 words (full subtitle block)
-            //   TYPEWRITER presets:   2 lines, 6 words (accumulate naturally)
+            //   WORD_BY_WORD presets: 1 word, 1 line (CapCut/TikTok single-word pop)
+            //   KARAOKE_FILL presets: 4 words, 2 lines (CapCut/Reels style dynamic lyric pages)
+            //   PHRASE/CINEMATIC:     5–7 words, 2 lines (full subtitle block)
+            //   TYPEWRITER presets:   6 words, 2 lines (accumulate naturally)
             val defaults = listOf(
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                PresetFactory.create(
                     name = "Basic",
-                    isDefault = true,
                     fontFamily = "Roboto",
                     fontWeight = 400,
                     fontSize = 40f,
-                    textColor = 0xFFFFFFFF,
-                    highlightColor = 0xFFFFFFFF,
-                    outlineColor = 0xFF000000,
-                    outlineWidth = 2f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    maxWordsPerLine = 6,
-                    maxLines = 2,
-                    positionX = 0.5f,
-                    positionY = 0.85f
+                    outlineWidth = 2f
                 ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                PresetFactory.create(
                     name = "Karaoke Pro",
-                    isDefault = true,
                     fontFamily = "Montserrat",
                     fontWeight = 900,
                     fontSize = 50f,
-                    textColor = 0xFFE0E0E0,
                     highlightColor = 0xFFFFC107,
-                    karaokeFillColor = 0xFFFFC107,
-                    outlineColor = 0xFF000000,
                     outlineWidth = 5f,
-                    shadowColor = 0xAA000000,
-                    shadowRadius = 8f,
-                    shadowOffsetY = 4f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.KARAOKE_FILL,
-                    karaokeHighlightMode = com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode.FILL_LEFT_RIGHT,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    maxWordsPerLine = 5,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    isKaraoke = true,
                     positionY = 0.82f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        karaokeFillColor = 0xFFFFC107,
+                        karaokeHighlightMode = KaraokeHighlightMode.FILL_LEFT_RIGHT,
+                        shadowColor = 0xAA000000,
+                        shadowRadius = 8f,
+                        shadowOffsetY = 4f
+                    )
+                },
+                PresetFactory.create(
+                    name = "Viral Pill",
+                    fontFamily = "Montserrat",
+                    fontWeight = 900,
+                    fontSize = 52f,
+                    textColor = 0xFFFFFFFF,
+                    highlightColor = 0xFFFFC107,
+                    outlineColor = 0xFF000000,
+                    outlineWidth = 4f,
+                    isKaraoke = false,
+                    positionY = 0.80f
+                ) {
+                    it.copy(
+                        displayMode = DisplayMode.LINE_HIGHLIGHT,
+                        maxWordsPerLine = 3,
+                        maxLines = 1,
+                        karaokeHighlightMode = KaraokeHighlightMode.BACKGROUND_HIGHLIGHT,
+                        activeWordBgColor = 0xFFFFC107,
+                        activeWordTextColor = 0xFF000000,
+                        activeWordCornerRadius = 14f
+                    )
+                },
+                PresetFactory.create(
                     name = "Cyberpunk",
-                    isDefault = true,
                     fontFamily = "Roboto",
                     fontWeight = 700,
                     fontSize = 48f,
-                    isItalic = true,
                     textColor = 0xFF00FFCC,
                     highlightColor = 0xFFFF0055,
-                    outlineColor = 0xFF000000,
-                    outlineWidth = 1f,
-                    shadowColor = 0xFF00FFCC,
-                    shadowRadius = 15f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.ELASTIC,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    maxWordsPerLine = 3,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    outlineColor = 0xFF00FFCC,
+                    outlineWidth = 0f,
+                    isWordByWord = true,
                     positionY = 0.5f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        isItalic = true,
+                        wordEnterAnimation = AnimationType.ELASTIC,
+                        wordExitAnimation = AnimationType.FADE,
+                        glowEnabled = true,
+                        glowColor = 0xFF00FFCC,
+                        glowRadius = 10f,
+                        shadowColor = 0xFF00FFCC,
+                        shadowRadius = 15f
+                    )
+                },
+                PresetFactory.create(
                     name = "Cinematic",
-                    isDefault = true,
                     fontFamily = "Montserrat",
                     fontWeight = 400,
                     fontSize = 36f,
-                    letterSpacing = 0.05f,
-                    textColor = 0xFFFFFFFF,
-                    highlightColor = 0xFFFFFFFF,
-                    outlineColor = 0xFF000000,
                     outlineWidth = 0f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.BOX,
+                    hasBg = true,
                     backgroundColor = 0xAA000000,
-                    backgroundCornerRadius = 12f,
-                    backgroundPaddingH = 24f,
-                    backgroundPaddingV = 16f,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    maxWordsPerLine = 7,
-                    maxLines = 2,
-                    positionX = 0.5f,
                     positionY = 0.90f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        letterSpacing = 0.05f,
+                        maxWordsPerLine = 7,
+                        backgroundCornerRadius = 12f,
+                        backgroundPaddingH = 24f,
+                        backgroundPaddingV = 16f
+                    )
+                },
+                PresetFactory.create(
                     name = "Typewriter",
-                    isDefault = true,
                     fontFamily = "Roboto",
                     fontWeight = 700,
                     fontSize = 42f,
                     textColor = 0xFF00FF00,
                     highlightColor = 0xFF00FF00,
-                    outlineColor = 0xFF000000,
                     outlineWidth = 3f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.TYPEWRITER,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.TYPEWRITER,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    maxWordsPerLine = 6,
-                    maxLines = 2,
-                    positionX = 0.5f,
-                    positionY = 0.85f
+                    isTypewriter = true
                 ),
                 // ---- New presets ----
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                PresetFactory.create(
                     name = "Hormozi",
-                    isDefault = true,
-                    fontFamily = "Bebas Neue",
-                    fontWeight = 700,
+                    fontFamily = "Montserrat",
+                    fontWeight = 900,
                     fontSize = 52f,
-                    textColor = 0xFFFFFFFF,
                     highlightColor = 0xFFFFD700,
-                    outlineColor = 0xFFB8860B,
-                    outlineWidth = 3f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.SCALE_POP,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    maxWordsPerLine = 3,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    outlineWidth = 5f,
+                    isWordByWord = true,
                     positionY = 0.82f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        wordEnterAnimation = AnimationType.SCALE_POP,
+                        textTransform = TextTransform.UPPERCASE
+                    )
+                },
+                PresetFactory.create(
                     name = "Neon Glow",
-                    isDefault = true,
                     fontFamily = "Bebas Neue",
-                    fontWeight = 700,
+                    fontWeight = 900,
                     fontSize = 54f,
                     textColor = 0xFF00FFFF,
                     highlightColor = 0xFFFF69B4,
-                    secondaryColor = 0xFF00CED1,
                     outlineColor = 0xFFFF00FF,
                     outlineWidth = 2f,
-                    glowEnabled = true,
-                    glowColor = 0xFF00FFFF,
-                    glowRadius = 12f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.BOUNCE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    maxWordsPerLine = 3,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    isWordByWord = true,
                     positionY = 0.85f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        secondaryColor = 0xFF00CED1,
+                        wordEnterAnimation = AnimationType.BOUNCE,
+                        glowEnabled = true,
+                        glowColor = 0xFF00FFFF,
+                        glowRadius = 12f
+                    )
+                },
+                PresetFactory.create(
                     name = "Story Time",
-                    isDefault = true,
                     fontFamily = "Pacifico",
                     fontWeight = 400,
                     fontSize = 44f,
@@ -353,19 +325,11 @@ class CaptionRepository @Inject constructor(
                     highlightColor = 0xFFFFD700,
                     outlineColor = 0xFF8B4513,
                     outlineWidth = 2f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    maxWordsPerLine = 4,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    isWordByWord = true,
                     positionY = 0.80f
                 ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                PresetFactory.create(
                     name = "Tech Terminal",
-                    isDefault = true,
                     fontFamily = "Space Mono",
                     fontWeight = 400,
                     fontSize = 38f,
@@ -373,69 +337,54 @@ class CaptionRepository @Inject constructor(
                     highlightColor = 0xFFFFFF00,
                     outlineColor = 0xFF003300,
                     outlineWidth = 2f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.FULL_LINE,
+                    hasBg = true,
                     backgroundColor = 0xDD0A0A0A,
-                    backgroundOpacity = 0.85f,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.TYPEWRITER,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.TYPEWRITER,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    textTransform = com.dipdev.aiautocaptioner.data.db.entity.TextTransform.UPPERCASE,
-                    maxWordsPerLine = 6,
-                    maxLines = 2,
-                    positionX = 0.5f,
+                    isTypewriter = true,
                     positionY = 0.88f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        backgroundType = BackgroundType.FULL_LINE,
+                        backgroundOpacity = 0.85f,
+                        textTransform = TextTransform.UPPERCASE
+                    )
+                },
+                PresetFactory.create(
                     name = "Elegant",
-                    isDefault = true,
                     fontFamily = "Playfair Display",
                     fontWeight = 700,
                     fontSize = 40f,
-                    letterSpacing = 0.03f,
                     textColor = 0xFFD4AF37,
                     highlightColor = 0xFFFFD700,
-                    secondaryColor = 0xFFF5E6B8,
                     outlineColor = 0xFF1A0A00,
                     outlineWidth = 3f,
-                    shadowColor = 0x40000000,
-                    shadowRadius = 4f,
-                    shadowOffsetX = 1f,
-                    shadowOffsetY = 1f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    gradientDirection = com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.LEFT_RIGHT,
-                    maxWordsPerLine = 6,
-                    maxLines = 2,
-                    positionX = 0.5f,
                     positionY = 0.88f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        letterSpacing = 0.03f,
+                        secondaryColor = 0xFFF5E6B8,
+                        shadowColor = 0x40000000,
+                        shadowRadius = 4f,
+                        shadowOffsetX = 1f,
+                        shadowOffsetY = 1f,
+                        gradientDirection = GradientDirection.LEFT_RIGHT
+                    )
+                },
+                PresetFactory.create(
                     name = "Bold Pop",
-                    isDefault = true,
                     fontFamily = "Montserrat",
                     fontWeight = 900,
                     fontSize = 50f,
-                    textColor = 0xFFFFFFFF,
                     highlightColor = 0xFFFFC107,
-                    outlineColor = 0xFF000000,
                     outlineWidth = 4f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.BOUNCE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    maxWordsPerLine = 3,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    isWordByWord = true,
                     positionY = 0.82f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        wordEnterAnimation = AnimationType.SCALE_POP
+                    )
+                },
+                PresetFactory.create(
                     name = "Retro Sign",
-                    isDefault = true,
                     fontFamily = "Bungee",
                     fontWeight = 400,
                     fontSize = 46f,
@@ -443,41 +392,33 @@ class CaptionRepository @Inject constructor(
                     highlightColor = 0xFFFFD700,
                     outlineColor = 0xFFFF4500,
                     outlineWidth = 3f,
-                    outlineOnly = true,
-                    glowEnabled = true,
-                    glowColor = 0xFFFF4500,
-                    glowRadius = 10f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.PHRASE,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.NONE,
-                    maxWordsPerLine = 5,
-                    maxLines = 2,
-                    positionX = 0.5f,
                     positionY = 0.85f
-                ),
-                CaptionStyleEntity(
-                    id = UUID.randomUUID().toString(),
+                ) {
+                    it.copy(
+                        outlineOnly = true,
+                        maxWordsPerLine = 5,
+                        glowEnabled = true,
+                        glowColor = 0xFFFF4500,
+                        glowRadius = 10f
+                    )
+                },
+                PresetFactory.create(
                     name = "Smooth Gradient",
-                    isDefault = true,
                     fontFamily = "Rubik",
                     fontWeight = 500,
                     fontSize = 44f,
                     textColor = 0xFF6A11CB,
                     highlightColor = 0xFFFFD700,
-                    secondaryColor = 0xFF2575FC,
                     outlineColor = 0x00000000,
                     outlineWidth = 0f,
-                    backgroundType = com.dipdev.aiautocaptioner.data.db.entity.BackgroundType.NONE,
-                    displayMode = com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    wordExitAnimation = com.dipdev.aiautocaptioner.data.db.entity.AnimationType.FADE,
-                    gradientDirection = com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.DIAGONAL,
-                    maxWordsPerLine = 4,
-                    maxLines = 1,
-                    positionX = 0.5f,
+                    isWordByWord = true,
                     positionY = 0.83f
-                ),
+                ) {
+                    it.copy(
+                        secondaryColor = 0xFF2575FC,
+                        gradientDirection = GradientDirection.DIAGONAL
+                    )
+                }
             )
 
             // Seed any presets not yet in the DB (IGNORE strategy — safe to call repeatedly)
@@ -491,14 +432,24 @@ class CaptionRepository @Inject constructor(
             }
 
             // ── Patch already-seeded rows ─────────────────────────────────────
-            // Existing installs have old rows without proper maxWordsPerLine /
-            // maxLines values. Patch them here — only layout-critical fields,
-            // so user customisations (color, font, position) are untouched.
+            // Existing installs have old rows with outdated preset values.
+            // Patch all fields on default presets so they match the latest
+            // definitions. User-customised styles (isDefault=false) are untouched.
             defaults.forEach { preset ->
-                styleDao.patchDefaultStyleLayout(
+                styleDao.patchDefaultStylePreset(
                     name            = preset.name,
+                    fontFamily      = preset.fontFamily,
+                    fontWeight      = preset.fontWeight,
+                    textTransform   = preset.textTransform,
+                    outlineColor    = preset.outlineColor,
+                    outlineWidth    = preset.outlineWidth,
+                    glowEnabled     = preset.glowEnabled,
+                    glowColor       = preset.glowColor,
+                    glowRadius      = preset.glowRadius,
                     maxWordsPerLine = preset.maxWordsPerLine,
-                    maxLines        = preset.maxLines
+                    maxLines        = preset.maxLines,
+                    enterAnim       = preset.wordEnterAnimation,
+                    exitAnim        = preset.wordExitAnimation,
                 )
             }
         }

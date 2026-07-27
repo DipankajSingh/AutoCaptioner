@@ -18,7 +18,7 @@ import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
-import com.dipdev.aiautocaptioner.engine.CaptionRenderer
+import com.dipdev.aiautocaptioner.engine.CaptionEngine
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.videoeditor.overlay.OverlayRenderer
@@ -62,6 +62,7 @@ fun PreviewSection(
 
         if (activeStyle != null && segments.isNotEmpty() && videoWidth > 0 && videoHeight > 0) {
             val context = LocalContext.current
+            val captionEngine = remember { CaptionEngine() }
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val srcMs = currentSourceMs()
 
@@ -76,7 +77,7 @@ fun PreviewSection(
                     native.save()
                     native.translate(offsetX, offsetY)
                     native.scale(scale, scale)
-                    CaptionRenderer.draw(
+                    captionEngine.draw(
                         context = context,
                         canvas = native,
                         currentPositionMs = srcMs,

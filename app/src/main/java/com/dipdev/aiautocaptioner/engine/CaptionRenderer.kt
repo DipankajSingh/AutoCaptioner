@@ -285,6 +285,7 @@ object CaptionRenderer {
         val fillColor: Int = when {
             xfm.colorOverride != null                                          -> xfm.colorOverride
             w.isEmphasized                                                     -> style.highlightColor.toInt()
+            w.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> style.activeWordTextColor.toInt()
             w.isActive && style.displayMode != DisplayMode.PHRASE              -> style.highlightColor.toInt()
             else                                                               -> style.textColor.toInt()
         }
@@ -303,7 +304,7 @@ object CaptionRenderer {
 
             val a = (255 * xfm.alpha * pageAlpha).toInt()
 
-            if (isBgPass) {
+            if (isBgPass && !(w.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT)) {
                 // Glow layer (drawn first, behind everything)
                 if (style.glowEnabled && style.glowRadius > 0f) {
                     glowPaint.textSize = CaptionPaints.text.textSize
@@ -329,7 +330,18 @@ object CaptionRenderer {
                     CaptionPaints.text.alpha = (a * style.textOpacity).toInt()
                     drawText(txt, 0, charsToDraw, x, y, CaptionPaints.text)
                 }
-            } else {
+            } else if (!isBgPass) {
+                if (w.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT) {
+                    val fm = CaptionPaints.text.fontMetrics
+                    val padX = 12f * baseScale
+                    val padY = 6f * baseScale
+                    tempWordRect.set(x - padX, y + fm.ascent - padY, x + wordW + padX, y + fm.descent + padY)
+                    val radius = (style.activeWordCornerRadius * baseScale).coerceIn(4f * baseScale, tempWordRect.height() / 2f)
+                    CaptionPaints.activeBg.alpha = (255 * xfm.alpha * pageAlpha).toInt().coerceIn(0, 255)
+                    canvas.drawRoundRect(tempWordRect, radius, radius, CaptionPaints.activeBg)
+                    CaptionPaints.activeBg.alpha = 255
+                }
+
                 if (style.gradientDirection != GradientDirection.NONE) {
                     val shader = when (style.gradientDirection) {
                         GradientDirection.LEFT_RIGHT -> LinearGradient(
@@ -398,13 +410,7 @@ object CaptionRenderer {
                     CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
                 }
                 KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> {
-                    tempWordRect.set(x - padX / 2f, lineTop - padY / 2f, x + wordW + padX / 2f, lineBot + padY / 2f)
-                    val saved = CaptionPaints.bg.color
-                    CaptionPaints.bg.color = style.highlightColor.toInt()
-                    CaptionPaints.bg.alpha = (80 * pageAlpha).toInt()
-                    canvas.drawRoundRect(tempWordRect, corner / 2f, corner / 2f, CaptionPaints.bg)
-                    CaptionPaints.bg.color = saved
-                    CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
+                    // Solid background pill rendered prior to glyph draw above
                 }
                 KaraokeHighlightMode.SCALE_UP -> { /* handled in WordTransform via CaptionAnimator */ }
             }

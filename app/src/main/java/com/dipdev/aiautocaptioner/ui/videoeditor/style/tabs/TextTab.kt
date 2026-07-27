@@ -40,6 +40,7 @@ fun TextTab(
     onPositionYChange: (Float) -> Unit,
 ) {
     var activeTool by remember { mutableStateOf<TextSubTool?>(null) }
+    val capabilities = remember(style) { com.dipdev.aiautocaptioner.engine.style.StyleCapabilityResolver.resolve(style) }
 
     if (activeTool == null) {
         LazyRow(
@@ -53,13 +54,17 @@ fun TextTab(
             item { SubToolButton(FeatherIcons.FileText, stringResource(R.string.text_tab_font)) { activeTool = TextSubTool.FONT } }
             item { SubToolButton(FeatherIcons.Type, stringResource(R.string.text_tab_size)) { activeTool = TextSubTool.SIZE } }
             item { SubToolButton(FeatherIcons.Bold, stringResource(R.string.text_tab_weight)) { activeTool = TextSubTool.WEIGHT } }
-            item { SubToolButton(FeatherIcons.AlignLeft, stringResource(R.string.text_tab_align)) { activeTool = TextSubTool.ALIGNMENT } }
+            if (capabilities.showLayoutSliders) {
+                item { SubToolButton(FeatherIcons.AlignLeft, stringResource(R.string.text_tab_align)) { activeTool = TextSubTool.ALIGNMENT } }
+            }
             item { SubToolButton(FeatherIcons.Minimize2, stringResource(R.string.text_tab_opacity)) { activeTool = TextSubTool.OPACITY } }
             item { SubToolButton(FeatherIcons.Edit2, stringResource(R.string.text_tab_case)) { activeTool = TextSubTool.TRANSFORM } }
             item { SubToolButton(FeatherIcons.Move, stringResource(R.string.text_tab_position)) { activeTool = TextSubTool.POSITION } }
-            item { SubToolButton(FeatherIcons.AlignJustify, stringResource(R.string.text_tab_words)) { activeTool = TextSubTool.WORDS_PER_LINE } }
-            item { SubToolButton(FeatherIcons.List, stringResource(R.string.text_tab_max_lines)) { activeTool = TextSubTool.MAX_LINES } }
-            item { SubToolButton(FeatherIcons.Maximize2, stringResource(R.string.text_tab_line_ht)) { activeTool = TextSubTool.LINE_HEIGHT } }
+            if (capabilities.showLayoutSliders) {
+                item { SubToolButton(FeatherIcons.AlignJustify, stringResource(R.string.text_tab_words)) { activeTool = TextSubTool.WORDS_PER_LINE } }
+                item { SubToolButton(FeatherIcons.List, stringResource(R.string.text_tab_max_lines)) { activeTool = TextSubTool.MAX_LINES } }
+                item { SubToolButton(FeatherIcons.Maximize2, stringResource(R.string.text_tab_line_ht)) { activeTool = TextSubTool.LINE_HEIGHT } }
+            }
             item { SubToolButton(FeatherIcons.Hash, stringResource(R.string.text_tab_symbols)) { activeTool = TextSubTool.PUNCTUATION } }
             item { SubToolButton(FeatherIcons.Italic, stringResource(R.string.text_tab_italic)) { activeTool = TextSubTool.ITALIC } }
             item { SubToolButton(FeatherIcons.Maximize, stringResource(R.string.text_tab_spacing)) { activeTool = TextSubTool.SPACING } }
@@ -90,7 +95,7 @@ fun TextTab(
                         label = stringResource(R.string.text_tab_size),
                         value = style.fontSize,
                         onValueChange = onFontSizeChange,
-                        valueRange = 24f..96f,
+                        valueRange = 12f..160f,
                         modifier = Modifier.weight(1f)
                     )
                 }

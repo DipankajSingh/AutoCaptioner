@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false,
     autoMigrations = []
 )
@@ -207,6 +207,17 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE projects ADD COLUMN initialPrompt TEXT")
+            }
+        }
+
+        /** Add activeWordBgColor, activeWordTextColor, and activeWordCornerRadius to caption_styles */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 0xFFFFC107 = 4294951175
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN activeWordBgColor INTEGER NOT NULL DEFAULT 4294951175")
+                // 0xFF000000 = 4278190080
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN activeWordTextColor INTEGER NOT NULL DEFAULT 4278190080")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN activeWordCornerRadius REAL NOT NULL DEFAULT 100.0")
             }
         }
     }

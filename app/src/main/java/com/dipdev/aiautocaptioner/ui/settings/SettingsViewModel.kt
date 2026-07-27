@@ -17,13 +17,15 @@ data class SettingsUiState(
     val theme: AppTheme = AppTheme.TRUE_BLACK,
     val glassmorphism: Boolean = true,
     val showTimelineThumbnails: Boolean = false,
-    val telemetryEnabled: Boolean = true
+    val telemetryEnabled: Boolean = true,
+    val previewFps: Int = 30
 ) : UiState
 
 sealed interface SettingsUiEvent : UiEvent {
     data class SetGlassmorphism(val enabled: Boolean) : SettingsUiEvent
     data class SetShowTimelineThumbnails(val enabled: Boolean) : SettingsUiEvent
     data class SetTelemetryEnabled(val enabled: Boolean) : SettingsUiEvent
+    data class SetPreviewFps(val fps: Int) : SettingsUiEvent
 }
 
 sealed interface SettingsUiEffect : UiEffect
@@ -39,9 +41,10 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.themeFlow,
                 settingsRepository.glassmorphismFlow,
                 settingsRepository.showTimelineThumbnailsFlow,
-                settingsRepository.telemetryEnabledFlow
-            ) { theme, glass, thumb, telemetry ->
-                SettingsUiState(theme, glass, thumb, telemetry)
+                settingsRepository.telemetryEnabledFlow,
+                settingsRepository.previewFpsFlow
+            ) { theme, glass, thumb, telemetry, previewFps ->
+                SettingsUiState(theme, glass, thumb, telemetry, previewFps)
             }.distinctUntilChanged().collect { state ->
                 setState { state }
             }
@@ -59,7 +62,9 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiEvent.SetTelemetryEnabled -> {
                 viewModelScope.launch { settingsRepository.setTelemetryEnabled(event.enabled) }
             }
-
+            is SettingsUiEvent.SetPreviewFps -> {
+                viewModelScope.launch { settingsRepository.setPreviewFps(event.fps) }
+            }
         }
     }
 }

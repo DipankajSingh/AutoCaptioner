@@ -60,4 +60,40 @@ interface CaptionStyleDao {
         WHERE name = :name AND isDefault = 1
     """)
     suspend fun patchDefaultStyleLayout(name: String, maxWordsPerLine: Int, maxLines: Int)
+
+    /**
+     * Patch visual/animation fields on an existing default style.
+     * Used to update presets whose visual parameters changed (not user-customised).
+     */
+    @Query("""
+        UPDATE caption_styles
+        SET fontFamily              = :fontFamily,
+            fontWeight              = :fontWeight,
+            textTransform           = :textTransform,
+            outlineColor            = :outlineColor,
+            outlineWidth            = :outlineWidth,
+            glowEnabled             = :glowEnabled,
+            glowColor               = :glowColor,
+            glowRadius              = :glowRadius,
+            maxWordsPerLine         = :maxWordsPerLine,
+            maxLines                = :maxLines,
+            wordEnterAnimation      = :enterAnim,
+            wordExitAnimation       = :exitAnim
+        WHERE name = :name AND isDefault = 1
+    """)
+    suspend fun patchDefaultStylePreset(
+        name: String,
+        fontFamily: String,
+        fontWeight: Int,
+        textTransform: com.dipdev.aiautocaptioner.data.db.entity.TextTransform,
+        outlineColor: Long,
+        outlineWidth: Float,
+        glowEnabled: Boolean,
+        glowColor: Long,
+        glowRadius: Float,
+        maxWordsPerLine: Int,
+        maxLines: Int,
+        enterAnim: com.dipdev.aiautocaptioner.data.db.entity.AnimationType,
+        exitAnim: com.dipdev.aiautocaptioner.data.db.entity.AnimationType,
+    )
 }

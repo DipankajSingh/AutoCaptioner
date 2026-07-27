@@ -149,7 +149,17 @@ data class CaptionStyleEntity(
     val karaokeHighlightMode: KaraokeHighlightMode = KaraokeHighlightMode.COLOR_CHANGE,
 
     // Color that fills the word left-to-right in FILL_LEFT_RIGHT mode
-    val karaokeFillColor: Long = 0xFFFFD700 // gold
+    val karaokeFillColor: Long = 0xFFFFD700, // gold
+
+    // ---- VIRAL PILL & ACTIVE WORD BACKGROUND SPECIFIC ----
+    // Solid background color behind active highlighted words (Default: Electric Yellow)
+    val activeWordBgColor: Long = 0xFFFFC107,
+
+    // Inverted contrasting font color for words inside active background highlight (Default: Crisp Black)
+    val activeWordTextColor: Long = 0xFF000000,
+
+    // Corner radius of the active highlight box (Default: 14f for crisp rounded rectangle)
+    val activeWordCornerRadius: Float = 14f
 )
 
 // How the background is drawn behind the caption text

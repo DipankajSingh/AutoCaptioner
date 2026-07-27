@@ -24,7 +24,7 @@ import androidx.media3.ui.PlayerView
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
-import com.dipdev.aiautocaptioner.engine.CaptionRenderer
+import com.dipdev.aiautocaptioner.engine.CaptionEngine
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -100,6 +100,7 @@ fun StylePreview(
             val currentPosY by rememberUpdatedState(style.positionY)
             val currentPosX by rememberUpdatedState(style.positionX)
             val context = LocalContext.current
+            val captionEngine = remember { CaptionEngine() }
 
             Canvas(modifier = Modifier
                 .fillMaxSize()
@@ -134,7 +135,7 @@ fun StylePreview(
                     native.save()
                     native.translate(offsetX, offsetY)
                     native.scale(scale, scale)
-                    CaptionRenderer.draw(
+                    captionEngine.draw(
                         context = context,
                         canvas = native,
                         currentPositionMs = currentPositionMs,

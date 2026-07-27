@@ -38,6 +38,9 @@ class SettingsRepository @Inject constructor(
     private val LAST_ASPECT_RATIO_KEY = stringPreferencesKey("last_aspect_ratio")
     private val LAST_RECORDING_QUALITY_KEY = stringPreferencesKey("last_recording_quality")
 
+    // Preview rendering FPS — lower values reduce battery usage and heat
+    private val PREVIEW_FPS_KEY = intPreferencesKey("preview_fps")
+
     val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
         val themeName = prefs[THEME_KEY] ?: AppTheme.TRUE_BLACK.name
         try {
@@ -86,6 +89,17 @@ class SettingsRepository @Inject constructor(
     val lastRecordingQualityFlow: Flow<String> = dataStore.data.map { prefs ->
         prefs[LAST_RECORDING_QUALITY_KEY] ?: "MEDIUM"
     }.distinctUntilChanged()
+
+    /** Preview FPS: 30 (default, saves battery) or 60 (smooth but more power). */
+    val previewFpsFlow: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[PREVIEW_FPS_KEY] ?: 30
+    }.distinctUntilChanged()
+
+    suspend fun setPreviewFps(fps: Int) {
+        dataStore.edit { prefs ->
+            prefs[PREVIEW_FPS_KEY] = fps
+        }
+    }
 
     suspend fun setTheme(theme: AppTheme) {
         dataStore.edit { prefs ->

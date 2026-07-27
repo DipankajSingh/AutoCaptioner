@@ -20,6 +20,7 @@ import compose.icons.FeatherIcons
 import compose.icons.feathericons.Info
 import compose.icons.feathericons.Shield
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -55,6 +56,7 @@ fun SettingsScreen(
     val isGlassmorphism = uiState.glassmorphism
     val showTimelineThumbnails = uiState.showTimelineThumbnails
     val telemetryEnabled = uiState.telemetryEnabled
+    val previewFps = uiState.previewFps
     val context = LocalContext.current
 
     ScreenThemeProvider(accentColor = AccentAmber) {
@@ -149,6 +151,36 @@ fun SettingsScreen(
                     checked = showTimelineThumbnails,
                     onCheckedChange = { viewModel.setEvent(SettingsUiEvent.SetShowTimelineThumbnails(it)) }
                 )
+            }
+
+            // Preview FPS
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = "Preview Frame Rate",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "30 FPS saves battery. 60 FPS is smoother.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(30, 60).forEach { fps ->
+                        FilterChip(
+                            selected = previewFps == fps,
+                            onClick = { viewModel.setEvent(SettingsUiEvent.SetPreviewFps(fps)) },
+                            label = { Text("${fps}fps") }
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

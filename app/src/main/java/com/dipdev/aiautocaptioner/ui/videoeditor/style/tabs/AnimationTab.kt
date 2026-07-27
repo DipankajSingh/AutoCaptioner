@@ -34,6 +34,7 @@ fun AnimationTab(
     onAnimationDurationChange: (Int) -> Unit,
 ) {
     var activeTool by remember { mutableStateOf<AnimSubTool?>(null) }
+    val capabilities = remember(style) { com.dipdev.aiautocaptioner.engine.style.StyleCapabilityResolver.resolve(style) }
 
     if (activeTool == null) {
         LazyRow(
@@ -45,9 +46,13 @@ fun AnimationTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             item { SubToolButton(FeatherIcons.Play, stringResource(R.string.anim_tab_display)) { activeTool = AnimSubTool.MODE } }
-            item { SubToolButton(FeatherIcons.Star, stringResource(R.string.anim_tab_karaoke)) { activeTool = AnimSubTool.HIGHLIGHT } }
-            item { SubToolButton(FeatherIcons.Activity, stringResource(R.string.anim_tab_enter)) { activeTool = AnimSubTool.ENTER } }
-            item { SubToolButton(FeatherIcons.ChevronDown, stringResource(R.string.anim_tab_exit)) { activeTool = AnimSubTool.EXIT } }
+            if (capabilities.showKaraokeControls) {
+                item { SubToolButton(FeatherIcons.Star, stringResource(R.string.anim_tab_karaoke)) { activeTool = AnimSubTool.HIGHLIGHT } }
+            }
+            if (capabilities.showPerWordAnimations) {
+                item { SubToolButton(FeatherIcons.Activity, stringResource(R.string.anim_tab_enter)) { activeTool = AnimSubTool.ENTER } }
+                item { SubToolButton(FeatherIcons.ChevronDown, stringResource(R.string.anim_tab_exit)) { activeTool = AnimSubTool.EXIT } }
+            }
             item { SubToolButton(FeatherIcons.FastForward, stringResource(R.string.anim_tab_speed)) { activeTool = AnimSubTool.SPEED } }
         }
     } else {
