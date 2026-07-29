@@ -175,283 +175,197 @@ class CaptionRepository @Inject constructor(
     // Called from SplashScreen ViewModel
     suspend fun initializeDefaultStyles() {
         db.withTransaction {
-            // ── Preset definitions ────────────────────────────────────────────
-            // maxWordsPerLine / maxLines follow industry conventions:
-            //   WORD_BY_WORD presets: 1 word, 1 line (CapCut/TikTok single-word pop)
-            //   KARAOKE_FILL presets: 4 words, 2 lines (CapCut/Reels style dynamic lyric pages)
-            //   PHRASE/CINEMATIC:     5–7 words, 2 lines (full subtitle block)
-            //   TYPEWRITER presets:   6 words, 2 lines (accumulate naturally)
             val defaults = listOf(
                 PresetFactory.create(
-                    name = "Basic",
-                    fontFamily = "Roboto",
-                    fontWeight = 400,
-                    fontSize = 40f,
-                    outlineWidth = 2f
-                ),
-                PresetFactory.create(
-                    name = "Karaoke Pro",
-                    fontFamily = "Montserrat",
+                    name = "Beast Mode",
+                    fontFamily = "Bebas Neue",
                     fontWeight = 900,
-                    fontSize = 50f,
-                    highlightColor = 0xFFFFC107,
-                    outlineWidth = 5f,
-                    isKaraoke = true,
-                    positionY = 0.82f
-                ) {
-                    it.copy(
-                        karaokeFillColor = 0xFFFFC107,
-                        karaokeHighlightMode = KaraokeHighlightMode.FILL_LEFT_RIGHT,
-                        shadowColor = 0xAA000000,
-                        shadowRadius = 8f,
-                        shadowOffsetY = 4f
-                    )
-                },
-                PresetFactory.create(
-                    name = "Viral Pill",
-                    fontFamily = "Montserrat",
-                    fontWeight = 900,
-                    fontSize = 52f,
-                    textColor = 0xFFFFFFFF,
-                    highlightColor = 0xFFFFC107,
-                    outlineColor = 0xFF000000,
-                    outlineWidth = 4f,
-                    isKaraoke = false,
-                    positionY = 0.80f
-                ) {
-                    it.copy(
-                        displayMode = DisplayMode.LINE_HIGHLIGHT,
-                        maxWordsPerLine = 3,
-                        maxLines = 1,
-                        karaokeHighlightMode = KaraokeHighlightMode.BACKGROUND_HIGHLIGHT,
-                        activeWordBgColor = 0xFFFFC107,
-                        activeWordTextColor = 0xFF000000,
-                        activeWordCornerRadius = 14f
-                    )
-                },
-                PresetFactory.create(
-                    name = "Cyberpunk",
-                    fontFamily = "Roboto",
-                    fontWeight = 700,
-                    fontSize = 48f,
-                    textColor = 0xFF00FFCC,
-                    highlightColor = 0xFFFF0055,
-                    outlineColor = 0xFF00FFCC,
-                    outlineWidth = 0f,
-                    isWordByWord = true,
-                    positionY = 0.5f
-                ) {
-                    it.copy(
-                        isItalic = true,
-                        wordEnterAnimation = AnimationType.ELASTIC,
-                        wordExitAnimation = AnimationType.FADE,
-                        glowEnabled = true,
-                        glowColor = 0xFF00FFCC,
-                        glowRadius = 10f,
-                        shadowColor = 0xFF00FFCC,
-                        shadowRadius = 15f
-                    )
-                },
-                PresetFactory.create(
-                    name = "Cinematic",
-                    fontFamily = "Montserrat",
-                    fontWeight = 400,
-                    fontSize = 36f,
-                    outlineWidth = 0f,
-                    hasBg = true,
-                    backgroundColor = 0xAA000000,
-                    positionY = 0.90f
-                ) {
-                    it.copy(
-                        letterSpacing = 0.05f,
-                        maxWordsPerLine = 7,
-                        backgroundCornerRadius = 12f,
-                        backgroundPaddingH = 24f,
-                        backgroundPaddingV = 16f
-                    )
-                },
-                PresetFactory.create(
-                    name = "Typewriter",
-                    fontFamily = "Roboto",
-                    fontWeight = 700,
-                    fontSize = 42f,
-                    textColor = 0xFF00FF00,
-                    highlightColor = 0xFF00FF00,
-                    outlineWidth = 3f,
-                    isTypewriter = true
+                    fontSize = 85f,
+                    letterSpacing = -0.02f,
+                    outlineWidth = 6f,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.SCALE_POP,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 200,
+                    maxWordsPerLine = 3,
+                    maxLines = 2,
+                    positionY = 0.60f,
+                    textTransform = TextTransform.UPPERCASE
                 ),
-                // ---- New presets ----
                 PresetFactory.create(
                     name = "Hormozi",
                     fontFamily = "Montserrat",
                     fontWeight = 900,
-                    fontSize = 52f,
+                    fontSize = 90f,
                     highlightColor = 0xFFFFD700,
                     outlineWidth = 5f,
-                    isWordByWord = true,
-                    positionY = 0.82f
-                ) {
-                    it.copy(
-                        wordEnterAnimation = AnimationType.SCALE_POP,
-                        textTransform = TextTransform.UPPERCASE
-                    )
-                },
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.FADE,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 120,
+                    maxWordsPerLine = 3,
+                    maxLines = 2,
+                    positionY = 0.65f,
+                    textTransform = TextTransform.UPPERCASE,
+                    letterSpacing = -0.01f
+                ),
                 PresetFactory.create(
-                    name = "Neon Glow",
-                    fontFamily = "Bebas Neue",
-                    fontWeight = 900,
+                    name = "Box Background",
+                    fontFamily = "Inter",
+                    fontWeight = 600,
                     fontSize = 54f,
-                    textColor = 0xFF00FFFF,
-                    highlightColor = 0xFFFF69B4,
-                    outlineColor = 0xFFFF00FF,
-                    outlineWidth = 2f,
-                    isWordByWord = true,
-                    positionY = 0.85f
-                ) {
-                    it.copy(
-                        secondaryColor = 0xFF00CED1,
-                        wordEnterAnimation = AnimationType.BOUNCE,
-                        glowEnabled = true,
-                        glowColor = 0xFF00FFFF,
-                        glowRadius = 12f
-                    )
-                },
-                PresetFactory.create(
-                    name = "Story Time",
-                    fontFamily = "Pacifico",
-                    fontWeight = 400,
-                    fontSize = 44f,
-                    textColor = 0xFFF5F5DC,
-                    highlightColor = 0xFFFFD700,
-                    outlineColor = 0xFF8B4513,
-                    outlineWidth = 2f,
-                    isWordByWord = true,
+                    outlineWidth = 0f,
+                    shadowRadius = 0f,
+                    backgroundType = BackgroundType.BOX,
+                    backgroundOpacity = 0.78f,
+                    backgroundCornerRadius = 14f,
+                    backgroundPaddingH = 12f,
+                    backgroundPaddingV = 8f,
+                    displayMode = DisplayMode.LINE_HIGHLIGHT,
+                    wordEnterAnimation = AnimationType.FADE,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 200,
+                    maxWordsPerLine = 5,
+                    maxLines = 2,
                     positionY = 0.80f
                 ),
                 PresetFactory.create(
-                    name = "Tech Terminal",
-                    fontFamily = "Space Mono",
-                    fontWeight = 400,
-                    fontSize = 38f,
-                    textColor = 0xFF00FF41,
-                    highlightColor = 0xFFFFFF00,
-                    outlineColor = 0xFF003300,
-                    outlineWidth = 2f,
-                    hasBg = true,
-                    backgroundColor = 0xDD0A0A0A,
-                    isTypewriter = true,
-                    positionY = 0.88f
-                ) {
-                    it.copy(
-                        backgroundType = BackgroundType.FULL_LINE,
-                        backgroundOpacity = 0.85f,
-                        textTransform = TextTransform.UPPERCASE
-                    )
-                },
+                    name = "Karaoke",
+                    fontFamily = "Montserrat",
+                    fontWeight = 700,
+                    fontSize = 72f,
+                    highlightColor = 0xFFFFD60A,
+                    outlineWidth = 3.5f,
+                    displayMode = DisplayMode.KARAOKE_FILL,
+                    karaokeHighlightMode = KaraokeHighlightMode.COLOR_CHANGE,
+                    karaokeFillColor = 0xFFFFD60A,
+                    maxWordsPerLine = 4,
+                    maxLines = 2,
+                    positionY = 0.70f,
+                    animationDurationMs = 150
+                ),
                 PresetFactory.create(
-                    name = "Elegant",
+                    name = "Neon Glow",
+                    fontFamily = "Bebas Neue",
+                    fontWeight = 700,
+                    fontSize = 80f,
+                    textColor = 0xFF00FFFF,
+                    outlineColor = 0xFF000000,
+                    outlineWidth = 2.5f,
+                    glowEnabled = true,
+                    glowColor = 0xFF00FFFF,
+                    glowRadius = 8f,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.SCALE_POP,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 150,
+                    maxWordsPerLine = 3,
+                    maxLines = 2,
+                    positionY = 0.55f,
+                    textTransform = TextTransform.UPPERCASE
+                ),
+                PresetFactory.create(
+                    name = "Clean Minimal",
+                    fontFamily = "Inter",
+                    fontWeight = 500,
+                    fontSize = 50f,
+                    outlineWidth = 0f,
+                    shadowColor = 0x40000000,
+                    shadowRadius = 4f,
+                    shadowOffsetX = 2f,
+                    shadowOffsetY = 2f,
+                    backgroundType = BackgroundType.BOX,
+                    backgroundColor = 0xFF000000,
+                    backgroundOpacity = 0.40f,
+                    backgroundCornerRadius = 8f,
+                    backgroundPaddingH = 12f,
+                    backgroundPaddingV = 6f,
+                    displayMode = DisplayMode.PHRASE,
+                    maxWordsPerLine = 6,
+                    maxLines = 2,
+                    positionY = 0.80f,
+                    animationDurationMs = 200
+                ),
+                PresetFactory.create(
+                    name = "Bold Highlight",
+                    fontFamily = "Montserrat",
+                    fontWeight = 700,
+                    fontSize = 65f,
+                    highlightColor = 0xFFFF4500,
+                    outlineWidth = 3.5f,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.FADE,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 120,
+                    maxWordsPerLine = 4,
+                    maxLines = 2,
+                    positionY = 0.65f,
+                    textTransform = TextTransform.TITLE_CASE
+                ),
+                PresetFactory.create(
+                    name = "MrBeast Cyan",
+                    fontFamily = "Bangers",
+                    fontWeight = 700,
+                    fontSize = 82f,
+                    textColor = 0xFF00FFFF,
+                    outlineColor = 0xFFFFFFFF,
+                    outlineWidth = 3.5f,
+                    letterSpacing = -0.02f,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.SCALE_POP,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 200,
+                    maxWordsPerLine = 3,
+                    maxLines = 2,
+                    positionY = 0.60f,
+                    textTransform = TextTransform.UPPERCASE
+                ),
+                PresetFactory.create(
+                    name = "Typewriter Reveal",
+                    fontFamily = "Space Mono",
+                    fontWeight = 700,
+                    fontSize = 60f,
+                    outlineWidth = 2.5f,
+                    backgroundType = BackgroundType.PILL,
+                    backgroundColor = 0xFF000000,
+                    backgroundOpacity = 0.50f,
+                    backgroundCornerRadius = 8f,
+                    backgroundPaddingH = 14f,
+                    backgroundPaddingV = 6f,
+                    displayMode = DisplayMode.TYPEWRITER,
+                    wordEnterAnimation = AnimationType.TYPEWRITER,
+                    animationDurationMs = 60,
+                    maxWordsPerLine = 5,
+                    maxLines = 2,
+                    positionY = 0.70f
+                ),
+                PresetFactory.create(
+                    name = "Luxury Editorial",
                     fontFamily = "Playfair Display",
                     fontWeight = 700,
-                    fontSize = 40f,
-                    textColor = 0xFFD4AF37,
-                    highlightColor = 0xFFFFD700,
-                    outlineColor = 0xFF1A0A00,
-                    outlineWidth = 3f,
-                    positionY = 0.88f
-                ) {
-                    it.copy(
-                        letterSpacing = 0.03f,
-                        secondaryColor = 0xFFF5E6B8,
-                        shadowColor = 0x40000000,
-                        shadowRadius = 4f,
-                        shadowOffsetX = 1f,
-                        shadowOffsetY = 1f,
-                        gradientDirection = GradientDirection.LEFT_RIGHT
-                    )
-                },
-                PresetFactory.create(
-                    name = "Bold Pop",
-                    fontFamily = "Montserrat",
-                    fontWeight = 900,
-                    fontSize = 50f,
-                    highlightColor = 0xFFFFC107,
-                    outlineWidth = 4f,
-                    isWordByWord = true,
-                    positionY = 0.82f
-                ) {
-                    it.copy(
-                        wordEnterAnimation = AnimationType.SCALE_POP
-                    )
-                },
-                PresetFactory.create(
-                    name = "Retro Sign",
-                    fontFamily = "Bungee",
-                    fontWeight = 400,
-                    fontSize = 46f,
-                    textColor = 0xFFFF4500,
-                    highlightColor = 0xFFFFD700,
-                    outlineColor = 0xFFFF4500,
-                    outlineWidth = 3f,
-                    positionY = 0.85f
-                ) {
-                    it.copy(
-                        outlineOnly = true,
-                        maxWordsPerLine = 5,
-                        glowEnabled = true,
-                        glowColor = 0xFFFF4500,
-                        glowRadius = 10f
-                    )
-                },
-                PresetFactory.create(
-                    name = "Smooth Gradient",
-                    fontFamily = "Rubik",
-                    fontWeight = 500,
-                    fontSize = 44f,
-                    textColor = 0xFF6A11CB,
-                    highlightColor = 0xFFFFD700,
-                    outlineColor = 0x00000000,
+                    fontSize = 52f,
+                    textColor = 0xFFFDFBF7,
                     outlineWidth = 0f,
-                    isWordByWord = true,
-                    positionY = 0.83f
-                ) {
-                    it.copy(
-                        secondaryColor = 0xFF2575FC,
-                        gradientDirection = GradientDirection.DIAGONAL
-                    )
-                }
+                    letterSpacing = 0.08f,
+                    shadowColor = 0x4C000000,
+                    shadowRadius = 25f,
+                    shadowOffsetX = 0f,
+                    shadowOffsetY = 0f,
+                    displayMode = DisplayMode.PHRASE,
+                    animationDurationMs = 300,
+                    maxWordsPerLine = 4,
+                    maxLines = 2,
+                    positionY = 0.60f,
+                    textTransform = TextTransform.TITLE_CASE
+                )
             )
 
-            // Seed any presets not yet in the DB (IGNORE strategy — safe to call repeatedly)
-            val existingNames = styleDao.getDefaultStyleNames().toSet()
-            val newDefaults = defaults.filter { it.name !in existingNames }
-            if (newDefaults.isNotEmpty()) {
-                styleDao.insertDefaultStyles(newDefaults)
-                Log.i(TAG, "Seeded ${newDefaults.size} new default styles (skipped ${defaults.size - newDefaults.size} existing)")
-            } else {
-                Log.i(TAG, "All ${defaults.size} default styles already present")
-            }
-
-            // ── Patch already-seeded rows ─────────────────────────────────────
-            // Existing installs have old rows with outdated preset values.
-            // Patch all fields on default presets so they match the latest
-            // definitions. User-customised styles (isDefault=false) are untouched.
-            defaults.forEach { preset ->
-                styleDao.patchDefaultStylePreset(
-                    name            = preset.name,
-                    fontFamily      = preset.fontFamily,
-                    fontWeight      = preset.fontWeight,
-                    textTransform   = preset.textTransform,
-                    outlineColor    = preset.outlineColor,
-                    outlineWidth    = preset.outlineWidth,
-                    glowEnabled     = preset.glowEnabled,
-                    glowColor       = preset.glowColor,
-                    glowRadius      = preset.glowRadius,
-                    maxWordsPerLine = preset.maxWordsPerLine,
-                    maxLines        = preset.maxLines,
-                    enterAnim       = preset.wordEnterAnimation,
-                    exitAnim        = preset.wordExitAnimation,
-                )
-            }
+            // Wipe all existing defaults and re-insert so preset changes
+            // (font size, colors, animations) take effect on every update.
+            // User-customised styles (isDefault = false) are never touched.
+            styleDao.removeDeprecatedDefaultStyles(emptyList())
+            styleDao.insertDefaultStyles(defaults)
+            Log.i(TAG, "Seeded ${defaults.size} default caption styles")
         }
     }
 

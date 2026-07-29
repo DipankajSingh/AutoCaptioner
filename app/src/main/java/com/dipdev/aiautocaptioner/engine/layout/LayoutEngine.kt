@@ -6,27 +6,18 @@ import com.dipdev.aiautocaptioner.engine.CaptionPaints
 import com.dipdev.aiautocaptioner.engine.CaptionUtils
 import com.dipdev.aiautocaptioner.engine.timing.WordState
 
-/**
- * Layout data for a single word within a line.
- */
 data class WordLayout(
     val word: WordState,
     val displayText: String,
     val width: Float
 )
 
-/**
- * Layout data for a single line of caption text.
- */
 data class LineLayout(
     val words: List<WordLayout>,
     val startX: Float,
     val lineWidth: Float
 )
 
-/**
- * Complete layout result for a frame.
- */
 data class CaptionLayout(
     val lines: List<LineLayout>,
     val totalHeight: Float,
@@ -34,25 +25,8 @@ data class CaptionLayout(
     val lineHeight: Float
 )
 
-/**
- * Handles text measurement, line breaking, and positioning.
- *
- * Extracted from CaptionRenderer to separate layout concerns from drawing.
- * The renderer calls [computeLayout] and then iterates over the result
- * to draw each word — no layout logic in the draw path.
- */
 object LayoutEngine {
 
-    /**
-     * Compute the complete layout for visible words.
-     *
-     * @param words       Words to lay out (already filtered by TimingEngine)
-     * @param style       Active caption style
-     * @param videoWidth  Video canvas width in px
-     * @param videoHeight Video canvas height in px
-     * @param baseScale   videoHeight / 1920f
-     * @param isRtl       Whether text is predominantly RTL
-     */
     fun computeLayout(
         words: List<WordState>,
         style: CaptionStyleEntity,
@@ -67,28 +41,52 @@ object LayoutEngine {
         val lineH = (fm.bottom - fm.top) * style.lineHeight
         val spaceW = CaptionPaints.text.measureText(" ")
 
-        val maxW = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
-        val maxL = if (style.maxLines <= 0) 999 else style.maxLines
+        val maxWordsPerLine = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
+        val maxLines = if (style.maxLines <= 0) 999 else style.maxLines
 
-        // Group words into lines
-        val lines = words.chunked(maxW).take(maxL)
+        val padH = style.backgroundPaddingH * baseScale
+        val marginH = videoWidth * 0.08f
+        val availableWidth = videoWidth - 2f * marginH - 2f * padH
+
+        // Build word layouts
+        val wordLayouts = words.map { w ->
+            val txt = CaptionUtils.sanitize(w.text, style)
+            val wordW = CaptionPaints.text.measureText(txt)
+            WordLayout(w, txt, wordW)
+        }
+
+        // Width-aware + count-aware line breaking
+        val lines = mutableListOf<List<WordLayout>>()
+        var currentLine = mutableListOf<WordLayout>()
+        var currentLineWidth = 0f
+        for (wl in wordLayouts) {
+            if (currentLine.size >= maxWordsPerLine || (currentLine.isNotEmpty() &&
+                currentLineWidth + spaceW + wl.width > availableWidth && currentLineWidth > 0f)
+            ) {
+                lines.add(currentLine)
+                currentLine = mutableListOf()
+                currentLineWidth = 0f
+                if (lines.size >= maxLines) break
+            }
+            currentLine.add(wl)
+            currentLineWidth += (if (currentLine.size > 1) spaceW else 0f) + wl.width
+        }
+        if (currentLine.isNotEmpty() && lines.size < maxLines) {
+            lines.add(currentLine)
+        }
 
         val lineLayouts = lines.map { lineWords ->
-            val wordLayouts = lineWords.map { w ->
-                val txt = CaptionUtils.sanitize(w.text, style)
-                val wordW = CaptionPaints.text.measureText(txt)
-                WordLayout(w, txt, wordW)
-            }
+            val lineW = lineWords.sumOf { (it.width + spaceW).toDouble() }.toFloat() - spaceW
 
-            val lineW = wordLayouts.sumOf { (it.width + spaceW).toDouble() }.toFloat() - spaceW
-
+            val positionCenter = videoWidth * style.positionX
             val x = when (style.alignment) {
-                TextAlignment.CENTER -> (videoWidth - lineW) / 2f
-                TextAlignment.START -> if (isRtl) videoWidth * 0.92f - lineW else videoWidth * 0.08f
-                TextAlignment.END -> if (isRtl) videoWidth * 0.08f else videoWidth * 0.92f - lineW
+                TextAlignment.CENTER -> positionCenter - lineW / 2f
+                TextAlignment.START -> if (isRtl) positionCenter - lineW else positionCenter
+                TextAlignment.END -> if (isRtl) positionCenter else positionCenter - lineW
             }
+            val clampedX = x.coerceIn(marginH, (videoWidth - lineW - marginH).coerceAtLeast(0f))
 
-            LineLayout(wordLayouts, x, lineW)
+            LineLayout(lineWords, clampedX, lineW)
         }
 
         val totalH = lineLayouts.size * lineH

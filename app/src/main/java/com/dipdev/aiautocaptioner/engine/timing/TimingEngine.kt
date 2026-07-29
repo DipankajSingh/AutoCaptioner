@@ -1,11 +1,9 @@
 package com.dipdev.aiautocaptioner.engine.timing
 
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.EmphasisType
-import com.dipdev.aiautocaptioner.engine.CaptionUtils
 
 /**
  * Enriched word with lifecycle state, replacing the flat isActive/isPast model.
@@ -46,10 +44,9 @@ data class TimingResult(
 /**
  * Determines the lifecycle state of every word at a given playback position.
  *
- * This is the single source of truth for word visibility. It replaces the
- * scattered isActive/isPast logic in the old CaptionAnimator and CaptionRenderer.
+ * This is the single source of truth for word visibility.
  *
- * Key behavioral fixes:
+ * Key behavioral details:
  *  - WORD_BY_WORD: only shows current word (plus dynamic exit overlap)
  *  - PHRASE: past words get dimmed (via pastWordOpacity), not left at full brightness
  *  - KARAOKE_FILL: shows entire phrase (no paging), fill animation handled by renderer
@@ -59,12 +56,16 @@ object TimingEngine {
 
     /**
      * Find the segment that contains the given playback position.
+     * When multiple segments overlap, returns the one with the latest start time
+     * (most recently started) for correct behavior after manual editing.
      */
     fun findActiveSegment(
         segments: List<CaptionSegmentEntity>,
         posMs: Long
     ): CaptionSegmentEntity? {
-        return segments.find { posMs in it.startTimeMs..it.endTimeMs }
+        return segments
+            .filter { posMs in it.startTimeMs..it.endTimeMs }
+            .maxByOrNull { it.startTimeMs }
     }
 
     /**
@@ -339,7 +340,7 @@ object TimingEngine {
             visibleWords = visibleWords,
             activeWord = words[activeIdx],
             activeWordIndex = activeIdx,
-            isNewPage = activeIdx != previousPageIndex,
+            isNewPage = false,
             pageIndex = activeIdx
         )
     }

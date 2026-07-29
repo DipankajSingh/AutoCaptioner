@@ -6,6 +6,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
 import com.dipdev.aiautocaptioner.engine.CaptionPaints
 import com.dipdev.aiautocaptioner.engine.render.FrameData
 import com.dipdev.aiautocaptioner.engine.render.RenderPass
+import kotlin.math.roundToInt
 
 /**
  * Draws backgrounds: BOX, PILL, FULL_LINE, PER_WORD.
@@ -27,7 +28,7 @@ class BackgroundPass : RenderPass {
         val padY = style.backgroundPaddingV * baseScale
         val corner = style.backgroundCornerRadius * baseScale
         val fm = CaptionPaints.text.fontMetrics
-        val bgAlpha = (style.backgroundOpacity * 255 * frame.pageAlpha).toInt()
+        val bgAlpha = (style.backgroundOpacity * 255 * frame.pageAlpha).roundToInt().coerceIn(0, 255)
 
         var lineY = frame.layout.startY
 
@@ -70,7 +71,7 @@ class BackgroundPass : RenderPass {
                         x - padX / 2f, lineTop - padY,
                         x + wl.width + padX / 2f, lineBot + padY
                     )
-                    CaptionPaints.bg.alpha = (bgAlpha * xfm.alpha).toInt()
+                    CaptionPaints.bg.alpha = (bgAlpha * xfm.alpha).roundToInt().coerceIn(0, 255)
                     canvas.drawRoundRect(tempRect, corner / 2f, corner / 2f, CaptionPaints.bg)
                     CaptionPaints.bg.alpha = bgAlpha
 
@@ -81,6 +82,6 @@ class BackgroundPass : RenderPass {
             lineY += frame.layout.lineHeight
         }
 
-        CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
+        CaptionPaints.bg.alpha = (style.backgroundOpacity * 255 * frame.pageAlpha).roundToInt().coerceIn(0, 255)
     }
 }

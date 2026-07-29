@@ -3,8 +3,6 @@ package com.dipdev.aiautocaptioner.engine.animation.animators
 import com.dipdev.aiautocaptioner.engine.animation.WordAnimator
 import com.dipdev.aiautocaptioner.engine.animation.WordTransform
 import com.dipdev.aiautocaptioner.engine.timing.WordLifecycle
-import kotlin.math.PI
-import kotlin.math.sin
 
 /** Word slides up from below. */
 class SlideUpAnimator : WordAnimator {

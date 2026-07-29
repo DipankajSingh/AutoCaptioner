@@ -5,8 +5,6 @@ import com.dipdev.aiautocaptioner.engine.animation.WordAnimator
 import com.dipdev.aiautocaptioner.engine.animation.WordTransform
 import com.dipdev.aiautocaptioner.engine.timing.WordLifecycle
 import com.dipdev.aiautocaptioner.engine.AnimationUtils
-import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * Bounce animation — spring with lower stiffness and damping for visible oscillation.

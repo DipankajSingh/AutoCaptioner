@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
@@ -20,6 +21,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.TextureOverlay
 import androidx.media3.effect.Presentation
+import androidx.media3.effect.DefaultVideoFrameProcessor
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.ExportException
@@ -284,10 +286,11 @@ class ExportForegroundService : Service() {
                         captionRepository.getFirstStyle()
                     } else null
 
+                var captionOverlayEffect: CaptionOverlayEffect? = null
                 if (activeStyle != null && segments.isNotEmpty()) {
                     val wordsList = captionRepository.getAllWordsForProject(projectId)
                     val wordsMap = wordsList.groupBy { it.segmentId }
-                    val captionOverlayEffect = CaptionOverlayEffect(
+                    captionOverlayEffect = CaptionOverlayEffect(
                         context = this@ExportForegroundService,
                         segments = segments,
                         wordsMap = wordsMap,
@@ -301,13 +304,16 @@ class ExportForegroundService : Service() {
                 val overlays = overlayRepository.getOverlaysOnce(projectId)
                 val imageOverlayEffects = overlays.mapNotNull { overlay ->
                     try {
+                        val opts = BitmapFactory.Options().apply {
+                            inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+                        }
                         val bitmap = if (overlay.imageUri.startsWith("content://")) {
                             val inputStream = contentResolver.openInputStream(Uri.parse(overlay.imageUri))
-                            val bmp = BitmapFactory.decodeStream(inputStream)
+                            val bmp = BitmapFactory.decodeStream(inputStream, null, opts)
                             inputStream?.close()
                             bmp
                         } else {
-                            BitmapFactory.decodeFile(overlay.imageUri)
+                            BitmapFactory.decodeFile(overlay.imageUri, opts)
                         }
                         if (bitmap != null) {
                             ImageOverlayEffect(
@@ -362,9 +368,15 @@ class ExportForegroundService : Service() {
                     .build()
 
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    val videoFrameProcessorFactory = DefaultVideoFrameProcessor.Factory.Builder()
+                        .setSdrWorkingColorSpace(DefaultVideoFrameProcessor.WORKING_COLOR_SPACE_ORIGINAL)
+                        .build()
+
                     val transformer = Transformer.Builder(this@ExportForegroundService)
                         .setVideoMimeType(androidx.media3.common.MimeTypes.VIDEO_H264)
                         .setEncoderFactory(encoderFactory)
+                        .setVideoFrameProcessorFactory(videoFrameProcessorFactory)
+                        .experimentalSetMaxFramesInEncoder(4)
                         .addListener(object : Transformer.Listener {
                             override fun onCompleted(
                                 composition: Composition,
@@ -372,6 +384,7 @@ class ExportForegroundService : Service() {
                             ) {
                                 if (isFinishing) return
                                 Log.d(TAG, "Export completed")
+                                releaseOverlays(captionOverlayEffect, imageOverlayEffects)
                                 isFinishing = true
                                 progressJob?.cancel()
                                 activeTransformer = null
@@ -385,12 +398,17 @@ class ExportForegroundService : Service() {
                                             updatedAt = timestamp
                                         )
                                     )
+                                    val srtContent = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        captionRepository.buildSrtContent(projectId)
+                                    }
+                                    val srtFile = File(outDir, outFile.nameWithoutExtension + ".srt")
+                                    srtFile.writeText(srtContent)
                                     exportedFileDao.insertExportedFile(
                                         ExportedFileEntity(
                                             id = UUID.randomUUID().toString(),
                                             projectId = project.id,
                                             videoFilePath = outFile.absolutePath,
-                                            srtFilePath = null,
+                                            srtFilePath = srtFile.absolutePath,
                                             exportedAt = timestamp,
                                             quality = targetBitrate?.let { "$it bps" }
                                         )
@@ -408,6 +426,7 @@ class ExportForegroundService : Service() {
                             ) {
                                 if (isFinishing) return
                                 Log.e(TAG, "Export failed: ${exportException.message}")
+                                releaseOverlays(captionOverlayEffect, imageOverlayEffects)
                                 isFinishing = true
                                 progressJob?.cancel()
                                 activeTransformer = null
@@ -465,6 +484,14 @@ class ExportForegroundService : Service() {
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(NOTIFICATION_ID)
         }
+    }
+
+    private fun releaseOverlays(
+        captionOverlayEffect: CaptionOverlayEffect?,
+        imageOverlayEffects: List<ImageOverlayEffect>
+    ) {
+        captionOverlayEffect?.release()
+        imageOverlayEffects.forEach { it.release() }
     }
 
     private fun stopExportService() {

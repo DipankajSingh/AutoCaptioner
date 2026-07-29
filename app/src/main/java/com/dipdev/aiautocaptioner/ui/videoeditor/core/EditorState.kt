@@ -114,7 +114,7 @@ class EditorState(
 ) {
     var isDragging by mutableStateOf(false)
     var currentTimelineMs by mutableStateOf(0L)
-    /** Absolute timestamp in the original source video — use this for CaptionRenderer. */
+    /** Absolute timestamp in the original source video — use this for caption rendering. */
     var currentSourceMs by mutableStateOf(0L)
     var isPlaying by mutableStateOf(false)
     

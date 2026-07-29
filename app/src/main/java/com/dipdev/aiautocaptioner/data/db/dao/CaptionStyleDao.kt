@@ -47,6 +47,10 @@ interface CaptionStyleDao {
     @Query("SELECT name FROM caption_styles WHERE isDefault = 1")
     suspend fun getDefaultStyleNames(): List<String>
 
+    // Remove any previously seeded preset styles that are no longer in the system definitions
+    @Query("DELETE FROM caption_styles WHERE isDefault = 1 AND name NOT IN (:retainedNames)")
+    suspend fun removeDeprecatedDefaultStyles(retainedNames: List<String>)
+
     /**
      * Patch layout-critical fields on an existing default style identified by name.
      * Called during [CaptionRepository.initializeDefaultStyles] so that already-seeded

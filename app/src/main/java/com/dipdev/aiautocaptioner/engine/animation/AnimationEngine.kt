@@ -10,7 +10,6 @@ import com.dipdev.aiautocaptioner.engine.timing.WordLifecycle
 import com.dipdev.aiautocaptioner.engine.timing.WordState
 import com.dipdev.aiautocaptioner.engine.animation.animators.*
 import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * Registry + computation engine for per-word animations.
@@ -19,8 +18,6 @@ import kotlin.math.sin
  * New animations are added by:
  *   1. Creating a WordAnimator implementation
  *   2. Registering it in the init block below
- *
- * No changes to CaptionRenderer or any other core code needed.
  */
 object AnimationEngine {
 
@@ -72,8 +69,6 @@ object AnimationEngine {
      *  2. Exit animation (progress 0→1 as word disappears, WORD_BY_WORD only)
      *  3. Karaoke scale-up for active word (SCALE_UP highlight mode)
      *  4. Emphasis oscillations (BOUNCE, SCALE, SHAKE, COLOR_POP)
-     *
-     * This replaces the old computeWordTransform in CaptionAnimator.
      */
     fun computeWordTransform(
         posMs: Long,
@@ -147,7 +142,7 @@ object AnimationEngine {
                         // Kinetic pop curve: gives an organic scale bounce as the highlight sweeps across
                         val wordDur = (word.endTimeMs - word.startTimeMs).coerceAtLeast(1L)
                         val progress = ((posMs - word.startTimeMs).toFloat() / wordDur).coerceIn(0f, 1f)
-                        val pop = 1f + 0.08f * kotlin.math.sin(progress * Math.PI.toFloat())
+                        val pop = 1f + 0.08f * kotlin.math.sin(progress * PI.toFloat())
                         scaleX *= pop
                         scaleY *= pop
                     }
@@ -161,15 +156,15 @@ object AnimationEngine {
         if (word.lifecycle == WordLifecycle.ACTIVE && word.isEmphasized) {
             val phase = (posMs % 600L).toFloat() / 600f * 2f * PI.toFloat()
             when (word.emphasisType) {
-                EmphasisType.BOUNCE -> ty -= sin(phase) * 12f * baseScale
+                EmphasisType.BOUNCE -> ty -= kotlin.math.sin(phase) * 12f * baseScale
                 EmphasisType.SCALE -> {
-                    val s = 1f + 0.12f * sin(phase)
+                    val s = 1f + 0.12f * kotlin.math.sin(phase)
                     scaleX *= s; scaleY *= s
                 }
-                EmphasisType.SHAKE -> tx += sin(phase * 3f) * 8f * baseScale
+                EmphasisType.SHAKE -> tx += kotlin.math.sin(phase * 3f) * 8f * baseScale
                 EmphasisType.COLOR_POP -> colorOverride = AnimationUtils.blendColor(
                     style.textColor.toInt(), style.highlightColor.toInt(),
-                    (sin(phase) + 1f) / 2f
+                    (kotlin.math.sin(phase) + 1f) / 2f
                 )
                 EmphasisType.NONE -> {}
             }

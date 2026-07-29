@@ -101,6 +101,7 @@ fun StylePreview(
             val currentPosX by rememberUpdatedState(style.positionX)
             val context = LocalContext.current
             val captionEngine = remember { CaptionEngine() }
+            LaunchedEffect(style.id) { captionEngine.reset() }
 
             Canvas(modifier = Modifier
                 .fillMaxSize()

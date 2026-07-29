@@ -1,6 +1,5 @@
 package com.dipdev.aiautocaptioner.engine.animation
 
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.engine.timing.WordLifecycle
 
 /**

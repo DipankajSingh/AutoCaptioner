@@ -19,6 +19,8 @@ class ImageOverlayEffect(
     private val videoHeight: Int
 ) : BitmapOverlay() {
 
+    private var released = false
+
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
         return bitmap
     }
@@ -43,5 +45,12 @@ class ImageOverlayEffect(
             .setScale(scaleX * cx, scaleY * cy)
             .setAlphaScale(if (isVisible) 1f else 0f)
             .build()
+    }
+
+    override fun release() {
+        if (!released) {
+            released = true
+            super.release()
+        }
     }
 }

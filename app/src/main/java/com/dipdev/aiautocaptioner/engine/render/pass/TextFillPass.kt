@@ -13,6 +13,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
 import com.dipdev.aiautocaptioner.engine.CaptionPaints
 import com.dipdev.aiautocaptioner.engine.render.FrameData
 import com.dipdev.aiautocaptioner.engine.render.RenderPass
+import kotlin.math.roundToInt
 
 /**
  * Draws text fills (the main colored text) and handles karaoke highlight overlays.
@@ -41,7 +42,7 @@ class TextFillPass : RenderPass {
 
             for (wl in line.words) {
                 val xfm = frame.transforms[wl.word] ?: continue
-                val a = (255 * xfm.alpha * frame.pageAlpha).toInt()
+                val a = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
 
                 if (a < 3) {
                     if (frame.isRtl) x -= wl.width else x += wl.width + spaceW
@@ -53,26 +54,7 @@ class TextFillPass : RenderPass {
                 val cx = x + wl.width / 2f
                 val cy = lineY + (lineBot - lineTop) / 2f + lineTop
 
-                // Resolve fill color
-                val karaokeCol = if (style.displayMode == DisplayMode.KARAOKE_FILL) style.karaokeFillColor.toInt() else style.highlightColor.toInt()
-                val fillColor = when {
-                    xfm.colorOverride != null -> xfm.colorOverride
-                    wl.word.isEmphasized -> style.highlightColor.toInt()
-                    // Active word with BACKGROUND_HIGHLIGHT uses activeWordTextColor for high-contrast contrast against pill
-                    wl.word.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> style.activeWordTextColor.toInt()
-                    // KARAOKE_FILL + FILL_LEFT_RIGHT: active word uses base color (overlay provides sweep)
-                    wl.word.isActive && style.displayMode == DisplayMode.KARAOKE_FILL &&
-                        style.karaokeHighlightMode == KaraokeHighlightMode.FILL_LEFT_RIGHT -> style.textColor.toInt()
-                    // KARAOKE_FILL: active word uses highlight (COLOR_CHANGE, UNDERLINE, etc.)
-                    wl.word.isActive && style.displayMode == DisplayMode.KARAOKE_FILL -> karaokeCol
-                    // KARAOKE_FILL: past words stay highlighted
-                    style.displayMode == DisplayMode.KARAOKE_FILL &&
-                        frame.timing.activeWordIndex >= 0 &&
-                        wl.word.index <= frame.timing.activeWordIndex -> karaokeCol
-                    // Other modes: active word is highlighted
-                    wl.word.isActive && style.displayMode != DisplayMode.PHRASE -> style.highlightColor.toInt()
-                    else -> style.textColor.toInt()
-                }
+                val fillColor = CaptionPaints.resolveFillColor(wl, style, xfm, frame)
 
                 // Characters to draw (TYPEWRITER clips reveal)
                 val charsToDraw = if (style.wordEnterAnimation == AnimationType.TYPEWRITER ||
@@ -92,7 +74,7 @@ class TextFillPass : RenderPass {
                         val padY = 6f * baseScale
                         tempRect.set(x - padX, lineY + fm.ascent - padY, x + wl.width + padX, lineY + fm.descent + padY)
                         val radius = (style.activeWordCornerRadius * baseScale).coerceIn(4f * baseScale, tempRect.height() / 2f)
-                        CaptionPaints.activeBg.alpha = (255 * xfm.alpha * frame.pageAlpha).toInt().coerceIn(0, 255)
+                        CaptionPaints.activeBg.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
                         canvas.drawRoundRect(tempRect, radius, radius, CaptionPaints.activeBg)
                         CaptionPaints.activeBg.alpha = 255
                     }
@@ -122,7 +104,7 @@ class TextFillPass : RenderPass {
                         CaptionPaints.text.shader = null
                     }
 
-                    val fillAlpha = if (style.outlineOnly) 0 else (a * style.textOpacity).toInt()
+                    val fillAlpha = if (style.outlineOnly) 0 else (a * style.textOpacity).roundToInt().coerceIn(0, 255)
                     CaptionPaints.text.color = fillColor
                     CaptionPaints.text.alpha = fillAlpha
                     drawText(wl.displayText, 0, charsToDraw, x, lineY, CaptionPaints.text)
@@ -173,13 +155,13 @@ class TextFillPass : RenderPass {
 
                     if (frame.isRtl) {
                         canvas.withClip(x + wl.width * (1f - fillP), lineTop, x + wl.width, lineBot) {
-                            CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).toInt()
+                            CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
                             drawText(wl.displayText, 0, wl.displayText.length, x, y, CaptionPaints.highlight)
                             CaptionPaints.highlight.alpha = 255
                         }
                     } else {
                         canvas.withClip(x, lineTop, x + wl.width * fillP, lineBot) {
-                            CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).toInt()
+                            CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
                             drawText(wl.displayText, 0, wl.displayText.length, x, y, CaptionPaints.highlight)
                             CaptionPaints.highlight.alpha = 255
                         }
@@ -189,15 +171,15 @@ class TextFillPass : RenderPass {
             KaraokeHighlightMode.UNDERLINE -> {
                 val saved = CaptionPaints.bg.color
                 CaptionPaints.bg.color = style.highlightColor.toInt()
-                CaptionPaints.bg.alpha = (200 * xfm.alpha * frame.pageAlpha).toInt()
+                CaptionPaints.bg.alpha = (200 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
                 canvas.drawRect(x, lineBot + 2f * baseScale, x + wl.width, lineBot + 5f * baseScale, CaptionPaints.bg)
                 CaptionPaints.bg.color = saved
-                CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).toInt()
+                CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).roundToInt().coerceIn(0, 255)
             }
             KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> {
                 // Handled before text glyph rendering above as solid substrate
             }
-            KaraokeHighlightMode.SCALE_UP -> { /* handled in AnimationEngine via scale boost */ }
+            KaraokeHighlightMode.SCALE_UP -> { /* handled in AnimationEngine */ }
             KaraokeHighlightMode.COLOR_CHANGE -> { /* handled via fillColor resolution above */ }
         }
     }

@@ -1,17 +1,14 @@
 package com.dipdev.aiautocaptioner.engine
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.PorterDuff
 import androidx.annotation.OptIn
+import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.effect.BitmapOverlay
+import androidx.media3.effect.CanvasOverlay
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
-import androidx.core.graphics.createBitmap
 
 @UnstableApi
 class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
@@ -22,24 +19,20 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
     private val style: CaptionStyleEntity,
     private val videoWidth: Int,
     private val videoHeight: Int
-) : BitmapOverlay() {
+) : CanvasOverlay(/* useInputFrameSize = */ true) {
 
-    // Create a recycled bitmap matching exactly the physical boundaries of the video encode frame
-    private var recycledBitmap: Bitmap = createBitmap(videoWidth, videoHeight)
-    private var overlayCanvas: Canvas = Canvas(recycledBitmap)
-
-    // Use the new modular engine for export — same rendering as preview
     private val captionEngine = CaptionEngine()
 
-    override fun getBitmap(presentationTimeUs: Long): Bitmap {
-        // Obliterate the previous frame
-        overlayCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+    private var released = false
+
+    override fun onDraw(canvas: Canvas, presentationTimeUs: Long) {
+        if (released) return
 
         val currentPositionMs = presentationTimeUs / 1000
 
         captionEngine.draw(
             context = context,
-            canvas = overlayCanvas,
+            canvas = canvas,
             currentPositionMs = currentPositionMs,
             videoWidth = videoWidth,
             videoHeight = videoHeight,
@@ -47,7 +40,10 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
             segments = segments,
             wordsMap = wordsMap
         )
+    }
 
-        return recycledBitmap
+    override fun release() {
+        released = true
+        super.release()
     }
 }

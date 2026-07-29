@@ -1,10 +1,15 @@
 package com.dipdev.aiautocaptioner.engine
 
 import android.content.Context
-import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
+import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
+import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
+import com.dipdev.aiautocaptioner.engine.animation.WordTransform
+import com.dipdev.aiautocaptioner.engine.layout.WordLayout
+import com.dipdev.aiautocaptioner.engine.render.FrameData
+import kotlin.math.roundToInt
 
 /** All fonts bundled in assets/fonts/ — kept in sync with actual filenames. */
 object BundledFonts {
@@ -29,6 +34,8 @@ object BundledFonts {
         FontEntry("Roboto", "", FontCategory.SANS_SERIF),
         FontEntry("Space Mono", "fonts/space_mono.ttf", FontCategory.MONOSPACE),
         FontEntry("Playfair Display", "fonts/playfair_display.ttf", FontCategory.SERIF),
+        FontEntry("Inter", "fonts/inter.ttf", FontCategory.SANS_SERIF),
+        FontEntry("Bangers", "fonts/bangers.ttf", FontCategory.DISPLAY),
     )
 
     /** Display names for the font picker — in UI order. */
@@ -71,8 +78,7 @@ object CaptionPaints {
 
     /**
      * Synchronise all paints to [style].
-     * Must be called once at the top of every [CaptionRenderer.draw] invocation,
-     * before any paint is read or drawn with.
+     * Must be called once at the top of every frame before any paint is read or drawn with.
      *
      * @param context   Application context — used to load bundled fonts from assets.
      * @param style     The active caption style.
@@ -137,7 +143,7 @@ object CaptionPaints {
 
         bg.apply {
             color         = style.backgroundColor.toInt()
-            alpha         = (style.backgroundOpacity * 255).toInt()
+            alpha         = (style.backgroundOpacity * 255).roundToInt().coerceIn(0, 255)
             this.style    = Paint.Style.FILL
         }
 
@@ -232,5 +238,31 @@ object CaptionPaints {
         fontWeight > 600             -> Typeface.BOLD
         isItalic                     -> Typeface.ITALIC
         else                         -> Typeface.NORMAL
+    }
+
+    /**
+     * Resolve the fill color for a word based on style, display mode, and timing.
+     * Shared between [OutlinePass] and [TextFillPass] to keep color logic in one place.
+     */
+    fun resolveFillColor(
+        wl: WordLayout,
+        style: CaptionStyleEntity,
+        xfm: WordTransform,
+        frame: FrameData
+    ): Int {
+        val karaokeCol = if (style.displayMode == DisplayMode.KARAOKE_FILL) style.karaokeFillColor.toInt() else style.highlightColor.toInt()
+        return when {
+            xfm.colorOverride != null -> xfm.colorOverride
+            wl.word.isEmphasized -> style.highlightColor.toInt()
+            wl.word.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> style.activeWordTextColor.toInt()
+            wl.word.isActive && style.displayMode == DisplayMode.KARAOKE_FILL &&
+                style.karaokeHighlightMode == KaraokeHighlightMode.FILL_LEFT_RIGHT -> style.textColor.toInt()
+            wl.word.isActive && style.displayMode == DisplayMode.KARAOKE_FILL -> karaokeCol
+            style.displayMode == DisplayMode.KARAOKE_FILL &&
+                frame.timing.activeWordIndex >= 0 &&
+                wl.word.index <= frame.timing.activeWordIndex -> karaokeCol
+            wl.word.isActive && style.displayMode != DisplayMode.PHRASE -> style.highlightColor.toInt()
+            else -> style.textColor.toInt()
+        }
     }
 }

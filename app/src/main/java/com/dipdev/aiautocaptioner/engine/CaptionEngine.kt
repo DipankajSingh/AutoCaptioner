@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
-import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.engine.animation.AnimationEngine
 import com.dipdev.aiautocaptioner.engine.animation.WordTransform
 import com.dipdev.aiautocaptioner.engine.layout.CaptionLayout
@@ -13,13 +12,12 @@ import com.dipdev.aiautocaptioner.engine.layout.LayoutEngine
 import com.dipdev.aiautocaptioner.engine.render.FrameData
 import com.dipdev.aiautocaptioner.engine.render.RenderingPipeline
 import com.dipdev.aiautocaptioner.engine.timing.TimingEngine
-import com.dipdev.aiautocaptioner.engine.timing.TimingResult
 import com.dipdev.aiautocaptioner.engine.timing.WordState
 
 /**
- * The new caption rendering orchestrator.
+ * Caption rendering orchestrator.
  *
- * Replaces direct CaptionRenderer.draw() calls with a clean pipeline:
+ * Pipeline:
  *   1. TimingEngine  → which words are visible, their lifecycle states
  *   2. LayoutEngine  → where words are positioned on canvas
  *   3. AnimationEngine → how each word looks (scale, alpha, position)
@@ -28,12 +26,6 @@ import com.dipdev.aiautocaptioner.engine.timing.WordState
  * This is the ONLY entry point for caption rendering. Both preview
  * (PreviewSection, StylePreview) and export (CaptionOverlayEffect)
  * call this.
- *
- * Bug fixes included:
- *  - WORD_BY_WORD: dynamic exit overlap prevents showing too many words
- *  - KARAOKE_FILL: full phrase shown (no incorrect paging)
- *  - PHRASE: past words dimmed to 60% opacity
- *  - Page transitions: coordinated fade between pages
  */
 class CaptionEngine(
     private val pipeline: RenderingPipeline = RenderingPipeline()
@@ -53,9 +45,6 @@ class CaptionEngine(
 
     /**
      * Main entry point — draw captions onto a Canvas.
-     *
-     * Drop-in replacement for CaptionRenderer.draw(). Same signature,
-     * same behavior contract, but backed by the modular engine.
      */
     fun draw(
         context: Context,
@@ -188,24 +177,23 @@ class CaptionEngine(
      */
     private fun computeLayoutFingerprint(words: List<WordState>, style: CaptionStyleEntity): Long {
         var h = 17L
-        h = 31 * h + java.lang.Float.floatToIntBits(style.fontSize)
+        h = 31 * h + style.fontSize.toRawBits()
         h = 31 * h + style.fontFamily.hashCode()
         h = 31 * h + style.fontWeight
         h = 31 * h + if (style.isItalic) 1 else 0
-        h = 31 * h + java.lang.Float.floatToIntBits(style.letterSpacing)
+        h = 31 * h + style.letterSpacing.toRawBits()
         h = 31 * h + style.maxWordsPerLine
         h = 31 * h + style.maxLines
-        h = 31 * h + java.lang.Float.floatToIntBits(style.lineHeight)
+        h = 31 * h + style.lineHeight.toRawBits()
         h = 31 * h + style.alignment.ordinal
-        h = 31 * h + java.lang.Float.floatToIntBits(style.outlineWidth)
+        h = 31 * h + style.outlineWidth.toRawBits()
         h = 31 * h + if (style.outlineOnly) 1 else 0
         h = 31 * h + if (style.removePunctuation) 1 else 0
         h = 31 * h + style.textTransform.ordinal
-        h = 31 * h + java.lang.Float.floatToIntBits(style.backgroundPaddingH)
-        h = 31 * h + java.lang.Float.floatToIntBits(style.backgroundPaddingV)
+        h = 31 * h + style.backgroundPaddingH.toRawBits()
+        h = 31 * h + style.backgroundPaddingV.toRawBits()
         h = 31 * h + style.displayMode.ordinal
         h = 31 * h + style.karaokeHighlightMode.ordinal
-        // Include word identity to detect word list changes
         for (w in words) {
             h = 31 * h + w.text.hashCode()
             h = 31 * h + w.startTimeMs

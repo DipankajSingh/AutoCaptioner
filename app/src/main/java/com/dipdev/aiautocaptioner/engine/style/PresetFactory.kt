@@ -3,10 +3,6 @@ package com.dipdev.aiautocaptioner.engine.style
 import com.dipdev.aiautocaptioner.data.db.entity.*
 import java.util.UUID
 
-/**
- * Single-responsibility factory for generating caption style presets with
- * cohesive defaults, eliminating verbose configuration boilerplate in repositories.
- */
 object PresetFactory {
 
     fun create(
@@ -14,47 +10,49 @@ object PresetFactory {
         fontFamily: String = "Montserrat",
         fontWeight: Int = 700,
         fontSize: Float = 48f,
+        isItalic: Boolean = false,
+        letterSpacing: Float = 0f,
         textColor: Long = 0xFFFFFFFF,
         highlightColor: Long = 0xFFFFD700,
+        secondaryColor: Long = 0xFFFFFFFF,
         outlineColor: Long = 0xFF000000,
         outlineWidth: Float = 3f,
-        hasBg: Boolean = false,
+        shadowColor: Long = 0x80000000,
+        shadowRadius: Float = 4f,
+        shadowOffsetX: Float = 2f,
+        shadowOffsetY: Float = 2f,
+        backgroundType: BackgroundType = BackgroundType.NONE,
         backgroundColor: Long = 0xFF000000,
-        isKaraoke: Boolean = false,
-        isWordByWord: Boolean = false,
-        isTypewriter: Boolean = false,
+        backgroundOpacity: Float = 0.5f,
+        backgroundCornerRadius: Float = 8f,
+        backgroundPaddingH: Float = 16f,
+        backgroundPaddingV: Float = 8f,
+        positionX: Float = 0.5f,
         positionY: Float = 0.85f,
+        alignment: TextAlignment = TextAlignment.CENTER,
+        maxWordsPerLine: Int = 5,
+        maxLines: Int = 2,
+        removePunctuation: Boolean = false,
+        textTransform: TextTransform = TextTransform.NONE,
+        lineHeight: Float = 1.2f,
+        textOpacity: Float = 1f,
+        outlineOnly: Boolean = false,
+        gradientDirection: GradientDirection = GradientDirection.NONE,
+        glowEnabled: Boolean = false,
+        glowColor: Long = 0xFFFFD700,
+        glowRadius: Float = 8f,
+        displayMode: DisplayMode = DisplayMode.PHRASE,
+        wordEnterAnimation: AnimationType = AnimationType.NONE,
+        wordExitAnimation: AnimationType = AnimationType.NONE,
+        emphasisAnimation: AnimationType = AnimationType.SCALE_POP,
+        animationDurationMs: Int = 150,
+        karaokeHighlightMode: KaraokeHighlightMode = KaraokeHighlightMode.COLOR_CHANGE,
+        karaokeFillColor: Long = 0xFFFFD700,
+        activeWordBgColor: Long = 0xFFFFC107,
+        activeWordTextColor: Long = 0xFF000000,
+        activeWordCornerRadius: Float = 14f,
         customizer: (CaptionStyleEntity) -> CaptionStyleEntity = { it }
     ): CaptionStyleEntity {
-        val baseMode = when {
-            isKaraoke -> DisplayMode.KARAOKE_FILL
-            isWordByWord -> DisplayMode.WORD_BY_WORD
-            isTypewriter -> DisplayMode.TYPEWRITER
-            else -> DisplayMode.PHRASE
-        }
-
-        val maxWords = when {
-            isWordByWord -> 1
-            isKaraoke -> 4
-            isTypewriter -> 6
-            else -> 6
-        }
-
-        val lines = if (isWordByWord) 1 else 2
-
-        val bgType = if (hasBg) BackgroundType.BOX else BackgroundType.NONE
-
-        val enterAnim = when {
-            isTypewriter -> AnimationType.TYPEWRITER
-            isWordByWord -> AnimationType.FADE
-            else -> AnimationType.NONE
-        }
-
-        val exitAnim = when {
-            isWordByWord -> AnimationType.FADE
-            else -> AnimationType.NONE
-        }
-
         val base = CaptionStyleEntity(
             id = UUID.randomUUID().toString(),
             name = name,
@@ -62,19 +60,47 @@ object PresetFactory {
             fontFamily = fontFamily,
             fontWeight = fontWeight,
             fontSize = fontSize,
+            isItalic = isItalic,
+            letterSpacing = letterSpacing,
             textColor = textColor,
             highlightColor = highlightColor,
+            secondaryColor = secondaryColor,
             outlineColor = outlineColor,
             outlineWidth = outlineWidth,
-            backgroundType = bgType,
+            shadowColor = shadowColor,
+            shadowRadius = shadowRadius,
+            shadowOffsetX = shadowOffsetX,
+            shadowOffsetY = shadowOffsetY,
+            backgroundType = backgroundType,
             backgroundColor = backgroundColor,
-            displayMode = baseMode,
-            wordEnterAnimation = enterAnim,
-            wordExitAnimation = exitAnim,
-            maxWordsPerLine = maxWords,
-            maxLines = lines,
-            positionX = 0.5f,
-            positionY = positionY
+            backgroundOpacity = backgroundOpacity,
+            backgroundCornerRadius = backgroundCornerRadius,
+            backgroundPaddingH = backgroundPaddingH,
+            backgroundPaddingV = backgroundPaddingV,
+            positionX = positionX,
+            positionY = positionY,
+            alignment = alignment,
+            maxWordsPerLine = maxWordsPerLine,
+            maxLines = maxLines,
+            removePunctuation = removePunctuation,
+            textTransform = textTransform,
+            lineHeight = lineHeight,
+            textOpacity = textOpacity,
+            outlineOnly = outlineOnly,
+            gradientDirection = gradientDirection,
+            glowEnabled = glowEnabled,
+            glowColor = glowColor,
+            glowRadius = glowRadius,
+            displayMode = displayMode,
+            wordEnterAnimation = wordEnterAnimation,
+            wordExitAnimation = wordExitAnimation,
+            emphasisAnimation = emphasisAnimation,
+            animationDurationMs = animationDurationMs,
+            karaokeHighlightMode = karaokeHighlightMode,
+            karaokeFillColor = karaokeFillColor,
+            activeWordBgColor = activeWordBgColor,
+            activeWordTextColor = activeWordTextColor,
+            activeWordCornerRadius = activeWordCornerRadius
         )
         return customizer(base)
     }

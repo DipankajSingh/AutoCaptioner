@@ -99,6 +99,7 @@ fun ExportScreen(
     var originalHeight by remember { mutableIntStateOf(1920) }
     var originalBitrate by remember { mutableIntStateOf(5_000_000) }
     var originalDurationMs by remember { mutableLongStateOf(0L) }
+    var originalFps by remember { mutableIntStateOf(30) }
 
     var selectedHeight by remember(uiState.savedResolution) { mutableIntStateOf(uiState.savedResolution) }
     var selectedFps by remember(uiState.savedFps) { mutableIntStateOf(uiState.savedFps) }
@@ -117,6 +118,9 @@ fun ExportScreen(
                     else { originalWidth = w; originalHeight = h }
                     originalBitrate = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 5_000_000
                     originalDurationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+                    originalFps = if (android.os.Build.VERSION.SDK_INT >= 23) {
+                        retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)?.toIntOrNull() ?: 30
+                    } else { 30 }
                 } catch (e: Exception) { e.printStackTrace() }
                 finally { try { retriever.release() } catch (_: Exception) {} }
             }
@@ -134,12 +138,9 @@ fun ExportScreen(
         if (selectedHeight == -1 || originalHeight <= 0) 1.0
         else selectedHeight.toDouble() / originalHeight
     }
-    val fpsScale = remember(selectedFps, originalDurationMs) {
+    val fpsScale = remember(selectedFps, originalFps) {
         if (selectedFps == -1) 1.0
-        else {
-            val originalFps = if (originalDurationMs > 0) 30.0 else 30.0
-            selectedFps.toDouble() / originalFps
-        }
+        else selectedFps.toDouble() / originalFps.toDouble()
     }
     val estimatedSizeMB = remember(computedTargetBitrate, originalDurationMs, resolutionScale, fpsScale) {
         val effectiveBitrate = computedTargetBitrate * resolutionScale * fpsScale
