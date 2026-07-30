@@ -80,8 +80,11 @@ object AnimationEngine {
         val wordDurationMs = word.endTimeMs - word.startTimeMs
         val effectiveExitOverlap = TimingEngine.calculateExitOverlap(wordDurationMs, animMs)
 
-        // Enter progress: 0→1 over [startTimeMs, startTimeMs + animMs]
-        val enterRaw = ((posMs - word.startTimeMs).toFloat() / animMs).coerceIn(0f, 1f)
+        // Enter progress: 0→1 over [startTimeMs, startTimeMs + effectiveEnterMs].
+        // Scale the enter window to the word's own duration so short words
+        // finish entering before they flip to EXITING — no snap.
+        val effectiveEnterMs = animMs.coerceAtMost(wordDurationMs.coerceAtLeast(1L))
+        val enterRaw = ((posMs - word.startTimeMs).toFloat() / effectiveEnterMs).coerceIn(0f, 1f)
         // Exit progress: 0→1 over [endTimeMs, endTimeMs + effectiveExitOverlap]
         val exitRaw = ((posMs - word.endTimeMs).toFloat() / effectiveExitOverlap).coerceIn(0f, 1f)
 

@@ -237,7 +237,7 @@ class CaptionRepository @Inject constructor(
                     highlightColor = 0xFFFFD60A,
                     outlineWidth = 3.5f,
                     displayMode = DisplayMode.KARAOKE_FILL,
-                    karaokeHighlightMode = KaraokeHighlightMode.COLOR_CHANGE,
+                    karaokeHighlightMode = KaraokeHighlightMode.FILL_LEFT_RIGHT,
                     karaokeFillColor = 0xFFFFD60A,
                     maxWordsPerLine = 4,
                     maxLines = 2,
@@ -360,10 +360,10 @@ class CaptionRepository @Inject constructor(
                 )
             )
 
-            // Wipe all existing defaults and re-insert so preset changes
-            // (font size, colors, animations) take effect on every update.
-            // User-customised styles (isDefault = false) are never touched.
-            styleDao.removeDeprecatedDefaultStyles(emptyList())
+            // Remove presets that no longer exist in the system definitions.
+            styleDao.removeDeprecatedDefaultStyles(defaults.map { it.name })
+            // Insert/update all presets.  Uses REPLACE, so existing rows with the
+            // same stable ID get updated fields without generating new IDs.
             styleDao.insertDefaultStyles(defaults)
             Log.i(TAG, "Seeded ${defaults.size} default caption styles")
         }

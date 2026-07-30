@@ -1,12 +1,17 @@
 package com.dipdev.aiautocaptioner.engine.style
 
 import com.dipdev.aiautocaptioner.data.db.entity.*
-import java.util.UUID
-
 object PresetFactory {
+
+    /** Stable deterministic ID for a preset — never changes across app launches. */
+    fun presetId(name: String): String = "preset_" + name.lowercase().replace(" ", "_")
+
+    private fun defaultId(name: String): String =
+        presetId(name)
 
     fun create(
         name: String,
+        id: String = defaultId(name),
         fontFamily: String = "Montserrat",
         fontWeight: Int = 700,
         fontSize: Float = 48f,
@@ -54,7 +59,7 @@ object PresetFactory {
         customizer: (CaptionStyleEntity) -> CaptionStyleEntity = { it }
     ): CaptionStyleEntity {
         val base = CaptionStyleEntity(
-            id = UUID.randomUUID().toString(),
+            id = id,
             name = name,
             isDefault = true,
             fontFamily = fontFamily,

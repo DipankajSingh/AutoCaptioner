@@ -32,11 +32,9 @@ interface CaptionStyleDao {
     @Delete
     suspend fun deleteStyle(style: CaptionStyleEntity)
 
-    // Insert all default preset styles at once
-    // Called on first app launch from the database callback
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    // IGNORE = don't overwrite if already exists
-    // This means re-running this won't reset user's customized presets
+    // Insert/update all default preset styles at once.
+    // Uses REPLACE so updates to presets take effect on the same row (same stable ID).
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDefaultStyles(styles: List<CaptionStyleEntity>)
 
     // Check if default styles have been inserted yet
