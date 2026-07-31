@@ -112,14 +112,14 @@
     <string name="device_check_cellular_confirm">Download Anyway</string>
 
     <!-- Processing states -->
-    <string name="processing_downloading_model">Downloading AI Model…</string>
-    <string name="processing_preparing_video">Preparing video…</string>
-    <string name="processing_warming_up">Warming up the AI…</string>
-    <string name="processing_listening">Listening &amp; typing…</string>
-    <string name="processing_finalizing">Finalizing captions…</string>
-    <string name="processing_cancelling">Cancelling…</string>
+    <string name="processing_downloading_model">Getting the model.</string>
+    <string name="processing_preparing_video">Reading your video.</string>
+    <string name="processing_warming_up">Loading up.</string>
+    <string name="processing_listening">Listening.</string>
+    <string name="processing_finalizing">Almost done.</string>
+    <string name="processing_cancelling">Stopping.</string>
     <string name="processing_cancel">Cancel</string>
-    <string name="processing_error_title">Something went wrong</string>
+    <string name="processing_error_title">Something didn\'t work.</string>
 
     <!-- ProcessingScreen content descriptions -->
     <string name="cd_go_back">Back</string>
@@ -151,15 +151,15 @@
     <string name="state_retry">Retry</string>
 
     <!-- ProcessingDialogs -->
-    <string name="dialog_cancel_title">Cancel Process?</string>
-    <string name="dialog_cancel_body">Are you sure you want to stop? Your progress will be lost.</string>
-    <string name="dialog_stop_exit">Stop &amp; Exit</string>
-    <string name="dialog_keep_processing">Keep Processing</string>
-    <string name="dialog_storage_title">Not enough storage</string>
-    <string name="dialog_storage_body">You need at least %1$d MB of free space. Please free up storage and try again.</string>
+    <string name="dialog_cancel_title">Stop here?</string>
+    <string name="dialog_cancel_body">The robot will stop and your progress won\'t be saved.</string>
+    <string name="dialog_stop_exit">Stop</string>
+    <string name="dialog_keep_processing">Keep going</string>
+    <string name="dialog_storage_title">Not enough space.</string>
+    <string name="dialog_storage_body">Need at least %1$d MB free. Clear some space and try again.</string>
     <string name="dialog_okay">Okay</string>
-    <string name="dialog_cellular_title">Download over Cellular?</string>
-    <string name="dialog_cellular_body">You are about to download %1$d MB over a cellular connection. This may consume a large amount of your data plan.</string>
+    <string name="dialog_cellular_title">Using mobile data.</string>
+    <string name="dialog_cellular_body">This is %1$d MB over cellular. It\'ll use your data.</string>
     <string name="dialog_download_anyway">Download anyway</string>
 
     <!-- ModelPickerCard -->
@@ -215,9 +215,9 @@
 
     <!-- Export Screen -->
     <string name="export_video_title">Export Video</string>
-    <string name="export_no_captions_title">No Captions</string>
-    <string name="export_no_captions_body">No captions generated for this video. Export without captions?</string>
-    <string name="export_anyway">Export Anyway</string>
+    <string name="export_no_captions_title">No captions yet.</string>
+    <string name="export_no_captions_body">This video doesn\'t have captions. Export it as-is?</string>
+    <string name="export_anyway">Export as-is</string>
     <string name="export_resolution_label">Resolution</string>
     <string name="export_resolution_1080p">1080p</string>
     <string name="export_resolution_720p">720p</string>
@@ -228,27 +228,29 @@
     <string name="export_start_button">Start Export</string>
     <string name="export_rendering">Rendering Video</string>
     <string name="export_rendering_progress">Rendering… %d%%</string>
-    <string name="export_rendering_big">Exporting your video with captions…\n%d%% complete</string>
-    <string name="export_complete">Export Complete</string>
-    <string name="export_saved_to_gallery">Saved to Gallery</string>
+    <string name="export_rendering_big">Writing captions in.\n%d%% done.</string>
+    <string name="export_complete">Done.</string>
+    <string name="export_saved_to_gallery">Saved.</string>
     <string name="export_previously_exported">Previously Exported</string>
     <string name="export_file_not_found">Video file not found</string>
     <string name="export_save_to_gallery">Save to Gallery</string>
     <string name="export_share">Share</string>
     <string name="export_reexport">Re-export</string>
     <string name="export_done">Done</string>
-    <string name="export_cancelled">Cancelled</string>
-    <string name="export_cancelled_title">Export Cancelled</string>
-    <string name="export_cancelled_desc">The export was stopped before completion.</string>
+    <string name="export_cancelled">Stopped.</string>
+    <string name="export_cancelled_title">Stopped early.</string>
+    <string name="export_cancelled_desc">Didn\'t finish. You can start again anytime.</string>
     <string name="export_try_again">Try Again</string>
     <string name="export_go_back">Go Back</string>
-    <string name="export_failed">Export Failed</string>
+    <string name="export_failed">Couldn\'t finish.</string>
     <string name="export_retry">Retry</string>
     <string name="export_channel_name">Video Export</string>
+    <string name="export_eta_remaining">Estimated time remaining: %s</string>
+    <string name="export_eta_estimating">Working out how long this\'ll take.</string>
 
     <!-- Export Foreground Service -->
     <string name="export_notif_title">Exporting Video</string>
-    <string name="export_notif_content">Preparing your video…</string>
+    <string name="export_notif_content">Getting your video ready.</string>
 
     <!-- Home Screen -->
     <string name="home_my_projects">My Projects</string>
@@ -260,9 +262,9 @@
     <string name="home_no_projects">No projects yet</string>
     <string name="home_no_projects_desc">Choose how you want to start your first video</string>
     <string name="home_quick_tip">Quick tip: 1-Tap Captions is the fastest way to add karaoke-style captions to any video.</string>
-    <string name="processing_tip_extracting">This usually takes just a few seconds</string>
-    <string name="processing_tip_loading">Your device is warming up the AI engine</string>
-    <string name="processing_tip_transcribing">You can minimize the app — we\'ll keep working</string>
+    <string name="processing_tip_extracting">Pulling the audio out. Won\'t be long.</string>
+    <string name="processing_tip_loading">Spinning up the recognition engine.</string>
+    <string name="processing_tip_transcribing">You can put the phone down. It\'ll keep going.</string>
     <string name="home_start_1tap">Start 1-Tap Captions</string>
     <string name="home_start_advanced">Start Advanced Studio</string>
     <string name="home_share_video">Share Video</string>

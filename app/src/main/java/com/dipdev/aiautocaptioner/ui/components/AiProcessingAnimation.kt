@@ -4,17 +4,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /**
- * Animated processing indicator utilizing the TV-Robot Mascot.
- * Replaces the old pulse animation while keeping CPU/GPU footprint minimal during Whisper processing.
+ * Processing animation driven by the TV-Robot Mascot.
+ * Maps processing progress to a contextually appropriate MascotMode.
+ *
+ * Callers pass [progress] (0..1); mode is inferred:
+ *   0.0        → Listening (actively transcribing / processing)
+ *   1.0        → Celebrating (all done)
+ *
+ * For fine-grained control per processing step, call MascotRobot directly
+ * with the appropriate MascotMode.
  */
 @Composable
 fun AiProcessingAnimation(
     modifier: Modifier = Modifier,
-    progress: Float = 0f // 0..1
+    progress: Float = 0f  // 0..1
 ) {
-    val dialogType = if (progress >= 1f) DialogType.SUCCESS else DialogType.INFO
-    MascotRobot(
-        type = dialogType,
-        modifier = modifier
-    )
+    val mode = if (progress >= 1f) MascotMode.Celebrating else MascotMode.Listening
+    MascotRobot(mode = mode, modifier = modifier)
 }

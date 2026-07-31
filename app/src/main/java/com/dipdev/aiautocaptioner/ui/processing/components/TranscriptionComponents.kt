@@ -29,7 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
-import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
+import com.dipdev.aiautocaptioner.ui.components.MascotRobot
+import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 
@@ -341,20 +342,20 @@ fun TranscriptionProgressView(
         ) {
             when (currentStep) {
                 is ProcessingStep.DownloadingModel -> {
-                    AiProcessingAnimation(progress = currentStep.progress / 100f, modifier = Modifier.size(120.dp))
+                    MascotRobot(mode = MascotMode.Downloading, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_downloading_model), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Text("${currentStep.progress}%", fontSize = 16.sp, color = Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(top = 8.dp))
                 }
                 is ProcessingStep.ExtractingAudio -> {
-                    AiProcessingAnimation(progress = 0f, modifier = Modifier.size(120.dp))
+                    MascotRobot(mode = MascotMode.Thinking, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_preparing_video), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(stringResource(R.string.processing_tip_extracting), fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f))
                 }
                 is ProcessingStep.LoadingModel -> {
-                    AiProcessingAnimation(progress = 0.1f, modifier = Modifier.size(120.dp))
+                    MascotRobot(mode = MascotMode.Thinking, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_warming_up), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(modifier = Modifier.height(8.dp))
@@ -367,7 +368,7 @@ fun TranscriptionProgressView(
                         animationSpec = tween(durationMillis = 30000, easing = LinearOutSlowInEasing),
                         label = "overlay_progress"
                     )
-                    AiProcessingAnimation(progress = animatedProgress, modifier = Modifier.size(120.dp))
+                    MascotRobot(mode = MascotMode.Listening, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_listening), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     if (detectedLanguage != null) {
@@ -407,7 +408,7 @@ fun TranscriptionProgressView(
                     }
                 }
                 is ProcessingStep.Saving -> {
-                    AiProcessingAnimation(progress = 1f, modifier = Modifier.size(120.dp))
+                    MascotRobot(mode = MascotMode.Celebrating, modifier = Modifier.size(120.dp))
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(stringResource(R.string.processing_finalizing), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
