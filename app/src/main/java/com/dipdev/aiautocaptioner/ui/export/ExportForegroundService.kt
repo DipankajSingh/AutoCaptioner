@@ -55,11 +55,13 @@ import kotlin.time.Duration.Companion.milliseconds
 object ExportServiceManager {
     val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
     val progress = MutableStateFlow<Float>(0f)
+    val etaMs = MutableStateFlow<Long?>(null)
     val outputPath = MutableStateFlow<String?>(null)
 
     fun reset() {
         exportState.value = ExportState.Idle
         progress.value = 0f
+        etaMs.value = null
         outputPath.value = null
     }
 }
@@ -104,6 +106,7 @@ class ExportForegroundService : Service() {
             currentOutFile?.delete()
             ExportServiceManager.exportState.value = ExportState.Cancelled
             ExportServiceManager.progress.value = 0f
+            ExportServiceManager.etaMs.value = null
             stopExportService()
             return START_NOT_STICKY
         }
@@ -250,13 +253,14 @@ class ExportForegroundService : Service() {
         return builder.build()
     }
 
-    private fun updateNotificationProgress(progress: Int) {
+    private fun updateNotificationProgress(progress: Int, etaMs: Long?) {
         if (isFinishing) return
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val etaText = etaMs?.let { ", ETA ${formatEta(it)}" } ?: ""
         val notification = buildExportNotification(
             title = getString(R.string.export_notif_title),
             contentText = "Rendering… $progress%",
-            bigText = "Exporting your video with captions…\n$progress% complete",
+            bigText = "Exporting your video with captions…\n$progress% complete$etaText",
             progress = progress,
             isIndeterminate = false
         )
@@ -295,8 +299,9 @@ class ExportForegroundService : Service() {
                         segments = segments,
                         wordsMap = wordsMap,
                         style = activeStyle,
-                        videoWidth = displayWidth,
-                        videoHeight = displayHeight
+                        videoWidth = project.videoWidth,
+                        videoHeight = project.videoHeight,
+                        rotationDegrees = project.videoRotation
                     )
                     textureOverlays.add(captionOverlayEffect)
                 }
@@ -388,6 +393,7 @@ class ExportForegroundService : Service() {
                                 isFinishing = true
                                 progressJob?.cancel()
                                 activeTransformer = null
+                                ExportServiceManager.etaMs.value = null
                                 ExportServiceManager.exportState.value = ExportState.Success
                                 serviceScope.launch {
                                     val timestamp = System.currentTimeMillis()
@@ -431,6 +437,7 @@ class ExportForegroundService : Service() {
                                 progressJob?.cancel()
                                 activeTransformer = null
                                 crashReporter.recordException(exportException)
+                                ExportServiceManager.etaMs.value = null
                                 ExportServiceManager.exportState.value = ExportState.Error(exportException.message ?: "Unknown Export Error")
                                 currentOutFile?.delete()
                                 serviceScope.launch {
@@ -448,12 +455,31 @@ class ExportForegroundService : Service() {
 
                 progressJob = serviceScope.launch(Dispatchers.Main) {
                     val progressHolder = ProgressHolder()
+                    val exportStartMs = System.currentTimeMillis()
+                    var timeAt98Ms = 0L
                     while (activeTransformer != null && !isFinishing) {
                         val progressState = activeTransformer?.getProgress(progressHolder)
                         if (progressState == Transformer.PROGRESS_STATE_AVAILABLE) {
                             val p = progressHolder.progress
                             ExportServiceManager.progress.value = p / 100f
-                            updateNotificationProgress(p)
+
+                            val now = System.currentTimeMillis()
+                            val eta = when {
+                                // Transformer stalls at ~99% during the muxing phase.
+                                // Count down from the moment we reach the end so the ETA
+                                // converges instead of inflating.
+                                p >= 98 -> {
+                                    if (timeAt98Ms == 0L) timeAt98Ms = now
+                                    now - timeAt98Ms
+                                }
+                                // Skip the noisy early phase, then extrapolate the
+                                // remaining work from the overall progress rate.
+                                p >= 5 && now > exportStartMs -> ((100L - p) * (now - exportStartMs)) / p
+                                else -> -1L
+                            }
+                            val etaMs = eta.takeIf { it >= 0L }
+                            ExportServiceManager.etaMs.value = etaMs
+                            updateNotificationProgress(p, etaMs)
                         }
                         delay(500.milliseconds)
                     }
@@ -466,6 +492,7 @@ class ExportForegroundService : Service() {
                 progressJob?.cancel()
                 activeTransformer = null
                 crashReporter.recordException(e)
+                ExportServiceManager.etaMs.value = null
                 ExportServiceManager.exportState.value = ExportState.Error(e.message ?: "Unknown error")
                 currentOutFile?.delete()
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
@@ -503,4 +530,14 @@ class ExportForegroundService : Service() {
         }
         stopSelf()
     }
+}
+
+fun formatEta(etaMs: Long?): String {
+    if (etaMs == null) return ""
+    val seconds = etaMs / 1000
+    if (seconds <= 0) return "Finishing…"
+    if (seconds < 60) return "~${seconds}s"
+    val minutes = (seconds + 59) / 60
+    if (minutes < 60) return "~$minutes min"
+    return "~${minutes / 60}h ${minutes % 60}m"
 }

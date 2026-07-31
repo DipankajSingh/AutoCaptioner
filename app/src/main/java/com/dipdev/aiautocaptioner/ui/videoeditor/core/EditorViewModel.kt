@@ -244,8 +244,8 @@ class EditorViewModel @Inject constructor(
                         canUndo = false,
                         canRedo = false,
                         originalDurationMs = durationMs,
-                        videoWidth = project.videoWidth,
-                        videoHeight = project.videoHeight,
+                        videoWidth = if (project.videoRotation == 90 || project.videoRotation == 270) project.videoHeight else project.videoWidth,
+                        videoHeight = if (project.videoRotation == 90 || project.videoRotation == 270) project.videoWidth else project.videoHeight,
                         step = VideoEditorUiStep.Ready(durationMs = durationMs, originalPath = workingPath)
                     )
                 }

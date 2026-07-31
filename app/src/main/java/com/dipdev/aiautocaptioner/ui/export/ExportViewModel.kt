@@ -34,6 +34,7 @@ sealed class ExportState {
 data class ExportUiState(
     val exportState: ExportState = ExportState.Idle,
     val progress: Float = 0f,
+    val etaMs: Long? = null,
     val outputPath: String? = null,
     val workingVideoPath: String? = null,
     val hasCaptions: Boolean = true,
@@ -94,6 +95,11 @@ class ExportViewModel @Inject constructor(
         viewModelScope.launch {
             ExportServiceManager.progress.collect { prog ->
                 setState { copy(progress = prog) }
+            }
+        }
+        viewModelScope.launch {
+            ExportServiceManager.etaMs.collect { eta ->
+                setState { copy(etaMs = eta) }
             }
         }
         viewModelScope.launch {
