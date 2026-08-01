@@ -71,7 +71,8 @@ internal sealed class MascotMode {
 @Composable
 internal fun MascotRobot(
     mode: MascotMode,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tightCrop: Boolean = false
 ) {
     val inf = rememberInfiniteTransition(label = "mascot")
 
@@ -322,9 +323,10 @@ internal fun MascotRobot(
     val finalTransX = if (mode is MascotMode.Error) bodyShakeX else bodySwayX * 0.4f
     val finalTransY = bodyBounceY
 
-    // Gradient — always amber→rose, brand identity is constant
-    val gradTop    = AccentAmber.copy(alpha = antennaGlow)
-    val gradBottom = Color(0xFFF5000B).copy(alpha = antennaGlow)
+    // Gradient — Red/Rose at top (antenna), Amber at bottom (body).
+    // ic_logo_ui.xml: startY=38.91 → endY=21.24 (flows upward), so offset=1.0 (Red) is at top.
+    val gradTop    = Color(0xFFF5000B).copy(alpha = antennaGlow)  // Rose/Red  — antenna
+    val gradBottom = AccentAmber.copy(alpha = antennaGlow)        // Amber     — body
 
     Box(
         modifier = modifier.drawWithCache {
@@ -345,7 +347,19 @@ internal fun MascotRobot(
             val playWhite   = Color(0xFFFBFBFB)
             val amberLine   = AccentAmber
 
+            // tightCrop: eliminates the ~45% dead adaptive-icon safe-zone padding.
+            // Robot visible bounds in 108×108 viewport: X[22.42–86.08], Y[19.2–78.12]
+            // Visible width = 63.66 / 108 = 58.9% of canvas.
+            // At scale 1.55: 58.9% × 1.55 = 91.3% — bold, sharp, matches app_icon.png.
+            // Robot center ≈ (54.25, 48.66) ≈ canvas center → no translate needed.
+            val cropScale = if (tightCrop) 1.55f else 1.0f
+
             onDrawBehind {
+                scale(
+                    scaleX = cropScale,
+                    scaleY = cropScale,
+                    pivot  = Offset(W / 2f, H / 2f)
+                ) {
                 translate(left = finalTransX * sx, top = finalTransY * sy) {
                     scale(
                         scaleX = finalScaleX,
@@ -596,8 +610,9 @@ internal fun MascotRobot(
                             }
                         }
 
-                    } // end scale
+                    } // end inner scale (bodyBreathe/bodyLean)
                 } // end translate
+                } // end outer scale (tightCrop)
             } // end onDrawBehind
         } // end drawWithCache
     )

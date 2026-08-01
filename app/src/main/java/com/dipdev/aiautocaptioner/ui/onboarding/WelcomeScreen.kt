@@ -95,7 +95,8 @@ fun WelcomeScreen(
             ) {
                 MascotRobot(
                     mode = MascotMode.Idle,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(40.dp),
+                    tightCrop = true
                 )
                 ShimmerBrandText(
                     text = stringResource(R.string.welcome_brand),

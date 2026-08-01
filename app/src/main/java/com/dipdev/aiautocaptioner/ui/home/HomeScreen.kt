@@ -88,7 +88,6 @@ fun HomeScreen(
     onNavigateToVideoEditor: (String) -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToCaptionEditor: (String) -> Unit,
-    onNavigateToModelManager: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
@@ -144,8 +143,6 @@ fun HomeScreen(
         Scaffold(
             topBar = {
             HomeTopBar(
-                activeModel = activeModel,
-                onNavigateToModelManager = onNavigateToModelManager,
                 onNavigateToSettings = onNavigateToSettings
             )
         },
@@ -408,63 +405,37 @@ fun HomeScreen(
 
 @Composable
 private fun HomeTopBar(
-    activeModel: com.dipdev.aiautocaptioner.data.model.WhisperModel?,
-    onNavigateToModelManager: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Brand: mascot + wordmark
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Brand: icon + wordmark
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                MascotRobot(
-                    mode = MascotMode.Idle,
-                    modifier = Modifier.size(40.dp)
-                )
-                com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText(
-                    text = stringResource(R.string.home_brand_name)
-                )
-            }
-            // Right actions: model chip + settings
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val modelText = activeModel?.displayName?.split("—")?.first()?.trim()
-                    ?.let { stringResource(R.string.home_model_chip, it) } ?: stringResource(R.string.home_select_model)
-                val buttonColor = if (activeModel != null)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.secondaryContainer
-
-                FilledTonalButton(
-                    onClick = onNavigateToModelManager,
-                    modifier = Modifier.padding(end = 4.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = buttonColor),
-                    contentPadding = PaddingValues(start = 12.dp, end = 8.dp, top = 0.dp, bottom = 0.dp)
-                ) {
-                    Text(modelText, fontSize = 13.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(FeatherIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(18.dp))
-                }
-
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(
-                        imageVector = FeatherIcons.Settings,
-                        contentDescription = stringResource(R.string.home_settings),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            MascotRobot(
+                mode = MascotMode.Idle,
+                modifier = Modifier.size(40.dp),
+                tightCrop = true
+            )
+            com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText(
+                text = stringResource(R.string.home_brand_name)
+            )
+        }
+        // Settings icon
+        IconButton(onClick = onNavigateToSettings) {
+            Icon(
+                imageVector = FeatherIcons.Settings,
+                contentDescription = stringResource(R.string.home_settings),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

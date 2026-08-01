@@ -87,9 +87,6 @@ fun NavGraph(
                 onNavigateToCaptionEditor = { projectId ->
                     navController.navigate(Screen.CaptionEditor(projectId))
                 },
-                onNavigateToModelManager = {
-                    navController.navigate(Screen.ModelManager)
-                },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings)
                 },
@@ -102,7 +99,8 @@ fun NavGraph(
 
         composable<Screen.Settings> {
             SettingsScreen(
-                onNavigateBack = { safePopBackStack() }
+                onNavigateBack = { safePopBackStack() },
+                onNavigateToModelManager = { navController.navigate(Screen.ModelManager) }
             )
         }
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.ChevronRight
 import compose.icons.feathericons.Info
 import compose.icons.feathericons.Shield
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +50,7 @@ import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToModelManager: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -57,6 +59,7 @@ fun SettingsScreen(
     val showTimelineThumbnails = uiState.showTimelineThumbnails
     val telemetryEnabled = uiState.telemetryEnabled
     val previewFps = uiState.previewFps
+    val activeModelName = uiState.activeModelName
     val context = LocalContext.current
 
     ScreenThemeProvider(accentColor = AccentAmber) {
@@ -70,6 +73,47 @@ fun SettingsScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
+
+            // ── AI & Models ───────────────────────────────────────────────────
+            Text(
+                text = "AI & Models",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .clickable { onNavigateToModelManager() }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "AI Models",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (activeModelName != null) "Active: $activeModelName" else "No model selected",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    imageVector = FeatherIcons.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ── Appearance ───────────────────────────────────────────────────
             Text(
                 text = stringResource(R.string.settings_appearance),
                 style = MaterialTheme.typography.titleLarge,

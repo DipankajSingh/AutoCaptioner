@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.settings
 
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.repository.AppTheme
+import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
@@ -18,7 +19,8 @@ data class SettingsUiState(
     val glassmorphism: Boolean = true,
     val showTimelineThumbnails: Boolean = false,
     val telemetryEnabled: Boolean = true,
-    val previewFps: Int = 30
+    val previewFps: Int = 30,
+    val activeModelName: String? = null
 ) : UiState
 
 sealed interface SettingsUiEvent : UiEvent {
@@ -32,7 +34,8 @@ sealed interface SettingsUiEffect : UiEffect
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val modelRepository: ModelRepository
 ) : BaseViewModel<SettingsUiState, SettingsUiEvent, SettingsUiEffect>(SettingsUiState()) {
 
     init {
@@ -47,6 +50,12 @@ class SettingsViewModel @Inject constructor(
                 SettingsUiState(theme, glass, thumb, telemetry, previewFps)
             }.distinctUntilChanged().collect { state ->
                 setState { state }
+            }
+        }
+        // Collect active model name independently
+        viewModelScope.launch {
+            modelRepository.getActiveModel().collect { model ->
+                setState { copy(activeModelName = model?.displayName?.split("\u2014")?.first()?.trim()) }
             }
         }
     }
