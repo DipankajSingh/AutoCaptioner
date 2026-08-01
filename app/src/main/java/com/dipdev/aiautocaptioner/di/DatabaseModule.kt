@@ -35,6 +35,14 @@ object DatabaseModule {
             super.onOpen(db)
             if (!db.isReadOnly) {
                 db.execSQL("PRAGMA foreign_keys = ON;")
+                // Schema-level invariant: two default rows can never share a name.
+                // Partial index (isDefault = 1) so user styles may still reuse a
+                // preset name. Created here, not in a migration, because Room's
+                // schema validation can't anticipate a partial index.
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_caption_styles_default_name` " +
+                        "ON `caption_styles` (`name`) WHERE `isDefault` = 1"
+                )
             }
         }
     }).addMigrations(
@@ -50,7 +58,8 @@ object DatabaseModule {
         AppDatabase.MIGRATION_13_14,
         AppDatabase.MIGRATION_14_15,
         AppDatabase.MIGRATION_15_16,
-        AppDatabase.MIGRATION_16_17
+        AppDatabase.MIGRATION_16_17,
+        AppDatabase.MIGRATION_17_18
     ).build()
 
     @Provides

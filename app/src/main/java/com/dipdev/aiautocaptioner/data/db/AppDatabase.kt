@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false,
     autoMigrations = []
 )
@@ -218,6 +218,56 @@ abstract class AppDatabase : RoomDatabase() {
                 // 0xFF000000 = 4278190080
                 db.execSQL("ALTER TABLE caption_styles ADD COLUMN activeWordTextColor INTEGER NOT NULL DEFAULT 4278190080")
                 db.execSQL("ALTER TABLE caption_styles ADD COLUMN activeWordCornerRadius REAL NOT NULL DEFAULT 100.0")
+            }
+        }
+
+        /**
+         * Deduplicate preset rows left over from before presets had stable IDs.
+         *
+         * Pre-fa59a9c versions seeded every preset with a fresh UUID.id, so
+         * upgrading devices end up with two rows per preset (UUID id + stable id).
+         * Remap project references to the stable row and drop the legacy rows.
+         * (The uniqueness guard for preset names is applied in onOpen — Room
+         * can't validate a partial index it doesn't know about.)
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Point projects at the stable preset row for their current style
+                //    (id = "preset_" + lower(name) with spaces -> underscores). Only
+                //    touched when a default row whose name has a stable twin exists,
+                //    so custom styles and removed presets are never orphaned.
+                db.execSQL("""
+                    UPDATE `projects`
+                    SET `activeStyleId` = (
+                        SELECT 'preset_' || lower(replace(s.name, ' ', '_'))
+                        FROM `caption_styles` s
+                        WHERE s.isDefault = 1 AND s.id = `projects`.`activeStyleId`
+                        LIMIT 1
+                    )
+                    WHERE `activeStyleId` IS NOT NULL
+                      AND EXISTS (
+                        SELECT 1
+                        FROM `caption_styles` s
+                        WHERE s.isDefault = 1 AND s.id = `projects`.`activeStyleId`
+                          AND EXISTS (
+                            SELECT 1 FROM `caption_styles` s2
+                            WHERE s2.isDefault = 1
+                              AND s2.id = 'preset_' || lower(replace(s.name, ' ', '_'))
+                          )
+                      )
+                """.trimIndent())
+
+                // 2. Drop legacy UUID rows that now have a stable twin.
+                db.execSQL("""
+                    DELETE FROM `caption_styles`
+                    WHERE `isDefault` = 1
+                      AND `id` <> 'preset_' || lower(replace(`name`, ' ', '_'))
+                      AND EXISTS (
+                        SELECT 1 FROM `caption_styles` s2
+                        WHERE s2.isDefault = 1
+                          AND s2.id = 'preset_' || lower(replace(`caption_styles`.`name`, ' ', '_'))
+                      )
+                """.trimIndent())
             }
         }
     }

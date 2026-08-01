@@ -1,5 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.export
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -42,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -85,6 +89,8 @@ fun ExportScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val exportState = uiState.exportState
+    val progress = uiState.progress
+    val etaMs = uiState.etaMs
     val outputPath = uiState.outputPath
     val workingVideoPath = uiState.workingVideoPath
     val hasCaptions = uiState.hasCaptions
@@ -285,6 +291,52 @@ fun ExportScreen(
 
                             Text(stringResource(R.string.export_rendering), fontSize = 18.sp, fontWeight = FontWeight.Medium)
                             Spacer(Modifier.height(Dimens.Padding.small))
+
+                            val animatedProgress by animateFloatAsState(
+                                targetValue = progress,
+                                animationSpec = tween(300),
+                                label = "export_progress"
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { animatedProgress },
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = accent,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "${(progress * 100).toInt()}%",
+                                    fontSize = 14.sp, fontWeight = FontWeight.Bold, color = accent
+                                )
+                                Text(
+                                    "~%.1f MB".format(estimatedSizeMB),
+                                    fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = if (etaMs == null) {
+                                    stringResource(R.string.export_eta_estimating)
+                                } else {
+                                    stringResource(R.string.export_eta_remaining, formatEta(etaMs))
+                                },
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
                         }
 
                         AppOutlinedButton(onClick = { viewModel.setEvent(ExportUiEvent.CancelExport) }) {

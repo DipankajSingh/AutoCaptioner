@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.components.MascotRobot
+import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText
 import com.dipdev.aiautocaptioner.ui.theme.*
 import kotlinx.coroutines.delay
@@ -91,9 +93,8 @@ fun WelcomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_icon),
-                    contentDescription = null,
+                MascotRobot(
+                    mode = MascotMode.Idle,
                     modifier = Modifier.size(40.dp)
                 )
                 ShimmerBrandText(
@@ -455,9 +456,8 @@ private fun CtaContent() {
             .fillMaxSize()
             .padding(horizontal = 20.dp)
     ) {
-            Image(
-                painter = painterResource(id = R.drawable.app_icon),
-                contentDescription = null,
+            MascotRobot(
+                mode = MascotMode.Celebrating,
                 modifier = Modifier.size(96.dp)
             )
 

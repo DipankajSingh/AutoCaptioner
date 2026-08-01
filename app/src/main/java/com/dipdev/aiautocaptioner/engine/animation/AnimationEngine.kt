@@ -91,7 +91,13 @@ object AnimationEngine {
         val isEntering = word.lifecycle == WordLifecycle.ENTERING || word.lifecycle == WordLifecycle.UPCOMING
         val isExiting = word.lifecycle == WordLifecycle.EXITING
 
-        val enter = if (isEntering || word.lifecycle == WordLifecycle.ACTIVE) enterRaw else 1f
+        // KARAOKE_FILL locks the whole sentence onto a static grid — words never
+        // animate in individually, so the reader keeps a stable anchor to read ahead.
+        val enter = when {
+            style.displayMode == DisplayMode.KARAOKE_FILL -> 1f
+            isEntering || word.lifecycle == WordLifecycle.ACTIVE -> enterRaw
+            else -> 1f
+        }
         val exit = if (isExiting) exitRaw else 0f
 
         // Compute enter transform
@@ -130,8 +136,10 @@ object AnimationEngine {
             clip = ((posMs - word.startTimeMs).toFloat() / wordDur).coerceIn(0f, 1f)
         }
 
-        // Karaoke dynamic word emphasis (TikTok / CapCut kinetic pop style)
-        // Strictly guarded to karaoke and line highlight modes so other presets are 100% untouched
+        // Karaoke / line-highlight emphasis (TikTok / CapCut kinetic pop style).
+        // Strictly guarded to karaoke and line highlight modes so other presets are 100% untouched.
+        // For FILL_LEFT_RIGHT the fill sweep in TextFillPass is the highlight — deliberately no
+        // scale pop, so the locked sentence stays stationary while the sweep progresses.
         if (word.lifecycle == WordLifecycle.ACTIVE &&
             (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.LINE_HIGHLIGHT)
         ) {
@@ -139,16 +147,6 @@ object AnimationEngine {
                 com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode.SCALE_UP -> {
                     scaleX *= 1.15f
                     scaleY *= 1.15f
-                }
-                com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode.FILL_LEFT_RIGHT -> {
-                    if (style.displayMode == DisplayMode.KARAOKE_FILL) {
-                        // Kinetic pop curve: gives an organic scale bounce as the highlight sweeps across
-                        val wordDur = (word.endTimeMs - word.startTimeMs).coerceAtLeast(1L)
-                        val progress = ((posMs - word.startTimeMs).toFloat() / wordDur).coerceIn(0f, 1f)
-                        val pop = 1f + 0.08f * kotlin.math.sin(progress * PI.toFloat())
-                        scaleX *= pop
-                        scaleY *= pop
-                    }
                 }
                 else -> {}
             }

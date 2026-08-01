@@ -33,69 +33,16 @@ interface CaptionStyleDao {
     suspend fun deleteStyle(style: CaptionStyleEntity)
 
     // Insert/update all default preset styles at once.
-    // Uses REPLACE so updates to presets take effect on the same row (same stable ID).
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDefaultStyles(styles: List<CaptionStyleEntity>)
-
-    // Check if default styles have been inserted yet
-    @Query("SELECT COUNT(*) FROM caption_styles WHERE isDefault = 1")
-    suspend fun getDefaultStyleCount(): Int
-
-    // Get names of all default styles — used to skip already-seeded presets
-    @Query("SELECT name FROM caption_styles WHERE isDefault = 1")
-    suspend fun getDefaultStyleNames(): List<String>
+    // Uses UPSERT (in-place ON CONFLICT DO UPDATE), NOT REPLACE: REPLACE is a
+    // DELETE + INSERT, which fires the projects.activeStyleId ON DELETE SET NULL
+    // foreign key and silently nulls every project's active style on seeding.
+    // Safe to run on every launch: presets are immutable in the UI (editing a preset
+    // always produces a new custom/draft row), so the upsert never clobbers user work,
+    // and the onOpen unique index guarantees one row per preset name.
+    @Upsert
+    suspend fun upsertDefaultStyles(styles: List<CaptionStyleEntity>)
 
     // Remove any previously seeded preset styles that are no longer in the system definitions
     @Query("DELETE FROM caption_styles WHERE isDefault = 1 AND name NOT IN (:retainedNames)")
     suspend fun removeDeprecatedDefaultStyles(retainedNames: List<String>)
-
-    /**
-     * Patch layout-critical fields on an existing default style identified by name.
-     * Called during [CaptionRepository.initializeDefaultStyles] so that already-seeded
-     * rows are updated to the latest preset values without resetting any fields the
-     * user may have customised (font, color, position, etc.).
-     */
-    @Query("""
-        UPDATE caption_styles
-        SET maxWordsPerLine = :maxWordsPerLine,
-            maxLines        = :maxLines
-        WHERE name = :name AND isDefault = 1
-    """)
-    suspend fun patchDefaultStyleLayout(name: String, maxWordsPerLine: Int, maxLines: Int)
-
-    /**
-     * Patch visual/animation fields on an existing default style.
-     * Used to update presets whose visual parameters changed (not user-customised).
-     */
-    @Query("""
-        UPDATE caption_styles
-        SET fontFamily              = :fontFamily,
-            fontWeight              = :fontWeight,
-            textTransform           = :textTransform,
-            outlineColor            = :outlineColor,
-            outlineWidth            = :outlineWidth,
-            glowEnabled             = :glowEnabled,
-            glowColor               = :glowColor,
-            glowRadius              = :glowRadius,
-            maxWordsPerLine         = :maxWordsPerLine,
-            maxLines                = :maxLines,
-            wordEnterAnimation      = :enterAnim,
-            wordExitAnimation       = :exitAnim
-        WHERE name = :name AND isDefault = 1
-    """)
-    suspend fun patchDefaultStylePreset(
-        name: String,
-        fontFamily: String,
-        fontWeight: Int,
-        textTransform: com.dipdev.aiautocaptioner.data.db.entity.TextTransform,
-        outlineColor: Long,
-        outlineWidth: Float,
-        glowEnabled: Boolean,
-        glowColor: Long,
-        glowRadius: Float,
-        maxWordsPerLine: Int,
-        maxLines: Int,
-        enterAnim: com.dipdev.aiautocaptioner.data.db.entity.AnimationType,
-        exitAnim: com.dipdev.aiautocaptioner.data.db.entity.AnimationType,
-    )
 }

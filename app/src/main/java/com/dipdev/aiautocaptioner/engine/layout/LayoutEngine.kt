@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.engine.layout
 
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
+import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
 import com.dipdev.aiautocaptioner.engine.CaptionPaints
 import com.dipdev.aiautocaptioner.engine.CaptionUtils
@@ -42,7 +43,10 @@ object LayoutEngine {
         val spaceW = CaptionPaints.text.measureText(" ")
 
         val maxWordsPerLine = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
-        val maxLines = if (style.maxLines <= 0) 999 else style.maxLines
+        // KARAOKE_FILL locks the whole sentence to a static grid — never truncate
+        // the line count, or words would be dropped mid-sentence.
+        val maxLines = if (style.displayMode == DisplayMode.KARAOKE_FILL) 999
+            else if (style.maxLines <= 0) 999 else style.maxLines
 
         val padH = style.backgroundPaddingH * baseScale
         val marginH = videoWidth * 0.08f

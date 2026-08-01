@@ -362,9 +362,10 @@ class CaptionRepository @Inject constructor(
 
             // Remove presets that no longer exist in the system definitions.
             styleDao.removeDeprecatedDefaultStyles(defaults.map { it.name })
-            // Insert/update all presets.  Uses REPLACE, so existing rows with the
-            // same stable ID get updated fields without generating new IDs.
-            styleDao.insertDefaultStyles(defaults)
+            // Insert/update all presets.  Uses UPSERT, so existing rows with the
+            // same stable ID get updated fields without generating new IDs (and
+            // without triggering the FK ON DELETE SET NULL that REPLACE would).
+            styleDao.upsertDefaultStyles(defaults)
             Log.i(TAG, "Seeded ${defaults.size} default caption styles")
         }
     }

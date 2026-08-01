@@ -66,6 +66,8 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.components.MascotRobot
+import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
@@ -426,9 +428,8 @@ private fun HomeTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_icon),
-                    contentDescription = null,
+                MascotRobot(
+                    mode = MascotMode.Idle,
                     modifier = Modifier.size(40.dp)
                 )
                 com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText(

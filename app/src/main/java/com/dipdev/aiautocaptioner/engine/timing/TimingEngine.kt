@@ -124,7 +124,7 @@ object TimingEngine {
         return when (displayMode) {
             DisplayMode.PHRASE -> resolvePhrase(updated, posMs, animMs, displayMode)
             DisplayMode.LINE_HIGHLIGHT -> resolvePaged(updated, posMs, animMs, maxWordsPerLine, maxLines, previousPageIndex)
-            DisplayMode.KARAOKE_FILL -> resolveKaraokeFill(updated, posMs, maxWordsPerLine, maxLines, previousPageIndex)
+            DisplayMode.KARAOKE_FILL -> resolveKaraokeFill(updated, posMs, previousPageIndex)
             DisplayMode.WORD_BY_WORD -> resolveWordByWord(updated, posMs, animMs, previousPageIndex)
             DisplayMode.TYPEWRITER -> resolveTypewriter(updated, posMs, animMs, maxWordsPerLine, maxLines, previousPageIndex)
         }
@@ -248,45 +248,32 @@ object TimingEngine {
     }
 
     /**
-     * KARAOKE_FILL: displays text in short, readable page windows (e.g. 4-8 words across 1-2 lines)
-     * just like TikTok and CapCut viral style videos. Uses the most recently spoken word
-     * as an anchor so past words on the current page stay highlighted even during vocal gaps.
+     * KARAOKE_FILL: the whole segment is locked onto a static grid.
+     *
+     * Every word of the sentence is visible from the moment the segment starts and
+     * stays in place while the highlight sweeps through it — no rolling window, no
+     * reflow, so the reader always has a stable anchor to read ahead of the audio.
+     * The screen only wipes once the entire segment has finished (segment switch).
      */
     private fun resolveKaraokeFill(
         words: List<WordState>,
         posMs: Long,
-        maxWordsPerLine: Int,
-        maxLines: Int,
         previousPageIndex: Int
     ): TimingResult {
-        val wordsPerPage = (maxWordsPerLine.coerceAtLeast(1) * maxLines.coerceAtLeast(1)).coerceAtLeast(1)
-
-        // Find the word currently being spoken
+        // Anchor = the word currently being spoken, or the most recently spoken
+        // word during vocal gaps. -1 while nothing has been spoken yet.
         val activeIdx = words.indexOfFirst { it.lifecycle == WordLifecycle.ACTIVE }
-
-        // If no word is actively being spoken (gap between words), find the
-        // most recently finished word so past words stay highlighted without premature page flips.
-        val anchorIdx = if (activeIdx >= 0) {
-            activeIdx
-        } else {
-            val lastPast = words.indexOfLast { posMs > it.endTimeMs }
-            if (lastPast >= 0) lastPast else {
-                val nextUpcoming = words.indexOfFirst { it.lifecycle == WordLifecycle.UPCOMING || it.lifecycle == WordLifecycle.ENTERING }
-                if (nextUpcoming >= 0) nextUpcoming else 0
-            }
-        }
-
-        val pageIndex = anchorIdx / wordsPerPage
-        val pageStart = pageIndex * wordsPerPage
-        val pageEnd = (pageStart + wordsPerPage).coerceAtMost(words.size)
-        val pageWords = words.subList(pageStart, pageEnd)
+        val lastPastIdx = words.indexOfLast { posMs > it.endTimeMs }
+        val anchorIdx = if (activeIdx >= 0) activeIdx else lastPastIdx
 
         return TimingResult(
-            visibleWords = pageWords,
+            visibleWords = words,
             activeWord = if (activeIdx >= 0) words[activeIdx] else null,
             activeWordIndex = anchorIdx,
-            isNewPage = pageIndex != previousPageIndex,
-            pageIndex = pageIndex
+            // One static page per segment — a transition only fires on segment
+            // change, when CaptionEngine resets previousPageIndex to -1.
+            isNewPage = previousPageIndex != 0,
+            pageIndex = 0
         )
     }
 
