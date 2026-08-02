@@ -248,12 +248,13 @@ object TimingEngine {
     }
 
     /**
-     * KARAOKE_FILL: the whole segment is locked onto a static grid.
+     * KARAOKE_FILL: the whole phrase is locked onto a static block.
      *
-     * Every word of the sentence is visible from the moment the segment starts and
-     * stays in place while the highlight sweeps through it — no rolling window, no
-     * reflow, so the reader always has a stable anchor to read ahead of the audio.
-     * The screen only wipes once the entire segment has finished (segment switch).
+     * Every word of the sentence is visible from the moment the block loads and
+     * stays in place while the highlight sweeps through it word by word — no
+     * rolling window, no mutation, no reflow, so the reader always has a stable
+     * anchor to read ahead of the audio. The screen only clears to load the next
+     * phrase once the entire block has finished (segment switch).
      */
     private fun resolveKaraokeFill(
         words: List<WordState>,
@@ -270,7 +271,7 @@ object TimingEngine {
             visibleWords = words,
             activeWord = if (activeIdx >= 0) words[activeIdx] else null,
             activeWordIndex = anchorIdx,
-            // One static page per segment — a transition only fires on segment
+            // One static page per phrase — a transition only fires on segment
             // change, when CaptionEngine resets previousPageIndex to -1.
             isNewPage = previousPageIndex != 0,
             pageIndex = 0

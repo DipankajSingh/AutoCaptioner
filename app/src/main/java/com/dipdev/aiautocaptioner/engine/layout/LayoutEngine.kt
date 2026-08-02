@@ -43,7 +43,7 @@ object LayoutEngine {
         val spaceW = CaptionPaints.text.measureText(" ")
 
         val maxWordsPerLine = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
-        // KARAOKE_FILL locks the whole sentence to a static grid — never truncate
+        // KARAOKE_FILL locks the whole phrase onto a static block — never truncate
         // the line count, or words would be dropped mid-sentence.
         val maxLines = if (style.displayMode == DisplayMode.KARAOKE_FILL) 999
             else if (style.maxLines <= 0) 999 else style.maxLines

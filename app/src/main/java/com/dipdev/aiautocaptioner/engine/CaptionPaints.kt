@@ -251,17 +251,18 @@ object CaptionPaints {
         frame: FrameData
     ): Int {
         val karaokeCol = if (style.displayMode == DisplayMode.KARAOKE_FILL) style.karaokeFillColor.toInt() else style.highlightColor.toInt()
+        val isActive = frame.isActiveWord(wl.word.index)
         return when {
             xfm.colorOverride != null -> xfm.colorOverride
             wl.word.isEmphasized -> style.highlightColor.toInt()
-            wl.word.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> style.activeWordTextColor.toInt()
-            wl.word.isActive && style.displayMode == DisplayMode.KARAOKE_FILL &&
+            isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> style.activeWordTextColor.toInt()
+            isActive && style.displayMode == DisplayMode.KARAOKE_FILL &&
                 style.karaokeHighlightMode == KaraokeHighlightMode.FILL_LEFT_RIGHT -> style.textColor.toInt()
-            wl.word.isActive && style.displayMode == DisplayMode.KARAOKE_FILL -> karaokeCol
+            isActive && style.displayMode == DisplayMode.KARAOKE_FILL -> karaokeCol
             style.displayMode == DisplayMode.KARAOKE_FILL &&
                 frame.timing.activeWordIndex >= 0 &&
                 wl.word.index <= frame.timing.activeWordIndex -> karaokeCol
-            wl.word.isActive && style.displayMode != DisplayMode.PHRASE -> style.highlightColor.toInt()
+            isActive && style.displayMode != DisplayMode.PHRASE -> style.highlightColor.toInt()
             else -> style.textColor.toInt()
         }
     }

@@ -5,7 +5,6 @@ import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.engine.layout.CaptionLayout
 import com.dipdev.aiautocaptioner.engine.layout.WordLayout
 import com.dipdev.aiautocaptioner.engine.timing.TimingResult
-import com.dipdev.aiautocaptioner.engine.timing.WordState
 import com.dipdev.aiautocaptioner.engine.animation.WordTransform
 
 /**
@@ -14,7 +13,7 @@ import com.dipdev.aiautocaptioner.engine.animation.WordTransform
 data class FrameData(
     val timing: TimingResult,
     val layout: CaptionLayout,
-    val transforms: Map<WordState, WordTransform>,
+    val transforms: Map<Int, WordTransform>,
     val style: CaptionStyleEntity,
     val videoWidth: Int,
     val videoHeight: Int,
@@ -22,7 +21,14 @@ data class FrameData(
     val currentPositionMs: Long,
     val isRtl: Boolean,
     val pageAlpha: Float = 1f
-)
+) {
+    /**
+     * Live check for the currently-spoken word, resolved against the current
+     * frame's timing. Layout words carry a frozen WordState snapshot from the
+     * frame the layout was built in — never read lifecycle off that snapshot.
+     */
+    fun isActiveWord(index: Int): Boolean = timing.activeWord?.index == index
+}
 
 /**
  * Interface for a composable rendering pass.

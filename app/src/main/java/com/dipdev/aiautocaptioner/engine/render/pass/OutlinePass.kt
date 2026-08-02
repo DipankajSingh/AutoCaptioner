@@ -34,14 +34,14 @@ class OutlinePass : RenderPass {
             val spaceW = CaptionPaints.text.measureText(" ")
 
             for (wl in line.words) {
-                val xfm = frame.transforms[wl.word] ?: continue
+                val xfm = frame.transforms[wl.word.index] ?: continue
                 val a = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
 
                 if (a < 3) continue
 
                 if (frame.isRtl) x -= wl.width
 
-                if (!(wl.word.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT)) {
+                if (!(frame.isActiveWord(wl.word.index) && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT)) {
                     val cx = x + wl.width / 2f
                     val cy = lineY + (lineBot - lineTop) / 2f + lineTop
 

@@ -41,7 +41,7 @@ class TextFillPass : RenderPass {
             val spaceW = CaptionPaints.text.measureText(" ")
 
             for (wl in line.words) {
-                val xfm = frame.transforms[wl.word] ?: continue
+                val xfm = frame.transforms[wl.word.index] ?: continue
                 val a = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
 
                 if (a < 3) {
@@ -69,7 +69,7 @@ class TextFillPass : RenderPass {
                     translate(xfm.translateX, xfm.translateY)
 
                     // Draw solid active background pill before drawing text glyphs
-                    if (wl.word.isActive && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT) {
+                    if (frame.isActiveWord(wl.word.index) && style.karaokeHighlightMode == KaraokeHighlightMode.BACKGROUND_HIGHLIGHT) {
                         val padX = 12f * baseScale
                         val padY = 6f * baseScale
                         tempRect.set(x - padX, lineY + fm.ascent - padY, x + wl.width + padX, lineY + fm.descent + padY)
@@ -112,7 +112,7 @@ class TextFillPass : RenderPass {
                     CaptionPaints.text.alpha = 255
 
                     // Karaoke / highlight overlays — inside transform block for alignment
-                    val shouldShowOverlay = wl.word.isActive ||
+                    val shouldShowOverlay = frame.isActiveWord(wl.word.index) ||
                         (style.displayMode == DisplayMode.KARAOKE_FILL &&
                             frame.timing.activeWordIndex >= 0 &&
                             wl.word.index <= frame.timing.activeWordIndex)
@@ -136,7 +136,7 @@ class TextFillPass : RenderPass {
         style: com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity,
         frame: FrameData
     ) {
-        val xfm = frame.transforms[wl.word] ?: return
+        val xfm = frame.transforms[wl.word.index] ?: return
         val baseScale = frame.baseScale
         val padX = style.backgroundPaddingH * baseScale
         val padY = style.backgroundPaddingV * baseScale
@@ -147,7 +147,7 @@ class TextFillPass : RenderPass {
                 if (style.displayMode == DisplayMode.KARAOKE_FILL) {
                     val posMs = frame.currentPositionMs
                     val dur = (wl.word.endTimeMs - wl.word.startTimeMs).coerceAtLeast(1L)
-                    val fillP = if (wl.word.isActive) {
+                    val fillP = if (frame.isActiveWord(wl.word.index)) {
                         ((posMs - wl.word.startTimeMs).toFloat() / dur).coerceIn(0f, 1f)
                     } else {
                         1f // Past word: fully filled

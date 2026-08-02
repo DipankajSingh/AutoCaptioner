@@ -42,6 +42,7 @@ class CaptionEngine(
     private var cachedLayoutFingerprint: Long = 0L
     private var cachedLayout: CaptionLayout? = null
     private var cachedLayoutWords: List<WordState> = emptyList()
+    private var cachedFrameData: FrameData? = null
 
     /**
      * Main entry point — draw captions onto a Canvas.
@@ -62,8 +63,11 @@ class CaptionEngine(
         // Configure paints
         CaptionPaints.configure(context, style, baseScale)
 
-        // 1. Find active segment
-        val segment = TimingEngine.findActiveSegment(segments, currentPositionMs) ?: run {
+        // 1. Find active segment — during gaps (silence) between blocks, hold the
+        // last rendered block on screen instead of blanking out.
+        val segment = TimingEngine.findActiveSegment(segments, currentPositionMs)
+        if (segment == null) {
+            cachedFrameData?.let { pipeline.renderFrame(canvas, it.copy(pageAlpha = 1f)) }
             previousPositionMs = currentPositionMs
             return
         }
@@ -120,10 +124,11 @@ class CaptionEngine(
             cachedLayout!!
         }
 
-        // 5. Compute per-word animation transforms
-        val transforms = mutableMapOf<WordState, WordTransform>()
+        // 5. Compute per-word animation transforms — keyed by stable word index
+        // (the layout's WordState snapshot goes stale as lifecycles change).
+        val transforms = mutableMapOf<Int, WordTransform>()
         for (word in timing.visibleWords) {
-            transforms[word] = AnimationEngine.computeWordTransform(
+            transforms[word.index] = AnimationEngine.computeWordTransform(
                 posMs = currentPositionMs,
                 word = word,
                 style = style,
@@ -157,6 +162,7 @@ class CaptionEngine(
         )
 
         pipeline.renderFrame(canvas, frameData)
+        cachedFrameData = frameData
     }
 
     /**
@@ -169,6 +175,7 @@ class CaptionEngine(
         cachedWords = emptyList()
         cachedLayout = null
         cachedLayoutFingerprint = 0L
+        cachedFrameData = null
     }
 
     /**

@@ -63,7 +63,7 @@ class BackgroundPass : RenderPass {
                 val spaceW = CaptionPaints.text.measureText(" ")
 
                 for (wl in line.words) {
-                    val xfm = frame.transforms[wl.word] ?: continue
+                    val xfm = frame.transforms[wl.word.index] ?: continue
 
                     if (frame.isRtl) x -= wl.width
 
