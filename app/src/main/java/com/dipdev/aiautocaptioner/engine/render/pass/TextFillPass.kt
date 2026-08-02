@@ -145,27 +145,11 @@ class TextFillPass : RenderPass {
         when (style.karaokeHighlightMode) {
             KaraokeHighlightMode.FILL_LEFT_RIGHT -> {
                 if (style.displayMode == DisplayMode.KARAOKE_FILL) {
-                    val posMs = frame.currentPositionMs
-                    val dur = (wl.word.endTimeMs - wl.word.startTimeMs).coerceAtLeast(1L)
-                    val fillP = if (frame.isActiveWord(wl.word.index)) {
-                        ((posMs - wl.word.startTimeMs).toFloat() / dur).coerceIn(0f, 1f)
-                    } else {
-                        1f // Past word: fully filled
-                    }
-
-                    if (frame.isRtl) {
-                        canvas.withClip(x + wl.width * (1f - fillP), lineTop, x + wl.width, lineBot) {
-                            CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
-                            drawText(wl.displayText, 0, wl.displayText.length, x, y, CaptionPaints.highlight)
-                            CaptionPaints.highlight.alpha = 255
-                        }
-                    } else {
-                        canvas.withClip(x, lineTop, x + wl.width * fillP, lineBot) {
-                            CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
-                            drawText(wl.displayText, 0, wl.displayText.length, x, y, CaptionPaints.highlight)
-                            CaptionPaints.highlight.alpha = 255
-                        }
-                    }
+                    // Instant fill: the active word turns solid the moment it
+                    // starts — no left-to-right sweep.
+                    CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
+                    canvas.drawText(wl.displayText, 0, wl.displayText.length, x, y, CaptionPaints.highlight)
+                    CaptionPaints.highlight.alpha = 255
                 }
             }
             KaraokeHighlightMode.UNDERLINE -> {
