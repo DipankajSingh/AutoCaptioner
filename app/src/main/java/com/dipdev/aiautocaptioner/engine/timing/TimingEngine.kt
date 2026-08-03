@@ -110,7 +110,8 @@ object TimingEngine {
         displayMode: DisplayMode,
         maxWordsPerLine: Int,
         maxLines: Int,
-        previousPageIndex: Int
+        previousPageIndex: Int,
+        wordCursor: Int = -1
     ): TimingResult {
         if (words.isEmpty()) return TimingResult(emptyList(), null, -1, false, 0)
 
@@ -125,7 +126,7 @@ object TimingEngine {
             DisplayMode.PHRASE -> resolvePhrase(updated, posMs, animMs, displayMode)
             DisplayMode.LINE_HIGHLIGHT -> resolvePaged(updated, posMs, animMs, maxWordsPerLine, maxLines, previousPageIndex)
             DisplayMode.KARAOKE_FILL -> resolveKaraokeFill(updated, posMs, previousPageIndex)
-            DisplayMode.WORD_BY_WORD -> resolveWordByWord(updated, posMs, animMs, previousPageIndex)
+            DisplayMode.WORD_BY_WORD -> resolveWordByWord(updated, posMs, animMs, wordCursor)
             DisplayMode.TYPEWRITER -> resolveTypewriter(updated, posMs, animMs, maxWordsPerLine, maxLines, previousPageIndex)
         }
     }
@@ -211,6 +212,16 @@ object TimingEngine {
      * Paged mode (LINE_HIGHLIGHT): show a fixed-size page of words.
      * Page flips when active word crosses a page boundary.
      * All words on the current page are visible; past words stay at full opacity.
+     *
+     * IMPORTANT: We separate two distinct concerns here:
+     *   - pageAnchorIdx: which word to use when calculating the current page.
+     *     Uses a fallback (next upcoming, last past) so the correct 4-word
+     *     block is always shown even in gaps between words.
+     *   - activeWord: the word currently being spoken, used ONLY for highlight
+     *     rendering (yellow pill box). This is strictly null when no word has
+     *     lifecycle == ACTIVE, so the pill is never drawn during silence gaps
+     *     or before the first word starts. Without this separation the box
+     *     freezes on a random "next upcoming" word that is not being spoken.
      */
     private fun resolvePaged(
         words: List<WordState>,
@@ -222,26 +233,32 @@ object TimingEngine {
     ): TimingResult {
         val wordsPerPage = (maxWordsPerLine.coerceAtLeast(1) * maxLines.coerceAtLeast(1)).coerceAtLeast(1)
 
-        val activeIdx = words.indexOfFirst { it.lifecycle == WordLifecycle.ACTIVE }
-            .takeIf { it >= 0 }
-            ?: run {
-                val nextUpcoming = words.indexOfFirst {
-                    it.lifecycle == WordLifecycle.UPCOMING || it.lifecycle == WordLifecycle.ENTERING
-                }
-                if (nextUpcoming >= 0) nextUpcoming
-                else words.indexOfLast { it.lifecycle == WordLifecycle.REMOVED || it.lifecycle == WordLifecycle.EXITING }
-                    .takeIf { it >= 0 } ?: 0
-            }
+        // The genuinely active word — null during gaps. Used for highlight rendering only.
+        val trueActiveIdx = words.indexOfFirst { it.lifecycle == WordLifecycle.ACTIVE }
+        val trueActiveWord = if (trueActiveIdx >= 0) words[trueActiveIdx] else null
 
-        val pageIndex = activeIdx / wordsPerPage
+        // Page anchor — allowed to fall back so the right block is always on screen.
+        // Uses next-upcoming or last-past as a positional anchor, NOT as a highlight target.
+        val pageAnchorIdx = if (trueActiveIdx >= 0) {
+            trueActiveIdx
+        } else {
+            val nextUpcoming = words.indexOfFirst {
+                it.lifecycle == WordLifecycle.UPCOMING || it.lifecycle == WordLifecycle.ENTERING
+            }
+            if (nextUpcoming >= 0) nextUpcoming
+            else words.indexOfLast { it.lifecycle == WordLifecycle.REMOVED || it.lifecycle == WordLifecycle.EXITING }
+                .takeIf { it >= 0 } ?: 0
+        }
+
+        val pageIndex = pageAnchorIdx / wordsPerPage
         val pageStart = pageIndex * wordsPerPage
         val pageEnd = (pageStart + wordsPerPage).coerceAtMost(words.size)
         val pageWords = words.subList(pageStart, pageEnd)
 
         return TimingResult(
             visibleWords = pageWords,
-            activeWord = if (activeIdx >= 0) words[activeIdx] else null,
-            activeWordIndex = activeIdx,
+            activeWord = trueActiveWord,            // null during gaps → no pill drawn
+            activeWordIndex = pageAnchorIdx,        // page position anchor (not highlight)
             isNewPage = pageIndex != previousPageIndex,
             pageIndex = pageIndex
         )
@@ -280,7 +297,12 @@ object TimingEngine {
 
     /**
      * WORD_BY_WORD: show ONLY the current word (plus dynamic exit overlap).
-     * This fixes the bug where too many words were visible.
+     *
+     * The current word is driven by [currentIndex] — CaptionEngine's sequential
+     * word cursor, which advances at most ONE index per frame toward the
+     * position-derived target. This guarantees a strict 1:1 mapping of word
+     * start-times to UI pop-ups: no array index is ever skipped, even when
+     * frame sampling jumps over sub-frame word durations.
      *
      * The exit overlap is dynamically calculated based on speech speed:
      *  - Fast speech (200ms word): ~60ms overlap
@@ -290,46 +312,39 @@ object TimingEngine {
         words: List<WordState>,
         posMs: Long,
         animMs: Long,
-        previousPageIndex: Int
+        currentIndex: Int
     ): TimingResult {
-        val activeIdx = words.indexOfFirst { it.lifecycle == WordLifecycle.ACTIVE }
-
-        if (activeIdx < 0) {
-            // Between words — check if previous word is still in exit animation
-            val lastExiting = words.indexOfLast { it.lifecycle == WordLifecycle.EXITING }
-            if (lastExiting >= 0) {
-                return TimingResult(
-                    visibleWords = listOf(words[lastExiting]),
-                    activeWord = null,
-                    activeWordIndex = lastExiting,
-                    isNewPage = false,
-                    pageIndex = lastExiting
-                )
-            }
+        if (currentIndex < 0 || currentIndex >= words.size) {
+            // Nothing spoken yet in this segment — no word to show.
             return TimingResult(emptyList(), null, -1, false, 0)
         }
 
         val visibleWords = mutableListOf<WordState>()
 
-        // Include previous word ONLY if it's still in its exit window
-        if (activeIdx > 0) {
-            val prev = words[activeIdx - 1]
+        // Include previous word ONLY if it's still in its exit window so the
+        // transition overlaps smoothly instead of hard-cutting.
+        if (currentIndex > 0) {
+            val prev = words[currentIndex - 1]
             val effectiveOverlap = calculateExitOverlap(prev.endTimeMs - prev.startTimeMs, animMs)
-            if (prev.lifecycle == WordLifecycle.EXITING ||
-                (posMs > prev.endTimeMs && posMs <= prev.endTimeMs + effectiveOverlap)
-            ) {
+            if (posMs <= prev.endTimeMs + effectiveOverlap) {
                 visibleWords.add(prev)
             }
         }
 
-        visibleWords.add(words[activeIdx])
+        // The cursor word is THE word on screen. Force its lifecycle to ACTIVE
+        // so it pops in and then HOLDS solid — it must never run its exit
+        // animation while it is still the displayed word, or it would fade out
+        // mid-gap and then pop back solid (EXITING/REMOVED re-render at full
+        // alpha).
+        val current = words[currentIndex].copy(lifecycle = WordLifecycle.ACTIVE)
+        visibleWords.add(current)
 
         return TimingResult(
             visibleWords = visibleWords,
-            activeWord = words[activeIdx],
-            activeWordIndex = activeIdx,
+            activeWord = current,
+            activeWordIndex = currentIndex,
             isNewPage = false,
-            pageIndex = activeIdx
+            pageIndex = currentIndex
         )
     }
 

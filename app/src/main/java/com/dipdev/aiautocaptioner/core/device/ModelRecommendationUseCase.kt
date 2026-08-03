@@ -18,21 +18,8 @@ class ModelRecommendationUseCase @Inject constructor(
         allModels: List<WhisperModel>,
         language: String
     ): List<WhisperModel> {
-        val isAutoDetect = language == "auto"
-        return if (isAutoDetect) {
-            allModels.filter { model ->
-                val langMatch = model.isMultilingual || model.languages.contains("en")
-                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
-            }.sortedByDescending { it.isMultilingual }
-        } else {
-            allModels.filter { model ->
-                val langMatch = when {
-                    language == "en" -> model.languages.contains("en")
-                    else -> model.isMultilingual || model.languages.contains(language)
-                }
-                langMatch && deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb)
-            }
-        }
+        return WhisperModel.filterAndSortForLanguage(allModels, language)
+            .filter { model -> deviceCapabilityUseCase.isModelRamCompatible(model.minRamMb) }
     }
 
     fun getRecommendation(

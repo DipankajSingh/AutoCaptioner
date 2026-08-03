@@ -13,7 +13,7 @@
     <string name="export_button">Export</string>
 
     <string name="home_1_tap_captions">1-Tap Captions</string>
-    <string name="home_1_tap_desc">Import a video and start to generate captions immidiatly.</string>
+    <string name="home_1_tap_desc">Import a video and generate viral captions immediately.</string>
     <string name="home_advanced_studio">Advanced Studio</string>
     <string name="home_advanced_desc">Trim video and configure setup manually.</string>
     <string name="home_record_video">Record Video</string>
@@ -39,7 +39,7 @@
     
     <string name="editor_error_prefix">Error: %s</string>
     <string name="editor_retry">Retry</string>
-    <string name="editor_applying_edits">Applying Edits...</string>
+    <string name="editor_applying_edits">Applying Edits…</string>
     <string name="editor_cancel">Cancel</string>
 
     <string name="caption_word_emphasis_hint">Long press a word to mark emphasis:</string>
@@ -66,8 +66,10 @@
     <string name="auto_detect_info_body">The app will figure out the language on its own. Some models work with any language, while others work best for English.</string>
     <string name="auto_detect_tier_any_language">Works with any language</string>
     <string name="auto_detect_tier_english">Best for English</string>
+    <string name="auto_detect_tier_specialized">Language-Specific Models</string>
     <string name="auto_detect_chip_any_language">Any language</string>
     <string name="auto_detect_chip_english">English content</string>
+    <string name="auto_detect_chip_specialized">Language specific</string>
 
     <!-- Recommendation reasons -->
     <string name="recommend_reason_high_end">Best quality your device can handle — supports any language</string>

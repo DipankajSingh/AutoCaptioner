@@ -61,7 +61,6 @@ class SharedPlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         _player.value?.release()
         _player.value = null
     }

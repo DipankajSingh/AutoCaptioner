@@ -110,14 +110,50 @@ object WhisperModule {
             isMultilingual = false
         ),
         WhisperModel(
+            id = "hi.tiny",
+            displayName = "Tiny — Hindi (Devanagari)",
+            description = "Ultra-fast Hindi model in Devanagari script.",
+            sizeBytes = 77_691_730L,
+            downloadUrl = "https://huggingface.co/wabisabisocial/whisper-tiny-hindi-ggml/resolve/main/ggml-tiny-hi.bin",
+            minRamMb = 512,
+            accuracy = 2,
+            speed = 5,
+            languages = listOf("hi"),
+            isMultilingual = false
+        ),
+        WhisperModel(
             id = "hi.base",
-            displayName = "Base — Hindi",
-            description = "High accuracy Hindi model.",
+            displayName = "Base — Hindi (Devanagari)",
+            description = "High accuracy Hindi model in Devanagari script.",
             sizeBytes = 147_951_482L,
             downloadUrl = "https://huggingface.co/khidrew/whisper-base-hindi-ggml/resolve/main/ggml-base-hi.bin",
             minRamMb = 1024,
             accuracy = 3,
             speed = 4,
+            languages = listOf("hi"),
+            isMultilingual = false
+        ),
+        WhisperModel(
+            id = "hi.hinglish.q5",
+            displayName = "Hinglish Turbo — Fast (Roman Script)",
+            description = "Fast conversational Hinglish transcription in English/Latin script.",
+            sizeBytes = 547_384_320L,
+            downloadUrl = "https://huggingface.co/Marquestra/Whisper-Hindi2Hinglish-Apex-GGML/resolve/main/ggml-apex-hinglish-q5_0.bin",
+            minRamMb = 2048,
+            accuracy = 4,
+            speed = 4,
+            languages = listOf("hi"),
+            isMultilingual = false
+        ),
+        WhisperModel(
+            id = "hi.hinglish.q8",
+            displayName = "Hinglish Turbo — Pro (Roman Script)",
+            description = "Maximum accuracy for conversational Hinglish and code-switched Hindi/English.",
+            sizeBytes = 834_670_592L,
+            downloadUrl = "https://huggingface.co/Marquestra/Whisper-Hindi2Hinglish-Apex-GGML/resolve/main/ggml-apex-hinglish-q8_0.bin",
+            minRamMb = 2048,
+            accuracy = 5,
+            speed = 3,
             languages = listOf("hi"),
             isMultilingual = false
         ),

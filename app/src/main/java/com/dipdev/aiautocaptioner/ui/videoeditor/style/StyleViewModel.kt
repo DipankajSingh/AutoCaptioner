@@ -382,7 +382,6 @@ class StyleViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         autoSaveJob?.cancel()
     }
 }

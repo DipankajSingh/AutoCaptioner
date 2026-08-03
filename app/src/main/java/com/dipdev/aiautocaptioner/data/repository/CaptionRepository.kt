@@ -176,22 +176,55 @@ class CaptionRepository @Inject constructor(
     suspend fun initializeDefaultStyles() {
         db.withTransaction {
             val defaults = listOf(
+                // ── 1. Viral Pill ─────────────────────────────────────────────────────
+                // Single static line, 4 words max. A solid bright-yellow pill box
+                // tracks the active word; inactive words stay crisp white.
+                // Authentic Submagic / OpusClip look dominating TikTok & Reels.
+                // Typography: Montserrat Black (900), ALL-CAPS, thick black outline.
+                // No shadow — the outline is the contrast mechanism, not shadow.
                 PresetFactory.create(
-                    name = "Beast Mode",
-                    fontFamily = "Bebas Neue",
+                    name = "Viral Pill",
+                    fontFamily = "Montserrat",
                     fontWeight = 900,
-                    fontSize = 85f,
+                    fontSize = 76f,
                     letterSpacing = -0.02f,
-                    outlineWidth = 6f,
-                    displayMode = DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = AnimationType.SCALE_POP,
-                    wordExitAnimation = AnimationType.FADE,
-                    animationDurationMs = 200,
-                    maxWordsPerLine = 3,
-                    maxLines = 2,
-                    positionY = 0.60f,
-                    textTransform = TextTransform.UPPERCASE
+                    textColor = 0xFFFFFFFF,
+                    outlineColor = 0xFF000000,
+                    outlineWidth = 6f,           // thick black stroke for legibility
+                    shadowColor = 0x00000000,    // no shadow
+                    shadowRadius = 0f,
+                    shadowOffsetX = 0f,
+                    shadowOffsetY = 0f,
+                    displayMode = DisplayMode.LINE_HIGHLIGHT,
+                    karaokeHighlightMode = KaraokeHighlightMode.BACKGROUND_HIGHLIGHT,
+                    activeWordBgColor = 0xFFFFFC00,   // pure TikTok caption yellow
+                    activeWordTextColor = 0xFF000000,  // crisp black inside box
+                    activeWordCornerRadius = 18f,       // rounder pill shape
+                    maxWordsPerLine = 4,
+                    maxLines = 1,
+                    positionY = 0.75f,
+                    textTransform = TextTransform.UPPERCASE,
+                    animationDurationMs = 80,            // snappy pill snap
+                    sortOrder = 1
                 ),
+                // ── 2. Karaoke ────────────────────────────────────────────────────────
+                PresetFactory.create(
+                    name = "Karaoke",
+                    fontFamily = "Montserrat",
+                    fontWeight = 700,
+                    fontSize = 72f,
+                    highlightColor = 0xFFFFD60A,
+                    outlineWidth = 3.5f,
+                    displayMode = DisplayMode.KARAOKE_FILL,
+                    karaokeHighlightMode = KaraokeHighlightMode.FILL_LEFT_RIGHT,
+                    karaokeFillColor = 0xFFFFD60A,
+                    maxWordsPerLine = 4,
+                    maxLines = 2,
+                    positionY = 0.70f,
+                    animationDurationMs = 150,
+                    sortOrder = 2
+                ),
+                // ── 3. Hormozi ────────────────────────────────────────────────────────
                 PresetFactory.create(
                     name = "Hormozi",
                     fontFamily = "Montserrat",
@@ -207,43 +240,66 @@ class CaptionRepository @Inject constructor(
                     maxLines = 2,
                     positionY = 0.65f,
                     textTransform = TextTransform.UPPERCASE,
-                    letterSpacing = -0.01f
+                    letterSpacing = -0.01f,
+                    sortOrder = 3
                 ),
+                // ── 4. MrBeast Cyan ───────────────────────────────────────────────────
                 PresetFactory.create(
-                    name = "Box Background",
-                    fontFamily = "Inter",
-                    fontWeight = 600,
-                    fontSize = 54f,
-                    outlineWidth = 0f,
-                    shadowRadius = 0f,
-                    backgroundType = BackgroundType.BOX,
-                    backgroundOpacity = 0.78f,
-                    backgroundCornerRadius = 14f,
-                    backgroundPaddingH = 12f,
-                    backgroundPaddingV = 8f,
-                    displayMode = DisplayMode.LINE_HIGHLIGHT,
-                    wordEnterAnimation = AnimationType.FADE,
+                    name = "MrBeast Cyan",
+                    fontFamily = "Bangers",
+                    fontWeight = 700,
+                    fontSize = 82f,
+                    textColor = 0xFF00FFFF,
+                    outlineColor = 0xFFFFFFFF,
+                    outlineWidth = 3.5f,
+                    letterSpacing = -0.02f,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.SCALE_POP,
                     wordExitAnimation = AnimationType.FADE,
                     animationDurationMs = 200,
-                    maxWordsPerLine = 5,
+                    maxWordsPerLine = 3,
                     maxLines = 2,
-                    positionY = 0.80f
+                    positionY = 0.60f,
+                    textTransform = TextTransform.UPPERCASE,
+                    sortOrder = 4
                 ),
+                // ── 5. Beast Mode ─────────────────────────────────────────────────────
                 PresetFactory.create(
-                    name = "Karaoke",
+                    name = "Beast Mode",
+                    fontFamily = "Bebas Neue",
+                    fontWeight = 900,
+                    fontSize = 85f,
+                    letterSpacing = -0.02f,
+                    outlineWidth = 6f,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.SCALE_POP,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 200,
+                    maxWordsPerLine = 3,
+                    maxLines = 2,
+                    positionY = 0.60f,
+                    textTransform = TextTransform.UPPERCASE,
+                    sortOrder = 5
+                ),
+                // ── 6. Bold Highlight ─────────────────────────────────────────────────
+                PresetFactory.create(
+                    name = "Bold Highlight",
                     fontFamily = "Montserrat",
                     fontWeight = 700,
-                    fontSize = 72f,
-                    highlightColor = 0xFFFFD60A,
+                    fontSize = 65f,
+                    highlightColor = 0xFFFF4500,
                     outlineWidth = 3.5f,
-                    displayMode = DisplayMode.KARAOKE_FILL,
-                    karaokeHighlightMode = KaraokeHighlightMode.FILL_LEFT_RIGHT,
-                    karaokeFillColor = 0xFFFFD60A,
+                    displayMode = DisplayMode.WORD_BY_WORD,
+                    wordEnterAnimation = AnimationType.FADE,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 120,
                     maxWordsPerLine = 4,
                     maxLines = 2,
-                    positionY = 0.70f,
-                    animationDurationMs = 150
+                    positionY = 0.65f,
+                    textTransform = TextTransform.TITLE_CASE,
+                    sortOrder = 6
                 ),
+                // ── 7. Neon Glow ──────────────────────────────────────────────────────
                 PresetFactory.create(
                     name = "Neon Glow",
                     fontFamily = "Bebas Neue",
@@ -262,8 +318,32 @@ class CaptionRepository @Inject constructor(
                     maxWordsPerLine = 3,
                     maxLines = 2,
                     positionY = 0.55f,
-                    textTransform = TextTransform.UPPERCASE
+                    textTransform = TextTransform.UPPERCASE,
+                    sortOrder = 7
                 ),
+                // ── 8. Box Background ─────────────────────────────────────────────────
+                PresetFactory.create(
+                    name = "Box Background",
+                    fontFamily = "Inter",
+                    fontWeight = 600,
+                    fontSize = 54f,
+                    outlineWidth = 0f,
+                    shadowRadius = 0f,
+                    backgroundType = BackgroundType.BOX,
+                    backgroundOpacity = 0.78f,
+                    backgroundCornerRadius = 14f,
+                    backgroundPaddingH = 12f,
+                    backgroundPaddingV = 8f,
+                    displayMode = DisplayMode.LINE_HIGHLIGHT,
+                    wordEnterAnimation = AnimationType.FADE,
+                    wordExitAnimation = AnimationType.FADE,
+                    animationDurationMs = 200,
+                    maxWordsPerLine = 5,
+                    maxLines = 2,
+                    positionY = 0.80f,
+                    sortOrder = 8
+                ),
+                // ── 9. Clean Minimal ──────────────────────────────────────────────────
                 PresetFactory.create(
                     name = "Clean Minimal",
                     fontFamily = "Inter",
@@ -284,42 +364,10 @@ class CaptionRepository @Inject constructor(
                     maxWordsPerLine = 6,
                     maxLines = 2,
                     positionY = 0.80f,
-                    animationDurationMs = 200
-                ),
-                PresetFactory.create(
-                    name = "Bold Highlight",
-                    fontFamily = "Montserrat",
-                    fontWeight = 700,
-                    fontSize = 65f,
-                    highlightColor = 0xFFFF4500,
-                    outlineWidth = 3.5f,
-                    displayMode = DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = AnimationType.FADE,
-                    wordExitAnimation = AnimationType.FADE,
-                    animationDurationMs = 120,
-                    maxWordsPerLine = 4,
-                    maxLines = 2,
-                    positionY = 0.65f,
-                    textTransform = TextTransform.TITLE_CASE
-                ),
-                PresetFactory.create(
-                    name = "MrBeast Cyan",
-                    fontFamily = "Bangers",
-                    fontWeight = 700,
-                    fontSize = 82f,
-                    textColor = 0xFF00FFFF,
-                    outlineColor = 0xFFFFFFFF,
-                    outlineWidth = 3.5f,
-                    letterSpacing = -0.02f,
-                    displayMode = DisplayMode.WORD_BY_WORD,
-                    wordEnterAnimation = AnimationType.SCALE_POP,
-                    wordExitAnimation = AnimationType.FADE,
                     animationDurationMs = 200,
-                    maxWordsPerLine = 3,
-                    maxLines = 2,
-                    positionY = 0.60f,
-                    textTransform = TextTransform.UPPERCASE
+                    sortOrder = 9
                 ),
+                // ── 10. Typewriter Reveal ─────────────────────────────────────────────
                 PresetFactory.create(
                     name = "Typewriter Reveal",
                     fontFamily = "Space Mono",
@@ -337,8 +385,10 @@ class CaptionRepository @Inject constructor(
                     animationDurationMs = 60,
                     maxWordsPerLine = 5,
                     maxLines = 2,
-                    positionY = 0.70f
+                    positionY = 0.70f,
+                    sortOrder = 10
                 ),
+                // ── 11. Luxury Editorial ──────────────────────────────────────────────
                 PresetFactory.create(
                     name = "Luxury Editorial",
                     fontFamily = "Playfair Display",
@@ -356,7 +406,8 @@ class CaptionRepository @Inject constructor(
                     maxWordsPerLine = 4,
                     maxLines = 2,
                     positionY = 0.60f,
-                    textTransform = TextTransform.TITLE_CASE
+                    textTransform = TextTransform.TITLE_CASE,
+                    sortOrder = 11
                 )
             )
 

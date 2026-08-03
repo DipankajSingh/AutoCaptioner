@@ -338,6 +338,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val noBrowserText = stringResource(R.string.settings_no_browser)
             LegalCard(
                 title = stringResource(R.string.settings_privacy_policy),
                 icon = FeatherIcons.Shield,
@@ -347,7 +348,7 @@ fun SettingsScreen(
                     try {
                         context.startActivity(intent)
                     } catch (e: android.content.ActivityNotFoundException) {
-                        android.widget.Toast.makeText(context, context.getString(R.string.settings_no_browser), android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, noBrowserText, android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             )
@@ -363,7 +364,7 @@ fun SettingsScreen(
                     try {
                         context.startActivity(intent)
                     } catch (e: android.content.ActivityNotFoundException) {
-                        android.widget.Toast.makeText(context, context.getString(R.string.settings_no_browser), android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, noBrowserText, android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             )

@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -159,7 +160,16 @@ data class CaptionStyleEntity(
     val activeWordTextColor: Long = 0xFF000000,
 
     // Corner radius of the active highlight box (Default: 14f for crisp rounded rectangle)
-    val activeWordCornerRadius: Float = 14f
+    val activeWordCornerRadius: Float = 14f,
+
+    // ---- SORT ORDER ----
+    // Explicit position in the presets strip. Lower = appears earlier.
+    // Built-in presets are assigned small integers (1, 2, 3 …).
+    // User-created styles default to 999 and sort alphabetically after all presets.
+    // @ColumnInfo(defaultValue) must match the DEFAULT clause in MIGRATION_18_19 exactly
+    // so Room's schema validator does not raise "Migration didn't properly handle".
+    @ColumnInfo(defaultValue = "999")
+    val sortOrder: Int = 999
 )
 
 // How the background is drawn behind the caption text

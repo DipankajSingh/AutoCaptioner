@@ -9,12 +9,12 @@ interface CaptionStyleDao {
 
     // Get all styles — shown in the style picker horizontal list
     // Flow = updates automatically when user saves a new style
-    @Query("SELECT * FROM caption_styles ORDER BY isDefault DESC, name ASC")
+    // ORDER BY: presets first (isDefault DESC), then by their explicit sort position,
+    // then alphabetically within the same rank. User-created styles (sortOrder=999) fall last.
+    @Query("SELECT * FROM caption_styles ORDER BY isDefault DESC, sortOrder ASC, name ASC")
     fun getAllStyles(): Flow<List<CaptionStyleEntity>>
-    // ORDER BY isDefault DESC = default/preset styles appear first
-    // then alphabetical by name
 
-    @Query("SELECT * FROM caption_styles ORDER BY isDefault DESC, name ASC LIMIT 1")
+    @Query("SELECT * FROM caption_styles ORDER BY isDefault DESC, sortOrder ASC, name ASC LIMIT 1")
     suspend fun getFirstStyle(): CaptionStyleEntity?
 
     // Get a specific style by id

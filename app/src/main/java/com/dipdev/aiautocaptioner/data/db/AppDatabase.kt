@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false,
     autoMigrations = []
 )
@@ -268,6 +268,30 @@ abstract class AppDatabase : RoomDatabase() {
                           AND s2.id = 'preset_' || lower(replace(`caption_styles`.`name`, ' ', '_'))
                       )
                 """.trimIndent())
+            }
+        }
+        /**
+         * Adds sortOrder column to caption_styles for explicit preset ordering in the UI strip.
+         *
+         * Existing user-created styles default to 999, putting them after all built-in presets.
+         * Built-in presets receive their correct sortOrder on the next launch via the standard
+         * UPSERT seeding path in CaptionRepository.initializeDefaultStyles().
+         *
+         * IMPORTANT: We also drop `index_caption_styles_default_name` here.
+         * That index is a partial WHERE index (WHERE isDefault = 1) that Room cannot represent
+         * in @Entity annotations, so it is created in DatabaseModule.onOpen() instead.
+         * Room's schema validator runs AFTER migration but BEFORE onOpen, and compares the
+         * live table schema against its compiled expected schema (which has zero indices for
+         * caption_styles). If the index exists on the device from a previous session it causes
+         * "Migration didn't properly handle" even though the migration itself is correct.
+         * Dropping it here lets the validator pass; onOpen() recreates it immediately after.
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop the partial unique index — onOpen() will recreate it after validation
+                db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
+                // Add the new sortOrder column (DEFAULT 999 matches @ColumnInfo(defaultValue="999"))
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 999")
             }
         }
     }

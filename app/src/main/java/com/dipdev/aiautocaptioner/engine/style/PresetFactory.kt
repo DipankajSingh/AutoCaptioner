@@ -56,6 +56,7 @@ object PresetFactory {
         activeWordBgColor: Long = 0xFFFFC107,
         activeWordTextColor: Long = 0xFF000000,
         activeWordCornerRadius: Float = 14f,
+        sortOrder: Int = 999,
         customizer: (CaptionStyleEntity) -> CaptionStyleEntity = { it }
     ): CaptionStyleEntity {
         val base = CaptionStyleEntity(
@@ -105,7 +106,8 @@ object PresetFactory {
             karaokeFillColor = karaokeFillColor,
             activeWordBgColor = activeWordBgColor,
             activeWordTextColor = activeWordTextColor,
-            activeWordCornerRadius = activeWordCornerRadius
+            activeWordCornerRadius = activeWordCornerRadius,
+            sortOrder = sortOrder
         )
         return customizer(base)
     }

@@ -466,7 +466,6 @@ class SmartRecorderViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         facelessRecorder?.stop()
         stopTimer()
     }

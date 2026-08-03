@@ -160,6 +160,7 @@ fun CaptionEditorScreen(
         }
     }
 
+    val shareSrtTitle = stringResource(R.string.caption_editor_share_srt)
     LaunchedEffect(Unit) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
@@ -172,7 +173,7 @@ fun CaptionEditorScreen(
                         putExtra(android.content.Intent.EXTRA_STREAM, uri)
                         addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(android.content.Intent.createChooser(intent, context.getString(R.string.caption_editor_share_srt)))
+                    context.startActivity(android.content.Intent.createChooser(intent, shareSrtTitle))
                 }
             }
         }

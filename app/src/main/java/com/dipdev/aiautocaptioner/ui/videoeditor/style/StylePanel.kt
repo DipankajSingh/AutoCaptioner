@@ -17,7 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.rounded.Language
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -74,7 +75,6 @@ fun StylePanel(
     val hasCaptions = styleUiState.segments.isNotEmpty()
     val density = LocalDensity.current
     val currentTimelineHeight by rememberUpdatedState(timelineHeight)
-    var showLanguageDropdown by remember { mutableStateOf(false) }
     var showAdjust by remember { mutableStateOf(false) }
 
     Surface(
@@ -156,29 +156,8 @@ fun StylePanel(
                     // Captions exist — show full editor
                     CompactCaptionsHeader(
                         hasCaptions = hasCaptions,
-                        selectedLanguage = selectedLanguage,
-                        translateToEnglish = translateToEnglish,
-                        showLanguageDropdown = showLanguageDropdown,
-                        onToggleLanguageDropdown = { showLanguageDropdown = it },
-                        onLanguageSelected = onLanguageSelected,
-                        onGenerateCaptions = onGenerateCaptions,
-                        allowedLanguages = allowedLanguages
-                    )
-
-                    PresetsTab(
-                        styles = styles,
-                        activeStyle = style,
-                        onPresetSelected = { viewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
-                        onPresetLongClicked = { },
-                        onAddPreset = { }
-                    )
-
-                    CollapsibleAdjust(
-                        expanded = showAdjust,
-                        onToggle = {
-                            showAdjust = it
-                            onAdjustExpanded?.invoke(it)
-                        },
+                        showAdjust = showAdjust,
+                        onToggleAdjust = { showAdjust = it },
                         displayMode = style.displayMode,
                         showLayoutControls = com.dipdev.aiautocaptioner.engine.style.StyleCapabilityResolver.resolve(style).showLayoutSliders,
                         fontSize = style.fontSize,
@@ -188,7 +167,16 @@ fun StylePanel(
                         onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontSize") { s -> s.copy(fontSize = it) }) },
                         onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
                         onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
-                        onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) }
+                        onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) },
+                        onGenerateCaptions = onGenerateCaptions
+                    )
+
+                    PresetsTab(
+                        styles = styles,
+                        activeStyle = style,
+                        onPresetSelected = { viewModel.setEvent(StyleEditorUiEvent.SelectPreset(it)) },
+                        onPresetLongClicked = { },
+                        onAddPreset = { }
                     )
                 }
             } ?: run {
@@ -200,34 +188,25 @@ fun StylePanel(
     }
 }
 
-// ── Compact header: Language pill + Generate button ──────────────────────────
+// ── Compact header: Adjust pill + Generate button ──────────────────────────
 
 @Composable
 private fun CompactCaptionsHeader(
     hasCaptions: Boolean,
-    selectedLanguage: String,
-    translateToEnglish: Boolean,
-    showLanguageDropdown: Boolean,
-    onToggleLanguageDropdown: (Boolean) -> Unit,
-    onLanguageSelected: (String, Boolean) -> Unit,
-    onGenerateCaptions: () -> Unit,
-    allowedLanguages: List<String> = listOf("multilingual")
+    showAdjust: Boolean,
+    onToggleAdjust: (Boolean) -> Unit,
+    displayMode: com.dipdev.aiautocaptioner.data.db.entity.DisplayMode,
+    showLayoutControls: Boolean,
+    fontSize: Float,
+    maxWordsPerLine: Int,
+    maxLines: Int,
+    positionY: Float,
+    onFontSizeChange: (Float) -> Unit,
+    onMaxWordsChange: (Int) -> Unit,
+    onMaxLinesChange: (Int) -> Unit,
+    onPositionYChange: (Float) -> Unit,
+    onGenerateCaptions: () -> Unit
 ) {
-    val languageName = when (selectedLanguage) {
-        "en" -> stringResource(R.string.lang_english)
-        "hi" -> stringResource(R.string.lang_hindi)
-        "es" -> stringResource(R.string.lang_spanish)
-        "fr" -> stringResource(R.string.lang_french)
-        "de" -> stringResource(R.string.lang_german)
-        "ja" -> stringResource(R.string.lang_japanese)
-        "ko" -> stringResource(R.string.lang_korean)
-        "pt" -> stringResource(R.string.lang_portuguese)
-        "ru" -> stringResource(R.string.lang_russian)
-        "ar" -> stringResource(R.string.lang_arabic)
-        "multilingual" -> stringResource(R.string.lang_auto_detect_label)
-        else -> selectedLanguage.uppercase()
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -235,87 +214,164 @@ private fun CompactCaptionsHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Language pill — opens popup, not inline expansion
+        // Adjust pill — opens adjust controls popup
         Box {
             Surface(
-                onClick = { onToggleLanguageDropdown(!showLanguageDropdown) },
+                onClick = { onToggleAdjust(!showAdjust) },
                 shape = RoundedCornerShape(8.dp),
-                color = if (showLanguageDropdown) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                color = if (showAdjust) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Language,
+                        imageVector = Icons.Rounded.Tune,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        tint = if (showAdjust) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = languageName,
-                        fontSize = 11.sp,
+                        text = stringResource(if (showAdjust) R.string.style_adjust_expand else R.string.style_adjust_collapse),
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                        color = if (showAdjust) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
                 }
             }
 
-            // Language dropdown as Popup (doesn't take vertical space)
-            if (showLanguageDropdown) {
+            // Adjust controls dropdown as Popup
+            if (showAdjust) {
                 Popup(
                     alignment = Alignment.TopStart,
-                    onDismissRequest = { onToggleLanguageDropdown(false) },
+                    onDismissRequest = { onToggleAdjust(false) },
                     properties = PopupProperties(focusable = true)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 8.dp,
-                        modifier = Modifier.padding(top = 4.dp)
+                        tonalElevation = 6.dp,
+                        shadowElevation = 10.dp,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                        modifier = Modifier
+                            .padding(top = 34.dp)
+                            .width(320.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            com.dipdev.aiautocaptioner.ui.components.LanguageDropdown(
-                                selectedLanguage = selectedLanguage,
-                                onLanguageSelected = { lang ->
-                                    onLanguageSelected(lang, if (lang == "en") false else translateToEnglish)
-                                    onToggleLanguageDropdown(false)
-                                },
-                                allowedLanguages = allowedLanguages
-                            )
-                            if (selectedLanguage != "en") {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            // Size slider
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.style_size),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(36.dp)
+                                )
+                                PremiumSlider(
+                                    value = fontSize,
+                                    onValueChange = onFontSizeChange,
+                                    valueRange = 12f..160f,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${fontSize.toInt()}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.width(28.dp)
+                                )
+                            }
+
+                            val showMaxWords = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
+                                com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_WORDS_PER_LINE, displayMode)
+                            val showMaxLines = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
+                                com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_LINES, displayMode)
+
+                            // Words + Lines (hidden for WORD_BY_WORD mode)
+                            if (showMaxWords || showMaxLines) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(stringResource(R.string.style_translate_to_en), style = MaterialTheme.typography.labelSmall)
-                                    Switch(
-                                        checked = translateToEnglish,
-                                        onCheckedChange = { v ->
-                                            onLanguageSelected(selectedLanguage, v)
-                                        },
-                                        modifier = Modifier.height(20.dp)
-                                    )
+                                    if (showMaxWords) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.style_words),
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.width(40.dp)
+                                            )
+                                            StepperControl(
+                                                value = maxWordsPerLine,
+                                                range = 1..10,
+                                                onValueChange = onMaxWordsChange
+                                            )
+                                        }
+                                    }
+                                    if (showMaxLines) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.style_lines),
+                                                fontSize = 12.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.width(32.dp)
+                                            )
+                                            StepperControl(
+                                                value = maxLines,
+                                                range = 1..5,
+                                                onValueChange = onMaxLinesChange
+                                            )
+                                        }
+                                    }
                                 }
+                            }
+
+                            // Position
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.style_pos),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(36.dp)
+                                )
+                                PremiumSlider(
+                                    value = positionY,
+                                    onValueChange = onPositionYChange,
+                                    valueRange = 0.05f..0.95f,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${(positionY * 100).toInt()}%",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.width(36.dp)
+                                )
                             }
                         }
                     }
                 }
             }
-        }
-
-        if (selectedLanguage != "en" && translateToEnglish) {
-            Text(
-                text = stringResource(R.string.style_to_en_badge),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -336,159 +392,6 @@ private fun CompactCaptionsHeader(
     }
 }
 
-// ── Collapsible Adjust section ──────────────────────────────────────────────
-
-@Composable
-private fun CollapsibleAdjust(
-    expanded: Boolean,
-    onToggle: (Boolean) -> Unit,
-    displayMode: com.dipdev.aiautocaptioner.data.db.entity.DisplayMode,
-    showLayoutControls: Boolean,
-    fontSize: Float,
-    maxWordsPerLine: Int,
-    maxLines: Int,
-    positionY: Float,
-    onFontSizeChange: (Float) -> Unit,
-    onMaxWordsChange: (Int) -> Unit,
-    onMaxLinesChange: (Int) -> Unit,
-    onPositionYChange: (Float) -> Unit
-) {
-    val showMaxWords = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
-        com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_WORDS_PER_LINE, displayMode)
-    val showMaxLines = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
-        com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_LINES, displayMode)
-    // Toggle row — always visible
-    Surface(
-        onClick = { onToggle(!expanded) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(if (expanded) R.string.style_adjust_expand else R.string.style_adjust_collapse),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-        }
-    }
-
-    // Controls — only when expanded
-    if (expanded) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Size slider
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.style_size),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(36.dp)
-                )
-                PremiumSlider(
-                    value = fontSize,
-                    onValueChange = onFontSizeChange,
-                    valueRange = 12f..160f,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "${fontSize.toInt()}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.width(28.dp)
-                )
-            }
-
-            // Words + Lines (hidden for WORD_BY_WORD mode)
-            if (showMaxWords || showMaxLines) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (showMaxWords) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.style_words),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(40.dp)
-                    )
-                    StepperControl(
-                        value = maxWordsPerLine,
-                        range = 1..10,
-                        onValueChange = onMaxWordsChange
-                    )
-                }
-                }
-
-                if (showMaxLines) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.style_lines),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(32.dp)
-                    )
-                    StepperControl(
-                        value = maxLines,
-                        range = 1..5,
-                        onValueChange = onMaxLinesChange
-                    )
-                }
-                }
-            }
-            }
-
-            // Position
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.style_pos),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(36.dp)
-                )
-                PremiumSlider(
-                    value = positionY,
-                    onValueChange = onPositionYChange,
-                    valueRange = 0.05f..0.95f,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "${(positionY * 100).toInt()}%",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.width(36.dp)
-                )
-            }
-        }
-    }
-}
 
 // ── Stepper ─────────────────────────────────────────────────────────────────
 

@@ -37,21 +37,37 @@ import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 private val languageDisplayNames = mapOf(
     "auto" to "Auto",
     "en" to "English",
+    "hi" to "Hindi",
     "es" to "Spanish",
     "fr" to "French",
     "de" to "German",
-    "zh" to "Chinese",
+    "zh" to "Chinese (Simplified)",
+    "zh-TW" to "Chinese (Traditional)",
+    "yue" to "Cantonese",
     "ja" to "Japanese",
     "ko" to "Korean",
     "it" to "Italian",
-    "nl" to "Dutch",
-    "pt" to "Portuguese",
+    "ar" to "Arabic",
     "ru" to "Russian",
-    "ar" to "Arabic"
+    "pt" to "Portuguese",
+    "ta" to "Tamil",
+    "te" to "Telugu",
+    "nl" to "Dutch",
+    "tr" to "Turkish",
+    "pl" to "Polish",
+    "vi" to "Vietnamese",
+    "th" to "Thai",
+    "id" to "Indonesian",
+    "ms" to "Malay"
 )
 
-private val quickLanguages = listOf("auto", "en", "es", "fr", "de")
-private val allLanguages = listOf("auto", "en", "es", "fr", "de", "zh", "ja", "ko", "it", "nl", "pt", "ru", "ar")
+private val quickLanguages = listOf("auto", "en", "hi", "es", "fr", "de")
+private val allLanguages = listOf(
+    "auto", "en", "hi", "es", "fr", "de",
+    "zh", "zh-TW", "yue", "ja", "ko",
+    "it", "ar", "ru", "pt", "ta", "te",
+    "nl", "tr", "pl", "vi", "th", "id", "ms"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,9 +87,19 @@ fun TranscriptionBottomSheet(
     var showAllLanguages by remember { mutableStateOf(false) }
     var showModelDropdown by remember { mutableStateOf(false) }
 
+    val filteredModels = remember(availableModels, selectedLanguage) {
+        WhisperModel.filterAndSortForLanguage(availableModels, selectedLanguage)
+    }
+
     LaunchedEffect(initialModelId) {
         if (initialModelId != null && initialModelId != selectedModelId) {
             selectedModelId = initialModelId
+        }
+    }
+
+    LaunchedEffect(filteredModels) {
+        if (filteredModels.isNotEmpty() && filteredModels.none { it.id == selectedModelId }) {
+            selectedModelId = filteredModels.first().id
         }
     }
 
@@ -152,13 +178,13 @@ fun TranscriptionBottomSheet(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            val selectedModel = availableModels.find { it.id == selectedModelId }
+            val selectedModel = filteredModels.find { it.id == selectedModelId } ?: availableModels.find { it.id == selectedModelId }
             ExposedDropdownMenuBox(
                 expanded = showModelDropdown,
                 onExpandedChange = { showModelDropdown = it }
             ) {
                 OutlinedTextField(
-                    value = selectedModel?.description ?: stringResource(R.string.model_sheet_select_model),
+                    value = selectedModel?.displayName ?: stringResource(R.string.model_sheet_select_model),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown) },
@@ -170,14 +196,15 @@ fun TranscriptionBottomSheet(
                     expanded = showModelDropdown,
                     onDismissRequest = { showModelDropdown = false }
                 ) {
-                    availableModels.forEach { model ->
+                    filteredModels.forEach { model ->
                         DropdownMenuItem(
                             text = {
                                 Column {
-                                    Text(model.description, fontWeight = FontWeight.Bold)
+                                    Text(model.displayName, fontWeight = FontWeight.Bold)
+                                    Text(model.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f))
                                     val size = "${model.sizeMb} MB"
                                     val downloaded = if (model.isDownloaded) stringResource(R.string.model_sheet_downloaded) else stringResource(R.string.model_sheet_tap_to_download)
-                                    Text("$size • $downloaded", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("$size • $downloaded", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             },
                             trailingIcon = {

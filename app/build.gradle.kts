@@ -20,8 +20,8 @@ android {
         applicationId = "com.dipdev.aiautocaptioner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 12
-        versionName = "2.1"
+        versionCode = 13
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -190,7 +190,7 @@ dependencies {
     // Coil — thumbnail image loading
     // -------------------------------------------------------
     implementation(libs.coil.compose)
-    implementation("io.coil-kt.coil3:coil-video:3.5.0")
+    implementation(libs.coil.video)
     // -------------------------------------------------------
     // Splash Screen
     // -------------------------------------------------------
@@ -223,6 +223,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }

@@ -26,7 +26,7 @@ fun SegmentBadge(
     val durationSec = (currentSegmentDurationMs / 1000).toInt()
     val minutes = durationSec / 60
     val seconds = durationSec % 60
-    val durationText = String.format("%d:%02d", minutes, seconds)
+    val durationText = String.format(java.util.Locale.ROOT, "%d:%02d", minutes, seconds)
 
     Box(
         modifier = modifier

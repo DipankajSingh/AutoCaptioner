@@ -141,7 +141,6 @@ class EditorViewModel @Inject constructor(
 
 
     override fun onCleared() {
-        super.onCleared()
         videoExporter.cancel()
         thumbnailManager.release()
     }

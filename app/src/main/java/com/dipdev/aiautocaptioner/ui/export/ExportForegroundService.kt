@@ -16,8 +16,10 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.annotation.OptIn
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.TextureOverlay
 import androidx.media3.effect.Presentation
@@ -66,7 +68,7 @@ object ExportServiceManager {
     }
 }
 
-@UnstableApi
+@OptIn(UnstableApi::class, androidx.media3.common.util.ExperimentalApi::class)
 @AndroidEntryPoint
 class ExportForegroundService : Service() {
 
@@ -310,10 +312,12 @@ class ExportForegroundService : Service() {
                 val imageOverlayEffects = overlays.mapNotNull { overlay ->
                     try {
                         val opts = BitmapFactory.Options().apply {
-                            inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+                            }
                         }
                         val bitmap = if (overlay.imageUri.startsWith("content://")) {
-                            val inputStream = contentResolver.openInputStream(Uri.parse(overlay.imageUri))
+                            val inputStream = contentResolver.openInputStream(overlay.imageUri.toUri())
                             val bmp = BitmapFactory.decodeStream(inputStream, null, opts)
                             inputStream?.close()
                             bmp

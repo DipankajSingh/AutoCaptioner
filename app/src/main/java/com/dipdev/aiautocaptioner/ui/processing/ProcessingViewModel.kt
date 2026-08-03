@@ -460,9 +460,4 @@ class ProcessingViewModel @Inject constructor(
         transcriptionManager.clearState()
         setState { copy(step = ProcessingStep.Idle) }
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        // Removed local cleanup; TranscriptionManager handles cancellation on its end if needed
-    }
 }

@@ -324,7 +324,7 @@ fun ProcessingScreen(
                                 ) {
                                     if (currentStep.autoDetectMode) {
                                         val multilingualModels = currentStep.models.filter { it.isMultilingual }
-                                        val englishModels = currentStep.models.filter { !it.isMultilingual }
+                                        val specializedModels = currentStep.models.filter { !it.isMultilingual }
                                         if (multilingualModels.isNotEmpty()) {
                                             items(multilingualModels) { model ->
                                                 ModelPickerCard(
@@ -339,8 +339,8 @@ fun ProcessingScreen(
                                                 )
                                             }
                                         }
-                                        if (englishModels.isNotEmpty()) {
-                                            items(englishModels) { model ->
+                                        if (specializedModels.isNotEmpty()) {
+                                            items(specializedModels) { model ->
                                                 ModelPickerCard(
                                                     model = model,
                                                     isRecommended = model.id == currentStep.recommendedModelId,
@@ -559,7 +559,7 @@ fun ProcessingScreen(
 
                                 if (currentStep.autoDetectMode) {
                                     val multilingualModels = currentStep.models.filter { it.isMultilingual }
-                                    val englishModels = currentStep.models.filter { !it.isMultilingual }
+                                    val specializedModels = currentStep.models.filter { !it.isMultilingual }
 
                                     LazyColumn(
                                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -587,18 +587,18 @@ fun ProcessingScreen(
                                                 )
                                             }
                                         }
-                                        if (englishModels.isNotEmpty()) {
+                                        if (specializedModels.isNotEmpty()) {
                                             item {
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
-                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_english),
+                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_specialized),
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = Color.White.copy(alpha = 0.8f),
                                                     modifier = Modifier.padding(bottom = 4.dp)
                                                 )
                                             }
-                                            items(englishModels) { model ->
+                                            items(specializedModels) { model ->
                                                 ModelPickerCard(
                                                     model = model,
                                                     isRecommended = model.id == currentStep.recommendedModelId,

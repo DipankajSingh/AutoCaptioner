@@ -32,10 +32,14 @@ fun PresetsTab(
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(activeStyle?.id, styles.size) {
+    // Scroll to the currently-active preset only when the styles list first loads
+    // (i.e., when the panel opens and data arrives from the DB).
+    // We intentionally do NOT re-scroll on every activeStyle change — that caused
+    // the chip strip to snap back left every time the user tapped a different preset.
+    LaunchedEffect(styles) {
         val index = styles.indexOfFirst { it.id == activeStyle?.id }
         if (index >= 0) {
-            listState.animateScrollToItem(index)
+            listState.scrollToItem(index)
         }
     }
 

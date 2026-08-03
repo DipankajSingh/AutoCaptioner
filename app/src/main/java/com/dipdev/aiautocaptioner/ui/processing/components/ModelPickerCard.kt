@@ -144,10 +144,10 @@ fun ModelPickerCard(
                         }
 
                         if (autoDetectMode) {
-                            val chipText = if (isMultilingual) {
-                                stringResource(R.string.auto_detect_chip_any_language)
-                            } else {
-                                stringResource(R.string.auto_detect_chip_english)
+                            val chipText = when {
+                                isMultilingual -> stringResource(R.string.auto_detect_chip_any_language)
+                                model.languages.contains("en") && model.languages.size == 1 -> stringResource(R.string.auto_detect_chip_english)
+                                else -> stringResource(R.string.auto_detect_chip_specialized)
                             }
                             val chipColor = if (isMultilingual) {
                                 MaterialTheme.colorScheme.primaryContainer

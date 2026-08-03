@@ -202,9 +202,4 @@ class ExportViewModel @Inject constructor(
     fun shareVideo(path: String) {
         mediaManager.shareVideo(path)
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        // Do nothing to the service! The service will continue running in the background.
-    }
 }
