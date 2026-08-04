@@ -2,6 +2,8 @@ package com.dipdev.aiautocaptioner.ui.onboarding
 
 import android.content.Intent
 import android.net.Uri
+import android.view.TextureView
+import android.view.ViewGroup
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -36,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -44,8 +48,9 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.ArrowDown
+import compose.icons.feathericons.ArrowRight
 import compose.icons.feathericons.ChevronRight
 
 @Composable
@@ -66,7 +71,7 @@ fun WelcomeScreen(
                 .offset(x = (-120).dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(Color(0xFFFFB800).copy(alpha = 0.12f), Color.Transparent)
+                        colors = listOf(Color(0xFFFFC947).copy(alpha = 0.12f), Color.Transparent)
                     )
                 )
         )
@@ -77,7 +82,7 @@ fun WelcomeScreen(
                 .offset(x = 120.dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(Color(0xFFFF2A85).copy(alpha = 0.12f), Color.Transparent)
+                        colors = listOf(AccentAmber.copy(alpha = 0.12f), Color.Transparent)
                     )
                 )
         )
@@ -109,11 +114,20 @@ fun WelcomeScreen(
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // High-Impact Headline
+            // 2. Stacked Video Cards positioned directly between Logo and Headline
+            BeforeAfterVideoCards(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // 3. High-Impact Headline & Subtitle positioned below the video showcase
             Text(
-                text = "Make Every Word",
+                text = "From raw clip to",
                 style = TextStyle(
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
@@ -123,12 +137,12 @@ fun WelcomeScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "Impossible To Ignore",
+                text = "viral Reel in seconds.",
                 style = TextStyle(
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     brush = Brush.horizontalGradient(
-                        colors = listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
+                        colors = listOf(Color(0xFFFFC947), AccentAmber)
                     ),
                     textAlign = TextAlign.Center
                 ),
@@ -137,7 +151,7 @@ fun WelcomeScreen(
 
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Professional captions that grab\nattention from the first second.",
+                text = "Add animated, eye-catching subtitles\ninstantly—without ever leaving your phone.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFFB0B6C2),
                 textAlign = TextAlign.Center,
@@ -146,26 +160,17 @@ fun WelcomeScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 2. Center Stacked Video Cards (Before vs After with Down Arrow)
-            BeforeAfterVideoCards(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            // 3. High Velocity Action Button
+            // 4. High Velocity Action Button
             ShimmerButton(
-                text = "Start Creating",
+                text = "Get started",
                 onClick = onGetStartedClick
             )
 
             Spacer(Modifier.height(12.dp))
 
-            // 4. Footer & Legal
+            // 5. Footer & Legal
             Text(
-                text = "Record • Caption • Style • Edit • Export",
+                text = "Recorded, styled, and ready to share",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color(0xFF717784),
                 fontWeight = FontWeight.Medium
@@ -177,105 +182,107 @@ fun WelcomeScreen(
 }
 
 /**
- * Stacked Before & After Video Comparison:
- * Two distinct rounded video cards with an overlapping center downward arrow badge,
- * replacing the previous single-screen divider/slider approach to clearly communicate transformation.
+ * Stacked Side-by-Side Vertical Video Comparison:
+ * Two tall portrait video cards (Left: Before, Right: After) designed specifically for short-form vertical content,
+ * separated by an overlapping center right-arrow badge to instinctively convey AI transformation.
  */
 @Composable
 private fun BeforeAfterVideoCards(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        Row(
+            modifier = Modifier.fillMaxSize().clipToBounds(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // TOP CARD: BEFORE (uncaptioned)
+            // LEFT CARD: BEFORE (uncaptioned vertical reel)
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                    .fillMaxHeight()
+                    .clipToBounds()
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(22.dp))
                     .background(Color(0xFF16181F))
             ) {
                 LoopingVideoPlayer(
                     rawResId = R.raw.before_sample,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().clipToBounds()
                 )
 
                 // "BEFORE" Badge Top-Left
                 Box(
                     modifier = Modifier
-                        .padding(12.dp)
+                        .padding(10.dp)
                         .align(Alignment.TopStart)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(0xFF262932).copy(alpha = 0.85f))
                         .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "BEFORE",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White.copy(alpha = 0.95f),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        fontSize = 10.sp
                     )
                 }
             }
 
-            // BOTTOM CARD: AFTER (captioned)
+            // RIGHT CARD: AFTER (captioned vertical reel)
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                    .fillMaxHeight()
+                    .clipToBounds()
+                    .clip(RoundedCornerShape(22.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(22.dp))
                     .background(Color(0xFF16181F))
             ) {
                 LoopingVideoPlayer(
                     rawResId = R.raw.after_sample,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().clipToBounds()
                 )
 
-                // "AFTER" Glowing Pink/Orange Badge Top-Left
+                // "AFTER" Glowing Gradient Badge Top-Left
                 Box(
                     modifier = Modifier
-                        .padding(12.dp)
+                        .padding(10.dp)
                         .align(Alignment.TopStart)
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             Brush.horizontalGradient(
-                                listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
+                                listOf(Color(0xFFFFC947), AccentAmber)
                             )
                         )
-                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "AFTER",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White,
                         fontWeight = FontWeight.Black,
-                        fontSize = 11.sp
+                        fontSize = 10.sp
                     )
                 }
             }
         }
 
-        // Overlapping Center Transformation Arrow Badge
+        // Overlapping Center Transformation Right Arrow Badge
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(42.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF1E212A))
-                .border(1.5.dp, Color(0xFFFFB800).copy(alpha = 0.7f), CircleShape),
+                .border(1.5.dp, AccentAmber.copy(alpha = 0.7f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = FeatherIcons.ArrowDown,
+                imageVector = FeatherIcons.ArrowRight,
                 contentDescription = "Transformation to AutoCaptioned",
-                tint = Color(0xFFFFB800),
+                tint = AccentAmber,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -308,14 +315,33 @@ private fun LoopingVideoPlayer(
 
     AndroidView(
         factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false
+            val textureView = TextureView(ctx)
+            exoPlayer.setVideoTextureView(textureView)
+
+            AspectRatioFrameLayout(ctx).apply {
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                addView(
+                    textureView,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+
+                // Dynamically sync zoom aspect ratio with video track dimensions
+                val listener = object : Player.Listener {
+                    override fun onVideoSizeChanged(videoSize: VideoSize) {
+                        if (videoSize.height > 0 && videoSize.width > 0) {
+                            setAspectRatio(videoSize.width.toFloat() / videoSize.height.toFloat())
+                        }
+                    }
+                }
+                exoPlayer.addListener(listener)
+
+                if (exoPlayer.videoSize.height > 0 && exoPlayer.videoSize.width > 0) {
+                    setAspectRatio(exoPlayer.videoSize.width.toFloat() / exoPlayer.videoSize.height.toFloat())
+                }
             }
         },
-        modifier = modifier
+        modifier = modifier.clipToBounds()
     )
 }
 
@@ -347,7 +373,7 @@ private fun ShimmerButton(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
+                    listOf(Color(0xFFFFC947), AccentAmber)
                 )
             )
             .clickable(onClick = onClick),
