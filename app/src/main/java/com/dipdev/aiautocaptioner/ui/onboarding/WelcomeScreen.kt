@@ -17,19 +17,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -39,8 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -55,7 +45,8 @@ import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.Play
+import compose.icons.feathericons.ArrowDown
+import compose.icons.feathericons.ChevronRight
 
 @Composable
 fun WelcomeScreen(
@@ -65,271 +56,229 @@ fun WelcomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF000000))
+            .background(Color(0xFF06070A))
     ) {
-        // 1. Two normal side-by-side full-screen video players sliced cleanly by diagonal cut
-        BeforeAfterReelCard(modifier = Modifier.fillMaxSize())
-
-        // 2. Cinematic vertical gradient overlay with a subtle top shadow for brand legibility & bottom fade
+        // Cinematic ambient background glow accents
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .align(Alignment.CenterStart)
+                .size(280.dp)
+                .offset(x = (-120).dp)
                 .background(
-                    Brush.verticalGradient(
-                        0.0f to Color.Black.copy(alpha = 0.65f),
-                        0.20f to Color.Transparent,
-                        0.50f to Color.Transparent,
-                        0.75f to Color.Black.copy(alpha = 0.85f),
-                        1.0f to Color.Black
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFFFFB800).copy(alpha = 0.12f), Color.Transparent)
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(280.dp)
+                .offset(x = 120.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color(0xFFFF2A85).copy(alpha = 0.12f), Color.Transparent)
                     )
                 )
         )
 
-        // 3. Absolute Floating AutoCaptioner Logo aligned cleanly near top edge (reserving zero layout space)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(top = 12.dp) // Balanced top positioning right under system status bar
-        ) {
-            MascotRobot(
-                mode = MascotMode.Idle,
-                modifier = Modifier.size(28.dp),
-                tightCrop = true
-            )
-            ShimmerBrandText(
-                text = stringResource(R.string.welcome_brand),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold
-            )
-        }
-
-        // 4. Overlaid Bottom Content over faded video base with subtle shadow typography & CTA
+        // Main Layout Column
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
+                .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // High-Impact Two-Line Headline with Gradient Second Line & subtle shadow
+            // 1. Header & Branding
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                MascotRobot(
+                    mode = MascotMode.Idle,
+                    modifier = Modifier.size(32.dp),
+                    tightCrop = true
+                )
+                Spacer(Modifier.width(10.dp))
+                ShimmerBrandText(
+                    text = stringResource(R.string.welcome_brand),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // High-Impact Headline
             Text(
                 text = "Make Every Word",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.8f),
-                        offset = Offset(0f, 4f),
-                        blurRadius = 8f
-                    )
+                style = TextStyle(
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
                 ),
-                fontWeight = FontWeight.Black,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                lineHeight = 32.sp
+                modifier = Modifier.fillMaxWidth()
             )
             Text(
                 text = "Impossible To Ignore",
                 style = TextStyle(
-                    fontSize = 26.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     brush = Brush.horizontalGradient(
                         colors = listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
                     ),
-                    shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        offset = Offset(0f, 3f),
-                        blurRadius = 6f
-                    ),
                     textAlign = TextAlign.Center
                 ),
-                textAlign = TextAlign.Center
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = "One tap. Automatic captions.\nProfessional results.",
+                text = "Professional captions that grab\nattention from the first second.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFC5C9D3),
+                color = Color(0xFFB0B6C2),
                 textAlign = TextAlign.Center,
-                lineHeight = 20.sp
+                lineHeight = 18.sp
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // Sleek Onboarding Pagination Dots
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF4A5060))
-                )
-                Box(
-                    modifier = Modifier
-                        .width(20.dp)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color(0xFFFFB800))
-                )
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF4A5060))
-                )
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF4A5060))
-                )
-            }
+            // 2. Center Stacked Video Cards (Before vs After with Down Arrow)
+            BeforeAfterVideoCards(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
-            // High Velocity Action Button
-            Box(modifier = Modifier.fillMaxWidth()) {
-                ShimmerButton(
-                    text = "Create First Caption ⚡",
-                    onClick = onGetStartedClick
-                )
-            }
+            // 3. High Velocity Action Button
+            ShimmerButton(
+                text = "Start Creating",
+                onClick = onGetStartedClick
+            )
 
             Spacer(Modifier.height(12.dp))
-            LegalText()
+
+            // 4. Footer & Legal
+            Text(
+                text = "Record • Caption • Style • Edit • Export",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF717784),
+                fontWeight = FontWeight.Medium
+            )
             Spacer(Modifier.height(6.dp))
+            LegalText()
         }
     }
 }
 
 /**
- * Full-Screen Background Before/After Video:
- * - Top half = BEFORE (uncaptioned), Bottom half = AFTER (captioned)
- * - Horizontal gold divider cleanly separates the two videos
+ * Stacked Before & After Video Comparison:
+ * Two distinct rounded video cards with an overlapping center downward arrow badge,
+ * replacing the previous single-screen divider/slider approach to clearly communicate transformation.
  */
 @Composable
-private fun BeforeAfterReelCard(
+private fun BeforeAfterVideoCards(
     modifier: Modifier = Modifier
 ) {
-    val splitRatio = 0.5f
-    val density = LocalDensity.current
-    val dividerHeightPx = with(density) { 2.2f.dp.toPx() }
-    val shadowHeightPx = with(density) { 6.0f.dp.toPx() }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .drawWithContent {
-                drawContent()
-                // Draw depth shadow behind the divider
-                drawLine(
-                    color = Color.Black.copy(alpha = 0.65f),
-                    start = Offset(0f, size.height * splitRatio - 3f),
-                    end = Offset(size.width, size.height * splitRatio - 3f),
-                    strokeWidth = shadowHeightPx
-                )
-                // Draw sharp horizontal gold divider
-                drawLine(
-                    color = Color(0xFFFFB800),
-                    start = Offset(0f, size.height * splitRatio),
-                    end = Offset(size.width, size.height * splitRatio),
-                    strokeWidth = dividerHeightPx
-                )
-            }
-    ) {
-        // TOP LAYER: BEFORE (uncaptioned)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(TopSplitShape(splitRatio))
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            LoopingVideoPlayer(
-                rawResId = R.raw.before_sample,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // "BEFORE" Badge Top-Left
+            // TOP CARD: BEFORE (uncaptioned)
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(top = 62.dp, start = 20.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White.copy(alpha = 0.25f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                    .background(Color(0xFF16181F))
             ) {
-                Text(
-                    text = "BEFORE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.95f),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp
+                LoopingVideoPlayer(
+                    rawResId = R.raw.before_sample,
+                    modifier = Modifier.fillMaxSize()
                 )
+
+                // "BEFORE" Badge Top-Left
+                Box(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .align(Alignment.TopStart)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF262932).copy(alpha = 0.85f))
+                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "BEFORE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.95f),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
             }
-        }
 
-        // BOTTOM LAYER: AFTER (with captions)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(BottomSplitShape(splitRatio))
-        ) {
-            LoopingVideoPlayer(
-                rawResId = R.raw.after_sample,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // "AFTER" Glowing Gold Badge Bottom-Right
+            // BOTTOM CARD: AFTER (captioned)
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(bottom = 16.dp, end = 20.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFFFFB800))
-                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                    .background(Color(0xFF16181F))
             ) {
-                Text(
-                    text = "AFTER",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 11.sp
+                LoopingVideoPlayer(
+                    rawResId = R.raw.after_sample,
+                    modifier = Modifier.fillMaxSize()
                 )
+
+                // "AFTER" Glowing Pink/Orange Badge Top-Left
+                Box(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .align(Alignment.TopStart)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
+                            )
+                        )
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "AFTER",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
-    }
-}
 
-private class TopSplitShape(val splitRatio: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val path = Path().apply {
-            moveTo(0f, 0f)
-            lineTo(size.width, 0f)
-            lineTo(size.width, size.height * splitRatio)
-            lineTo(0f, size.height * splitRatio)
-            close()
+        // Overlapping Center Transformation Arrow Badge
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF1E212A))
+                .border(1.5.dp, Color(0xFFFFB800).copy(alpha = 0.7f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = FeatherIcons.ArrowDown,
+                contentDescription = "Transformation to AutoCaptioned",
+                tint = Color(0xFFFFB800),
+                modifier = Modifier.size(20.dp)
+            )
         }
-        return Outline.Generic(path)
-    }
-}
-
-private class BottomSplitShape(val splitRatio: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val path = Path().apply {
-            moveTo(0f, size.height * splitRatio)
-            lineTo(size.width, size.height * splitRatio)
-            lineTo(size.width, size.height)
-            lineTo(0f, size.height)
-            close()
-        }
-        return Outline.Generic(path)
     }
 }
 
@@ -369,6 +318,7 @@ private fun LoopingVideoPlayer(
         modifier = modifier
     )
 }
+
 @Composable
 private fun ShimmerButton(
     text: String,
@@ -404,13 +354,25 @@ private fun ShimmerButton(
         contentAlignment = Alignment.Center
     ) {
         Box(modifier = Modifier.matchParentSize().background(shimmer))
-        Text(
-            text = text,
-            color = Color.White,
-            fontWeight = FontWeight.Black,
-            fontSize = 18.sp,
-            letterSpacing = 0.4.sp
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = text,
+                color = Color.White,
+                fontWeight = FontWeight.Black,
+                fontSize = 18.sp,
+                letterSpacing = 0.4.sp
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = FeatherIcons.ChevronRight,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 
