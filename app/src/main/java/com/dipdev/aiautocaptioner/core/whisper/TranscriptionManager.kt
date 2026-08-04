@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.dipdev.aiautocaptioner.BuildConfig
 import com.dipdev.aiautocaptioner.core.audio.AudioExtractionUseCase
 import com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
@@ -15,6 +16,9 @@ import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 import com.dipdev.aiautocaptioner.ui.processing.StreamedSegment
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.analytics
+import com.google.firebase.analytics.logEvent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +136,7 @@ class TranscriptionManager @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error: ${e.message}", e)
                 crashReporter.recordException(e)
+                logTranscriptionFailed(e.message ?: "Unknown error", modelId, language, translateToEnglish)
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
                 activeProjectId?.let { pid ->
                     try {
@@ -167,7 +172,8 @@ class TranscriptionManager @Inject constructor(
         projectRepository.updateProject(project.copy(transcriptionLanguage = language, initialPrompt = initialPrompt))
 
         _step.value = ProcessingStep.LoadingModel
-        val activeModelFile = modelRepository.getActiveModel().first()?.let { model ->
+        val activeModel = modelRepository.getActiveModel().first()
+        val activeModelFile = activeModel?.let { model ->
             modelRepository.getModelFile(model.id)
         }
 
@@ -178,6 +184,8 @@ class TranscriptionManager @Inject constructor(
         if (!whisperEngine.isReady()) {
             whisperEngine.initialize(activeModelFile)
         }
+
+        logTranscriptionStarted(project.videoDurationMs, language, translateToEnglish, isRegenerating, initialPrompt, activeModel?.id)
 
         transcriptionStartTimeMs = System.currentTimeMillis()
         _step.value = ProcessingStep.Transcribing(0f)
@@ -224,14 +232,62 @@ class TranscriptionManager @Inject constructor(
         }
 
         _step.value = ProcessingStep.Saving
-        
+
         val finalSegments = CaptionSegmenter.buildFinalSegments(allWords)
 
         captionRepository.saveTranscription(projectId, finalSegments)
         projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBED)
 
+        val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs
+        logTranscriptionCompleted(
+            videoDurationMs = project.videoDurationMs,
+            requestedLanguage = language,
+            detectedLanguage = _detectedLanguage.value,
+            translateToEnglish = translateToEnglish,
+            isRegenerating = isRegenerating,
+            modelId = activeModel?.id,
+            wordCount = allWords.size,
+            elapsedMs = elapsedMs
+        )
+
         flushDripFeed()
         _step.value = ProcessingStep.Done
+    }
+
+    private fun logTranscriptionStarted(videoDurationMs: Long, requestedLanguage: String, translateToEnglish: Boolean, isRegenerating: Boolean, initialPrompt: String?, modelId: String?) {
+        if (BuildConfig.DEBUG) return
+        Firebase.analytics.logEvent("transcription_started") {
+            param("video_duration_ms", videoDurationMs)
+            param("requested_language", requestedLanguage)
+            param("translate_to_english", translateToEnglish.toString())
+            param("is_regenerating", isRegenerating.toString())
+            param("has_initial_prompt", (initialPrompt?.isNotBlank() == true).toString())
+            param("model_id", modelId ?: "unknown")
+        }
+    }
+
+    private fun logTranscriptionCompleted(videoDurationMs: Long, requestedLanguage: String, detectedLanguage: String?, translateToEnglish: Boolean, isRegenerating: Boolean, modelId: String?, wordCount: Int, elapsedMs: Long) {
+        if (BuildConfig.DEBUG) return
+        Firebase.analytics.logEvent("transcription_completed") {
+            param("video_duration_ms", videoDurationMs)
+            param("requested_language", requestedLanguage)
+            param("detected_language", detectedLanguage ?: requestedLanguage)
+            param("translate_to_english", translateToEnglish.toString())
+            param("is_regenerating", isRegenerating.toString())
+            param("model_id", modelId ?: "unknown")
+            param("word_count", wordCount.toLong())
+            param("duration_ms", elapsedMs)
+        }
+    }
+
+    private fun logTranscriptionFailed(error: String, modelId: String, requestedLanguage: String, translateToEnglish: Boolean) {
+        if (BuildConfig.DEBUG) return
+        Firebase.analytics.logEvent("transcription_failed") {
+            param("error", error.take(100))
+            param("model_id", modelId)
+            param("requested_language", requestedLanguage)
+            param("translate_to_english", translateToEnglish.toString())
+        }
     }
 
     private fun startDripFeed() {

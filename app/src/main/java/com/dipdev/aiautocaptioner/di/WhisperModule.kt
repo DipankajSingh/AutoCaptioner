@@ -142,7 +142,7 @@ object WhisperModule {
             minRamMb = 2048,
             accuracy = 4,
             speed = 4,
-            languages = listOf("hi"),
+            languages = listOf("hi", "hinglish"),
             isMultilingual = false
         ),
         WhisperModel(
@@ -154,7 +154,7 @@ object WhisperModule {
             minRamMb = 2048,
             accuracy = 5,
             speed = 3,
-            languages = listOf("hi"),
+            languages = listOf("hi", "hinglish"),
             isMultilingual = false
         ),
         WhisperModel(

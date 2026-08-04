@@ -2,31 +2,34 @@ package com.dipdev.aiautocaptioner.ui.onboarding
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -36,14 +39,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText
-import com.dipdev.aiautocaptioner.ui.theme.*
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Play
 
 @Composable
 fun WelcomeScreen(
@@ -53,299 +65,310 @@ fun WelcomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFF000000))
     ) {
-        Column(
+        // 1. Two normal side-by-side full-screen video players sliced cleanly by diagonal cut
+        BeforeAfterReelCard(modifier = Modifier.fillMaxSize())
+
+        // 2. Cinematic vertical gradient overlay with a subtle top shadow for brand legibility & bottom fade
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color.Black.copy(alpha = 0.65f),
+                        0.20f to Color.Transparent,
+                        0.50f to Color.Transparent,
+                        0.75f to Color.Black.copy(alpha = 0.85f),
+                        1.0f to Color.Black
+                    )
+                )
+        )
+
+        // 3. Absolute Floating AutoCaptioner Logo aligned cleanly near top edge (reserving zero layout space)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 24.dp),
+                .padding(top = 12.dp) // Balanced top positioning right under system status bar
+        ) {
+            MascotRobot(
+                mode = MascotMode.Idle,
+                modifier = Modifier.size(28.dp),
+                tightCrop = true
+            )
+            ShimmerBrandText(
+                text = stringResource(R.string.welcome_brand),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+
+        // 4. Overlaid Bottom Content over faded video base with subtle shadow typography & CTA
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // High-Impact Two-Line Headline with Gradient Second Line & subtle shadow
+            Text(
+                text = "Make Every Word",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = Color.Black.copy(alpha = 0.8f),
+                        offset = Offset(0f, 4f),
+                        blurRadius = 8f
+                    )
+                ),
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                lineHeight = 32.sp
+            )
+            Text(
+                text = "Impossible To Ignore",
+                style = TextStyle(
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
+                    ),
+                    shadow = androidx.compose.ui.graphics.Shadow(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        offset = Offset(0f, 3f),
+                        blurRadius = 6f
+                    ),
+                    textAlign = TextAlign.Center
+                ),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "One tap. Automatic captions.\nProfessional results.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFC5C9D3),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+
             Spacer(Modifier.height(16.dp))
 
-            // Refined Brand Header (Quiet Corporate Confidence)
+            // Sleek Onboarding Pagination Dots
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                MascotRobot(
-                    mode = MascotMode.Idle,
-                    modifier = Modifier.size(28.dp),
-                    tightCrop = true
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF4A5060))
                 )
-                ShimmerBrandText(
-                    text = stringResource(R.string.welcome_brand),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0xFFFFB800))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF4A5060))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF4A5060))
                 )
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Hero Centerpiece: The 9:16 Studio Reel Card
+            // High Velocity Action Button
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ShimmerButton(
+                    text = "Create First Caption ⚡",
+                    onClick = onGetStartedClick
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            LegalText()
+            Spacer(Modifier.height(6.dp))
+        }
+    }
+}
+
+/**
+ * Full-Screen Background Before/After Video:
+ * - Top half = BEFORE (uncaptioned), Bottom half = AFTER (captioned)
+ * - Horizontal gold divider cleanly separates the two videos
+ */
+@Composable
+private fun BeforeAfterReelCard(
+    modifier: Modifier = Modifier
+) {
+    val splitRatio = 0.5f
+    val density = LocalDensity.current
+    val dividerHeightPx = with(density) { 2.2f.dp.toPx() }
+    val shadowHeightPx = with(density) { 6.0f.dp.toPx() }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .drawWithContent {
+                drawContent()
+                // Draw depth shadow behind the divider
+                drawLine(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    start = Offset(0f, size.height * splitRatio - 3f),
+                    end = Offset(size.width, size.height * splitRatio - 3f),
+                    strokeWidth = shadowHeightPx
+                )
+                // Draw sharp horizontal gold divider
+                drawLine(
+                    color = Color(0xFFFFB800),
+                    start = Offset(0f, size.height * splitRatio),
+                    end = Offset(size.width, size.height * splitRatio),
+                    strokeWidth = dividerHeightPx
+                )
+            }
+    ) {
+        // TOP LAYER: BEFORE (uncaptioned)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(TopSplitShape(splitRatio))
+        ) {
+            LoopingVideoPlayer(
+                rawResId = R.raw.before_sample,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // "BEFORE" Badge Top-Left
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                    .align(Alignment.TopStart)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(top = 62.dp, start = 20.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.White.copy(alpha = 0.25f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
-                StudioReelCard()
+                Text(
+                    text = "BEFORE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.95f),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                )
             }
-
-            Spacer(Modifier.height(20.dp))
-
-            // Punchy Sub-headline & Immediate CTA (Zero Waiting)
-            Text(
-                text = stringResource(R.string.welcome_tagline_1),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.welcome_subtitle_detail),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            ShimmerButton(
-                text = stringResource(R.string.welcome_get_started),
-                onClick = onGetStartedClick
-            )
-
-            Spacer(Modifier.height(14.dp))
-            LegalText()
-            Spacer(Modifier.height(16.dp))
         }
+
+        // BOTTOM LAYER: AFTER (with captions)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(BottomSplitShape(splitRatio))
+        ) {
+            LoopingVideoPlayer(
+                rawResId = R.raw.after_sample,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // "AFTER" Glowing Gold Badge Bottom-Right
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(bottom = 16.dp, end = 20.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFFFFB800))
+                    .padding(horizontal = 12.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = "AFTER",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+private class TopSplitShape(val splitRatio: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val path = Path().apply {
+            moveTo(0f, 0f)
+            lineTo(size.width, 0f)
+            lineTo(size.width, size.height * splitRatio)
+            lineTo(0f, size.height * splitRatio)
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+private class BottomSplitShape(val splitRatio: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val path = Path().apply {
+            moveTo(0f, size.height * splitRatio)
+            lineTo(size.width, size.height * splitRatio)
+            lineTo(size.width, size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        return Outline.Generic(path)
     }
 }
 
 @Composable
-private fun StudioReelCard(
+private fun LoopingVideoPlayer(
+    rawResId: Int,
     modifier: Modifier = Modifier
 ) {
-    val words = listOf("CAPTIONS", "THAT", "STOP", "SCROLLS.")
-
-    // Infinite style cycling (0: Hormozi Viral, 1: Neon Cyber, 2: Studio Minimal)
-    val styleTransition = rememberInfiniteTransition(label = "styleCycle")
-    val styleCycle by styleTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "styleIndex"
-    )
-    val styleIndex = styleCycle.toInt().coerceIn(0, 2)
-
-    // Word highlighting cycle within each style
-    val wordCycle by styleTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wordIndex"
-    )
-    val activeWordIndex = wordCycle.toInt().coerceIn(0, 3)
-
-    // Ambient background pulsing glow
-    val glowPulse by styleTransition.animateFloat(
-        initialValue = 20f,
-        targetValue = 35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowRadius"
-    )
-
-    val styleBadgeName = when (styleIndex) {
-        0 -> "✨ Style: Hormozi"
-        1 -> "🔥 Style: Neon Cyber"
-        else -> "🎬 Style: Studio Pro"
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val uri = Uri.parse("android.resource://${context.packageName}/$rawResId")
+            setMediaItem(MediaItem.fromUri(uri))
+            repeatMode = Player.REPEAT_MODE_ALL
+            volume = 0f
+            prepare()
+            seekTo(2500)
+            playWhenReady = true
+        }
     }
 
-    Box(
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false
+                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            }
+        },
         modifier = modifier
-            .fillMaxHeight(0.96f)
-            .aspectRatio(9f / 16f)
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF0D1224),
-                        Color(0xFF161B30)
-                    ),
-                    start = Offset.Zero,
-                    end = Offset(400f, 900f)
-                )
-            )
-            .border(
-                width = 1.2.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.3f),
-                        Color.White.copy(alpha = 0.08f)
-                    )
-                ),
-                shape = RoundedCornerShape(28.dp)
-            )
-            .drawBehind {
-                val accentGlow = when (styleIndex) {
-                    0 -> Color(0xFFFFB800).copy(alpha = 0.18f)
-                    1 -> Color(0xFFFF2A85).copy(alpha = 0.22f)
-                    else -> Color(0xFF4C8CFF).copy(alpha = 0.15f)
-                }
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(accentGlow, Color.Transparent),
-                        center = Offset(size.width * 0.5f, size.height * 0.45f),
-                        radius = size.width * 0.95f
-                    )
-                )
-            }
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        // Top preset badge with clean sequential transition (zero text overlap)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color.Black.copy(alpha = 0.6f))
-                .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            AnimatedContent(
-                targetState = styleBadgeName,
-                transitionSpec = { 
-                    fadeIn(tween(200, delayMillis = 100)) togetherWith fadeOut(tween(100)) 
-                },
-                label = "badgeText"
-            ) { name ->
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // Kinetic typography words display
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            words.forEachIndexed { index, word ->
-                val isCurrent = (index == activeWordIndex)
-                val scale by animateFloatAsState(
-                    targetValue = if (isCurrent) 1.15f else 0.95f,
-                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                    label = "scale-$index"
-                )
-
-                AnimatedContent(
-                    targetState = styleIndex,
-                    transitionSpec = { 
-                        fadeIn(tween(150, delayMillis = 50)) togetherWith fadeOut(tween(50)) 
-                    },
-                    label = "wordStyle-$index"
-                ) { style ->
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
-                            .clip(RoundedCornerShape(10.dp))
-                            .then(
-                                when {
-                                    style == 0 && isCurrent -> Modifier
-                                        .background(Color(0xFFFFB800))
-                                    style == 1 && isCurrent -> Modifier
-                                        .background(Color(0xFFFF2A85))
-                                    style == 2 && isCurrent -> Modifier
-                                        .background(Color.White)
-                                    else -> Modifier
-                                }
-                            )
-                            .padding(
-                                horizontal = if (isCurrent) 16.dp else 6.dp,
-                                vertical = if (isCurrent) 6.dp else 2.dp
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val textColor = when (style) {
-                            0 -> if (isCurrent) Color.Black else Color.White.copy(alpha = 0.55f)
-                            1 -> if (isCurrent) Color.White else Color.White.copy(alpha = 0.5f)
-                            else -> if (isCurrent) Color.Black else Color.White.copy(alpha = 0.6f)
-                        }
-                        
-                        val shadow = if (style == 1 && isCurrent) {
-                            Shadow(Color(0xFFFF2A85), Offset.Zero, glowPulse)
-                        } else if (!isCurrent) {
-                            Shadow(Color.Black.copy(alpha = 0.8f), Offset(0f, 2f), 4f)
-                        } else {
-                            Shadow.None
-                        }
-
-                        Text(
-                            text = word,
-                            color = textColor,
-                            fontWeight = if (isCurrent) FontWeight.Black else FontWeight.ExtraBold,
-                            fontSize = if (isCurrent) 30.sp else 23.sp,
-                            lineHeight = 34.sp,
-                            style = TextStyle(shadow = shadow),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-
-        // Simulated high-end studio timeline waveform indicator at bottom of card
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            repeat(16) { i ->
-                val isSpikeActive = (i % 4 == activeWordIndex)
-                val barHeight by animateFloatAsState(
-                    targetValue = if (isSpikeActive) 28f else 8f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                    label = "bar-$i"
-                )
-                val barColor = when {
-                    !isSpikeActive -> Color.White.copy(alpha = 0.2f)
-                    styleIndex == 0 -> Color(0xFFFFB800)
-                    styleIndex == 1 -> Color(0xFFFF2A85)
-                    else -> Color(0xFF4C8CFF)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(barHeight.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(barColor)
-                )
-            }
-        }
-    }
+    )
 }
-
 @Composable
 private fun ShimmerButton(
     text: String,
@@ -362,9 +385,9 @@ private fun ShimmerButton(
         label = "off"
     )
     val shimmer = Brush.linearGradient(
-        colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.25f), Color.Transparent),
+        colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.3f), Color.Transparent),
         start = Offset(offset, 0f),
-        end = Offset(offset + 250f, 120f)
+        end = Offset(offset + 260f, 130f)
     )
 
     Box(
@@ -374,7 +397,7 @@ private fun ShimmerButton(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(AccentAmber, AccentRose)
+                    listOf(Color(0xFFFFB800), Color(0xFFFF2A85))
                 )
             )
             .clickable(onClick = onClick),
@@ -384,9 +407,9 @@ private fun ShimmerButton(
         Text(
             text = text,
             color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 17.sp,
-            letterSpacing = 0.3.sp
+            fontWeight = FontWeight.Black,
+            fontSize = 18.sp,
+            letterSpacing = 0.4.sp
         )
     }
 }
@@ -394,20 +417,20 @@ private fun ShimmerButton(
 @Composable
 private fun LegalText() {
     val context = LocalContext.current
-    val termsColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
-    val linkColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+    val termsColor = Color(0xFF717784)
+    val linkColor = Color(0xFFB5BAC6)
 
     val annotated = buildAnnotatedString {
-        append("By continuing, you agree to our ")
+        append("Fully offline AI processing · You agree to our ")
         pushStringAnnotation(tag = "URL", annotation = AppLinks.TERMS_OF_SERVICE)
         withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
-            append("Terms of Service")
+            append("Terms")
         }
         pop()
-        append(" and ")
+        append(" & ")
         pushStringAnnotation(tag = "URL", annotation = AppLinks.PRIVACY_POLICY)
         withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
-            append("Privacy Policy")
+            append("Privacy")
         }
         pop()
     }

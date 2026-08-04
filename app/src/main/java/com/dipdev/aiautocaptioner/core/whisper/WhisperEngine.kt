@@ -111,7 +111,8 @@ class WhisperEngine(private val context: Context) {
 
     /**
      * Transcribe raw 16 kHz mono float32 audio samples.
-     * language → "en", "hi", "auto", etc.
+     * language → "en", "hi", "auto", etc. UI-only codes like "hinglish" are
+     * mapped to a real whisper.cpp code here.
      */
     suspend fun transcribeAudio(
         samples: FloatArray,
@@ -120,6 +121,7 @@ class WhisperEngine(private val context: Context) {
         initialPrompt: String? = null,
         onProgress: ((Int) -> Unit)? = null
     ): String {
+        val whisperLang = WhisperLanguages.whisperCode(language)
         return withContext(Dispatchers.IO) {
             engineMutex.withLock {
                 val handle = nativeHandle
@@ -128,7 +130,7 @@ class WhisperEngine(private val context: Context) {
                     return@withContext ""
                 }
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val resultBytes = transcribe(handle, samples, language, translateToEnglish, getOptimalThreads(), initialPrompt, listener)
+                val resultBytes = transcribe(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), initialPrompt, listener)
                 lastDetectedLanguage = getDetectedLanguage(handle)
                 if (resultBytes != null) String(resultBytes, Charsets.UTF_8) else ""
             }
@@ -146,13 +148,14 @@ class WhisperEngine(private val context: Context) {
         onProgress: ((Int) -> Unit)? = null,
         onSegmentDecoded: ((text: String, startMs: Long, endMs: Long) -> Unit)? = null
     ): List<WordTimestamp> {
+        val whisperLang = WhisperLanguages.whisperCode(language)
         return withContext(Dispatchers.IO) {
             engineMutex.withLock {
                 val handle = nativeHandle
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
-                val rawBytes = transcribeWithTimestamps(handle, samples, language, translateToEnglish, getOptimalThreads(), initialPrompt, listener, segListener)
+                val rawBytes = transcribeWithTimestamps(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), initialPrompt, listener, segListener)
                     ?: return@withContext emptyList()
 
                 // Capture the language whisper actually used (matters when language = "auto")

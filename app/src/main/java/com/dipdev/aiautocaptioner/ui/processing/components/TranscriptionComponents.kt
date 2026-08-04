@@ -28,16 +28,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
+import java.util.Locale
 
 private val languageDisplayNames = mapOf(
     "auto" to "Auto",
     "en" to "English",
     "hi" to "Hindi",
+    "hinglish" to "Hinglish",
     "es" to "Spanish",
     "fr" to "French",
     "de" to "German",
@@ -61,13 +64,11 @@ private val languageDisplayNames = mapOf(
     "ms" to "Malay"
 )
 
-private val quickLanguages = listOf("auto", "en", "hi", "es", "fr", "de")
-private val allLanguages = listOf(
-    "auto", "en", "hi", "es", "fr", "de",
-    "zh", "zh-TW", "yue", "ja", "ko",
-    "it", "ar", "ru", "pt", "ta", "te",
-    "nl", "tr", "pl", "vi", "th", "id", "ms"
-)
+private fun orderedLanguageCodes(): List<String> =
+    WhisperLanguages.orderedCodes(Locale.getDefault().country, Locale.getDefault().language)
+
+private val quickLanguages: List<String> get() = orderedLanguageCodes().take(6)
+private val allLanguages: List<String> get() = orderedLanguageCodes()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

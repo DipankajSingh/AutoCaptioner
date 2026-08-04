@@ -82,6 +82,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages
+import java.util.Locale
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,11 +265,9 @@ fun ProcessingScreen(
                                     modifier = Modifier.padding(bottom = 24.dp)
                                 )
 
-                                val quickLanguages = listOf(
-                                    "auto", "en", "hi", "es", "fr", "de",
-                                    "zh", "zh-TW", "yue", "ja", "ko",
-                                    "it", "ar", "ru", "pt", "ta", "te",
-                                    "nl", "tr", "pl", "vi", "th", "id", "ms"
+                                val quickLanguages = WhisperLanguages.orderedCodes(
+                                    Locale.getDefault().country,
+                                    Locale.getDefault().language
                                 )
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -279,6 +279,7 @@ fun ProcessingScreen(
                                             "auto" -> stringResource(R.string.lang_auto_detect)
                                             "en" -> stringResource(R.string.lang_english)
                                             "hi" -> stringResource(R.string.lang_hindi)
+                                            "hinglish" -> stringResource(R.string.lang_hinglish)
                                             "es" -> stringResource(R.string.lang_spanish)
                                             "fr" -> stringResource(R.string.lang_french)
                                             "de" -> stringResource(R.string.lang_german)
@@ -425,11 +426,9 @@ fun ProcessingScreen(
                                     color = Color.White.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
-                                val quickLanguages = listOf(
-                                    "auto", "en", "hi", "es", "fr", "de",
-                                    "zh", "zh-TW", "yue", "ja", "ko",
-                                    "it", "ar", "ru", "pt", "ta", "te",
-                                    "nl", "tr", "pl", "vi", "th", "id", "ms"
+                                val quickLanguages = WhisperLanguages.orderedCodes(
+                                    Locale.getDefault().country,
+                                    Locale.getDefault().language
                                 )
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -441,6 +440,7 @@ fun ProcessingScreen(
                                             "auto" -> stringResource(R.string.lang_auto_detect)
                                             "en" -> stringResource(R.string.lang_english)
                                             "hi" -> stringResource(R.string.lang_hindi)
+                                            "hinglish" -> stringResource(R.string.lang_hinglish)
                                             "es" -> stringResource(R.string.lang_spanish)
                                             "fr" -> stringResource(R.string.lang_french)
                                             "de" -> stringResource(R.string.lang_german)

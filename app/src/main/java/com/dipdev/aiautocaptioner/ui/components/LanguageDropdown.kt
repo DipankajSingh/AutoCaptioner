@@ -13,34 +13,42 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages
+import java.util.Locale
 
 @Composable
-private fun languages() = listOf(
-    "auto" to stringResource(R.string.lang_auto_detect_label),
-    "en"   to stringResource(R.string.lang_english),
-    "hi"   to stringResource(R.string.lang_hindi),
-    "es"   to stringResource(R.string.lang_spanish),
-    "fr"   to stringResource(R.string.lang_french),
-    "de"   to stringResource(R.string.lang_german),
-    "zh"   to stringResource(R.string.lang_chinese_simplified),
-    "zh-TW" to stringResource(R.string.lang_chinese_traditional),
-    "yue"  to stringResource(R.string.lang_cantonese),
-    "ja"   to stringResource(R.string.lang_japanese),
-    "ko"   to stringResource(R.string.lang_korean),
-    "it"   to stringResource(R.string.lang_italian),
-    "ar"   to stringResource(R.string.lang_arabic),
-    "ru"   to stringResource(R.string.lang_russian),
-    "pt"   to stringResource(R.string.lang_portuguese),
-    "ta"   to stringResource(R.string.lang_tamil),
-    "te"   to stringResource(R.string.lang_telugu),
-    "nl"   to stringResource(R.string.lang_dutch),
-    "tr"   to stringResource(R.string.lang_turkish),
-    "pl"   to stringResource(R.string.lang_polish),
-    "vi"   to stringResource(R.string.lang_vietnamese),
-    "th"   to stringResource(R.string.lang_thai),
-    "id"   to stringResource(R.string.lang_indonesian),
-    "ms"   to stringResource(R.string.lang_malay)
-)
+private fun languages(): List<Pair<String, String>> {
+    val byCode = listOf(
+        "auto" to stringResource(R.string.lang_auto_detect_label),
+        "en"   to stringResource(R.string.lang_english),
+        "hi"   to stringResource(R.string.lang_hindi),
+        "hinglish" to stringResource(R.string.lang_hinglish),
+        "es"   to stringResource(R.string.lang_spanish),
+        "fr"   to stringResource(R.string.lang_french),
+        "de"   to stringResource(R.string.lang_german),
+        "zh"   to stringResource(R.string.lang_chinese_simplified),
+        "zh-TW" to stringResource(R.string.lang_chinese_traditional),
+        "yue"  to stringResource(R.string.lang_cantonese),
+        "ja"   to stringResource(R.string.lang_japanese),
+        "ko"   to stringResource(R.string.lang_korean),
+        "it"   to stringResource(R.string.lang_italian),
+        "ar"   to stringResource(R.string.lang_arabic),
+        "ru"   to stringResource(R.string.lang_russian),
+        "pt"   to stringResource(R.string.lang_portuguese),
+        "ta"   to stringResource(R.string.lang_tamil),
+        "te"   to stringResource(R.string.lang_telugu),
+        "nl"   to stringResource(R.string.lang_dutch),
+        "tr"   to stringResource(R.string.lang_turkish),
+        "pl"   to stringResource(R.string.lang_polish),
+        "vi"   to stringResource(R.string.lang_vietnamese),
+        "th"   to stringResource(R.string.lang_thai),
+        "id"   to stringResource(R.string.lang_indonesian),
+        "ms"   to stringResource(R.string.lang_malay)
+    ).associate { it }
+
+    return WhisperLanguages.orderedCodes(Locale.getDefault().country, Locale.getDefault().language)
+        .mapNotNull { code -> byCode[code]?.let { name -> code to name } }
+}
 
 /**
  * A labelled dropdown for selecting a Whisper language code.
@@ -65,7 +73,7 @@ fun LanguageDropdown(
 
     // Force selection to the model's supported language if current selection is invalid
     LaunchedEffect(allowedLanguages) {
-        if (!isMultilingual && !allowedLanguages.contains(selectedLanguage)) {
+        if (!isMultilingual && !allowedLanguages.contains(WhisperLanguages.whisperCode(selectedLanguage))) {
             val fallback = allowedLanguages.firstOrNull { it != "auto" } ?: "en"
             onLanguageSelected(fallback)
         }
@@ -74,7 +82,7 @@ fun LanguageDropdown(
     val visibleLanguages = if (isMultilingual) {
         LANGUAGES
     } else {
-        LANGUAGES.filter { allowedLanguages.contains(it.first) || it.first == "auto" }
+        LANGUAGES.filter { allowedLanguages.contains(WhisperLanguages.whisperCode(it.first)) || it.first == "auto" }
     }
 
     var expanded by remember { mutableStateOf(false) }
