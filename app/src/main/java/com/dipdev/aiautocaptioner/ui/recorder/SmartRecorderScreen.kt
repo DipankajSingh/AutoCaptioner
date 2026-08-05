@@ -238,7 +238,6 @@ fun SmartRecorderContent(
     val isCountdownActive = uiState.isCountdownActive
     val countdownRemaining = uiState.countdownRemaining
     val isGestureDetectionEnabled = uiState.isGestureDetectionEnabled
-    val showRecorderOnboarding = uiState.showRecorderOnboarding
     val aspectRatio = uiState.aspectRatio
     val recordingQuality = uiState.recordingQuality
     val showExitDialog = uiState.showExitDialog
@@ -648,11 +647,6 @@ fun SmartRecorderContent(
             },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
-    }
-
-    // Recorder onboarding sheet
-    if (showRecorderOnboarding) {
-        RecorderOnboardingSheet(onDismiss = { viewModel.dismissRecorderOnboarding() })
     }
 
     if (showBgPicker) {

@@ -54,7 +54,6 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val currentTheme = uiState.theme
     val isGlassmorphism = uiState.glassmorphism
     val showTimelineThumbnails = uiState.showTimelineThumbnails
     val telemetryEnabled = uiState.telemetryEnabled

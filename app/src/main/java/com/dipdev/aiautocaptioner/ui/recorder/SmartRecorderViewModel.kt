@@ -68,7 +68,6 @@ data class SmartRecorderState(
     val isCountdownActive: Boolean = false,
     val countdownRemaining: Int = 0,
     val isGestureDetectionEnabled: Boolean = false,
-    val showRecorderOnboarding: Boolean = false,
     val aspectRatio: AspectRatio = AspectRatio.PORTRAIT_9_16,
     val recordingQuality: RecordingQuality = RecordingQuality.MEDIUM,
     val showExitDialog: Boolean = false,
@@ -126,11 +125,6 @@ class SmartRecorderViewModel @Inject constructor(
     init {
         prewarmProject()
         viewModelScope.launch {
-            settingsRepository.hasSeenRecorderOnboardingFlow.collect { seen ->
-                setState { copy(showRecorderOnboarding = !seen) }
-            }
-        }
-        viewModelScope.launch {
             settingsRepository.lastAspectRatioFlow.collect { name ->
                 setState { copy(aspectRatio = AspectRatio.fromName(name)) }
             }
@@ -151,13 +145,6 @@ class SmartRecorderViewModel @Inject constructor(
                 cameraEffectManager.setSmoothnessIntensity(intensity)
                 setState { copy(smoothnessIntensity = intensity) }
             }
-        }
-    }
-
-    fun dismissRecorderOnboarding() {
-        setState { copy(showRecorderOnboarding = false) }
-        viewModelScope.launch {
-            settingsRepository.setHasSeenRecorderOnboarding()
         }
     }
 

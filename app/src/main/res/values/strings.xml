@@ -412,6 +412,7 @@
     <string name="style_adjust_expand">▾ Adjust</string>
     <string name="style_adjust_collapse">▸ Adjust</string>
     <string name="style_size">Size</string>
+    <string name="style_thickness">Thickness</string>
     <string name="style_words">Words</string>
     <string name="style_lines">Lines</string>
     <string name="style_pos">Pos</string>
@@ -504,6 +505,7 @@
     <string name="recorder_timer">Timer</string>
     
     <string name="recorder_open_settings">Open Settings</string>
+    <string name="recorder_permission_eyebrow">BEFORE YOU RECORD</string>
     <string name="recorder_permission_screen_title">Allow camera &amp; microphone</string>
     <string name="recorder_permission_screen_subtitle">Record sharp video with clear sound. Both are only used while you are recording.</string>
     <string name="recorder_permission_camera_title">Camera</string>
@@ -514,13 +516,6 @@
     <string name="recorder_permission_needed">Needed</string>
     <string name="recorder_permission_allow_both">Allow Camera &amp; Microphone</string>
     <string name="recorder_permission_not_now">Not now</string>
-    <string name="recorder_onboarding_title">Smart Recorder</string>
-    <string name="recorder_onboarding_subtitle">Choose how you want to create your video</string>
-    <string name="recorder_onboarding_camera_title">Camera Mode</string>
-    <string name="recorder_onboarding_camera_desc">Record yourself with the camera. Perfect for talking-head videos, tutorials, and vlogs.</string>
-    <string name="recorder_onboarding_faceless_title">Faceless Mode</string>
-    <string name="recorder_onboarding_faceless_desc">Record audio-only with a custom background. Great for narrations and voiceovers.</string>
-    <string name="recorder_onboarding_got_it">Got it</string>
 
     <!-- Teleprompter -->
     <string name="teleprompter_placeholder">Paste your script here…</string>

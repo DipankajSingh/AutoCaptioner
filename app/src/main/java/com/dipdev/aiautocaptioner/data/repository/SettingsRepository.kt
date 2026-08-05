@@ -14,15 +14,10 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class AppTheme(val displayName: String) {
-    TRUE_BLACK("True Black")
-}
-
 @Singleton
 class SettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) {
-    private val THEME_KEY = stringPreferencesKey("primary_color_theme")
     private val GLASSMORPHISM_KEY = booleanPreferencesKey("glassmorphism_enabled")
     private val SHOW_TIMELINE_THUMBNAILS_KEY = booleanPreferencesKey("show_timeline_thumbnails")
     private val TELEMETRY_ENABLED_KEY = booleanPreferencesKey("telemetry_enabled")
@@ -36,7 +31,6 @@ class SettingsRepository @Inject constructor(
     private val LAST_TRANSLATE_KEY = booleanPreferencesKey("last_translate_to_english")
 
     private val LAST_RECORDING_MODE_KEY = stringPreferencesKey("last_recording_mode")
-    private val HAS_SEEN_RECORDER_ONBOARDING_KEY = booleanPreferencesKey("has_seen_recorder_onboarding")
     private val LAST_ASPECT_RATIO_KEY = stringPreferencesKey("last_aspect_ratio")
     private val LAST_RECORDING_QUALITY_KEY = stringPreferencesKey("last_recording_quality")
 
@@ -46,15 +40,6 @@ class SettingsRepository @Inject constructor(
     // Creator camera studio settings
     private val SELECTED_CREATOR_FILTER_KEY = stringPreferencesKey("selected_creator_filter_name")
     private val SKIN_SMOOTHNESS_INTENSITY_KEY = floatPreferencesKey("skin_smoothness_intensity_float")
-
-    val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
-        val themeName = prefs[THEME_KEY] ?: AppTheme.TRUE_BLACK.name
-        try {
-            AppTheme.valueOf(themeName)
-        } catch (_: Exception) {
-            AppTheme.TRUE_BLACK
-        }
-    }.distinctUntilChanged()
 
     val glassmorphismFlow: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[GLASSMORPHISM_KEY] ?: true
@@ -84,10 +69,6 @@ class SettingsRepository @Inject constructor(
         prefs[LAST_RECORDING_MODE_KEY] ?: "CAMERA"
     }
 
-    val hasSeenRecorderOnboardingFlow: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[HAS_SEEN_RECORDER_ONBOARDING_KEY] ?: false
-    }.distinctUntilChanged()
-
     val lastAspectRatioFlow: Flow<String> = dataStore.data.map { prefs ->
         prefs[LAST_ASPECT_RATIO_KEY] ?: "PORTRAIT_9_16"
     }.distinctUntilChanged()
@@ -104,12 +85,6 @@ class SettingsRepository @Inject constructor(
     suspend fun setPreviewFps(fps: Int) {
         dataStore.edit { prefs ->
             prefs[PREVIEW_FPS_KEY] = fps
-        }
-    }
-
-    suspend fun setTheme(theme: AppTheme) {
-        dataStore.edit { prefs ->
-            prefs[THEME_KEY] = theme.name
         }
     }
 
@@ -157,12 +132,6 @@ class SettingsRepository @Inject constructor(
     suspend fun setLastRecordingMode(mode: String) {
         dataStore.edit { prefs ->
             prefs[LAST_RECORDING_MODE_KEY] = mode
-        }
-    }
-
-    suspend fun setHasSeenRecorderOnboarding() {
-        dataStore.edit { prefs ->
-            prefs[HAS_SEEN_RECORDER_ONBOARDING_KEY] = true
         }
     }
 

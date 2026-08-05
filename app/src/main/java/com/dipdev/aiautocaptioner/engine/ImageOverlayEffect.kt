@@ -21,6 +21,18 @@ class ImageOverlayEffect(
 
     private var released = false
 
+    // The actual background frame size at this overlay's point in the effect
+    // chain (post-Presentation scaling). Falls back to the project dims until
+    // configure() is invoked, which media3 does before rendering begins.
+    private var bgWidth = videoWidth
+    private var bgHeight = videoHeight
+
+    override fun configure(size: androidx.media3.common.util.Size) {
+        super.configure(size)
+        bgWidth = size.width
+        bgHeight = size.height
+    }
+
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
         return bitmap
     }
@@ -33,16 +45,16 @@ class ImageOverlayEffect(
         val mappedY = 1f - (positionY * 2f)
 
         val imgAspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
-        val vidAspect = videoWidth.toFloat() / videoHeight.toFloat().coerceAtLeast(1f)
-        val (cx, cy) = if (imgAspect > vidAspect) {
-            1f to (vidAspect / imgAspect)
+        val vidAspect = bgWidth.toFloat() / bgHeight.toFloat().coerceAtLeast(1f)
+        val fitScale = if (imgAspect > vidAspect) {
+            bgWidth.toFloat() / bitmap.width.toFloat().coerceAtLeast(1f)
         } else {
-            (imgAspect / vidAspect) to 1f
+            bgHeight.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
         }
 
         return StaticOverlaySettings.Builder()
             .setBackgroundFrameAnchor(mappedX, mappedY)
-            .setScale(scaleX * cx, scaleY * cy)
+            .setScale(scaleX * fitScale, scaleY * fitScale)
             .setAlphaScale(if (isVisible) 1f else 0f)
             .build()
     }

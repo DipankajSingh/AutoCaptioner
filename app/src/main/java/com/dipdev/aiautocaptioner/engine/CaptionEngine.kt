@@ -258,6 +258,7 @@ class CaptionEngine(
         h = 31 * h + style.fontSize.toRawBits()
         h = 31 * h + style.fontFamily.hashCode()
         h = 31 * h + style.fontWeight
+        h = 31 * h + style.textThickness.toRawBits()
         h = 31 * h + if (style.isItalic) 1 else 0
         h = 31 * h + style.letterSpacing.toRawBits()
         h = 31 * h + style.maxWordsPerLine

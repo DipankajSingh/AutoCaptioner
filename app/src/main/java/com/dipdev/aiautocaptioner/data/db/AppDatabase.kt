@@ -34,7 +34,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         ExportedFileEntity::class,
         ImageOverlayEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false,
     autoMigrations = []
 )
@@ -292,6 +292,27 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
                 // Add the new sortOrder column (DEFAULT 999 matches @ColumnInfo(defaultValue="999"))
                 db.execSQL("ALTER TABLE caption_styles ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 999")
+            }
+        }
+
+        /**
+         * Adds textThickness column to caption_styles for synthetic emboldening.
+         *
+         * DEFAULT 0.0 matches @ColumnInfo(defaultValue="0.0") in CaptionStyleEntity
+         * so Room's schema validator does not raise "Migration didn't properly handle".
+         * Existing rows (and presets) keep 0.0 — no visual change until the user raises it.
+         *
+         * IMPORTANT: Also drop `index_caption_styles_default_name` like MIGRATION_18_19.
+         * onOpen() recreates the partial unique index after validation, so it exists on
+         * devices already running v19. Room's validator runs right after this migration
+         * and compares the live schema against its compiled expected schema (zero indices
+         * for caption_styles) — a leftover index fails validation with
+         * "Migration didn't properly handle" even though the ALTER is correct.
+         */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
+                db.execSQL("ALTER TABLE caption_styles ADD COLUMN textThickness REAL NOT NULL DEFAULT 0.0")
             }
         }
     }

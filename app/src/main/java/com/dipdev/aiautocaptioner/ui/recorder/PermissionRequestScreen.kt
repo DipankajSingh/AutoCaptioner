@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Button
@@ -63,8 +62,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
-import com.dipdev.aiautocaptioner.ui.theme.GlassSurface
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
@@ -80,7 +78,7 @@ fun PermissionRequestScreen(
     onDismiss: () -> Unit,
     onPrivacyPolicy: () -> Unit
 ) {
-    ScreenThemeProvider(accentColor = AccentViolet) {
+    ScreenThemeProvider(accentColor = AccentAmber) {
         val accent = LocalAccentColor.current
         val context = LocalContext.current
 
@@ -103,20 +101,39 @@ fun PermissionRequestScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF241B0E),
+                            Color(0xFF120E07)
+                        )
+                    )
+                )
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .displayCutoutPadding()
         ) {
-            // Ambient glow behind the hero illustration
+            // Ambient amber glow behind the hero illustration
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .size(340.dp)
+                    .size(360.dp)
                     .graphicsLayer { alpha = glowAlpha }
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(accent.copy(alpha = 0.16f), Color.Transparent)
+                            colors = listOf(accent.copy(alpha = 0.18f), Color.Transparent)
+                        )
+                    )
+            )
+            // Soft amber glow grounding the CTA area
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .size(320.dp)
+                    .graphicsLayer { alpha = glowAlpha * 0.6f }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(accent.copy(alpha = 0.10f), Color.Transparent)
                         )
                     )
             )
@@ -130,7 +147,7 @@ fun PermissionRequestScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Hero illustration (camera_permission.svg)
+                // Hero illustration (camera_permission.svg) — amber duotone
                 Box(
                     modifier = Modifier
                         .size(width = 260.dp, height = 252.dp)
@@ -151,7 +168,7 @@ fun PermissionRequestScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 AnimatedVisibility(
                     visible = visible,
@@ -159,6 +176,15 @@ fun PermissionRequestScreen(
                             slideInVertically(tween(400, easing = FastOutSlowInEasing)) { it / 8 }
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = stringResource(R.string.recorder_permission_eyebrow),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 2.sp,
+                            color = accent,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = stringResource(R.string.recorder_permission_screen_title),
                             style = MaterialTheme.typography.headlineSmall,
@@ -218,12 +244,12 @@ fun PermissionRequestScreen(
                             onClick = if (anyPermanentlyDenied) onOpenSettings else onRequestPermissions,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp),
+                                .height(54.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = Color.Black
                             ),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = RoundedCornerShape(16.dp)
                         ) {
                             Text(
                                 text = stringResource(
@@ -265,62 +291,76 @@ private fun PermissionStatusCard(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (granted) accentColor.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.10f)
-    val containerColor = if (granted) accentColor.copy(alpha = 0.14f) else GlassSurface
+    val containerColor = if (granted) accentColor.copy(alpha = 0.14f) else Color(0x261A1208)
+    val borderColor = if (granted) accentColor.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.14f)
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(containerColor)
-            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
-            .padding(vertical = 16.dp, horizontal = 12.dp),
+            .border(1.dp, borderColor, RoundedCornerShape(18.dp))
+            .padding(vertical = 18.dp, horizontal = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = if (granted) accentColor else TextSecondary
-        )
-        Spacer(modifier = Modifier.height(10.dp))
+        // Icon badge
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(
+                    if (granted) accentColor.copy(alpha = 0.18f)
+                    else Color.White.copy(alpha = 0.08f)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = if (granted) accentColor else TextSecondary
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = description,
             style = MaterialTheme.typography.labelSmall,
             color = TextSecondary,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+        // Status pill
         Row(
             modifier = Modifier
                 .clip(CircleShape)
                 .background(
-                    if (granted) accentColor.copy(alpha = 0.20f)
-                    else Color.White.copy(alpha = 0.08f)
+                    if (granted) accentColor.copy(alpha = 0.22f)
+                    else Color.White.copy(alpha = 0.06f)
                 )
-                .padding(horizontal = 10.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (granted) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = accentColor
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (granted) accentColor
+                        else TextSecondary.copy(alpha = 0.5f)
+                    )
+            )
             Text(
                 text = stringResource(
                     if (granted) R.string.recorder_permission_granted
                     else R.string.recorder_permission_needed
                 ),
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = if (granted) accentColor else TextSecondary
             )
         }

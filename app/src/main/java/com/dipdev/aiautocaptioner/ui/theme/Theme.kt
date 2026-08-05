@@ -10,14 +10,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import com.dipdev.aiautocaptioner.data.repository.AppTheme
 
 val LocalGlassmorphismEnabled = staticCompositionLocalOf { true }
-val LocalAppTheme = staticCompositionLocalOf { AppTheme.TRUE_BLACK }
 
 @Composable
 fun AutoCaptionerTheme(
-    appTheme: AppTheme = AppTheme.TRUE_BLACK,
     glassmorphismEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -58,7 +55,6 @@ fun AutoCaptionerTheme(
 
     CompositionLocalProvider(
         LocalGlassmorphismEnabled provides glassmorphismEnabled,
-        LocalAppTheme provides appTheme,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

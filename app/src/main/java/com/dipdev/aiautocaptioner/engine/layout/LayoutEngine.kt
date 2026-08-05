@@ -39,8 +39,9 @@ object LayoutEngine {
         if (words.isEmpty()) return CaptionLayout(emptyList(), 0f, 0f, 0f)
 
         val fm = CaptionPaints.text.fontMetrics
-        val lineH = (fm.bottom - fm.top) * style.lineHeight
-        val spaceW = CaptionPaints.text.measureText(" ")
+        val thicknessPx = CaptionPaints.thicknessStrokeWidth(style.textThickness, baseScale)
+        val lineH = (fm.bottom - fm.top) * style.lineHeight + thicknessPx
+        val spaceW = CaptionPaints.text.measureText(" ") + thicknessPx
 
         val maxWordsPerLine = if (style.maxWordsPerLine <= 0) 999 else style.maxWordsPerLine
         // KARAOKE_FILL locks the whole phrase onto a static block — never truncate
@@ -55,7 +56,7 @@ object LayoutEngine {
         // Build word layouts
         val wordLayouts = words.map { w ->
             val txt = CaptionUtils.sanitize(w.text, style)
-            val wordW = CaptionPaints.text.measureText(txt)
+            val wordW = CaptionPaints.text.measureText(txt) + thicknessPx
             WordLayout(w, txt, wordW)
         }
 

@@ -107,6 +107,19 @@ class TextFillPass : RenderPass {
                     val fillAlpha = if (style.outlineOnly) 0 else (a * style.textOpacity).roundToInt().coerceIn(0, 255)
                     CaptionPaints.text.color = fillColor
                     CaptionPaints.text.alpha = fillAlpha
+
+                    // Synthetic emboldening — draw a stroke pass in the fill color
+                    // UNDER the fill so glyph interiors stay clean and the text
+                    // reads thicker with any font / weight.
+                    if (style.textThickness > 0f && fillAlpha > 0) {
+                        CaptionPaints.thicken.color = fillColor
+                        CaptionPaints.thicken.alpha = fillAlpha
+                        CaptionPaints.thicken.shader = CaptionPaints.text.shader
+                        drawText(wl.displayText, 0, charsToDraw, x, lineY, CaptionPaints.thicken)
+                        CaptionPaints.thicken.shader = null
+                        CaptionPaints.thicken.alpha = 255
+                    }
+
                     drawText(wl.displayText, 0, charsToDraw, x, lineY, CaptionPaints.text)
                     CaptionPaints.text.shader = null
                     CaptionPaints.text.alpha = 255

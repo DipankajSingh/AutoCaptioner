@@ -56,6 +56,9 @@ object CaptionPaints {
     /** Main word fill paint */
     val text    = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    /** Synthetic emboldening stroke — drawn under the fill in the fill color */
+    val thicken = Paint(Paint.ANTI_ALIAS_FLAG)
+
     /** Stroke outline drawn behind [text] */
     val outline = Paint(Paint.ANTI_ALIAS_FLAG)
 
@@ -141,6 +144,22 @@ object CaptionPaints {
             }
         }
 
+        thicken.apply {
+            textSize      = textSizePx
+            typeface      = tf
+            this.style    = Paint.Style.STROKE
+            strokeWidth   = thicknessStrokeWidth(style.textThickness, baseScale)
+            strokeJoin    = Paint.Join.ROUND
+            strokeCap     = Paint.Cap.ROUND
+            textAlign     = Paint.Align.LEFT
+            letterSpacing = style.letterSpacing
+            isFilterBitmap = true
+            isDither      = true
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
+            textLocale    = java.util.Locale.ROOT
+            clearShadowLayer()
+        }
+
         bg.apply {
             color         = style.backgroundColor.toInt()
             alpha         = (style.backgroundOpacity * 255).roundToInt().coerceIn(0, 255)
@@ -177,6 +196,14 @@ object CaptionPaints {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Stroke width (px) for synthetic emboldening. Scales with [baseScale] so the
+     * visual thickness matches between preview and export regardless of resolution.
+     * Shared with [LayoutEngine] so layout reserves the same ink width it draws.
+     */
+    fun thicknessStrokeWidth(textThickness: Float, baseScale: Float): Float =
+        textThickness.coerceIn(0f, 1f) * 6f * baseScale
 
     private fun resolveTypeface(context: Context, style: CaptionStyleEntity): Typeface {
         // Only recompute if style fields affecting typeface have changed.

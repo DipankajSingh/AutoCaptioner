@@ -38,11 +38,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val uiState by mainViewModel.uiState.collectAsStateWithLifecycle()
-            val appTheme = uiState.appTheme
             val glassmorphismEnabled = uiState.glassmorphismEnabled
 
             AutoCaptionerTheme(
-                appTheme = appTheme,
                 glassmorphismEnabled = glassmorphismEnabled
             ) {
                 Surface(

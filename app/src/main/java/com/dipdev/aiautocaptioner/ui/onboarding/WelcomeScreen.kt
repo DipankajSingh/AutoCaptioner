@@ -304,7 +304,6 @@ private fun LoopingVideoPlayer(
             repeatMode = Player.REPEAT_MODE_ALL
             volume = 0f
             prepare()
-            seekTo(2500)
             playWhenReady = true
         }
     }

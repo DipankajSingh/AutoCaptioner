@@ -181,18 +181,22 @@ class StyleViewModel @Inject constructor(
         if (undoStack.isEmpty()) return
         val current = uiState.value.activeStyle ?: return
         redoStack.add(current)
-        setState { copy(activeStyle = undoStack.removeAt(undoStack.size - 1)) }
+        val restored = undoStack.removeAt(undoStack.size - 1)
+        setState { copy(activeStyle = restored) }
         updateUndoRedoState()
         lastPushProperty = ""
+        scheduleAutoSave(restored)
     }
 
     private fun redo() {
         if (redoStack.isEmpty()) return
         val current = uiState.value.activeStyle ?: return
         undoStack.add(current)
-        setState { copy(activeStyle = redoStack.removeAt(redoStack.size - 1)) }
+        val restored = redoStack.removeAt(redoStack.size - 1)
+        setState { copy(activeStyle = restored) }
         updateUndoRedoState()
         lastPushProperty = ""
+        scheduleAutoSave(restored)
     }
 
 
@@ -256,19 +260,27 @@ class StyleViewModel @Inject constructor(
      * "Save & Apply".
      *
      * Strategy:
-     *  - If [style] is an unmodified default preset (still has its original ID),
-     *    just update [ProjectEntity.activeStyleId] to point at it.
-     *  - Otherwise, upsert a stable draft row (id = "draft_<projectId>") so
-     *    we never accumulate infinite custom rows on every slider drag.
+     *  - If [style] is unchanged from what's already stored for its ID (e.g. an
+     *    untouched default preset), just update [ProjectEntity.activeStyleId] to
+     *    point at it.
+     *  - Otherwise, upsert a stable draft row (id = "draft_<projectId>") so we
+     *    never accumulate infinite custom rows on every slider drag. The draft
+     *    holds the modified values so export picks them up.
+     *
+     * Note: modification is detected by comparing [style] to its stored row
+     * (data-class equality), NOT by `isDefault` — a preset the user edited still
+     * has isDefault=true, and skipping the draft for it would silently lose the
+     * edit in exported videos.
      */
     private fun scheduleAutoSave(style: CaptionStyleEntity) {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
             delay(500L) // debounce — only save after user stops editing
             val projectId = uiState.value.project?.id ?: return@launch
-            val isUnmodifiedPreset = style.isDefault
+            val stored = captionRepository.getStyleById(style.id)
+            val isUnmodified = stored != null && stored == style
 
-            val styleToLink = if (isUnmodifiedPreset) {
+            val styleToLink = if (isUnmodified) {
                 style
             } else {
                 val draftId = "draft_$projectId"

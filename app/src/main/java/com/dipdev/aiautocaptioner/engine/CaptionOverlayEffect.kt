@@ -31,12 +31,14 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
 
     private var released = false
 
-    // Canvas (with useInputFrameSize = true) is in the raw input frame space.
-    // For rotated videos we must draw in the un-rotated input space, so the
-    // display (post-rotation) dimensions are the input dims with w/h swapped.
+    // Canvas (with useInputFrameSize = true) is in the raw input frame space,
+    // sized to the frame at this point in the effect chain (i.e. AFTER any
+    // Presentation scaling). For rotated videos we must draw in the un-rotated
+    // input space, so the display (post-rotation) dimensions are the actual
+    // canvas dims with w/h swapped — read from the canvas at draw time so the
+    // caption baseScale always matches the real output resolution (not the
+    // project's source resolution, which is wrong when exporting at 720p/1080p).
     private val isRotated = rotationDegrees == 90 || rotationDegrees == 270
-    private val displayWidth = if (isRotated) videoHeight else videoWidth
-    private val displayHeight = if (isRotated) videoWidth else videoHeight
 
     override fun onDraw(canvas: Canvas, presentationTimeUs: Long) {
         if (released) return
@@ -51,6 +53,11 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
 
         val currentPositionMs = presentationTimeUs / 1000
 
+        val canvasW = canvas.width
+        val canvasH = canvas.height
+        val outputW = if (isRotated) canvasH else canvasW
+        val outputH = if (isRotated) canvasW else canvasH
+
         if (isRotated) {
             // Map display-space drawing onto the input-space canvas so that after
             // Transformer rotates the whole frame, captions land at the intended
@@ -60,19 +67,19 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
                 when (rotationDegrees) {
                     90 -> {
                         canvas.rotate(-90f)
-                        canvas.translate(0f, displayWidth.toFloat())
+                        canvas.translate(0f, outputW.toFloat())
                     }
                     270 -> {
                         canvas.rotate(90f)
-                        canvas.translate(displayHeight.toFloat(), 0f)
+                        canvas.translate(outputH.toFloat(), 0f)
                     }
                 }
                 captionEngine.draw(
                     context = context,
                     canvas = canvas,
                     currentPositionMs = currentPositionMs,
-                    videoWidth = displayWidth,
-                    videoHeight = displayHeight,
+                    videoWidth = outputW,
+                    videoHeight = outputH,
                     style = style,
                     segments = segments,
                     wordsMap = wordsMap
@@ -83,8 +90,8 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
                 context = context,
                 canvas = canvas,
                 currentPositionMs = currentPositionMs,
-                videoWidth = displayWidth,
-                videoHeight = displayHeight,
+                videoWidth = outputW,
+                videoHeight = outputH,
                 style = style,
                 segments = segments,
                 wordsMap = wordsMap

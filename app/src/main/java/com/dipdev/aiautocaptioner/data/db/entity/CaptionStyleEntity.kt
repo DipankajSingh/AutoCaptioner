@@ -27,6 +27,12 @@ data class CaptionStyleEntity(
     // CSS-style font weight: 400=Regular, 700=Bold, 900=Black
     val fontWeight: Int = 700,
 
+    // Synthetic emboldening thickness (0.0 = none, 1.0 = maximum). Applied as a
+    // stroke in the text color under the fill, so it thickens ANY font
+    // regardless of whether the typeface supports the requested weight.
+    @ColumnInfo(defaultValue = "0.0")
+    val textThickness: Float = 0f,
+
     // Text size in SP (scale-independent pixels)
     // SP automatically scales with user's system font size setting
     val fontSize: Float = 48f,

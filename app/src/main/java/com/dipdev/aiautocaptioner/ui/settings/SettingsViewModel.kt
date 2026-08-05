@@ -1,7 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.settings
 
 import androidx.lifecycle.viewModelScope
-import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
@@ -15,7 +14,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SettingsUiState(
-    val theme: AppTheme = AppTheme.TRUE_BLACK,
     val glassmorphism: Boolean = true,
     val showTimelineThumbnails: Boolean = false,
     val telemetryEnabled: Boolean = true,
@@ -41,13 +39,12 @@ class SettingsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             combine(
-                settingsRepository.themeFlow,
                 settingsRepository.glassmorphismFlow,
                 settingsRepository.showTimelineThumbnailsFlow,
                 settingsRepository.telemetryEnabledFlow,
                 settingsRepository.previewFpsFlow
-            ) { theme, glass, thumb, telemetry, previewFps ->
-                SettingsUiState(theme, glass, thumb, telemetry, previewFps)
+            ) { glass, thumb, telemetry, previewFps ->
+                SettingsUiState(glass, thumb, telemetry, previewFps)
             }.distinctUntilChanged().collect { state ->
                 setState { state }
             }

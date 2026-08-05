@@ -161,10 +161,12 @@ fun StylePanel(
                         displayMode = style.displayMode,
                         showLayoutControls = com.dipdev.aiautocaptioner.engine.style.StyleCapabilityResolver.resolve(style).showLayoutSliders,
                         fontSize = style.fontSize,
+                        textThickness = style.textThickness,
                         maxWordsPerLine = style.maxWordsPerLine,
                         maxLines = style.maxLines,
                         positionY = style.positionY,
                         onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontSize") { s -> s.copy(fontSize = it) }) },
+                        onTextThicknessChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("textThickness") { s -> s.copy(textThickness = it) }) },
                         onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
                         onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
                         onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) },
@@ -198,10 +200,12 @@ private fun CompactCaptionsHeader(
     displayMode: com.dipdev.aiautocaptioner.data.db.entity.DisplayMode,
     showLayoutControls: Boolean,
     fontSize: Float,
+    textThickness: Float,
     maxWordsPerLine: Int,
     maxLines: Int,
     positionY: Float,
     onFontSizeChange: (Float) -> Unit,
+    onTextThicknessChange: (Float) -> Unit,
     onMaxWordsChange: (Int) -> Unit,
     onMaxLinesChange: (Int) -> Unit,
     onPositionYChange: (Float) -> Unit,
@@ -285,6 +289,34 @@ private fun CompactCaptionsHeader(
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.width(28.dp)
+                                )
+                            }
+
+                            // Thickness (synthetic emboldening)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.style_thickness),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(54.dp)
+                                )
+                                PremiumSlider(
+                                    value = textThickness,
+                                    onValueChange = onTextThicknessChange,
+                                    valueRange = 0f..1f,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${(textThickness * 100).toInt()}%",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.width(36.dp)
                                 )
                             }
 

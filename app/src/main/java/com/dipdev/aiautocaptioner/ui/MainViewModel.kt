@@ -3,7 +3,6 @@ package com.dipdev.aiautocaptioner.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
-import com.dipdev.aiautocaptioner.data.repository.AppTheme
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
@@ -19,14 +18,12 @@ import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 import com.dipdev.aiautocaptioner.ui.navigation.Screen
 
 data class MainUiState(
     val startDestination: Screen? = null,
-    val appTheme: AppTheme = AppTheme.TRUE_BLACK,
     val glassmorphismEnabled: Boolean = true
 ) : UiState
 
@@ -44,14 +41,11 @@ class MainViewModel @Inject constructor(
         decideStartDestination()
         
         viewModelScope.launch {
-            combine(
-                settingsRepository.themeFlow,
-                settingsRepository.glassmorphismFlow
-            ) { theme, glass ->
-                Pair(theme, glass)
-            }.distinctUntilChanged().collect { (theme, glass) ->
-                setState { copy(appTheme = theme, glassmorphismEnabled = glass) }
-            }
+            settingsRepository.glassmorphismFlow
+                .distinctUntilChanged()
+                .collect { glass ->
+                    setState { copy(glassmorphismEnabled = glass) }
+                }
         }
     }
 
