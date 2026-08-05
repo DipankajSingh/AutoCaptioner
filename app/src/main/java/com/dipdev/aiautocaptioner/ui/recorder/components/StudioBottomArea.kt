@@ -1,6 +1,5 @@
 package com.dipdev.aiautocaptioner.ui.recorder.components
 
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -24,9 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,13 +36,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import com.dipdev.aiautocaptioner.ui.recorder.AudioVisualizerOverlay
 import com.dipdev.aiautocaptioner.ui.recorder.ModeToggle
-import com.dipdev.aiautocaptioner.ui.recorder.PermissionRequestCard
 import com.dipdev.aiautocaptioner.ui.recorder.RecordButton
 import com.dipdev.aiautocaptioner.ui.recorder.RecordingMode
 import com.dipdev.aiautocaptioner.ui.recorder.RecordingState
@@ -60,12 +53,6 @@ fun StudioBottomArea(
     recordingState: RecordingState,
     mode: RecordingMode,
     isPermissionBlocked: Boolean,
-    needsCameraForMode: Boolean,
-    cameraPermanentlyDenied: Boolean,
-    micPermanentlyDenied: Boolean,
-    onRequestCamera: () -> Unit,
-    onRequestMic: () -> Unit,
-    onOpenSettings: () -> Unit,
     audioAmplitude: Float,
     elapsedSeconds: Int,
     animateFlip: Float,
@@ -82,7 +69,6 @@ fun StudioBottomArea(
     onEdit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val density = LocalContext.current.resources.displayMetrics.density
 
     Column(
@@ -130,27 +116,6 @@ fun StudioBottomArea(
                     onModeSelected = onModeSelected
                 )
             }
-        }
-
-        // Inline permission warning card
-        if (isPermissionBlocked && recordingState == RecordingState.IDLE) {
-            val permIcon = if (needsCameraForMode) Icons.Rounded.Videocam else Icons.Rounded.Mic
-            val permMessage = if (needsCameraForMode) {
-                stringResource(R.string.recorder_permission_camera)
-            } else {
-                stringResource(R.string.recorder_permission_microphone)
-            }
-            PermissionRequestCard(
-                icon = permIcon,
-                message = permMessage,
-                permanentlyDenied = if (needsCameraForMode) cameraPermanentlyDenied else micPermanentlyDenied,
-                onRequest = if (needsCameraForMode) onRequestCamera else onRequestMic,
-                onOpenSettings = onOpenSettings,
-                onPrivacyPolicy = {
-                    val intent = Intent(Intent.ACTION_VIEW, AppLinks.PRIVACY_POLICY.toUri())
-                    context.startActivity(intent)
-                }
-            )
         }
 
         // Audio visualizer for faceless recording

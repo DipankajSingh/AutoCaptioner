@@ -18,10 +18,7 @@ import androidx.compose.runtime.setValue
 @Composable
 fun SmartRecorderFacelessPreview(
     selectedBackground: BackgroundState,
-    micGranted: Boolean,
     isRecording: Boolean,
-    onRequestMic: () -> Unit,
-    onOpenSettings: () -> Unit,
     onTransformUpdate: (scale: Float, offsetX: Float, offsetY: Float) -> Unit
 ) {
     val bgModifier = Modifier.fillMaxSize()

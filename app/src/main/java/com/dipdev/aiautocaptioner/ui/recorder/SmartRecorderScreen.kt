@@ -131,23 +131,55 @@ fun SmartRecorderScreen(
     viewModel: SmartRecorderViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    var cameraGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
-    var micGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
+    var cameraGranted by remember { mutableStateOf(checkPermission(context, android.Manifest.permission.CAMERA)) }
+    var micGranted by remember { mutableStateOf(checkPermission(context, android.Manifest.permission.RECORD_AUDIO)) }
     var cameraPermanentlyDenied by remember { mutableStateOf(false) }
     var micPermanentlyDenied by remember { mutableStateOf(false) }
 
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        cameraGranted = granted
-        if (!granted) {
-            val activity = context as? android.app.Activity
-            cameraPermanentlyDenied = activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        val cameraResult = grants[android.Manifest.permission.CAMERA]
+        val micResult = grants[android.Manifest.permission.RECORD_AUDIO]
+
+        if (cameraResult != null) {
+            cameraGranted = cameraResult
+            if (!cameraResult) {
+                val activity = context as? android.app.Activity
+                cameraPermanentlyDenied = activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)
+            }
+        }
+        if (micResult != null) {
+            micGranted = micResult
+            if (!micResult) {
+                val activity = context as? android.app.Activity
+                micPermanentlyDenied = activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.RECORD_AUDIO)
+            }
         }
     }
-    val micLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        micGranted = granted
-        if (!granted) {
-            val activity = context as? android.app.Activity
-            micPermanentlyDenied = activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.RECORD_AUDIO)
+
+    // Refresh permission state whenever the screen resumes (e.g. returning from Settings)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                cameraGranted = checkPermission(context, android.Manifest.permission.CAMERA)
+                micGranted = checkPermission(context, android.Manifest.permission.RECORD_AUDIO)
+                cameraPermanentlyDenied = false
+                micPermanentlyDenied = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val requestPermissions: () -> Unit = {
+        val needed = buildList {
+            if (!cameraGranted) add(android.Manifest.permission.CAMERA)
+            if (!micGranted) add(android.Manifest.permission.RECORD_AUDIO)
+        }
+        if (needed.isNotEmpty()) {
+            permissionsLauncher.launch(needed.toTypedArray())
         }
     }
 
@@ -159,8 +191,7 @@ fun SmartRecorderScreen(
         micGranted = micGranted,
         cameraPermanentlyDenied = cameraPermanentlyDenied,
         micPermanentlyDenied = micPermanentlyDenied,
-        onRequestCamera = { cameraLauncher.launch(android.Manifest.permission.CAMERA) },
-        onRequestMic = { micLauncher.launch(android.Manifest.permission.RECORD_AUDIO) },
+        onRequestPermissions = requestPermissions,
         onOpenSettings = {
             val intent = android.content.Intent(
                 android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -170,6 +201,9 @@ fun SmartRecorderScreen(
         }
     )
 }
+
+private fun checkPermission(context: android.content.Context, permission: String): Boolean =
+    ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
 @SuppressLint("MissingPermission", "DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -182,8 +216,7 @@ fun SmartRecorderContent(
     micGranted: Boolean,
     cameraPermanentlyDenied: Boolean,
     micPermanentlyDenied: Boolean,
-    onRequestCamera: () -> Unit,
-    onRequestMic: () -> Unit,
+    onRequestPermissions: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val context = LocalContext.current
@@ -231,54 +264,45 @@ fun SmartRecorderContent(
 
     var activeRecording by remember { mutableStateOf<androidx.camera.video.Recording?>(null) }
 
-    val hasRequiredPermission = when (mode) {
-        RecordingMode.CAMERA -> cameraGranted
-        RecordingMode.FACELESS -> micGranted
-    }
-    val needsCameraForMode = mode == RecordingMode.CAMERA && !cameraGranted
-    val needsMicForFaceless = mode == RecordingMode.FACELESS && !micGranted
-    val isPermissionBlocked = needsCameraForMode || needsMicForFaceless
+    val isPermissionBlocked = !cameraGranted || !micGranted
 
     val startRecordingAction: (forceCountdown: Int) -> Unit = { forceCountdown ->
         if (recordingState == RecordingState.IDLE) {
-            when (mode) {
-                RecordingMode.FACELESS if !micGranted -> onRequestMic()
-                RecordingMode.CAMERA if !cameraGranted -> onRequestCamera()
-                RecordingMode.CAMERA if !isAudioMuted && !micGranted -> onRequestMic()
-                else -> {
-                    viewModel.requestStartRecording(forceCountdown = forceCountdown) {
-                        viewModel.prepareCameraRecordingFile { file ->
-                            val outputOptions = FileOutputOptions.Builder(file).build()
-                            val executor = ContextCompat.getMainExecutor(context)
+            if (isPermissionBlocked) {
+                onRequestPermissions()
+            } else {
+                viewModel.requestStartRecording(forceCountdown = forceCountdown) {
+                    viewModel.prepareCameraRecordingFile { file ->
+                        val outputOptions = FileOutputOptions.Builder(file).build()
+                        val executor = ContextCompat.getMainExecutor(context)
 
-                            val listener = Consumer<VideoRecordEvent> { event ->
-                                if (event is VideoRecordEvent.Start) {
-                                    viewModel.onCameraRecordingStarted()
-                                } else if (event is VideoRecordEvent.Finalize) {
-                                    if (!event.hasError()) {
-                                        viewModel.onCameraRecordingStopped()
-                                    } else {
-                                        viewModel.onCameraRecordingError()
-                                    }
-                                    activeRecording = null
+                        val listener = Consumer<VideoRecordEvent> { event ->
+                            if (event is VideoRecordEvent.Start) {
+                                viewModel.onCameraRecordingStarted()
+                            } else if (event is VideoRecordEvent.Finalize) {
+                                if (!event.hasError()) {
+                                    viewModel.onCameraRecordingStopped()
+                                } else {
+                                    viewModel.onCameraRecordingError()
                                 }
+                                activeRecording = null
                             }
+                        }
 
-                            activeRecording = if (isAudioMuted) {
-                                cameraController.startRecording(
-                                    outputOptions,
-                                    AudioConfig.AUDIO_DISABLED,
-                                    executor,
-                                    listener
-                                )
-                            } else {
-                                cameraController.startRecording(
-                                    outputOptions,
-                                    AudioConfig.create(true),
-                                    executor,
-                                    listener
-                                )
-                            }
+                        activeRecording = if (isAudioMuted) {
+                            cameraController.startRecording(
+                                outputOptions,
+                                AudioConfig.AUDIO_DISABLED,
+                                executor,
+                                listener
+                            )
+                        } else {
+                            cameraController.startRecording(
+                                outputOptions,
+                                AudioConfig.create(true),
+                                executor,
+                                listener
+                            )
                         }
                     }
                 }
@@ -429,10 +453,7 @@ fun SmartRecorderContent(
             ) {
                 SmartRecorderFacelessPreview(
                     selectedBackground = selectedBackground,
-                    micGranted = micGranted,
                     isRecording = recordingState == RecordingState.RECORDING,
-                    onRequestMic = onRequestMic,
-                    onOpenSettings = onOpenSettings,
                     onTransformUpdate = { scale, offsetX, offsetY ->
                         viewModel.updateImageTransform(scale, offsetX, offsetY)
                     }
@@ -571,12 +592,6 @@ fun SmartRecorderContent(
             recordingState = recordingState,
             mode = mode,
             isPermissionBlocked = isPermissionBlocked,
-            needsCameraForMode = needsCameraForMode,
-            cameraPermanentlyDenied = cameraPermanentlyDenied,
-            micPermanentlyDenied = micPermanentlyDenied,
-            onRequestCamera = onRequestCamera,
-            onRequestMic = onRequestMic,
-            onOpenSettings = onOpenSettings,
             audioAmplitude = audioAmplitude,
             elapsedSeconds = elapsedSeconds,
             animateFlip = animateFlip,
@@ -658,6 +673,26 @@ fun SmartRecorderContent(
             dismissText = stringResource(R.string.recorder_discard),
             onDismiss = { viewModel.discardRecording(); onNavigateBack() },
             onDismissRequest = { viewModel.dismissExitDialog() }
+        )
+    }
+
+    // Full-screen camera & microphone permission gate (shown while either is missing)
+    if (isPermissionBlocked) {
+        PermissionRequestScreen(
+            cameraGranted = cameraGranted,
+            micGranted = micGranted,
+            cameraPermanentlyDenied = cameraPermanentlyDenied,
+            micPermanentlyDenied = micPermanentlyDenied,
+            onRequestPermissions = onRequestPermissions,
+            onOpenSettings = onOpenSettings,
+            onDismiss = onNavigateBack,
+            onPrivacyPolicy = {
+                val intent = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    AppLinks.PRIVACY_POLICY.toUri()
+                )
+                context.startActivity(intent)
+            }
         )
     }
 }

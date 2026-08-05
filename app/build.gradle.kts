@@ -192,6 +192,7 @@ dependencies {
     // Coil — thumbnail image loading
     // -------------------------------------------------------
     implementation(libs.coil.compose)
+    implementation(libs.coil.svg)
     implementation(libs.coil.video)
     // -------------------------------------------------------
     // Splash Screen
