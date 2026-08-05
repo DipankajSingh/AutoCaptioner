@@ -39,10 +39,10 @@ fun StorageIndicator(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(Color.Black.copy(alpha = 0.5f))
-            .border(1.dp, if (isLow) Color(0xFFFF6B6B).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .border(1.dp, if (isLow) Color(0xFFFF6B6B).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             text = String.format(Locale.US, "%.1f GB free · ~%d min", availableGB, estimatedMinutes),

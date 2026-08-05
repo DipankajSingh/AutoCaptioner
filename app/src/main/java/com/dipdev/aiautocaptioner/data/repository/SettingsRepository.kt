@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -40,6 +42,10 @@ class SettingsRepository @Inject constructor(
 
     // Preview rendering FPS — lower values reduce battery usage and heat
     private val PREVIEW_FPS_KEY = intPreferencesKey("preview_fps")
+
+    // Creator camera studio settings
+    private val SELECTED_CREATOR_FILTER_KEY = stringPreferencesKey("selected_creator_filter_name")
+    private val SKIN_SMOOTHNESS_INTENSITY_KEY = floatPreferencesKey("skin_smoothness_intensity_float")
 
     val themeFlow: Flow<AppTheme> = dataStore.data.map { prefs ->
         val themeName = prefs[THEME_KEY] ?: AppTheme.TRUE_BLACK.name
@@ -169,6 +175,26 @@ class SettingsRepository @Inject constructor(
     suspend fun setLastRecordingQuality(quality: String) {
         dataStore.edit { prefs ->
             prefs[LAST_RECORDING_QUALITY_KEY] = quality
+        }
+    }
+
+    val selectedCreatorFilterFlow: Flow<CreatorFilter> = dataStore.data.map { prefs ->
+        CreatorFilter.fromName(prefs[SELECTED_CREATOR_FILTER_KEY])
+    }.distinctUntilChanged()
+
+    val skinSmoothnessIntensityFlow: Flow<Float> = dataStore.data.map { prefs ->
+        prefs[SKIN_SMOOTHNESS_INTENSITY_KEY] ?: 0.35f
+    }.distinctUntilChanged()
+
+    suspend fun setCreatorFilter(filter: CreatorFilter) {
+        dataStore.edit { prefs ->
+            prefs[SELECTED_CREATOR_FILTER_KEY] = filter.name
+        }
+    }
+
+    suspend fun setSkinSmoothnessIntensity(intensity: Float) {
+        dataStore.edit { prefs ->
+            prefs[SKIN_SMOOTHNESS_INTENSITY_KEY] = intensity
         }
     }
 }

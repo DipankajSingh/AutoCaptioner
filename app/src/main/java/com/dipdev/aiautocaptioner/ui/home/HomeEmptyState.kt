@@ -1,0 +1,273 @@
+package com.dipdev.aiautocaptioner.ui.home
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.ArrowRight
+import compose.icons.feathericons.Scissors
+import compose.icons.feathericons.Video
+import compose.icons.feathericons.Zap
+
+@Composable
+internal fun EmptyProjectView(
+    lastRecordingMode: String,
+    onNavigateToSmartRecorder: (String) -> Unit,
+    onQuickCaption: () -> Unit,
+    onAdvancedStudio: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Spacer(Modifier.height(8.dp))
+
+        // 1. DYNAMIC STUDIO CREATION GRAPHIC (Video + Waveforms + Captions)
+        StudioEmptyGraphic(
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        
+        // 2. Inspiring Studio Greeting
+        Text(
+            text = stringResource(R.string.home_no_projects),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.home_no_projects_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFFB0B6C2),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp),
+            lineHeight = 20.sp
+        )
+        
+        Spacer(Modifier.height(32.dp))
+
+        // 3. PRIMARY HERO CARD: 1-Tap Captions (The flagship expressway)
+        HeroExpressCard(
+            onClick = onQuickCaption,
+            contentDescriptionText = stringResource(R.string.home_start_1tap),
+            title = stringResource(R.string.home_1_tap_captions),
+            subtitle = stringResource(R.string.home_1_tap_desc)
+        )
+
+        Spacer(Modifier.height(28.dp))
+
+        // 4. SECONDARY STUDIO CONSOLE (More Creation Tools)
+        Text(
+            text = "MORE STUDIO TOOLS",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF8A91A0),
+            letterSpacing = 1.2.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            textAlign = TextAlign.Start
+        )
+        Spacer(Modifier.height(8.dp))
+
+        // Secondary Card 1: Record Video
+        StudioActionCard(
+            title = stringResource(R.string.home_record_video),
+            subtitle = stringResource(R.string.home_record_desc),
+            icon = FeatherIcons.Video,
+            onClick = { onNavigateToSmartRecorder(lastRecordingMode) },
+            contentDescriptionText = stringResource(R.string.home_record_video)
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // Secondary Card 2: Trim & Custom Setup
+        StudioActionCard(
+            title = stringResource(R.string.home_advanced_studio),
+            subtitle = stringResource(R.string.home_advanced_desc),
+            icon = FeatherIcons.Scissors,
+            onClick = onAdvancedStudio,
+            contentDescriptionText = stringResource(R.string.home_start_advanced)
+        )
+        
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun HeroExpressCard(
+    onClick: () -> Unit,
+    title: String,
+    subtitle: String,
+    contentDescriptionText: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = contentDescriptionText },
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, AccentAmber.copy(alpha = 0.75f)),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1E160C)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFFFFC947), AccentAmber)
+                        ),
+                        RoundedCornerShape(14.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = FeatherIcons.Zap,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 18.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFE2E7F0).copy(alpha = 0.85f),
+                    lineHeight = 16.sp
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(AccentAmber.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = FeatherIcons.ArrowRight,
+                    contentDescription = null,
+                    tint = AccentAmber,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    contentDescriptionText: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = contentDescriptionText },
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF161618)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(Color(0xFF262629), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFFD3D8E5),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF9197A6),
+                    lineHeight = 15.sp
+                )
+            }
+        }
+    }
+}

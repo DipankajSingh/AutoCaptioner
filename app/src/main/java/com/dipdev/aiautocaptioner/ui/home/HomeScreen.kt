@@ -1,21 +1,18 @@
 package com.dipdev.aiautocaptioner.ui.home
 
-
+import android.app.Activity
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,21 +20,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,40 +35,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.components.MascotRobot
-import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.RoundedProgressBar
+import com.dipdev.aiautocaptioner.ui.components.SpeedDialFab
+import com.dipdev.aiautocaptioner.ui.components.SpeedDialItem
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.ChevronDown
 import compose.icons.feathericons.Scissors
-import compose.icons.feathericons.Settings
 import compose.icons.feathericons.Video
-import compose.icons.feathericons.X
 import compose.icons.feathericons.Zap
+import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToSmartRecorder: (String) -> Unit,
@@ -92,15 +68,13 @@ fun HomeScreen(
     onNavigateToHistory: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val projects = uiState.projects
-    val activeModel = uiState.activeModel
-    
     val importState = uiState.importState
     
     var previewVideoPath by remember { mutableStateOf<String?>(null) }
+    var speedDialExpanded by remember { mutableStateOf(false) }
 
     // Advanced import picker → VideoEditor
     val videoPicker = rememberLauncherForActivityResult(
@@ -116,15 +90,14 @@ fun HomeScreen(
         uri?.let { viewModel.importVideoQuick(it) }
     }
 
-    
     BackHandler {
-        val activity = context as? android.app.Activity
+        val activity = context as? Activity
         activity?.moveTaskToBack(true)
     }
 
     // Navigate when import succeeds
-    LaunchedEffect(uiState.importState) {
-        when (val importState = uiState.importState) {
+    LaunchedEffect(importState) {
+        when (importState) {
             is ImportState.Success -> {
                 viewModel.resetImportState()
                 onNavigateToVideoEditor(importState.projectId)
@@ -137,422 +110,190 @@ fun HomeScreen(
         }
     }
 
-    var speedDialExpanded by remember { mutableStateOf(false) }
-
     ScreenThemeProvider(accentColor = AccentAmber) {
         Scaffold(
             topBar = {
-            HomeTopBar(
-                onNavigateToSettings = onNavigateToSettings
-            )
-        },
-        floatingActionButton = {
-            if (projects?.isNotEmpty() == true) {
-                com.dipdev.aiautocaptioner.ui.components.SpeedDialFab(
-                    expanded = speedDialExpanded,
-                    onExpandedChange = { speedDialExpanded = it },
-                    items = listOf(
-                        com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
-                            icon = FeatherIcons.Video,
-                            label = stringResource(R.string.home_record_video),
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                            onColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                            onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
-                        ),
-                        com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
-                            icon = FeatherIcons.Zap,
-                            label = stringResource(R.string.home_1_tap_captions),
-                            color = MaterialTheme.colorScheme.primary,
-                            onColor = MaterialTheme.colorScheme.onPrimary,
-                            onClick = { quickPicker.launch("video/*") }
-                        ),
-                        com.dipdev.aiautocaptioner.ui.components.SpeedDialItem(
-                            icon = FeatherIcons.Scissors,
-                            label = stringResource(R.string.home_advanced_studio),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            onColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            onClick = { videoPicker.launch("video/*") }
-                        )
-                    )
+                HomeTopBar(
+                    onNavigateToSettings = onNavigateToSettings
                 )
-            }
-        }
-    ) { padding ->
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .navigationBarsPadding()
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Temporary fetch and display of Remote Config
-                val announcement = uiState.announcementMessage
-
-                if (announcement.isNotBlank()) {
-                    var dismissed by remember(announcement) { mutableStateOf(false) }
-                    if (!dismissed) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Left accent strip
-                            Box(
-                                modifier = Modifier
-                                    .width(4.dp)
-                                    .height(56.dp)
-                                    .background(MaterialTheme.colorScheme.primary)
+            },
+            floatingActionButton = {
+                if (projects?.isNotEmpty() == true) {
+                    SpeedDialFab(
+                        expanded = speedDialExpanded,
+                        onExpandedChange = { speedDialExpanded = it },
+                        items = listOf(
+                            SpeedDialItem(
+                                icon = FeatherIcons.Zap,
+                                label = stringResource(R.string.home_1_tap_captions),
+                                color = AccentAmber,
+                                onColor = Color.White,
+                                onClick = { quickPicker.launch("video/*") }
+                            ),
+                            SpeedDialItem(
+                                icon = FeatherIcons.Video,
+                                label = stringResource(R.string.home_record_video),
+                                color = Color(0xFF232632),
+                                onColor = Color(0xFFE2E7F0),
+                                onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
+                            ),
+                            SpeedDialItem(
+                                icon = FeatherIcons.Scissors,
+                                label = stringResource(R.string.home_advanced_studio),
+                                color = Color(0xFF232632),
+                                onColor = Color(0xFFE2E7F0),
+                                onClick = { videoPicker.launch("video/*") }
                             )
-                            Text(
-                                text = announcement,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                                modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp)
-                            )
-                            IconButton(onClick = { dismissed = true }) {
-                                Icon(
-                                    FeatherIcons.X,
-                                    contentDescription = stringResource(R.string.home_dismiss),
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-                
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (projects == null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary
+                        )
                     )
                 }
-            } else if (projects.isEmpty()) {
-                EmptyProjectView(
-                    lastRecordingMode = uiState.lastRecordingMode,
-                    onNavigateToSmartRecorder = onNavigateToSmartRecorder,
-                    onQuickCaption = { quickPicker.launch("video/*") },
-                    onAdvancedStudio = { videoPicker.launch("video/*") }
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 16.dp,
-                        bottom = 100.dp // space for FAB
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Section header with project count badge
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.home_my_projects),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                            ) {
-                                Text(
-                                    text = "${projects.size}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                    items(
-                        items = projects,
-                        key = { it.project.id }
-                    ) { projectWithExports ->
-                        ProjectCard(
-                            projectWithExports = projectWithExports,
-                            onClick = {
-                                val project = projectWithExports.project
-                                if (project.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
-                                    if (project.status == com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.TRANSCRIBED || project.status == com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.EXPORTED) {
-                                        onNavigateToCaptionEditor(project.id)
-                                    } else {
-                                        onNavigateToProcessing(project.id)
-                                    }
-                                } else {
-                                    onNavigateToVideoEditor(project.id)
-                                }
-                            },
-                            onDelete = { viewModel.deleteProject(projectWithExports.project) },
-                            onRename = { newTitle -> viewModel.renameProject(projectWithExports.project.id, newTitle) },
-                            onDuplicate = { viewModel.duplicateProject(projectWithExports.project.id) },
-                            onPlayVideo = { path -> previewVideoPath = path },
-                            onShareVideo = { path -> 
-                                try {
-                                    val file = java.io.File(path)
-                                    if (!file.exists()) return@ProjectCard
-                                    val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                        type = "video/mp4"
-                                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Video"))
-                                } catch (_: Exception) {
-                                    // IllegalArgumentException (bad path) or ActivityNotFoundException (no share app)
-                                }
-                            },
-                            onNavigateToHistory = { onNavigateToHistory(projectWithExports.project.id) },
-                            onRetranscribe = { onNavigateToProcessing(projectWithExports.project.id) }
-                        )
-                    }
-                }
             }
-
-            // Loading overlay while importing
-            if (importState is ImportState.Loading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        RoundedProgressBar(
-                            modifier = Modifier.fillMaxWidth(0.6f)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(stringResource(R.string.home_importing_video))
-                    }
-                }
-            }
-
-            // Error snackbar
-            if (importState is ImportState.Error) {
-                val message = importState.message
-                LaunchedEffect(importState) {
-                    kotlinx.coroutines.delay(3000.milliseconds)
-                    viewModel.resetImportState()
-                }
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                ) {
-                    Text(stringResource(R.string.home_import_failed).format(message))
-                }
-            }
-            
-            // Video Preview Dialog
-            val currentPreviewPath = previewVideoPath
-            if (currentPreviewPath != null && java.io.File(currentPreviewPath).exists()) {
-                Dialog(
-                    onDismissRequest = { previewVideoPath = null },
-                    properties = DialogProperties(
-                        usePlatformDefaultWidth = false,
-                        dismissOnBackPress = true,
-                        dismissOnClickOutside = true
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        VideoPlayerCard(
-                            path = currentPreviewPath,
-                            modifier = Modifier.fillMaxWidth().aspectRatio(9f/16f)
-                        )
-                    }
-                }
-            }
-        } // end of Box(modifier = Modifier.weight(1f).fillMaxWidth())
-        } // end of Column
-
-        // Scrim Overlay
-        androidx.compose.animation.AnimatedVisibility(
-            visible = speedDialExpanded,
-            enter = androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.fadeOut()
-        ) {
+        ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null,
-                        onClick = { speedDialExpanded = false }
+                    .padding(padding)
+                    .navigationBarsPadding()
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    val announcement = uiState.announcementMessage
+                    if (announcement.isNotBlank()) {
+                        var dismissed by remember(announcement) { mutableStateOf(false) }
+                        if (!dismissed) {
+                            HomeAnnouncementBanner(
+                                announcement = announcement,
+                                onDismiss = { dismissed = true }
+                            )
+                        }
+                    }
+                    
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        when {
+                            projects == null -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            projects.isEmpty() -> {
+                                EmptyProjectView(
+                                    lastRecordingMode = uiState.lastRecordingMode,
+                                    onNavigateToSmartRecorder = onNavigateToSmartRecorder,
+                                    onQuickCaption = { quickPicker.launch("video/*") },
+                                    onAdvancedStudio = { videoPicker.launch("video/*") }
+                                )
+                            }
+                            else -> {
+                                HomeProjectList(
+                                    projects = projects,
+                                    onNavigateToVideoEditor = onNavigateToVideoEditor,
+                                    onNavigateToProcessing = onNavigateToProcessing,
+                                    onNavigateToCaptionEditor = onNavigateToCaptionEditor,
+                                    onNavigateToHistory = onNavigateToHistory,
+                                    onDeleteProject = { viewModel.deleteProject(it) },
+                                    onRenameProject = { id, title -> viewModel.renameProject(id, title) },
+                                    onDuplicateProject = { viewModel.duplicateProject(it) },
+                                    onPlayVideo = { previewVideoPath = it }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Loading overlay while importing
+                if (importState is ImportState.Loading) {
+                    ImportProgressOverlay()
+                }
+
+                // Error snackbar
+                if (importState is ImportState.Error) {
+                    val message = importState.message
+                    LaunchedEffect(importState) {
+                        delay(3000.milliseconds)
+                        viewModel.resetImportState()
+                    }
+                    Snackbar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp)
+                    ) {
+                        Text(stringResource(R.string.home_import_failed).format(message))
+                    }
+                }
+                
+                // Video Preview Dialog
+                val currentPreviewPath = previewVideoPath
+                if (currentPreviewPath != null && File(currentPreviewPath).exists()) {
+                    VideoPreviewDialog(
+                        videoPath = currentPreviewPath,
+                        onDismiss = { previewVideoPath = null }
                     )
-            )
-        }
+                }
 
-        } // end of outer Box (padding)
-    } // end of Scaffold content box
-    } // end of ScreenThemeProvider
-} // end of HomeScreen
-
-@Composable
-private fun HomeTopBar(
-    onNavigateToSettings: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Brand: mascot + wordmark
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            MascotRobot(
-                mode = MascotMode.Idle,
-                modifier = Modifier.size(40.dp),
-                tightCrop = true
-            )
-            com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText(
-                text = stringResource(R.string.home_brand_name)
-            )
-        }
-        // Settings icon
-        IconButton(onClick = onNavigateToSettings) {
-            Icon(
-                imageVector = FeatherIcons.Settings,
-                contentDescription = stringResource(R.string.home_settings),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                // Scrim Overlay when SpeedDial is expanded
+                AnimatedVisibility(
+                    visible = speedDialExpanded,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { speedDialExpanded = false }
+                            )
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun EmptyProjectView(
-    lastRecordingMode: String,
-    onNavigateToSmartRecorder: (String) -> Unit,
-    onQuickCaption: () -> Unit,
-    onAdvancedStudio: () -> Unit
-) {
-    Column(
-        modifier = Modifier
+private fun ImportProgressOverlay(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
     ) {
-        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.nothing))
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(160.dp)
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.home_no_projects),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.home_no_projects_desc),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.home_quick_tip),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(32.dp))
-
-        val recordVideoCd = stringResource(R.string.home_record_video)
-        androidx.compose.material3.Card(
-            onClick = { onNavigateToSmartRecorder(lastRecordingMode) },
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = recordVideoCd },
-            shape = RoundedCornerShape(16.dp),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(FeatherIcons.Video, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary)
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(stringResource(R.string.home_record_video), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                    Text(stringResource(R.string.home_record_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f))
-                }
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            RoundedProgressBar(
+                modifier = Modifier.fillMaxWidth(0.6f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(stringResource(R.string.home_importing_video))
         }
+    }
+}
 
-        Spacer(Modifier.height(16.dp))
-
-        val start1TapCd = stringResource(R.string.home_start_1tap)
-        androidx.compose.material3.Card(
-            onClick = onQuickCaption,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = start1TapCd },
-            shape = RoundedCornerShape(16.dp),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+@Composable
+private fun VideoPreviewDialog(
+    videoPath: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(FeatherIcons.Zap, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(stringResource(R.string.home_1_tap_captions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text(stringResource(R.string.home_1_tap_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        val startAdvancedCd = stringResource(R.string.home_start_advanced)
-        androidx.compose.material3.Card(
-            onClick = onAdvancedStudio,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = startAdvancedCd },
-            shape = RoundedCornerShape(16.dp),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(FeatherIcons.Scissors, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text(stringResource(R.string.home_advanced_studio), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                    Text(stringResource(R.string.home_advanced_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
-                }
-            }
+            VideoPlayerCard(
+                path = videoPath,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(9f / 16f)
+            )
         }
     }
 }

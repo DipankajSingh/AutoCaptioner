@@ -185,7 +185,7 @@ class TranscriptionManager @Inject constructor(
             whisperEngine.initialize(activeModelFile)
         }
 
-        logTranscriptionStarted(project.videoDurationMs, language, translateToEnglish, isRegenerating, initialPrompt, activeModel?.id)
+        logTranscriptionStarted(project.videoDurationMs, language, translateToEnglish, isRegenerating, initialPrompt, activeModel.id)
 
         transcriptionStartTimeMs = System.currentTimeMillis()
         _step.value = ProcessingStep.Transcribing(0f)
@@ -245,7 +245,7 @@ class TranscriptionManager @Inject constructor(
             detectedLanguage = _detectedLanguage.value,
             translateToEnglish = translateToEnglish,
             isRegenerating = isRegenerating,
-            modelId = activeModel?.id,
+            modelId = activeModel.id,
             wordCount = allWords.size,
             elapsedMs = elapsedMs
         )

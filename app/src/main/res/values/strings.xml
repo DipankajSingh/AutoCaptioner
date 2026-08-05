@@ -13,11 +13,11 @@
     <string name="export_button">Export</string>
 
     <string name="home_1_tap_captions">1-Tap Captions</string>
-    <string name="home_1_tap_desc">Import a video and generate viral captions immediately.</string>
-    <string name="home_advanced_studio">Advanced Studio</string>
-    <string name="home_advanced_desc">Trim video and configure setup manually.</string>
+    <string name="home_1_tap_desc">Select a video and generate viral captions instantly. No setup needed.</string>
+    <string name="home_advanced_studio">Trim &amp; Custom Setup</string>
+    <string name="home_advanced_desc">Manually trim timestamps before generating subtitles.</string>
     <string name="home_record_video">Record Video</string>
-    <string name="home_record_desc">Record with your camera or go faceless.</string>
+    <string name="home_record_desc">Shoot new footage with camera or record faceless audio.</string>
     <string name="home_importing_video">Importing video…</string>
     <string name="home_import_failed">Import failed: %s</string>
     <string name="home_notification_title">Show Progress in Background?</string>
@@ -261,8 +261,8 @@
     <string name="home_model_chip">Model: %s</string>
     <string name="home_select_model">Select Model</string>
     <string name="home_settings">Settings</string>
-    <string name="home_no_projects">No projects yet</string>
-    <string name="home_no_projects_desc">Choose how you want to start your first video</string>
+    <string name="home_no_projects">Your studio is ready.</string>
+    <string name="home_no_projects_desc">Import a video from your gallery to generate animated subtitles instantly.</string>
     <string name="home_quick_tip">Quick tip: 1-Tap Captions is the fastest way to add karaoke-style captions to any video.</string>
     <string name="processing_tip_extracting">Pulling the audio out. Won\'t be long.</string>
     <string name="processing_tip_loading">Spinning up the recognition engine.</string>

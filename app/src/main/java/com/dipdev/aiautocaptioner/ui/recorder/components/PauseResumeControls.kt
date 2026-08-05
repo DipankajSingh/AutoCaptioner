@@ -22,6 +22,7 @@ import compose.icons.feathericons.Pause
 import compose.icons.feathericons.Play
 import compose.icons.feathericons.Square
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.recorder.RecordButton
 
 @Composable
 fun PauseResumeControls(
@@ -34,17 +35,15 @@ fun PauseResumeControls(
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp)
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         CircleIconButton(
             icon = if (isPaused) FeatherIcons.Play else FeatherIcons.Pause,
-            size = 48.dp,
+            size = 52.dp,
             onClick = if (isPaused) onResume else onPause
         )
-        CircleIconButton(
-            icon = FeatherIcons.Square,
-            size = 52.dp,
-            accentColor = AccentRose,
+        RecordButton(
+            isRecording = true,
             onClick = onStop
         )
     }

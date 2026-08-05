@@ -38,17 +38,114 @@ import kotlin.random.Random
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import com.dipdev.aiautocaptioner.ui.recorder.model.AspectRatio
 import kotlinx.coroutines.launch
 
 @Composable
-fun GridOverlay() {
+fun GridOverlay(aspectRatio: AspectRatio = AspectRatio.PORTRAIT_9_16) {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(w / 3, 0f), Offset(w / 3, h), strokeWidth = 2f)
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(w * 2 / 3, 0f), Offset(w * 2 / 3, h), strokeWidth = 2f)
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(0f, h / 3), Offset(w, h / 3), strokeWidth = 2f)
-        drawLine(Color.White.copy(alpha = 0.5f), Offset(0f, h * 2 / 3), Offset(w, h * 2 / 3), strokeWidth = 2f)
+        val targetRatio = aspectRatio.width.toFloat() / aspectRatio.height.toFloat()
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val canvasRatio = canvasWidth / canvasHeight
+
+        var activeWidth = canvasWidth
+        var activeHeight = canvasHeight
+
+        if (aspectRatio != AspectRatio.PORTRAIT_9_16) {
+            if (targetRatio > canvasRatio) {
+                activeWidth = canvasWidth
+                activeHeight = canvasWidth / targetRatio
+            } else {
+                activeHeight = canvasHeight
+                activeWidth = canvasHeight * targetRatio
+            }
+        }
+
+        val topBottomPadding = ((canvasHeight - activeHeight) / 2f).coerceAtLeast(0f)
+        val leftRightPadding = ((canvasWidth - activeWidth) / 2f).coerceAtLeast(0f)
+
+        val startX = leftRightPadding
+        val startY = topBottomPadding
+
+        drawLine(
+            Color.White.copy(alpha = 0.5f),
+            Offset(startX + activeWidth / 3f, startY),
+            Offset(startX + activeWidth / 3f, startY + activeHeight),
+            strokeWidth = 2f
+        )
+        drawLine(
+            Color.White.copy(alpha = 0.5f),
+            Offset(startX + activeWidth * 2 / 3f, startY),
+            Offset(startX + activeWidth * 2 / 3f, startY + activeHeight),
+            strokeWidth = 2f
+        )
+        drawLine(
+            Color.White.copy(alpha = 0.5f),
+            Offset(startX, startY + activeHeight / 3f),
+            Offset(startX + activeWidth, startY + activeHeight / 3f),
+            strokeWidth = 2f
+        )
+        drawLine(
+            Color.White.copy(alpha = 0.5f),
+            Offset(startX, startY + activeHeight * 2 / 3f),
+            Offset(startX + activeWidth, startY + activeHeight * 2 / 3f),
+            strokeWidth = 2f
+        )
+    }
+}
+
+@Composable
+fun AspectRatioMaskOverlay(aspectRatio: AspectRatio) {
+    if (aspectRatio == AspectRatio.PORTRAIT_9_16) return
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val targetRatio = aspectRatio.width.toFloat() / aspectRatio.height.toFloat()
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val canvasRatio = canvasWidth / canvasHeight
+
+        var activeWidth = canvasWidth
+        var activeHeight = canvasHeight
+
+        if (targetRatio > canvasRatio) {
+            activeWidth = canvasWidth
+            activeHeight = canvasWidth / targetRatio
+        } else {
+            activeHeight = canvasHeight
+            activeWidth = canvasHeight * targetRatio
+        }
+
+        val topBottomPadding = ((canvasHeight - activeHeight) / 2f).coerceAtLeast(0f)
+        val leftRightPadding = ((canvasWidth - activeWidth) / 2f).coerceAtLeast(0f)
+
+        if (topBottomPadding > 0f) {
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(0f, 0f),
+                size = Size(canvasWidth, topBottomPadding)
+            )
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(0f, canvasHeight - topBottomPadding),
+                size = Size(canvasWidth, topBottomPadding)
+            )
+        }
+
+        if (leftRightPadding > 0f) {
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(0f, 0f),
+                size = Size(leftRightPadding, canvasHeight)
+            )
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(canvasWidth - leftRightPadding, 0f),
+                size = Size(leftRightPadding, canvasHeight)
+            )
+        }
     }
 }
 
