@@ -51,8 +51,8 @@ import kotlinx.coroutines.delay
 fun FilterCarousel(
     activeFilter: CreatorFilter,
     onFilterSelected: (CreatorFilter) -> Unit,
-    onDismiss: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onDismiss: () -> Unit = {},
     filters: List<CreatorFilter> = CreatorFilter.values().toList()
 ) {
     val listState = rememberLazyListState()

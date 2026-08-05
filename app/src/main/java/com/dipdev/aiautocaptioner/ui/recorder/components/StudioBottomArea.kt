@@ -33,7 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.R
@@ -69,7 +69,7 @@ fun StudioBottomArea(
     onEdit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalContext.current.resources.displayMetrics.density
+    val density = LocalDensity.current.density
 
     Column(
         modifier = modifier
@@ -149,7 +149,7 @@ fun StudioBottomArea(
                             )
                     )
                     Text(
-                        text = String.format("%02d:%02d", minutes, seconds),
+                        text = String.format(java.util.Locale.ROOT, "%02d:%02d", minutes, seconds),
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     )

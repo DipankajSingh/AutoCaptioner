@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -35,6 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.svg.SvgDecoder
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import compose.icons.FeatherIcons
@@ -62,8 +66,16 @@ internal fun EmptyProjectView(
         Spacer(Modifier.height(8.dp))
 
         // 1. DYNAMIC STUDIO CREATION GRAPHIC (Video + Waveforms + Captions)
-        StudioEmptyGraphic(
-            modifier = Modifier.padding(bottom = 12.dp)
+        val context = LocalContext.current
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data("file:///android_asset/no_projects.svg")
+                .decoderFactory(SvgDecoder.Factory())
+                .build(),
+            contentDescription = stringResource(R.string.home_no_projects),
+            modifier = Modifier
+                .padding(bottom = 12.dp)
+                .size(160.dp)
         )
         
         // 2. Inspiring Studio Greeting

@@ -61,6 +61,7 @@ fun VideoTimelinePanel(
     onOverlaySelected: (String?) -> Unit,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onCaptionTap: () -> Unit,
+    modifier: Modifier = Modifier,
     onAddImage: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
@@ -81,7 +82,6 @@ fun VideoTimelinePanel(
     segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
     selectedCaptionSegmentId: String? = null,
     onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
     val currentTimelineHeight by androidx.compose.runtime.rememberUpdatedState(timelineHeight)

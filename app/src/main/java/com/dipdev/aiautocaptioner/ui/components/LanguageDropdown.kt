@@ -9,15 +9,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages
-import java.util.Locale
 
 @Composable
 private fun languages(): List<Pair<String, String>> {
+    val currentLocale = LocalConfiguration.current.locales[0]
     val byCode = listOf(
         "auto" to stringResource(R.string.lang_auto_detect_label),
         "en"   to stringResource(R.string.lang_english),
@@ -46,7 +47,7 @@ private fun languages(): List<Pair<String, String>> {
         "ms"   to stringResource(R.string.lang_malay)
     ).associate { it }
 
-    return WhisperLanguages.orderedCodes(Locale.getDefault().country, Locale.getDefault().language)
+    return WhisperLanguages.orderedCodes(currentLocale.country, currentLocale.language)
         .mapNotNull { code -> byCode[code]?.let { name -> code to name } }
 }
 

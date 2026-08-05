@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.core.managers
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import androidx.core.net.toUri
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +29,7 @@ class OverlayManager(
                 if (!overlayDir.exists()) overlayDir.mkdirs()
                 
                 val destFile = File(overlayDir, "${UUID.randomUUID()}.jpg")
-                val inputStream = context.contentResolver.openInputStream(android.net.Uri.parse(uri))
+                val inputStream = context.contentResolver.openInputStream(uri.toUri())
                 val outputStream = FileOutputStream(destFile)
                 inputStream?.use { input ->
                     outputStream.use { output ->

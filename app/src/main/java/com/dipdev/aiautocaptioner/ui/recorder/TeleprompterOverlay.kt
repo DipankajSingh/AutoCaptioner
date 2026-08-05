@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -71,9 +72,13 @@ fun TeleprompterOverlay(
     val totalWords = remember(text) {
         if (text.isBlank()) 0 else text.trim().split(Regex("\\s+")).size
     }
-    val scrolledFraction = if (scrollState.maxValue > 0) {
-        scrollState.value.toFloat() / scrollState.maxValue
-    } else 0f
+    val scrolledFraction by remember {
+        derivedStateOf {
+            if (scrollState.maxValue > 0) {
+                scrollState.value.toFloat() / scrollState.maxValue
+            } else 0f
+        }
+    }
     val wordsLeft = (totalWords * (1f - scrolledFraction)).toInt()
     val minutesLeft = ((wordsLeft.toFloat() / wpm) * 60).toInt().coerceAtLeast(0)
 
@@ -145,7 +150,7 @@ fun TeleprompterOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = stringResource(R.string.teleprompter_words_left, wordsLeft),
+                        text = pluralStringResource(R.plurals.teleprompter_words_left, wordsLeft),
                         color = Color.White.copy(alpha = 0.4f),
                         fontSize = 11.sp
                     )

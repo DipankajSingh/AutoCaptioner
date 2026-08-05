@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.core.graphics.withTranslation
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -133,20 +134,19 @@ fun StylePreview(
                     val offsetX = (containerW - vw * scale) / 2f
                     val offsetY = (containerH - vh * scale) / 2f
                     val native = canvas.nativeCanvas
-                    native.save()
-                    native.translate(offsetX, offsetY)
-                    native.scale(scale, scale)
-                    captionEngine.draw(
-                        context = context,
-                        canvas = native,
-                        currentPositionMs = currentPositionMs,
-                        videoWidth = videoWidth,
-                        videoHeight = videoHeight,
-                        style = style,
-                        segments = segments,
-                        wordsMap = wordsMap
-                    )
-                    native.restore()
+                    native.withTranslation(offsetX, offsetY) {
+                        native.scale(scale, scale)
+                        captionEngine.draw(
+                            context = context,
+                            canvas = native,
+                            currentPositionMs = currentPositionMs,
+                            videoWidth = videoWidth,
+                            videoHeight = videoHeight,
+                            style = style,
+                            segments = segments,
+                            wordsMap = wordsMap
+                        )
+                    }
                 }
             }
         }

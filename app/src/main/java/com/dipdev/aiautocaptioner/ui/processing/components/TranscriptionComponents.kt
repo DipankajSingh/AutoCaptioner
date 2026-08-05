@@ -350,9 +350,9 @@ fun TranscriptionOverlay(
 @Composable
 fun TranscriptionProgressView(
     step: ProcessingStep,
+    modifier: Modifier = Modifier,
     detectedLanguage: String? = null,
     streamedSegments: List<com.dipdev.aiautocaptioner.ui.processing.StreamedSegment> = emptyList(),
-    modifier: Modifier = Modifier
 ) {
     AnimatedContent(
         targetState = step,

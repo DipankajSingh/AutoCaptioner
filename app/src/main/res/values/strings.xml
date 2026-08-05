@@ -2,16 +2,14 @@
     <string name="app_name">Auto Captioner</string>
 
     <string name="export_settings">Export Settings</string>
-    <string name="export_resolution">Resolution</string>
+    
     <string name="export_original">Original</string>
-    <string name="export_frame_rate">Frame Rate</string>
+    
     <string name="export_quality">Quality</string>
     <string name="export_quality_low">Low</string>
     <string name="export_quality_recommended">Recommended</string>
     <string name="export_quality_high">High</string>
-    <string name="export_estimated_size">Estimated File Size:</string>
-    <string name="export_button">Export</string>
-
+    
     <string name="home_1_tap_captions">1-Tap Captions</string>
     <string name="home_1_tap_desc">Select a video and generate viral captions instantly. No setup needed.</string>
     <string name="home_advanced_studio">Trim &amp; Custom Setup</string>
@@ -20,14 +18,9 @@
     <string name="home_record_desc">Shoot new footage with camera or record faceless audio.</string>
     <string name="home_importing_video">Importing video…</string>
     <string name="home_import_failed">Import failed: %s</string>
-    <string name="home_notification_title">Show Progress in Background?</string>
-    <string name="home_notification_desc">AutoCaptioner can show a progress bar in your notifications so you can track transcriptions even when the app is minimized. Would you like to enable this?</string>
-    <string name="home_enable">Enable</string>
-    <string name="home_not_now">Not Now</string>
-
+    
     <string name="caption_jump">Jump</string>
-    <string name="caption_style_editor">Style Editor</string>
-    <string name="caption_export_srt">Export SRT</string>
+    
     <string name="caption_search_segments">Search segments…</string>
     <string name="caption_jump_time">Jump to Time</string>
     <string name="caption_min">Min</string>
@@ -35,7 +28,10 @@
     <string name="caption_cancel">Cancel</string>
     <string name="caption_editor_title">Caption Editor</string>
     <string name="caption_export_video">Export Video</string>
-    <string name="caption_segments_count">%d segments · tap to edit</string>
+    <plurals name="caption_segments_count">
+        <item quantity="one">%d segment · tap to edit</item>
+        <item quantity="other">%d segments · tap to edit</item>
+    </plurals>
     
     <string name="editor_error_prefix">Error: %s</string>
     <string name="editor_retry">Retry</string>
@@ -65,7 +61,7 @@
     <string name="auto_detect_info_title">Let the app pick the right language</string>
     <string name="auto_detect_info_body">The app will figure out the language on its own. Some models work with any language, while others work best for English.</string>
     <string name="auto_detect_tier_any_language">Works with any language</string>
-    <string name="auto_detect_tier_english">Best for English</string>
+    
     <string name="auto_detect_tier_specialized">Language-Specific Models</string>
     <string name="auto_detect_chip_any_language">Any language</string>
     <string name="auto_detect_chip_english">English content</string>
@@ -92,27 +88,11 @@
     <string name="sheet_download_button">Download &amp; Generate</string>
 
     <!-- ModelManager -->
-    <string name="model_manager_title">AI Models</string>
-    <string name="model_manager_subtitle">Downloaded once, works fully offline.</string>
-
+    
     <!-- DeviceCheck -->
-    <string name="device_check_title">Choose Your AI Model</string>
-    <string name="device_check_subtitle">Downloaded once, processes entirely on-device.</string>
-    <string name="device_check_your_device">Your Device</string>
-    <string name="device_check_ram">RAM</string>
-    <string name="device_check_storage">Storage Available</string>
-    <string name="device_check_android">Android</string>
-    <string name="device_check_cpu">CPU</string>
-    <string name="device_check_available_models">Available Models</string>
+    
     <string name="device_check_download_button">Download Selected Model</string>
-    <string name="device_check_recommended">Recommended</string>
-    <string name="device_check_ram_warning">Needs %1$d MB RAM — your device has less</string>
-    <string name="device_check_storage_error">Not enough storage</string>
-    <string name="device_check_storage_error_body">Please free up some space and try again.</string>
-    <string name="device_check_cellular_title">Using Mobile Data</string>
-    <string name="device_check_cellular_body">This download is about %1$d MB. Continue on mobile data?</string>
-    <string name="device_check_cellular_confirm">Download Anyway</string>
-
+    
     <!-- Processing states -->
     <string name="processing_downloading_model">Getting the model.</string>
     <string name="processing_preparing_video">Reading your video.</string>
@@ -229,8 +209,7 @@
     <string name="export_est_file_size">Est. File Size</string>
     <string name="export_start_button">Start Export</string>
     <string name="export_rendering">Rendering Video</string>
-    <string name="export_rendering_progress">Rendering… %d%%</string>
-    <string name="export_rendering_big">Writing captions in.\n%d%% done.</string>
+    
     <string name="export_complete">Done.</string>
     <string name="export_saved_to_gallery">Saved.</string>
     <string name="export_previously_exported">Previously Exported</string>
@@ -258,19 +237,17 @@
     <string name="home_my_projects">My Projects</string>
     <string name="home_dismiss">Dismiss</string>
     <string name="home_brand_name">AutoCaptioner</string>
-    <string name="home_model_chip">Model: %s</string>
-    <string name="home_select_model">Select Model</string>
+    
     <string name="home_settings">Settings</string>
     <string name="home_no_projects">Your studio is ready.</string>
     <string name="home_no_projects_desc">Import a video from your gallery to generate animated subtitles instantly.</string>
-    <string name="home_quick_tip">Quick tip: 1-Tap Captions is the fastest way to add karaoke-style captions to any video.</string>
+    
     <string name="processing_tip_extracting">Pulling the audio out. Won\'t be long.</string>
     <string name="processing_tip_loading">Spinning up the recognition engine.</string>
     <string name="processing_tip_transcribing">You can put the phone down. It\'ll keep going.</string>
     <string name="home_start_1tap">Start 1-Tap Captions</string>
     <string name="home_start_advanced">Start Advanced Studio</string>
-    <string name="home_share_video">Share Video</string>
-
+    
     <!-- Project Card -->
     <string name="project_rename_title">Rename Project</string>
     <string name="project_name_label">Project name</string>
@@ -323,7 +300,7 @@
     <string name="dock_captions">Captions</string>
 
     <!-- Timeline -->
-    <string name="timeline_captions">Captions</string>
+    
     <string name="timeline_tap_to_trim">Tap the video to trim and split</string>
     <string name="timeline_thumbnail">Thumbnail</string>
     <string name="timeline_clip_format">Clip %d</string>
@@ -339,11 +316,7 @@
     <string name="caption_editor_clear_search">Clear search</string>
 
     <!-- Word Chip -->
-    <string name="emphasis_bounce">Bounce</string>
-    <string name="emphasis_scale">Scale</string>
-    <string name="emphasis_shake">Shake</string>
-    <string name="emphasis_pop">Pop</string>
-
+    
     <!-- Project Status -->
     <string name="status_imported">Imported</string>
     <string name="status_ready_for_ai">Ready for AI</string>
@@ -398,8 +371,7 @@
     <string name="player_play">Play</string>
 
     <!-- AiProcessingAnimation -->
-    <string name="ai_animation_logo">AutoCaptioner Logo</string>
-
+    
     <!-- Overlay -->
     <string name="side_image_overlay">Image Overlay</string>
 
@@ -432,8 +404,7 @@
     <string name="settings_terms">Terms &amp; Conditions</string>
 
     <!-- Style Panel -->
-    <string name="style_translate_to_en">Translate to EN</string>
-    <string name="style_to_en_badge">→ EN</string>
+    
     <string name="style_regenerate">Regenerate</string>
     <string name="style_generate">Generate</string>
     <string name="style_empty_title">No captions yet</string>
@@ -514,7 +485,7 @@
     <string name="style_tab_presets">Presets</string>
 
     <!-- Misc -->
-    <string name="timeline_image_overlay">Image Overlay</string>
+    
     <string name="editor_not_found">Project or video not found</string>
 
     <!-- Model Download Screen -->
@@ -531,8 +502,7 @@
     <string name="recorder_grid">Grid</string>
     <string name="recorder_palm">Palm</string>
     <string name="recorder_timer">Timer</string>
-    <string name="recorder_mode_camera">Camera</string>
-    <string name="recorder_mode_faceless">Faceless</string>
+    
     <string name="recorder_open_settings">Open Settings</string>
     <string name="recorder_permission_screen_title">Allow camera &amp; microphone</string>
     <string name="recorder_permission_screen_subtitle">Record sharp video with clear sound. Both are only used while you are recording.</string>
@@ -556,27 +526,23 @@
     <string name="teleprompter_placeholder">Paste your script here…</string>
     <string name="teleprompter_tap_to_pause">Tap to pause</string>
     <string name="teleprompter_mirror">Mirror</string>
-    <string name="teleprompter_font">Aa</string>
+    
     <string name="teleprompter_back_to_top">Back to top</string>
     <string name="teleprompter_script_complete">Script complete</string>
-    <string name="teleprompter_words_left">%d words left</string>
+    <plurals name="teleprompter_words_left">
+        <item quantity="one">%d word left</item>
+        <item quantity="other">%d words left</item>
+    </plurals>
     <string name="teleprompter_minutes_left">~%d min left</string>
-    <string name="teleprompter_font_small">S</string>
-    <string name="teleprompter_font_medium">M</string>
-    <string name="teleprompter_font_large">L</string>
-
+    
     <!-- Recording Feedback -->
     <string name="rec_rec">REC</string>
     <string name="rec_paused">PAUSED</string>
-    <string name="rec_processing">Processing…</string>
-
+    
     <!-- Recorder Controls -->
     <string name="recorder_ratio">Ratio</string>
     <string name="recorder_quality">Quality</string>
-    <string name="recorder_pause">Pause</string>
-    <string name="recorder_resume">Resume</string>
-    <string name="recorder_stop">Stop</string>
-
+    
     <!-- Exit Recording Dialog -->
     <string name="recorder_exit_title">Exit Recording?</string>
     <string name="recorder_exit_message">You have an active recording. What would you like to do?</string>
@@ -586,7 +552,7 @@
 
     <!-- Quick Share Bar -->
     <string name="recorder_retake">Retake</string>
-    <string name="recorder_share">Share</string>
+    
     <string name="recorder_edit">Edit</string>
 
     <!-- Device Check Screen -->
@@ -606,15 +572,7 @@
 
     <!-- Welcome / Onboarding -->
     <string name="welcome_brand">AutoCaptioner</string>
-    <string name="welcome_tagline_1">Words that stop the scroll.</string>
-    <string name="welcome_tagline_2">Your style. Your rules.</string>
-    <string name="welcome_subtitle_detail">Record, import, or go faceless — captions in 60 seconds</string>
-    <string name="welcome_get_started">Create Your First Video</string>
-    <string name="welcome_terms">By continuing, you agree to our Terms of Service and Privacy Policy</string>
-    <string name="welcome_caption_demo_this">this</string>
-    <string name="welcome_caption_demo_actually">actually</string>
-    <string name="welcome_caption_demo_works">WORKS</string>
-
+    
     <!-- Export History -->
     <string name="export_history_label">Exported Video</string>
     <string name="export_history_quality_format">Quality: %s</string>

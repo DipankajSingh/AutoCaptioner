@@ -61,13 +61,13 @@ fun StylePanel(
     timelineHeight: Dp,
     maxTimelineHeight: Dp,
     onTimelineHeightChanged: (Dp) -> Unit,
+    modifier: Modifier = Modifier,
     onGenerateCaptions: () -> Unit = {},
     selectedLanguage: String = "en",
     translateToEnglish: Boolean = false,
     onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
     onAdjustExpanded: ((Boolean) -> Unit)? = null,
     allowedLanguages: List<String> = listOf("multilingual"),
-    modifier: Modifier = Modifier
 ) {
     val styleUiState by viewModel.uiState.collectAsStateWithLifecycle()
     val styles = styleUiState.styles

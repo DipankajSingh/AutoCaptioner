@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.withTranslation
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
@@ -29,12 +30,12 @@ fun PreviewSection(
     selectedOverlayId: String?,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String?) -> Unit,
+    modifier: Modifier = Modifier,
     videoWidth: Int = 0,
     videoHeight: Int = 0,
     activeStyle: CaptionStyleEntity? = null,
     segments: List<CaptionSegmentEntity> = emptyList(),
     wordsMap: Map<String, List<CaptionWordEntity>> = emptyMap(),
-    modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
         VideoPlayerCard(
@@ -72,20 +73,19 @@ fun PreviewSection(
 
                 drawIntoCanvas { canvas ->
                     val native = canvas.nativeCanvas
-                    native.save()
-                    native.translate(offsetX, offsetY)
-                    native.scale(scale, scale)
-                    captionEngine.draw(
-                        context = context,
-                        canvas = native,
-                        currentPositionMs = srcMs,
-                        videoWidth = videoWidth,
-                        videoHeight = videoHeight,
-                        style = activeStyle,
-                        segments = segments,
-                        wordsMap = wordsMap
-                    )
-                    native.restore()
+                    native.withTranslation(offsetX, offsetY) {
+                        native.scale(scale, scale)
+                        captionEngine.draw(
+                            context = context,
+                            canvas = native,
+                            currentPositionMs = srcMs,
+                            videoWidth = videoWidth,
+                            videoHeight = videoHeight,
+                            style = activeStyle,
+                            segments = segments,
+                            wordsMap = wordsMap
+                        )
+                    }
                 }
             }
         }

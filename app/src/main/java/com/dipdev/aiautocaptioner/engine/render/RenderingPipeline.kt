@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.engine.render
 
 import android.graphics.Canvas
+import androidx.core.graphics.withClip
 import com.dipdev.aiautocaptioner.engine.render.pass.BackgroundPass
 import com.dipdev.aiautocaptioner.engine.render.pass.OutlinePass
 import com.dipdev.aiautocaptioner.engine.render.pass.TextFillPass
@@ -29,14 +30,11 @@ class RenderingPipeline(
      * Called once per frame by CaptionEngine.
      */
     fun renderFrame(canvas: Canvas, frame: FrameData) {
-        canvas.save()
-        canvas.clipRect(0f, 0f, frame.videoWidth.toFloat(), frame.videoHeight.toFloat())
-
-        for (pass in sortedPasses) {
-            pass.render(canvas, frame)
+        canvas.withClip(0f, 0f, frame.videoWidth.toFloat(), frame.videoHeight.toFloat()) {
+            for (pass in sortedPasses) {
+                pass.render(canvas, frame)
+            }
         }
-
-        canvas.restore()
     }
 
     companion object {

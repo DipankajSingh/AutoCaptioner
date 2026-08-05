@@ -7,8 +7,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 @Composable
 fun OnboardingScreen(
     onFinish: () -> Unit,
-    viewModel: OnboardingViewModel = hiltViewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     WelcomeScreen(
         onGetStartedClick = {

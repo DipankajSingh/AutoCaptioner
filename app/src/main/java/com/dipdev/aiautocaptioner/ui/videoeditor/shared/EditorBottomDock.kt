@@ -74,6 +74,7 @@ fun EditorBottomDock(
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
+    modifier: Modifier = Modifier,
     // Fix 6: pinch-to-zoom scale factor from VideoTimelinePanel
     onPinchZoom: (scale: Float) -> Unit = {},
     segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
@@ -85,7 +86,6 @@ fun EditorBottomDock(
     translateToEnglish: Boolean = false,
     onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
     allowedLanguages: List<String> = listOf("multilingual"),
-    modifier: Modifier = Modifier
 ) {
     var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
     var timelineHeight by remember { mutableStateOf(220.dp) }

@@ -70,10 +70,10 @@ fun OverlayRenderer(
     selectedOverlayId: String?,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String) -> Unit,
+    modifier: Modifier = Modifier,
     videoWidth: Int = 0,
     videoHeight: Int = 0,
     player: Player? = null,
-    modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val containerW = constraints.maxWidth.toFloat()

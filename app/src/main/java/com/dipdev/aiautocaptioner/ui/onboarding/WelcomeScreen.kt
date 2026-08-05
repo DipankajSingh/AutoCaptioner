@@ -1,10 +1,11 @@
 package com.dipdev.aiautocaptioner.ui.onboarding
 
 import android.content.Intent
-import android.net.Uri
 import android.view.TextureView
 import android.view.ViewGroup
 import androidx.compose.animation.core.*
+import androidx.core.net.toUri
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -290,6 +291,7 @@ private fun BeforeAfterVideoCards(
 }
 
 @Composable
+@SuppressLint("UnsafeOptInUsageError")
 private fun LoopingVideoPlayer(
     rawResId: Int,
     modifier: Modifier = Modifier
@@ -297,7 +299,7 @@ private fun LoopingVideoPlayer(
     val context = LocalContext.current
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            val uri = Uri.parse("android.resource://${context.packageName}/$rawResId")
+            val uri = "android.resource://${context.packageName}/$rawResId".toUri()
             setMediaItem(MediaItem.fromUri(uri))
             repeatMode = Player.REPEAT_MODE_ALL
             volume = 0f
@@ -439,7 +441,7 @@ private fun LegalText() {
                     annotated.getStringAnnotations("URL", position, position)
                         .firstOrNull()?.let { annotation ->
                             context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse(annotation.item))
+                                Intent(Intent.ACTION_VIEW, annotation.item.toUri())
                             )
                         }
                 }

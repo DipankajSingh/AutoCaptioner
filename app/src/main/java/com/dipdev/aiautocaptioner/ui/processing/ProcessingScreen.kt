@@ -83,7 +83,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages
-import java.util.Locale
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -265,9 +264,10 @@ fun ProcessingScreen(
                                     modifier = Modifier.padding(bottom = 24.dp)
                                 )
 
+                                val currentLocale = LocalConfiguration.current.locales[0]
                                 val quickLanguages = WhisperLanguages.orderedCodes(
-                                    Locale.getDefault().country,
-                                    Locale.getDefault().language
+                                    currentLocale.country,
+                                    currentLocale.language
                                 )
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -426,9 +426,10 @@ fun ProcessingScreen(
                                     color = Color.White.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
+                                val currentLocale = LocalConfiguration.current.locales[0]
                                 val quickLanguages = WhisperLanguages.orderedCodes(
-                                    Locale.getDefault().country,
-                                    Locale.getDefault().language
+                                    currentLocale.country,
+                                    currentLocale.language
                                 )
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import androidx.compose.runtime.Composable
@@ -288,7 +289,7 @@ fun CaptionEditorScreen(
                 ) {
                     item {
                         Text(
-                            text = stringResource(R.string.caption_segments_count, filteredSegments.size),
+                            text = pluralStringResource(R.plurals.caption_segments_count, filteredSegments.size),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                             modifier = Modifier.padding(bottom = 4.dp)

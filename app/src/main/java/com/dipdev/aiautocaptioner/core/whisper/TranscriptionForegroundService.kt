@@ -65,12 +65,7 @@ class TranscriptionForegroundService : Service() {
             transcriptionManager.step.collect { step ->
                 updateNotificationForStep(step)
                 if (step is ProcessingStep.Done || step is ProcessingStep.Error || step is ProcessingStep.Cancelled || step is ProcessingStep.Cancelling) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        stopForeground(STOP_FOREGROUND_REMOVE)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        stopForeground(true)
-                    }
+                    stopForeground(STOP_FOREGROUND_REMOVE)
                     releaseWakeLock()
                     stopSelf()
                 }
@@ -148,11 +143,7 @@ class TranscriptionForegroundService : Service() {
         val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         } ?: Intent()
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         return PendingIntent.getActivity(this, 1, intent, flags)
     }
 
@@ -160,11 +151,7 @@ class TranscriptionForegroundService : Service() {
         val cancelIntent = Intent(this, TranscriptionForegroundService::class.java).apply {
             action = ACTION_CANCEL
         }
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         return PendingIntent.getService(this, 0, cancelIntent, flags)
     }
 
@@ -313,12 +300,7 @@ class TranscriptionForegroundService : Service() {
         observeJob?.cancel()
         serviceScope.cancel()
         releaseWakeLock()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
-        }
+        stopForeground(STOP_FOREGROUND_REMOVE)
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(NOTIFICATION_ID)
     }

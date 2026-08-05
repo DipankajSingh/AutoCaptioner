@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.PorterDuff
 import android.os.Build
 import androidx.annotation.OptIn
+import androidx.core.graphics.withSave
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.CanvasOverlay
@@ -55,28 +56,28 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
             // Transformer rotates the whole frame, captions land at the intended
             // position. Rotation 90: (dx,dy) -> (dy, displayW - dx).
             // Rotation 270: (dx,dy) -> (displayH - dy, dx).
-            canvas.save()
-            when (rotationDegrees) {
-                90 -> {
-                    canvas.rotate(-90f)
-                    canvas.translate(0f, displayWidth.toFloat())
+            canvas.withSave {
+                when (rotationDegrees) {
+                    90 -> {
+                        canvas.rotate(-90f)
+                        canvas.translate(0f, displayWidth.toFloat())
+                    }
+                    270 -> {
+                        canvas.rotate(90f)
+                        canvas.translate(displayHeight.toFloat(), 0f)
+                    }
                 }
-                270 -> {
-                    canvas.rotate(90f)
-                    canvas.translate(displayHeight.toFloat(), 0f)
-                }
+                captionEngine.draw(
+                    context = context,
+                    canvas = canvas,
+                    currentPositionMs = currentPositionMs,
+                    videoWidth = displayWidth,
+                    videoHeight = displayHeight,
+                    style = style,
+                    segments = segments,
+                    wordsMap = wordsMap
+                )
             }
-            captionEngine.draw(
-                context = context,
-                canvas = canvas,
-                currentPositionMs = currentPositionMs,
-                videoWidth = displayWidth,
-                videoHeight = displayHeight,
-                style = style,
-                segments = segments,
-                wordsMap = wordsMap
-            )
-            canvas.restore()
         } else {
             captionEngine.draw(
                 context = context,

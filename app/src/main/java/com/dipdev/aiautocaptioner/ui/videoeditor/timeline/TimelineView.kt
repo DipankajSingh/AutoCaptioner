@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -82,6 +83,7 @@ fun TimelineView(
 ) {
     val scrollState = rememberScrollState()
     val verticalScrollState = rememberScrollState()
+    val scrollOffset by remember { derivedStateOf { scrollState.value } }
     var boxWidthPx by remember { mutableIntStateOf(0) }
     val textMeasurer = rememberTextMeasurer()
     
@@ -354,7 +356,7 @@ fun TimelineView(
                                     val isBeingDragged = draggingClipIndex == currentClipIndex
                                     val layoutCenter = clipLayoutCenters[index]
                                     val currentDragOffset = if (isBeingDragged) {
-                                        (dragPointerScreenX + scrollState.value) - layoutCenter
+                                        (dragPointerScreenX + scrollOffset) - layoutCenter
                                     } else { 0f }
                                     
                                     val hasGapBefore = index > 0 && clips[index].startTrimMs >= clips[index - 1].endTrimMs
@@ -370,7 +372,7 @@ fun TimelineView(
                                         isBeingDragged = isBeingDragged,
                                         currentDragOffset = currentDragOffset,
                                         clipLayoutCenters = clipLayoutCenters,
-                                        scrollStateValue = scrollState.value,
+                                        scrollStateValue = scrollOffset,
                                         surfaceVariantColor = surfaceVariantColor,
                                         outlineColor = outlineColor,
                                         onDragStateChange = onDragStateChange,
@@ -456,7 +458,7 @@ fun TimelineView(
                                             currentEndTimeMs = endTimeMs,
                                             totalEditedMs = totalEditedMs,
                                             primaryColor = primaryColor,
-                                            scrollStateValue = scrollState.value,
+                                            scrollStateValue = scrollOffset,
                                             timelineWidthPx = boxWidthPx,
                                             trackContentOffsetPx = halfWidthPx,
                                             onOverlaySelected = onOverlaySelected,

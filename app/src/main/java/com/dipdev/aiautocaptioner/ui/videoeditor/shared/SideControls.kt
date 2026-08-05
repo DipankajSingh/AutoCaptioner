@@ -45,8 +45,8 @@ fun LeftSideControls(
     selectedLanguage: String,
     translateToEnglish: Boolean,
     onLanguageSelected: (String, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     allowedLanguages: List<String> = listOf("multilingual"),
-    modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showLanguagePanel by remember { mutableStateOf(false) }

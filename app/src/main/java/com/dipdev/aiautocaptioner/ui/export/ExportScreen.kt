@@ -119,9 +119,7 @@ fun ExportScreen(
                     else { originalWidth = w; originalHeight = h }
                     originalBitrate = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 5_000_000
                     originalDurationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-                    originalFps = if (android.os.Build.VERSION.SDK_INT >= 23) {
-                        retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)?.toIntOrNull() ?: 30
-                    } else { 30 }
+                    originalFps = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)?.toIntOrNull() ?: 30
                 } catch (e: Exception) { e.printStackTrace() }
                 finally { try { retriever.release() } catch (_: Exception) {} }
             }

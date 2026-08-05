@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.data.billing
 
 import android.app.Activity
+import androidx.core.content.edit
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
@@ -76,7 +77,7 @@ class PremiumManager @Inject constructor(
         val isUnlocked = Firebase.remoteConfig.getBoolean("is_premium_unlocked_for_testing")
         if (isUnlocked) {
             // Simulate a successful purchase to test the UX flow
-            prefs.edit().putBoolean("simulated_premium", true).apply()
+            prefs.edit { putBoolean("simulated_premium", true) }
             _simulatedPremiumFlow.value = true
             return null
         }
