@@ -126,8 +126,7 @@ object LayoutEngine {
                             style.textColor.toInt(), style.secondaryColor.toInt(),
                             android.graphics.Shader.TileMode.CLAMP
                         )
-                        else -> null
-                    }
+                        }
                     if (!isRtl) x += wl.width + spaceW
                     wl.copy(shader = shader)
                 }

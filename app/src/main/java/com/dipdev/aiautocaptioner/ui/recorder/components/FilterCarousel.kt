@@ -58,20 +58,22 @@ fun IntegratedFilterShutter(
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
     // Calculate center item continuously
-    val centerItemIndex by derivedStateOf {
-        val layoutInfo = listState.layoutInfo
-        val center = layoutInfo.viewportStartOffset + layoutInfo.viewportSize.width / 2
-        var closestItemIndex = 0
-        var minDistance = Int.MAX_VALUE
-        for (item in layoutInfo.visibleItemsInfo) {
-            val itemCenter = item.offset + item.size / 2
-            val distance = Math.abs(itemCenter - center)
-            if (distance < minDistance) {
-                minDistance = distance
-                closestItemIndex = item.index
+    val centerItemIndex by remember(listState) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val center = layoutInfo.viewportStartOffset + layoutInfo.viewportSize.width / 2
+            var closestItemIndex = 0
+            var minDistance = Int.MAX_VALUE
+            for (item in layoutInfo.visibleItemsInfo) {
+                val itemCenter = item.offset + item.size / 2
+                val distance = Math.abs(itemCenter - center)
+                if (distance < minDistance) {
+                    minDistance = distance
+                    closestItemIndex = item.index
+                }
             }
+            closestItemIndex
         }
-        closestItemIndex
     }
 
     // Auto-select filter when scrolling stops
