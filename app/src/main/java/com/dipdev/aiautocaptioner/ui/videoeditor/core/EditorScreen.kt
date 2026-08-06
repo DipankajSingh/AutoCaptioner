@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
@@ -47,6 +53,29 @@ import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+
+private val CaptionSegmentSaver = Saver<CaptionSegmentEntity?, Any>(
+    save = { segment ->
+        segment?.let {
+            listOf(it.id, it.projectId, it.index, it.startTimeMs, it.endTimeMs, it.text, it.isEdited)
+        }
+    },
+    restore = { value ->
+        (value as? List<*>)?.let { list ->
+            if (list.size == 7) {
+                CaptionSegmentEntity(
+                    id = list[0] as String,
+                    projectId = list[1] as String,
+                    index = list[2] as Int,
+                    startTimeMs = list[3] as Long,
+                    endTimeMs = list[4] as Long,
+                    text = list[5] as String,
+                    isEdited = list[6] as Boolean
+                )
+            } else null
+        }
+    }
+)
 
 @Composable
 fun EditorScreen(
@@ -84,17 +113,27 @@ fun EditorScreen(
         val videoHeight = uiState.videoHeight
         val allowedLanguages = processingUiState.activeModel?.languages ?: listOf("multilingual")
 
-        val styleUiState by styleViewModel.uiState.collectAsStateWithLifecycle()
+        val activeStyle by remember(styleViewModel) {
+            styleViewModel.uiState.map { it.activeStyle }.distinctUntilChanged()
+        }.collectAsStateWithLifecycle(initialValue = null)
+
+        val segments by remember(styleViewModel) {
+            styleViewModel.uiState.map { it.segments }.distinctUntilChanged()
+        }.collectAsStateWithLifecycle(initialValue = persistentListOf())
+
+        val wordsMap by remember(styleViewModel) {
+            styleViewModel.uiState.map { it.wordsMap }.distinctUntilChanged()
+        }.collectAsStateWithLifecycle(initialValue = persistentMapOf())
 
         // Fix A: collect the shared player
         val player by sharedPlayerViewModel.player.collectAsStateWithLifecycle()
 
-        var selectedClipId by remember { mutableStateOf<String?>(null) }
-        var zoomLevel by remember { mutableFloatStateOf(1f) }
+        var selectedClipId by rememberSaveable { mutableStateOf<String?>(null) }
+        var zoomLevel by rememberSaveable { mutableFloatStateOf(1f) }
 
-        var showDeleteDialog by remember { mutableStateOf(false) }
-        var selectedCaptionSegment by remember { mutableStateOf<CaptionSegmentEntity?>(null) }
-        var inlineEditText by remember { mutableStateOf("") }
+        var showDiscardDialog by remember { mutableStateOf(false) }
+        var selectedCaptionSegment by rememberSaveable(stateSaver = CaptionSegmentSaver) { mutableStateOf<CaptionSegmentEntity?>(null) }
+        var inlineEditText by rememberSaveable { mutableStateOf("") }
         
         var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
         var pendingTranscriptionParams by remember { mutableStateOf<PendingTranscriptionParams?>(null) }
@@ -111,6 +150,8 @@ fun EditorScreen(
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_STOP) {
                     sharedPlayerViewModel.pauseForBackground()
+                } else if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
+                    sharedPlayerViewModel.resumePlayerFromExport()
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
@@ -119,12 +160,8 @@ fun EditorScreen(
             }
         }
 
-        BackHandler {
-            if (hasEdits) {
-                showDeleteDialog = true
-            } else {
-                onNavigateBack()
-            }
+        BackHandler(enabled = hasEdits && !showDiscardDialog) {
+            showDiscardDialog = true
         }
 
         LaunchedEffect(Unit) {
@@ -148,7 +185,10 @@ fun EditorScreen(
                             onNavigateToProcessing()
                         }
                     }
-                    is VideoEditorUiEffect.NavigateToExport -> onNavigateToExport()
+                    is VideoEditorUiEffect.NavigateToExport -> {
+                        sharedPlayerViewModel.suspendPlayerForExport()
+                        onNavigateToExport()
+                    }
                 }
             }
         }
@@ -288,9 +328,9 @@ fun EditorScreen(
                                     onSelectOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
                                     videoWidth = videoWidth,
                                     videoHeight = videoHeight,
-                                    activeStyle = styleUiState.activeStyle,
-                                    segments = styleUiState.segments,
-                                    wordsMap = styleUiState.wordsMap,
+                                    activeStyle = activeStyle,
+                                    segments = segments,
+                                    wordsMap = wordsMap,
                                     modifier = Modifier.fillMaxSize()
                                 )
 
@@ -321,8 +361,9 @@ fun EditorScreen(
 
                                 // Fix 11: Inline caption editor extracted to CaptionInlineEditor composable
                                 // Fix 8: imePadding is applied inside CaptionInlineEditor
+                            if (selectedCaptionSegment != null) {
                                 CaptionInlineEditor(
-                                    segment = selectedCaptionSegment,
+                                    segment = selectedCaptionSegment!!,
                                     editText = inlineEditText,
                                     onEditTextChange = { inlineEditText = it },
                                     onSave = { segId, text ->
@@ -338,6 +379,7 @@ fun EditorScreen(
                                     },
                                     modifier = Modifier.align(Alignment.BottomCenter)
                                 )
+                            }
                             } // end preview Box
 
                             Spacer(modifier = Modifier.height(2.dp))
@@ -370,7 +412,7 @@ fun EditorScreen(
                                     selectedClipId = it 
                                     if (it != null) viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
                                 },
-                                onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to)) },
+                                onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to, !editorState.isDragging)) },
                                 overlays = overlays,
                                 selectedOverlayId = selectedOverlayId,
                                 onOverlaySelected = { 
@@ -387,7 +429,7 @@ fun EditorScreen(
                                 zoomLevel = zoomLevel,
                                 player = editorState.player,
                                 currentTimelineMs = { editorState.currentTimelineMs },
-                                onTrimClip = { id, start, end -> viewModel.setEvent(VideoEditorUiEvent.TrimClip(id, start, end)) },
+                                onTrimClip = { id, start, end -> viewModel.setEvent(VideoEditorUiEvent.TrimClip(id, start, end, !editorState.isDragging)) },
                                 onMoveOverlayZ = { id, bringToFront -> viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront)) },
                                 onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
                                 styleViewModel = styleViewModel,
@@ -404,7 +446,7 @@ fun EditorScreen(
                                     // Fix 6: Pinch-to-zoom from timeline passed through here
                                     zoomLevel = (zoomLevel * scale).coerceIn(0.2f, 5f)
                                 },
-                                segments = styleUiState.segments,
+                                segments = segments,
                                 selectedCaptionSegmentId = selectedCaptionSegment?.id,
                                 onCaptionSegmentTap = { seg ->
                                     selectedCaptionSegment = seg
@@ -427,13 +469,13 @@ fun EditorScreen(
         }
 
         // Fix 10: Extracted dialog composables
-        if (showDeleteDialog) {
-            DeleteProjectDialog(
+        if (showDiscardDialog) {
+            DiscardEditsDialog(
                 onConfirm = {
-                    showDeleteDialog = false
-                    viewModel.setEvent(VideoEditorUiEvent.DeleteProject)
+                    showDiscardDialog = false
+                    onNavigateBack()
                 },
-                onDismiss = { showDeleteDialog = false }
+                onDismiss = { showDiscardDialog = false }
             )
         }
 

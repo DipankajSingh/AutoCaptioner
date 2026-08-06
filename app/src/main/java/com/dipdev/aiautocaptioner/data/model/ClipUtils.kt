@@ -28,22 +28,69 @@ fun mergeContiguousClips(clips: List<Clip>): List<Clip> {
 }
 
 /**
+ * Internal index cache to provide O(log N) binary interval search over clip geometries
+ * and O(1) cumulative duration lookup.
+ */
+private class ClipIndex(
+    val clipsRef: List<Clip>,
+    val prefixSums: LongArray,
+    val sortedIndices: IntArray
+)
+
+@Volatile
+private var cachedClipIndex: ClipIndex? = null
+
+private fun getClipIndex(clips: List<Clip>): ClipIndex {
+    val current = cachedClipIndex
+    if (current != null && (current.clipsRef === clips || current.clipsRef == clips)) {
+        return current
+    }
+    val n = clips.size
+    val sums = LongArray(n)
+    var accum = 0L
+    for (i in 0 until n) {
+        sums[i] = accum
+        accum += (clips[i].endTrimMs - clips[i].startTrimMs)
+    }
+    val sortedIndices = (0 until n).sortedBy { clips[it].endTrimMs }.toIntArray()
+    val newIndex = ClipIndex(clips, sums, sortedIndices)
+    cachedClipIndex = newIndex
+    return newIndex
+}
+
+/**
  * Maps a source-video absolute timestamp (ms) to an edited-timeline timestamp (ms).
  * Returns null if the source time falls in a trimmed-out region.
  *
- * Example: clips = [Clip(2000..5000), Clip(8000..10000)]
- *   sourceToTimelineMs(3000, clips) → 1000  (1 s into the first clip)
- *   sourceToTimelineMs(9000, clips) → 4000  (3s clip + 1s into second clip)
- *   sourceToTimelineMs(6000, clips) → null  (trimmed out)
+ * Uses O(log N) binary interval search over precomputed clip geometries.
  */
 fun sourceToTimelineMs(sourceMs: Long, clips: List<Clip>): Long? {
-    var timelineAccum = 0L
-    for (clip in clips) {
-        val clipDuration = clip.endTrimMs - clip.startTrimMs
-        if (sourceMs in clip.startTrimMs until clip.endTrimMs) {
-            return timelineAccum + (sourceMs - clip.startTrimMs)
+    if (clips.isEmpty()) return null
+    val index = getClipIndex(clips)
+    val sorted = index.sortedIndices
+
+    var low = 0
+    var high = sorted.size - 1
+    var firstIdx = sorted.size
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        if (clips[sorted[mid]].endTrimMs > sourceMs) {
+            firstIdx = mid
+            high = mid - 1
+        } else {
+            low = mid + 1
         }
-        timelineAccum += clipDuration
+    }
+
+    for (i in firstIdx until sorted.size) {
+        val clipIdx = sorted[i]
+        val clip = clips[clipIdx]
+        if (clip.startTrimMs > sourceMs) {
+            break
+        }
+        if (sourceMs in clip.startTrimMs until clip.endTrimMs) {
+            return index.prefixSums[clipIdx] + (sourceMs - clip.startTrimMs)
+        }
     }
     return null
 }
@@ -52,27 +99,46 @@ fun sourceToTimelineMs(sourceMs: Long, clips: List<Clip>): Long? {
  * Returns the [start, end) range on the edited timeline that a caption segment occupies.
  * Handles segments that span clip gaps by clamping to the visible clip regions.
  * Returns null if the segment is entirely trimmed out.
+ *
+ * Uses O(log N) binary interval search to avoid O(S * N) linear iteration when rendering tracks.
  */
 fun segmentToTimelineRange(startSourceMs: Long, endSourceMs: Long, clips: List<Clip>): Pair<Long, Long>? {
-    var timelineAccum = 0L
+    if (clips.isEmpty()) return null
+    val index = getClipIndex(clips)
+    val sorted = index.sortedIndices
+
+    var low = 0
+    var high = sorted.size - 1
+    var firstIdx = sorted.size
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        if (clips[sorted[mid]].endTrimMs > startSourceMs) {
+            firstIdx = mid
+            high = mid - 1
+        } else {
+            low = mid + 1
+        }
+    }
+
     var rangeStart: Long? = null
     var rangeEnd: Long? = null
 
-    for (clip in clips) {
-        val clipDuration = clip.endTrimMs - clip.startTrimMs
-        val clipTimelineEnd = timelineAccum + clipDuration
+    for (i in firstIdx until sorted.size) {
+        val clipIdx = sorted[i]
+        val clip = clips[clipIdx]
+        if (clip.startTrimMs >= endSourceMs) {
+            break
+        }
 
-        // Overlap: source [startSourceMs, endSourceMs) ∩ clip [startTrimMs, endTrimMs)
         val overlapStart = maxOf(startSourceMs, clip.startTrimMs)
         val overlapEnd   = minOf(endSourceMs,   clip.endTrimMs)
 
         if (overlapStart < overlapEnd) {
-            val tStart = timelineAccum + (overlapStart - clip.startTrimMs)
-            val tEnd   = timelineAccum + (overlapEnd   - clip.startTrimMs)
-            if (rangeStart == null) rangeStart = tStart
-            rangeEnd = tEnd
+            val tStart = index.prefixSums[clipIdx] + (overlapStart - clip.startTrimMs)
+            val tEnd   = index.prefixSums[clipIdx] + (overlapEnd   - clip.startTrimMs)
+            rangeStart = if (rangeStart == null) tStart else minOf(rangeStart, tStart)
+            rangeEnd   = if (rangeEnd   == null) tEnd   else maxOf(rangeEnd,   tEnd)
         }
-        timelineAccum = clipTimelineEnd
     }
 
     return if (rangeStart != null && rangeEnd != null) Pair(rangeStart, rangeEnd) else null

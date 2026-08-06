@@ -38,6 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
@@ -95,62 +99,83 @@ fun EditorBottomDock(
     Column(modifier = modifier.background(MaterialTheme.colorScheme.background)) {
         // Dynamic Tools Window
         Box(modifier = Modifier.fillMaxWidth().height(animatedTimelineHeight)) {
-            when (currentMode) {
-                EditorMode.VIDEO -> {
-                    VideoTimelinePanel(
-                        timelineHeight = timelineHeight,
-                        maxTimelineHeight = maxTimelineHeight,
-                        onTimelineHeightChanged = { timelineHeight = it },
-                        clips = clips,
-                        thumbnails = thumbnails,
-            onRequestThumbnails = onRequestThumbnails,
-                        originalDurationMs = originalDurationMs,
-                        selectedClipId = selectedClipId,
-                        onClipSelected = onClipSelected,
-                        onMoveClip = onMoveClip,
-                        overlays = overlays,
-                        selectedOverlayId = selectedOverlayId,
-                        onOverlaySelected = onOverlaySelected,
-                        onUpdateOverlay = onUpdateOverlay,
-                        onCaptionTap = { currentMode = EditorMode.CAPTIONS },
-                        onAddImage = onAddImage,
-                        onDragStateChange = onDragStateChange,
-                        zoomLevel = zoomLevel,
-                        player = player,
-                        currentTimelineMs = currentTimelineMs,
-                        onTrimClip = onTrimClip,
-                        onMoveOverlayZ = onMoveOverlayZ,
-                        onDeleteOverlay = onDeleteOverlay,
-                        onSplit = onSplit,
-                        onDuplicate = onDuplicate,
-                        onDuplicateOverlay = onDuplicateOverlay,
-                        onDelete = onDelete,
-                        onZoomIn = onZoomIn,
-                        onZoomOut = onZoomOut,
-                        onPinchZoom = onPinchZoom,
-                        segments = segments,
-                        selectedCaptionSegmentId = selectedCaptionSegmentId,
-                        onCaptionSegmentTap = onCaptionSegmentTap,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                EditorMode.CAPTIONS -> {
-                    StylePanel(
-                        viewModel = styleViewModel,
-                        timelineHeight = timelineHeight,
-                        maxTimelineHeight = maxTimelineHeight,
-                        onTimelineHeightChanged = { timelineHeight = it },
-                        onGenerateCaptions = onGenerateCaptions,
-                        selectedLanguage = selectedLanguage,
-                        translateToEnglish = translateToEnglish,
-                        onLanguageSelected = onLanguageSelected,
-                        onAdjustExpanded = { expanded ->
-                            timelineHeight = if (expanded) maxTimelineHeight else 220.dp
-                        },
-                        allowedLanguages = allowedLanguages,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+            val isVideoMode = currentMode == EditorMode.VIDEO
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(if (isVideoMode) 1f else 0f)
+                    .graphicsLayer {
+                        alpha = if (isVideoMode) 1f else 0f
+                    }
+                    .offset {
+                        IntOffset(x = if (isVideoMode) 0 else 100000, y = 0)
+                    }
+            ) {
+                VideoTimelinePanel(
+                    timelineHeight = timelineHeight,
+                    maxTimelineHeight = maxTimelineHeight,
+                    onTimelineHeightChanged = { timelineHeight = it },
+                    clips = clips,
+                    thumbnails = thumbnails,
+                    onRequestThumbnails = onRequestThumbnails,
+                    originalDurationMs = originalDurationMs,
+                    selectedClipId = selectedClipId,
+                    onClipSelected = onClipSelected,
+                    onMoveClip = onMoveClip,
+                    overlays = overlays,
+                    selectedOverlayId = selectedOverlayId,
+                    onOverlaySelected = onOverlaySelected,
+                    onUpdateOverlay = onUpdateOverlay,
+                    onCaptionTap = { currentMode = EditorMode.CAPTIONS },
+                    onAddImage = onAddImage,
+                    onDragStateChange = onDragStateChange,
+                    zoomLevel = zoomLevel,
+                    player = player,
+                    currentTimelineMs = currentTimelineMs,
+                    onTrimClip = onTrimClip,
+                    onMoveOverlayZ = onMoveOverlayZ,
+                    onDeleteOverlay = onDeleteOverlay,
+                    onSplit = onSplit,
+                    onDuplicate = onDuplicate,
+                    onDuplicateOverlay = onDuplicateOverlay,
+                    onDelete = onDelete,
+                    onZoomIn = onZoomIn,
+                    onZoomOut = onZoomOut,
+                    onPinchZoom = onPinchZoom,
+                    segments = segments,
+                    selectedCaptionSegmentId = selectedCaptionSegmentId,
+                    onCaptionSegmentTap = onCaptionSegmentTap,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            val isCaptionsMode = currentMode == EditorMode.CAPTIONS
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(if (isCaptionsMode) 1f else 0f)
+                    .graphicsLayer {
+                        alpha = if (isCaptionsMode) 1f else 0f
+                    }
+                    .offset {
+                        IntOffset(x = if (isCaptionsMode) 0 else 100000, y = 0)
+                    }
+            ) {
+                StylePanel(
+                    viewModel = styleViewModel,
+                    timelineHeight = timelineHeight,
+                    maxTimelineHeight = maxTimelineHeight,
+                    onTimelineHeightChanged = { timelineHeight = it },
+                    onGenerateCaptions = onGenerateCaptions,
+                    selectedLanguage = selectedLanguage,
+                    translateToEnglish = translateToEnglish,
+                    onLanguageSelected = onLanguageSelected,
+                    onAdjustExpanded = { expanded ->
+                        timelineHeight = if (expanded) maxTimelineHeight else 220.dp
+                    },
+                    allowedLanguages = allowedLanguages,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
         

@@ -12,6 +12,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
+import com.dipdev.aiautocaptioner.ui.captioneditor.CaptionAlignmentUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -122,11 +123,30 @@ class StyleViewModel @Inject constructor(
     private fun updateSegmentText(segmentId: String, newText: String) {
         viewModelScope.launch {
             val current = uiState.value.segments.find { it.id == segmentId } ?: return@launch
+            
+            // Align and update child words
+            val oldWords = uiState.value.wordsMap[segmentId] ?: emptyList()
+            val alignedWords = CaptionAlignmentUtils.alignWords(
+                oldWords = oldWords,
+                newText = newText,
+                segmentId = current.id,
+                projectId = current.projectId,
+                segmentStartTimeMs = current.startTimeMs,
+                segmentEndTimeMs = current.endTimeMs
+            )
+            captionRepository.replaceWordsForSegment(current.id, alignedWords)
+            
             val updated = current.copy(text = newText, isEdited = true)
             captionRepository.updateSegment(updated)
+            
             // Refresh local state immediately so the caption track re-renders without waiting for Flow
             setState {
-                copy(segments = segments.map { if (it.id == segmentId) updated else it })
+                val newMap = wordsMap.toMutableMap()
+                newMap[segmentId] = alignedWords
+                copy(
+                    segments = segments.map { if (it.id == segmentId) updated else it },
+                    wordsMap = newMap
+                )
             }
         }
     }

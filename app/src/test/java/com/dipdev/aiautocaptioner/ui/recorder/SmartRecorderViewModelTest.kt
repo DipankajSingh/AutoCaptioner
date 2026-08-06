@@ -37,7 +37,6 @@ class SmartRecorderViewModelTest {
     private lateinit var savedStateHandle: SavedStateHandle
     private lateinit var viewModel: SmartRecorderViewModel
 
-    private val onboardingFlow = MutableStateFlow(true)
     private val aspectRatioFlow = MutableStateFlow("PORTRAIT_9_16")
     private val qualityFlow = MutableStateFlow("MEDIUM")
     private val filterFlow = MutableStateFlow(CreatorFilter.NATURAL)
@@ -47,7 +46,6 @@ class SmartRecorderViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         settingsRepository = mockk(relaxed = true) {
-            coEvery { hasSeenRecorderOnboardingFlow } returns onboardingFlow
             coEvery { lastAspectRatioFlow } returns aspectRatioFlow
             coEvery { lastRecordingQualityFlow } returns qualityFlow
             coEvery { selectedCreatorFilterFlow } returns filterFlow

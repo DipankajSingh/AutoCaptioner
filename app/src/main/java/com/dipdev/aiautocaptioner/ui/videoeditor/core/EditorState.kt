@@ -57,10 +57,8 @@ fun rememberEditorState(
         mergeContiguousClips(clips)
     }
 
-    // Keep track of the previous media items to prevent unnecessary ExoPlayer restarts
-    var previousMediaItems by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
-
-    // Sync ExoPlayer playlist with clips
+    // Sync ExoPlayer playlist with clips, explicitly checking player's loaded playlist
+    // to prevent buffer dumps and blackouts upon orientation change or tab switching
     LaunchedEffect(mergedClips, state.isDragging, originalVideoPath) {
         if (!state.isDragging && originalVideoPath.isNotEmpty() && mergedClips.isNotEmpty()) {
             val mediaItems = mergedClips.map { clip ->
@@ -75,15 +73,15 @@ fun rememberEditorState(
                     .build()
             }
 
-            val changed = mediaItems.size != previousMediaItems.size ||
-                mediaItems.zip(previousMediaItems).any { (new, old) ->
+            val currentPlaylist = List(player.mediaItemCount) { i -> player.getMediaItemAt(i) }
+            val changed = mediaItems.size != currentPlaylist.size ||
+                mediaItems.zip(currentPlaylist).any { (new, old) ->
                     new.clippingConfiguration.startPositionMs != old.clippingConfiguration.startPositionMs ||
                     new.clippingConfiguration.endPositionMs != old.clippingConfiguration.endPositionMs ||
                     new.localConfiguration?.uri != old.localConfiguration?.uri
                 }
 
             if (changed) {
-                previousMediaItems = mediaItems
                 // Preserve timeline position across playlist updates
                 val oldWindowIndex = player.currentMediaItemIndex
                 val oldPos = player.currentPosition
@@ -156,6 +154,7 @@ class EditorState(
 
     init {
         player.addListener(playerListener)
+        if (player.isPlaying) startProgressSync() else updateProgress()
     }
 
     fun startProgressSync() {
@@ -163,7 +162,7 @@ class EditorState(
         progressJob = coroutineScope.launch {
             while (isActive) {
                 updateProgress()
-                withFrameMillis { }
+                kotlinx.coroutines.delay(32L)
             }
         }
     }

@@ -116,11 +116,15 @@ object CaptionAlignmentUtils {
                 val gapSize = if (nextMatchedIndex == -1) n - k else nextMatchedIndex - k
                 val duration = maxOf(0L, nextStartTime - prevEndTime)
                 val timePerWord = if (gapSize > 0) duration / gapSize else 0L
+                val remainder = if (gapSize > 0) (duration % gapSize).toInt() else 0
 
                 val gapIndex = k - (prevMatchedIndex + 1)
                 
-                val start = prevEndTime + timePerWord * gapIndex
-                val end = start + timePerWord
+                val extraForPrevious = minOf(gapIndex, remainder)
+                val start = prevEndTime + timePerWord * gapIndex + extraForPrevious
+                
+                val extraForCurrent = if (gapIndex < remainder) 1L else 0L
+                val end = start + timePerWord + extraForCurrent
 
                 result[k] = result[k].copy(
                     startTimeMs = start,

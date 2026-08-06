@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -114,33 +117,29 @@ fun EmptyState(
     val resolvedTitle = title ?: stringResource(R.string.component_no_projects)
     val resolvedSubtitle = subtitle ?: stringResource(R.string.component_no_projects_desc)
     val resolvedButtonText = buttonText ?: stringResource(R.string.component_import_video)
-    val composition by com.airbnb.lottie.compose.rememberLottieComposition(
-        com.airbnb.lottie.compose.LottieCompositionSpec.RawRes(com.dipdev.aiautocaptioner.R.raw.nothing)
-    )
-
     androidx.compose.foundation.layout.Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(vertical = 16.dp, horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Top
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
     ) {
-        com.airbnb.lottie.compose.LottieAnimation(
-            composition = composition,
-            iterations = com.airbnb.lottie.compose.LottieConstants.IterateForever,
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .aspectRatio(1f)
+        androidx.compose.material3.Icon(
+            imageVector = Icons.Rounded.Info,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
         )
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
+        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
         Text(resolvedTitle, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = resolvedSubtitle,
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(32.dp))
+        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
         GradientPrimaryButton(
             onClick = onAction,
             text = resolvedButtonText

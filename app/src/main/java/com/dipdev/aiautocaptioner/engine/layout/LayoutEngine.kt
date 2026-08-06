@@ -10,7 +10,8 @@ import com.dipdev.aiautocaptioner.engine.timing.WordState
 data class WordLayout(
     val word: WordState,
     val displayText: String,
-    val width: Float
+    val width: Float,
+    val shader: android.graphics.Shader? = null
 )
 
 data class LineLayout(
@@ -100,8 +101,43 @@ object LayoutEngine {
         val maxStart = (videoHeight - totalH - padY * 2f).coerceAtLeast(0f)
         val startY = rawY.coerceIn(0f, maxStart)
 
+        // Pre-calculate shaders to avoid JNI allocation per frame
+        val finalLines = if (style.gradientDirection != com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.NONE) {
+            var lineY = startY
+            lineLayouts.map { line ->
+                val lineTop = lineY + fm.top
+                val lineBot = lineY + fm.bottom
+                var x = if (isRtl) line.startX + line.lineWidth else line.startX
+                val wordsWithShader = line.words.map { wl ->
+                    if (isRtl) x -= wl.width
+                    val shader = when (style.gradientDirection) {
+                        com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.LEFT_RIGHT -> android.graphics.LinearGradient(
+                            x, 0f, x + wl.width, 0f,
+                            style.textColor.toInt(), style.secondaryColor.toInt(),
+                            android.graphics.Shader.TileMode.CLAMP
+                        )
+                        com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.TOP_BOTTOM -> android.graphics.LinearGradient(
+                            0f, lineTop, 0f, lineBot,
+                            style.textColor.toInt(), style.secondaryColor.toInt(),
+                            android.graphics.Shader.TileMode.CLAMP
+                        )
+                        com.dipdev.aiautocaptioner.data.db.entity.GradientDirection.DIAGONAL -> android.graphics.LinearGradient(
+                            x, lineTop, x + wl.width, lineBot,
+                            style.textColor.toInt(), style.secondaryColor.toInt(),
+                            android.graphics.Shader.TileMode.CLAMP
+                        )
+                        else -> null
+                    }
+                    if (!isRtl) x += wl.width + spaceW
+                    wl.copy(shader = shader)
+                }
+                lineY += lineH
+                line.copy(words = wordsWithShader)
+            }
+        } else lineLayouts
+
         return CaptionLayout(
-            lines = lineLayouts,
+            lines = finalLines,
             totalHeight = totalH,
             startY = startY,
             lineHeight = lineH

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -81,20 +82,6 @@ fun StudioBottomArea(
     ) {
         // Studio Overlays (Filters / Smoothness Sliders) sliding cleanly above shutter
         AnimatedVisibility(
-            visible = uiState.isFilterCarouselVisible && recordingState == RecordingState.IDLE,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(250)),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200)),
-            modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth()
-        ) {
-            FilterCarousel(
-                activeFilter = uiState.activeFilter,
-                onFilterSelected = onFilterSelected,
-                onDismiss = onDismissSubControls,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        AnimatedVisibility(
             visible = uiState.isSmoothnessSliderVisible && recordingState == RecordingState.IDLE,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(250)),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200)),
@@ -106,16 +93,6 @@ fun StudioBottomArea(
                 onDismiss = onDismissSubControls,
                 modifier = Modifier.fillMaxWidth()
             )
-        }
-
-        // Compact Mode Switcher
-        if (recordingState == RecordingState.IDLE && !uiState.isFilterCarouselVisible && !uiState.isSmoothnessSliderVisible) {
-            Box(modifier = Modifier.padding(bottom = 16.dp)) {
-                ModeToggle(
-                    currentMode = mode.name,
-                    onModeSelected = onModeSelected
-                )
-            }
         }
 
         // Audio visualizer for faceless recording
@@ -161,50 +138,53 @@ fun StudioBottomArea(
         when (recordingState) {
             RecordingState.IDLE -> {
                 if (!isPermissionBlocked) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 36.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Left placeholder to preserve exact geometric dead-center alignment of shutter
-                        Box(modifier = Modifier.size(52.dp))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            IntegratedFilterShutter(
+                                activeFilter = uiState.activeFilter,
+                                onFilterSelected = onFilterSelected,
+                                isRecording = false,
+                                onRecordClick = onStartRecording
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ModeToggle(
+                                currentMode = mode.name,
+                                onModeSelected = onModeSelected
+                            )
 
-                        // Center Capture / Shutter Ring
-                        RecordButton(
-                            isRecording = false,
-                            onClick = onStartRecording
-                        )
-
-                        // Right Camera Flip Button (Lightning-fast thumb reach in Camera Mode)
-                        if (mode == RecordingMode.CAMERA) {
-                            Box(
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .graphicsLayer {
-                                        this.rotationY = animateFlip
-                                        cameraDistance = 8 * density
-                                    }
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.22f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
-                                    .clickable(
-                                        indication = null,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        onClick = onFlipCamera
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = FeatherIcons.RefreshCcw,
-                                    contentDescription = stringResource(R.string.recorder_flip),
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            // Right Camera Flip Button (Lightning-fast thumb reach in Camera Mode)
+                            if (mode == RecordingMode.CAMERA) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .size(44.dp)
+                                        .graphicsLayer {
+                                            this.rotationY = animateFlip
+                                            cameraDistance = 8 * density
+                                        }
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.22f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+                                        .clickable(
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            onClick = onFlipCamera
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = FeatherIcons.RefreshCcw,
+                                        contentDescription = stringResource(R.string.recorder_flip),
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
-                        } else {
-                            Box(modifier = Modifier.size(52.dp))
                         }
                     }
                 }

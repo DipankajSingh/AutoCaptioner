@@ -18,8 +18,6 @@ import kotlin.math.roundToInt
 class OutlinePass : RenderPass {
     override val zIndex = 10
 
-    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
     override fun render(canvas: Canvas, frame: FrameData) {
         val style = frame.style
         val fm = CaptionPaints.text.fontMetrics
@@ -52,15 +50,8 @@ class OutlinePass : RenderPass {
 
                         // Glow layer
                         if (style.glowEnabled && style.glowRadius > 0f) {
-                            glowPaint.textSize = CaptionPaints.text.textSize
-                            glowPaint.typeface = CaptionPaints.text.typeface
-                            glowPaint.color = style.glowColor.toInt()
-                            glowPaint.alpha = (a * style.textOpacity * 0.7f).roundToInt().coerceIn(0, 255)
-                            glowPaint.textAlign = Paint.Align.LEFT
-                            glowPaint.letterSpacing = style.letterSpacing
-                            glowPaint.setShadowLayer(style.glowRadius * baseScale, 0f, 0f, glowPaint.color)
-                            drawText(wl.displayText, 0, wl.displayText.length, x, lineY, glowPaint)
-                            glowPaint.clearShadowLayer()
+                            CaptionPaints.glow.alpha = (a * style.textOpacity * 0.7f).roundToInt().coerceIn(0, 255)
+                            drawText(wl.displayText, 0, wl.displayText.length, x, lineY, CaptionPaints.glow)
                         }
 
                         // Outline pass (shadow is baked into CaptionPaints.outline)

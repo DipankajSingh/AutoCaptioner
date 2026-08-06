@@ -1,18 +1,13 @@
 package com.dipdev.aiautocaptioner.ui.recorder.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -21,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,161 +32,158 @@ import compose.icons.feathericons.Cloud
 import compose.icons.feathericons.Film
 import compose.icons.feathericons.Star
 import compose.icons.feathericons.Sun
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.platform.LocalConfiguration
 
-/**
- * Responsive, Instagram-style horizontal filter carousel designed for real-time 2026 studio recording.
- *
- * Implements aesthetic symbolic icons instead of ambiguous colors, smooth spring physics micro-animations,
- * dynamic border glow highlights, and a 12-second auto-dismiss timeout to ensure camera mode toggles
- * are never trapped underneath an abandoned filter tray.
- */
 @Composable
-fun FilterCarousel(
+fun IntegratedFilterShutter(
     activeFilter: CreatorFilter,
     onFilterSelected: (CreatorFilter) -> Unit,
+    isRecording: Boolean,
+    onRecordClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onDismiss: () -> Unit = {},
-    filters: List<CreatorFilter> = CreatorFilter.values().toList()
+    filters: List<CreatorFilter> = CreatorFilter.entries
 ) {
     val listState = rememberLazyListState()
-    var lastSelected by remember { mutableStateOf(activeFilter) }
-    var interactCount by remember { mutableStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
+    
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    // Padding to center the 64.dp items perfectly under the 72.dp shutter
+    val itemWidth = 64.dp
+    val horizontalPadding = (screenWidth / 2) - (itemWidth / 2)
 
-    // Reset auto-dismiss timer whenever user interacts with filter items
-    LaunchedEffect(activeFilter) {
-        if (activeFilter != lastSelected) {
-            lastSelected = activeFilter
-            interactCount++
-        }
-    }
+    // Snap behavior
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Automatically hide filter carousel after 12s of zero activity so mode switches remain accessible
-    LaunchedEffect(interactCount) {
-        delay(12000)
-        onDismiss()
-    }
-
-    LazyRow(
-        state = listState,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-        modifier = modifier.wrapContentHeight()
-    ) {
-        items(
-            items = filters,
-            key = { filter -> filter.name }
-        ) { filter ->
-            val isSelected = filter == activeFilter
-            FilterCarouselItem(
-                filter = filter,
-                isSelected = isSelected,
-                onClick = {
-                    interactCount++
-                    onFilterSelected(filter)
-                }
-            )
-        }
-    }
-}
-
-/**
- * Reusable individual filter chip featuring expressive icon symbolism, spring scaling, and glowing borders.
- */
-@Composable
-private fun FilterCarouselItem(
-    filter: CreatorFilter,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.15f else 0.92f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "filter_item_scale"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFFFFCC70) else Color.White.copy(alpha = 0.2f),
-        animationSpec = tween(durationMillis = 250),
-        label = "filter_border_color"
-    )
-
-    val borderWidth by animateDpAsState(
-        targetValue = if (isSelected) 2.5.dp else 1.dp,
-        animationSpec = tween(durationMillis = 250),
-        label = "filter_border_width"
-    )
-
-    val iconTint by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFFFFCC70) else Color.White.copy(alpha = 0.85f),
-        animationSpec = tween(durationMillis = 200),
-        label = "filter_icon_tint"
-    )
-
-    val textAlpha by animateFloatAsState(
-        targetValue = if (isSelected) 1.0f else 0.6f,
-        animationSpec = tween(durationMillis = 200),
-        label = "filter_text_alpha"
-    )
-
-    val interactionSource = remember { MutableInteractionSource() }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .scale(scale)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(getFilterGradient(filter))
-                .border(width = borderWidth, color = borderColor, shape = CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            // Inner dark glassmorphic badge layer to make icon crisp and prominent over gradient
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xD9121218)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = getFilterIcon(filter),
-                    contentDescription = filter.displayName,
-                    tint = iconTint,
-                    modifier = Modifier.size(22.dp)
-                )
+    // Calculate center item continuously
+    val centerItemIndex by derivedStateOf {
+        val layoutInfo = listState.layoutInfo
+        val center = layoutInfo.viewportStartOffset + layoutInfo.viewportSize.width / 2
+        var closestItemIndex = 0
+        var minDistance = Int.MAX_VALUE
+        for (item in layoutInfo.visibleItemsInfo) {
+            val itemCenter = item.offset + item.size / 2
+            val distance = Math.abs(itemCenter - center)
+            if (distance < minDistance) {
+                minDistance = distance
+                closestItemIndex = item.index
             }
         }
+        closestItemIndex
+    }
 
-        Spacer(modifier = Modifier.height(6.dp))
+    // Auto-select filter when scrolling stops
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            val filter = filters.getOrNull(centerItemIndex)
+            if (filter != null && filter != activeFilter) {
+                onFilterSelected(filter)
+            }
+        }
+    }
 
-        Text(
-            text = filter.displayName,
-            color = Color.White.copy(alpha = textAlpha),
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+    // Programmatically scroll if external change
+    var programmaticScroll by remember { mutableStateOf(false) }
+    LaunchedEffect(activeFilter) {
+        val index = filters.indexOf(activeFilter)
+        if (index >= 0 && index != centerItemIndex) {
+            programmaticScroll = true
+            listState.animateScrollToItem(index)
+            programmaticScroll = false
+        }
+    }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        // Layer 1: The sliding filter thumbnails
+        LazyRow(
+            state = listState,
+            flingBehavior = flingBehavior,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            itemsIndexed(items = filters, key = { _, filter -> filter.name }) { index, filter ->
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .width(itemWidth)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(index)
+                            }
+                        }
+                ) {
+                    FilterPreviewCircle(filter = filter)
+                }
+            }
+        }
+        
+        // Layer 2: The stationary shutter overlay (Hollow Ring)
+        HollowShutterRing(
+            isRecording = isRecording,
+            onClick = onRecordClick
         )
     }
 }
 
-/**
- * Helper to match each filter type with an iconic photographic symbol for effortless visual recognition.
- */
+@Composable
+fun HollowShutterRing(
+    isRecording: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(72.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val baseRadius = (size.width / 2f) * 0.86f
+            
+            // Draw ONLY the pure white outline
+            drawCircle(
+                color = Color.White.copy(alpha = 0.9f),
+                radius = baseRadius - 6f,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterPreviewCircle(
+    filter: CreatorFilter,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(64.dp)
+            .clip(CircleShape)
+            .background(getFilterGradient(filter)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = getFilterIcon(filter),
+            contentDescription = filter.displayName,
+            tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
 private fun getFilterIcon(filter: CreatorFilter): ImageVector {
     return when (filter) {
         CreatorFilter.NATURAL -> FeatherIcons.Camera
@@ -204,28 +195,13 @@ private fun getFilterIcon(filter: CreatorFilter): ImageVector {
     }
 }
 
-/**
- * Helper to produce vibrant gradient borders & halos corresponding to each filter tone.
- */
 private fun getFilterGradient(filter: CreatorFilter): Brush {
     return when (filter) {
-        CreatorFilter.NATURAL -> Brush.linearGradient(
-            listOf(Color(0xFF2B32B2), Color(0xFF1488CC))
-        )
-        CreatorFilter.VIBRANT -> Brush.linearGradient(
-            listOf(Color(0xFFC850C0), Color(0xFF4158D0))
-        )
-        CreatorFilter.WARM_GLOW -> Brush.linearGradient(
-            listOf(Color(0xFFFFCC70), Color(0xFFC850C0))
-        )
-        CreatorFilter.STUDIO_BRIGHT -> Brush.linearGradient(
-            listOf(Color(0xFF56CCF2), Color(0xFF2F80ED))
-        )
-        CreatorFilter.CINEMATIC -> Brush.linearGradient(
-            listOf(Color(0xFF11998E), Color(0xFF38EF7D))
-        )
-        CreatorFilter.SOFT_PASTEL -> Brush.linearGradient(
-            listOf(Color(0xFFF64F59), Color(0xFFC471ED))
-        )
+        CreatorFilter.NATURAL -> Brush.linearGradient(listOf(Color(0xFF2B32B2), Color(0xFF1488CC)))
+        CreatorFilter.VIBRANT -> Brush.linearGradient(listOf(Color(0xFFC850C0), Color(0xFF4158D0)))
+        CreatorFilter.WARM_GLOW -> Brush.linearGradient(listOf(Color(0xFFFFCC70), Color(0xFFC850C0)))
+        CreatorFilter.STUDIO_BRIGHT -> Brush.linearGradient(listOf(Color(0xFF56CCF2), Color(0xFF2F80ED)))
+        CreatorFilter.CINEMATIC -> Brush.linearGradient(listOf(Color(0xFF11998E), Color(0xFF38EF7D)))
+        CreatorFilter.SOFT_PASTEL -> Brush.linearGradient(listOf(Color(0xFFF64F59), Color(0xFFC471ED)))
     }
 }

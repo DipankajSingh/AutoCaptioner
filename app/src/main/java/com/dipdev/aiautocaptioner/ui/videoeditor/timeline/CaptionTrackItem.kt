@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.segmentToTimelineRange
@@ -43,7 +45,6 @@ fun CaptionTrackItem(
     val widthPx  = (range.second - range.first) * pixelsPerMs
     if (widthPx < 1f) return
 
-    val startDp = with(density) { startPx.toDp() }
     val widthDp = with(density) { widthPx.toDp() }.coerceAtLeast(4.dp)
 
     val accentColor = LocalAccentColor.current
@@ -51,7 +52,7 @@ fun CaptionTrackItem(
 
     Box(
         modifier = Modifier
-            .offset(x = startDp)
+            .offset { IntOffset(startPx.roundToInt(), 0) }
             .width(widthDp)
             .fillMaxHeight()
             .padding(vertical = 3.dp, horizontal = 1.dp)

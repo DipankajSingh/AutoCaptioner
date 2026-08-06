@@ -115,6 +115,10 @@ dependencies {
     implementation(libs.feather)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // -------------------------------------------------------
+    // Kotlinx Immutable Collections
+    // -------------------------------------------------------
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
 
     // -------------------------------------------------------
     // Navigation

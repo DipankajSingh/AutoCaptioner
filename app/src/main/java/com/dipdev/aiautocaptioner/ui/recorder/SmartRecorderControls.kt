@@ -43,7 +43,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 @Composable
 fun SidebarButton(
     icon: ImageVector,
-    text: String,
+    text: String, // Kept for compatibility but ignored in UI
     isActive: Boolean = false,
     rotationY: Float = 0f,
     pulseRing: Boolean = false,
@@ -61,6 +61,7 @@ fun SidebarButton(
         label = "buttonScale"
     )
     val alpha by animateFloatAsState(targetValue = if (isActive) 1f else 0.85f, label = "buttonAlpha")
+    val activeColor = MaterialTheme.colorScheme.primary
 
     // Subtle ambient breathing aura when active (zero vibration / zero haptic feedback)
     val infiniteTransition = rememberInfiniteTransition(label = "pulseRing")
@@ -77,82 +78,58 @@ fun SidebarButton(
         label = "ringAlpha"
     )
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
+            .size(44.dp)
             .scale(scale)
+            .graphicsLayer {
+                this.rotationY = rotationY
+                cameraDistance = 8 * density
+            }
+            .clip(CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             )
-            .padding(vertical = 4.dp, horizontal = 6.dp)
     ) {
-        val activeColor = MaterialTheme.colorScheme.primary
-
-        Box(contentAlignment = Alignment.Center) {
-            // Animated breathing aura backdrop without haptic motor firing
-            if (pulseRing || breathingGlow) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .scale(pulseScale)
-                        .background(color = activeColor.copy(alpha = pulseAlpha), shape = CircleShape)
-                )
-            }
-
+        if (pulseRing || breathingGlow) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .graphicsLayer {
-                        this.rotationY = rotationY
-                        cameraDistance = 8 * density
-                    }
-                    .background(
-                        color = if (isActive) activeColor.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.4f),
-                        shape = CircleShape
-                    )
-                    .border(
-                        width = if (isActive) 1.5.dp else 1.dp,
-                        color = if (isActive) activeColor else Color.White.copy(alpha = 0.35f),
-                        shape = CircleShape
-                    ),
+                    .fillMaxSize()
+                    .scale(pulseScale)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = pulseAlpha))
+            )
+        }
+        
+        Icon(
+            imageVector = icon,
+            contentDescription = text,
+            tint = if (isActive) activeColor else Color.White.copy(alpha = alpha),
+            modifier = Modifier
+                .size(24.dp)
+        )
+        
+        if (badgeText != null && badgeText != "0.0") {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 2.dp, y = (-2).dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(color = activeColor)
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = text,
-                    tint = if (isActive) activeColor else Color.White,
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = badgeText,
+                    color = Color.White,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black
                 )
             }
-
-            if (badgeText != null && badgeText != "0.0") {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 6.dp, y = (-4).dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(color = activeColor)
-                        .padding(horizontal = 4.dp, vertical = 1.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = badgeText,
-                        color = Color.White,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-            }
         }
-        Spacer(modifier = Modifier.height(3.dp))
-        Text(
-            text = text,
-            color = if (isActive) activeColor else Color.White.copy(alpha = alpha),
-            fontSize = 10.sp,
-            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
-        )
     }
 }
 
@@ -161,34 +138,26 @@ fun ModeToggle(currentMode: String, onModeSelected: (String) -> Unit) {
     val options = listOf("CAMERA", "FACELESS")
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(color = Color.Black.copy(alpha = 0.4f))
-            .padding(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(4.dp)
     ) {
         options.forEach { mode ->
             val isSelected = mode == currentMode
-            val animatedBackground by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                animationSpec = tween(200),
-                label = "toggle_bg"
-            )
 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(animatedBackground)
                     .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
                         if (!isSelected) onModeSelected(mode)
                     }
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = mode,
-                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    fontSize = 13.sp
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
+                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.sp
                 )
             }
         }

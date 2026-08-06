@@ -63,9 +63,35 @@ object TimingEngine {
         segments: List<CaptionSegmentEntity>,
         posMs: Long
     ): CaptionSegmentEntity? {
-        return segments
-            .filter { posMs in it.startTimeMs..it.endTimeMs }
-            .maxByOrNull { it.startTimeMs }
+        if (segments.isEmpty()) return null
+        
+        var low = 0
+        var high = segments.size - 1
+        var candidateIdx = -1
+
+        // Binary search for the rightmost segment whose startTimeMs <= posMs
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            if (segments[mid].startTimeMs <= posMs) {
+                candidateIdx = mid
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+
+        if (candidateIdx == -1) return null
+
+        // Scan backwards from candidateIdx. Since segments are ordered by startTimeMs ascending,
+        // the first matching segment we encounter inherently has the maximum startTimeMs.
+        for (i in candidateIdx downTo 0) {
+            val segment = segments[i]
+            if (posMs <= segment.endTimeMs && posMs >= segment.startTimeMs) {
+                return segment
+            }
+        }
+
+        return null
     }
 
     /**

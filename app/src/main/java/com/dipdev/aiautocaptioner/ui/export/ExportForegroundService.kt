@@ -303,16 +303,26 @@ class ExportForegroundService : Service() {
                 val overlays = overlayRepository.getOverlaysOnce(projectId)
                 val imageOverlayEffects = overlays.mapNotNull { overlay ->
                     try {
+                        val maxTargetWidth = (displayWidth * overlay.scaleX).toInt().coerceAtLeast(256)
+                        val maxTargetHeight = (displayHeight * overlay.scaleY).toInt().coerceAtLeast(256)
+                        val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        if (overlay.imageUri.startsWith("content://")) {
+                            contentResolver.openInputStream(overlay.imageUri.toUri())?.use { stream ->
+                                BitmapFactory.decodeStream(stream, null, boundsOpts)
+                            }
+                        } else {
+                            BitmapFactory.decodeFile(overlay.imageUri, boundsOpts)
+                        }
                         val opts = BitmapFactory.Options().apply {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                 inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
                             }
+                            inSampleSize = calculateInSampleSize(boundsOpts, maxTargetWidth, maxTargetHeight)
                         }
                         val bitmap = if (overlay.imageUri.startsWith("content://")) {
-                            val inputStream = contentResolver.openInputStream(overlay.imageUri.toUri())
-                            val bmp = BitmapFactory.decodeStream(inputStream, null, opts)
-                            inputStream?.close()
-                            bmp
+                            contentResolver.openInputStream(overlay.imageUri.toUri())?.use { stream ->
+                                BitmapFactory.decodeStream(stream, null, opts)
+                            }
                         } else {
                             BitmapFactory.decodeFile(overlay.imageUri, opts)
                         }
@@ -326,7 +336,8 @@ class ExportForegroundService : Service() {
                                 startTimeMs = overlay.startTimeMs,
                                 endTimeMs = overlay.endTimeMs,
                                 videoWidth = displayWidth,
-                                videoHeight = displayHeight
+                                videoHeight = displayHeight,
+                                rotationDegrees = project.videoRotation
                             )
                         } else null
                     } catch (e: Throwable) {
@@ -515,6 +526,19 @@ class ExportForegroundService : Service() {
     ) {
         captionOverlayEffect?.release()
         imageOverlayEffects.forEach { it.release() }
+    }
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val (height: Int, width: Int) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     private fun stopExportService() {

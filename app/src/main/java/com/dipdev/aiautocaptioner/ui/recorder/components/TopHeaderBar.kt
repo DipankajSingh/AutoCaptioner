@@ -108,8 +108,6 @@ private fun HeaderActionPill(
             .scale(scale)
             .alpha(alpha)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.Black.copy(alpha = 0.5f))
-            .border(width = 1.dp, color = Color.White.copy(alpha = 0.15f), shape = RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null, // Handled purely by custom scale & opacity micro-animation

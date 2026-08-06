@@ -13,9 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -58,12 +56,11 @@ internal fun EmptyProjectView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         // 1. DYNAMIC STUDIO CREATION GRAPHIC (Video + Waveforms + Captions)
         val context = LocalContext.current
@@ -74,8 +71,8 @@ internal fun EmptyProjectView(
                 .build(),
             contentDescription = stringResource(R.string.home_no_projects),
             modifier = Modifier
-                .padding(bottom = 12.dp)
-                .size(160.dp)
+                .padding(bottom = 8.dp)
+                .size(120.dp)
         )
         
         // 2. Inspiring Studio Greeting
@@ -86,7 +83,7 @@ internal fun EmptyProjectView(
             color = Color.White,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = stringResource(R.string.home_no_projects_desc),
             style = MaterialTheme.typography.bodyMedium,
@@ -96,7 +93,7 @@ internal fun EmptyProjectView(
             lineHeight = 20.sp
         )
         
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(20.dp))
 
         // 3. PRIMARY HERO CARD: 1-Tap Captions (The flagship expressway)
         HeroExpressCard(
@@ -106,7 +103,7 @@ internal fun EmptyProjectView(
             subtitle = stringResource(R.string.home_1_tap_desc)
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
 
         // 4. SECONDARY STUDIO CONSOLE (More Creation Tools)
         Text(
@@ -117,10 +114,10 @@ internal fun EmptyProjectView(
             letterSpacing = 1.2.sp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(horizontal = 4.dp, vertical = 2.dp),
             textAlign = TextAlign.Start
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
 
         // Secondary Card 1: Record Video
         StudioActionCard(
@@ -131,7 +128,7 @@ internal fun EmptyProjectView(
             contentDescriptionText = stringResource(R.string.home_record_video)
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
 
         // Secondary Card 2: Trim & Custom Setup
         StudioActionCard(
@@ -142,7 +139,7 @@ internal fun EmptyProjectView(
             contentDescriptionText = stringResource(R.string.home_start_advanced)
         )
         
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -168,12 +165,12 @@ private fun HeroExpressCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(54.dp)
+                    .size(46.dp)
                     .background(
                         Brush.horizontalGradient(
                             listOf(Color(0xFFFFC947), AccentAmber)
@@ -186,19 +183,19 @@ private fun HeroExpressCard(
                     imageVector = FeatherIcons.Zap,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
-                    fontSize = 18.sp
+                    fontSize = 17.sp
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(3.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -209,7 +206,7 @@ private fun HeroExpressCard(
             Spacer(Modifier.width(12.dp))
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(32.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(AccentAmber.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
@@ -248,12 +245,12 @@ private fun StudioActionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(40.dp)
                     .background(Color(0xFF262629), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
@@ -261,10 +258,10 @@ private fun StudioActionCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = Color(0xFFD3D8E5),
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,

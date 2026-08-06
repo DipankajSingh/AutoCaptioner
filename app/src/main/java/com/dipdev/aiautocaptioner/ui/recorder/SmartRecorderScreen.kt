@@ -91,10 +91,8 @@ import com.dipdev.aiautocaptioner.ui.recorder.components.PauseResumeControls
 import com.dipdev.aiautocaptioner.ui.recorder.components.QuickShareBar
 import com.dipdev.aiautocaptioner.ui.recorder.components.SegmentBadge
 import com.dipdev.aiautocaptioner.ui.recorder.components.StorageIndicator
-import com.dipdev.aiautocaptioner.ui.recorder.components.FilterCarousel
 import com.dipdev.aiautocaptioner.ui.recorder.components.SmoothnessSlider
 import com.dipdev.aiautocaptioner.ui.recorder.components.FloatingFilterBadge
-import com.dipdev.aiautocaptioner.ui.recorder.components.StudioLeftSidebar
 import com.dipdev.aiautocaptioner.ui.recorder.components.StudioRightSidebar
 import com.dipdev.aiautocaptioner.ui.recorder.components.StudioBottomArea
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
@@ -517,12 +515,26 @@ fun SmartRecorderContent(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.5f))
             ) {
                 Icon(FeatherIcons.X, contentDescription = "Close", tint = Color.White)
             }
 
-            // Center: Top Header Bar (Aspect Ratio & Quality pills) when IDLE
+            // Center: Flash Button
+            IconButton(
+                onClick = {
+                    flashEnabled = !flashEnabled
+                    cameraController.enableTorch(flashEnabled)
+                },
+                modifier = Modifier.size(40.dp)
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = if (flashEnabled) compose.icons.FeatherIcons.Zap else compose.icons.FeatherIcons.ZapOff,
+                    contentDescription = "Flash",
+                    tint = androidx.compose.ui.graphics.Color.White
+                )
+            }
+
+            // Far Right: Top Header Bar (Aspect Ratio & Quality pills) when IDLE
             if (recordingState == RecordingState.IDLE && !isPermissionBlocked) {
                 TopHeaderBar(
                     aspectRatio = aspectRatio,
@@ -531,11 +543,8 @@ fun SmartRecorderContent(
                     onQualityClick = { viewModel.cycleRecordingQuality() }
                 )
             } else {
-                Spacer(modifier = Modifier.size(40.dp))
+                androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.size(40.dp))
             }
-
-            // Far Right: Placeholder spacer to balance layout and guarantee center alignment without overlap
-            Spacer(modifier = Modifier.size(40.dp))
         }
 
         // Floating filter badge on selection change
@@ -550,27 +559,16 @@ fun SmartRecorderContent(
 
         // --- Vertical Studio Sidebars ---
         if (!isPermissionBlocked && recordingState == RecordingState.IDLE) {
-            StudioLeftSidebar(
-                mode = mode,
-                flashEnabled = flashEnabled,
-                showGrid = showGrid,
-                showTeleprompter = showTeleprompter,
-                onToggleFlash = {
-                    flashEnabled = !flashEnabled
-                    cameraController.enableTorch(flashEnabled)
-                },
-                onToggleGrid = { viewModel.toggleGrid() },
-                onToggleTeleprompter = { viewModel.toggleTeleprompter() },
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = 10.dp)
-            )
-
             StudioRightSidebar(
                 mode = mode,
                 uiState = uiState,
                 isGestureDetectionEnabled = isGestureDetectionEnabled,
                 countdownTimer = countdownTimer,
+                showGrid = showGrid,
+                showTeleprompter = showTeleprompter,
+                onToggleGrid = { viewModel.toggleGrid() },
+                onToggleTeleprompter = { viewModel.toggleTeleprompter() },
                 onToggleSmoothness = { viewModel.toggleSmoothnessSlider() },
-                onToggleFilters = { viewModel.toggleFilterCarousel() },
                 onToggleGesture = { viewModel.toggleGestureDetection() },
                 onOpenCanvasPicker = { showBgPicker = true },
                 onCycleTimer = {

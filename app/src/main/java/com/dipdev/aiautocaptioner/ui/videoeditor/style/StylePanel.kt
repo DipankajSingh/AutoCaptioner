@@ -1,6 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.style
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -110,46 +114,29 @@ fun StylePanel(
 
             activeStyle?.let { style ->
                 if (!hasCaptions) {
-                    // No captions yet — show a proper empty state with generate prompt
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(horizontal = 32.dp)
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                    ) {
+                        Text(
+                            text = "No captions yet",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+                        androidx.compose.material3.Button(
+                            onClick = onGenerateCaptions,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = com.dipdev.aiautocaptioner.ui.theme.AccentAmber,
+                                contentColor = com.dipdev.aiautocaptioner.ui.theme.TextPrimary
+                            )
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Subtitles,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
-                            )
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Text(
-                                text = stringResource(R.string.style_empty_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.style_empty_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                lineHeight = 18.sp
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Surface(
-                                onClick = onGenerateCaptions,
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.primary
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.style_generate),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
-                                )
-                            }
+                            Text("Generate Captions", fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {
@@ -170,7 +157,21 @@ fun StylePanel(
                         onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
                         onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
                         onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) },
-                        onGenerateCaptions = onGenerateCaptions
+                        onGenerateCaptions = onGenerateCaptions,
+                        textColor = style.textColor,
+                        backgroundColor = style.backgroundColor,
+                        activeWordBgColor = style.activeWordBgColor,
+                        activeWordTextColor = style.activeWordTextColor,
+                        onColorChanged = { field, color ->
+                            viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("color") { s ->
+                                when (field) {
+                                    CaptionColorField.TEXT -> s.copy(textColor = color, highlightColor = color)
+                                    CaptionColorField.BACKGROUND -> s.copy(backgroundColor = color)
+                                    CaptionColorField.ACTIVE_BG -> s.copy(activeWordBgColor = color)
+                                    CaptionColorField.ACTIVE_TEXT -> s.copy(activeWordTextColor = color)
+                                }
+                            })
+                        }
                     )
 
                     PresetsTab(
@@ -209,8 +210,15 @@ private fun CompactCaptionsHeader(
     onMaxWordsChange: (Int) -> Unit,
     onMaxLinesChange: (Int) -> Unit,
     onPositionYChange: (Float) -> Unit,
-    onGenerateCaptions: () -> Unit
+    onGenerateCaptions: () -> Unit,
+    textColor: Long,
+    backgroundColor: Long,
+    activeWordBgColor: Long,
+    activeWordTextColor: Long,
+    onColorChanged: (CaptionColorField, Long) -> Unit
 ) {
+    var showColor by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -406,6 +414,65 @@ private fun CompactCaptionsHeader(
             }
         }
 
+        // Color pill — opens color picker popup
+        Box {
+            Surface(
+                onClick = {
+                    onToggleAdjust(false)
+                    showColor = !showColor
+                },
+                shape = RoundedCornerShape(8.dp),
+                color = if (showColor) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ColorLens,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (showColor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = stringResource(R.string.style_color),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (showColor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            if (showColor) {
+                Popup(
+                    alignment = Alignment.TopStart,
+                    onDismissRequest = { showColor = false },
+                    properties = PopupProperties(focusable = true)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 10.dp,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                        modifier = Modifier
+                            .padding(top = 34.dp)
+                            .width(320.dp)
+                    ) {
+                        ColorPickerPopupContent(
+                            textColor = textColor,
+                            backgroundColor = backgroundColor,
+                            activeWordBgColor = activeWordBgColor,
+                            activeWordTextColor = activeWordTextColor,
+                            onColorChanged = onColorChanged
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.weight(1f))
 
         Surface(
@@ -468,82 +535,111 @@ private fun StepperControl(
     }
 }
 
-// ── Hidden for v1 ────────────────────────────────────────────────────────────
-// The full tabbed style editor with Text / Color / Animation tabs is
-// commented out below. Re-enable when premium / payment is ready.
-//
-// import com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs.AnimationTab
-// import com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs.ColorTab
-// import com.dipdev.aiautocaptioner.ui.videoeditor.style.tabs.TextTab
-//
-// To restore:
-//   1. Uncomment the three imports above.
-//   2. Uncomment StyleEditorBottomBar() call and the when-branches below.
-//   3. Uncomment isPremium from styleUiState.
-//
-// val isPremium = styleUiState.isPremium
-//
-// StyleEditorBottomBar(
-//     selectedTab = selectedTab,
-//     isPremium = isPremium,
-//     onTabSelected = { tab ->
-//         viewModel.setEvent(StyleEditorUiEvent.SelectTab(tab))
-//     }
-// )
-//
-// StyleTab.TEXT -> {
-//     TextTab(
-//         style = style,
-//         onFontFamilyChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontFamily") { s -> s.copy(fontFamily = it) }) },
-//         onFontSizeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontSize") { s -> s.copy(fontSize = it) }) },
-//         onFontWeightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("fontWeight") { s -> s.copy(fontWeight = it) }) },
-//         onMaxWordsChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxWords") { s -> s.copy(maxWordsPerLine = it) }) },
-//         onMaxLinesChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("maxLines") { s -> s.copy(maxLines = it) }) },
-//         onRemovePunctuationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("removePunctuation") { s -> s.copy(removePunctuation = it) }) },
-//         onAlignmentChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("alignment") { s -> s.copy(alignment = it) }) },
-//         onLetterSpacingChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("letterSpacing") { s -> s.copy(letterSpacing = it) }) },
-//         onIsItalicChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("isItalic") { s -> s.copy(isItalic = it) }) },
-//         onTextOpacityChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("textOpacity") { s -> s.copy(textOpacity = it) }) },
-//         onTextTransformChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("textTransform") { s -> s.copy(textTransform = it) }) },
-//         onLineHeightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("lineHeight") { s -> s.copy(lineHeight = it) }) },
-//         onPositionXChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionX") { s -> s.copy(positionX = it) }) },
-//         onPositionYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("positionY") { s -> s.copy(positionY = it) }) }
-//     )
-// }
-//
-// StyleTab.COLOR -> {
-//     ColorTab(
-//         style = style,
-//         onTextColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("textColor") { s -> s.copy(textColor = it) }) },
-//         onHighlightColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("highlightColor") { s -> s.copy(highlightColor = it) }) },
-//         onOutlineColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("outlineColor") { s -> s.copy(outlineColor = it) }) },
-//         onOutlineWidthChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("outlineWidth") { s -> s.copy(outlineWidth = it) }) },
-//         onOutlineOnlyChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("outlineOnly") { s -> s.copy(outlineOnly = it) }) },
-//         onShadowColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("shadowColor") { s -> s.copy(shadowColor = it) }) },
-//         onShadowRadiusChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("shadowRadius") { s -> s.copy(shadowRadius = it) }) },
-//         onShadowOffsetXChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("shadowOffsetX") { s -> s.copy(shadowOffsetX = it) }) },
-//         onShadowOffsetYChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("shadowOffsetY") { s -> s.copy(shadowOffsetY = it) }) },
-//         onGradientDirectionChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("gradientDirection") { s -> s.copy(gradientDirection = it) }) },
-//         onSecondaryColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("secondaryColor") { s -> s.copy(secondaryColor = it) }) },
-//         onGlowEnabledChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("glowEnabled") { s -> s.copy(glowEnabled = it) }) },
-//         onGlowColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("glowColor") { s -> s.copy(glowColor = it) }) },
-//         onGlowRadiusChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("glowRadius") { s -> s.copy(glowRadius = it) }) },
-//         onBackgroundTypeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundType") { s -> s.copy(backgroundType = it) }) },
-//         onBackgroundColorChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundColor") { s -> s.copy(backgroundColor = it) }) },
-//         onBackgroundOpacityChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundOpacity") { s -> s.copy(backgroundOpacity = it) }) },
-//         onBackgroundPaddingHChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundPaddingH") { s -> s.copy(backgroundPaddingH = it) }) },
-//         onBackgroundPaddingVChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundPaddingV") { s -> s.copy(backgroundPaddingV = it) }) },
-//         onBackgroundCornerRadiusChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("backgroundCornerRadius") { s -> s.copy(backgroundCornerRadius = it) }) }
-//     )
-// }
-//
-// StyleTab.ANIMATION -> {
-//     AnimationTab(
-//         style = style,
-//         onDisplayModeChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("displayMode") { s -> s.copy(displayMode = it) }) },
-//         onWordEnterChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("wordEnter") { s -> s.copy(wordEnterAnimation = it) }) },
-//         onWordExitChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("wordExit") { s -> s.copy(wordExitAnimation = it) }) },
-//         onKaraokeHighlightChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("karaokeHighlight") { s -> s.copy(karaokeHighlightMode = it) }) },
-//         onAnimationDurationChange = { viewModel.setEvent(StyleEditorUiEvent.UpdateStyle("animationDuration") { s -> s.copy(animationDurationMs = it) }) }
-//     )
-// }
+// ── Color picker popup ───────────────────────────────────────────────────────
+
+/** Which caption color the user is currently editing in the color popup. */
+enum class CaptionColorField {
+    TEXT,
+    BACKGROUND,
+    ACTIVE_BG,
+    ACTIVE_TEXT
+}
+
+@Composable
+private fun ColorPickerPopupContent(
+    textColor: Long,
+    backgroundColor: Long,
+    activeWordBgColor: Long,
+    activeWordTextColor: Long,
+    onColorChanged: (CaptionColorField, Long) -> Unit
+) {
+    var selectedField by remember { mutableStateOf(CaptionColorField.TEXT) }
+
+    val currentColor = when (selectedField) {
+        CaptionColorField.TEXT -> textColor
+        CaptionColorField.BACKGROUND -> backgroundColor
+        CaptionColorField.ACTIVE_BG -> activeWordBgColor
+        CaptionColorField.ACTIVE_TEXT -> activeWordTextColor
+    }
+
+    Column(modifier = Modifier.padding(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ColorFieldSwatch(
+                label = stringResource(R.string.color_tab_text),
+                color = textColor,
+                selected = selectedField == CaptionColorField.TEXT,
+                onClick = { selectedField = CaptionColorField.TEXT },
+                modifier = Modifier.weight(1f)
+            )
+            ColorFieldSwatch(
+                label = stringResource(R.string.color_tab_bg_color),
+                color = backgroundColor,
+                selected = selectedField == CaptionColorField.BACKGROUND,
+                onClick = { selectedField = CaptionColorField.BACKGROUND },
+                modifier = Modifier.weight(1f)
+            )
+            ColorFieldSwatch(
+                label = stringResource(R.string.color_tab_active_bg),
+                color = activeWordBgColor,
+                selected = selectedField == CaptionColorField.ACTIVE_BG,
+                onClick = { selectedField = CaptionColorField.ACTIVE_BG },
+                modifier = Modifier.weight(1f)
+            )
+            ColorFieldSwatch(
+                label = stringResource(R.string.color_tab_active_text),
+                color = activeWordTextColor,
+                selected = selectedField == CaptionColorField.ACTIVE_TEXT,
+                onClick = { selectedField = CaptionColorField.ACTIVE_TEXT },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // key(selectedField) resets the picker's internal state when switching fields
+        key(selectedField) {
+            AdvancedColorPicker(
+                initialColor = currentColor,
+                onColorChanged = { onColorChanged(selectedField, it) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColorFieldSwatch(
+    label: String,
+    color: Long,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+    ) {
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(shape)
+                .background(Color(color))
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                    shape = shape
+                )
+                .clickable(onClick = onClick)
+        )
+    }
+}

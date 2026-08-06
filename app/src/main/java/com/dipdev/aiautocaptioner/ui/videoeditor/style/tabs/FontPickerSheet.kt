@@ -20,6 +20,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.engine.BundledFonts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +78,16 @@ private fun FontPickerItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val fontFamily by produceState<FontFamily>(initialValue = FontFamily.Default, entry.displayName, entry.assetPath) {
+        if (entry.displayName != "System" && entry.assetPath.isNotEmpty()) {
+            withContext(Dispatchers.IO) {
+                val tf = BundledFonts.getAssetTypeface(context, entry.assetPath)
+                if (tf != null && tf != Typeface.DEFAULT) {
+                    value = FontFamily(tf)
+                }
+            }
+        }
+    }
 
     Surface(
         modifier = Modifier
@@ -97,15 +109,7 @@ private fun FontPickerItem(
         ) {
             Text(
                 text = entry.displayName,
-                fontFamily = when (entry.displayName) {
-                    "System" -> FontFamily.Default
-                    else -> {
-                        val tf = try {
-                            Typeface.createFromAsset(context.assets, entry.assetPath)
-                        } catch (_: Exception) { null }
-                        tf?.let { FontFamily(it) } ?: FontFamily.Default
-                    }
-                },
+                fontFamily = fontFamily,
                 fontWeight = if (entry.displayName == "System") FontWeight.Normal else when (entry.displayName) {
                     "Montserrat", "Rubik", "Oswald", "Bebas Neue", "Bungee", "Permanent Marker", "Pacifico" -> FontWeight.Bold
                     else -> FontWeight.Normal

@@ -80,29 +80,7 @@ class TextFillPass : RenderPass {
                     }
 
                     // Gradient text
-                    if (style.gradientDirection != GradientDirection.NONE) {
-                        val shader = when (style.gradientDirection) {
-                            GradientDirection.LEFT_RIGHT -> LinearGradient(
-                                x, 0f, x + wl.width, 0f,
-                                style.textColor.toInt(), style.secondaryColor.toInt(),
-                                Shader.TileMode.CLAMP
-                            )
-                            GradientDirection.TOP_BOTTOM -> LinearGradient(
-                                0f, lineTop, 0f, lineBot,
-                                style.textColor.toInt(), style.secondaryColor.toInt(),
-                                Shader.TileMode.CLAMP
-                            )
-                            GradientDirection.DIAGONAL -> LinearGradient(
-                                x, lineTop, x + wl.width, lineBot,
-                                style.textColor.toInt(), style.secondaryColor.toInt(),
-                                Shader.TileMode.CLAMP
-                            )
-                            GradientDirection.NONE -> null
-                        }
-                        CaptionPaints.text.shader = shader
-                    } else {
-                        CaptionPaints.text.shader = null
-                    }
+                    CaptionPaints.text.shader = wl.shader
 
                     val fillAlpha = if (style.outlineOnly) 0 else (a * style.textOpacity).roundToInt().coerceIn(0, 255)
                     CaptionPaints.text.color = fillColor

@@ -32,7 +32,7 @@ fun Modifier.timelineMoveGesture(
 
     fun currentEdge(): Long {
         val duration = initialEndMs - initialStartMs
-        val deltaMs = (accumulatedPx / pixelsPerMs()).toLong()
+        val deltaMs = Math.round(accumulatedPx.toDouble() / pixelsPerMs().toDouble())
         return (initialStartMs + deltaMs).coerceIn(0L, totalDurationMs() - duration)
     }
 
@@ -91,7 +91,7 @@ fun Modifier.timelineTrimGesture(
     var viewportX = 0f
 
     fun currentEdge(): Long {
-        val deltaMs = (accumulatedPx / pixelsPerMs()).toLong()
+        val deltaMs = Math.round(accumulatedPx.toDouble() / pixelsPerMs().toDouble())
         return (initialEdgeMs + deltaMs).coerceIn(minEdgeMs(), maxEdgeMs())
     }
 

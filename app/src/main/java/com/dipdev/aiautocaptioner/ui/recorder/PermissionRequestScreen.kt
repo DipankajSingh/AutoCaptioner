@@ -101,42 +101,12 @@ fun PermissionRequestScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF241B0E),
-                            Color(0xFF120E07)
-                        )
-                    )
-                )
+                .background(MaterialTheme.colorScheme.background)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .displayCutoutPadding()
         ) {
-            // Ambient amber glow behind the hero illustration
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .size(360.dp)
-                    .graphicsLayer { alpha = glowAlpha }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(accent.copy(alpha = 0.18f), Color.Transparent)
-                        )
-                    )
-            )
-            // Soft amber glow grounding the CTA area
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .size(320.dp)
-                    .graphicsLayer { alpha = glowAlpha * 0.6f }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(accent.copy(alpha = 0.10f), Color.Transparent)
-                        )
-                    )
-            )
+
 
             Column(
                 modifier = Modifier
@@ -181,7 +151,7 @@ fun PermissionRequestScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 2.sp,
-                            color = accent,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(6.dp))
@@ -195,7 +165,7 @@ fun PermissionRequestScreen(
                         Text(
                             text = stringResource(R.string.recorder_permission_screen_subtitle),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -247,7 +217,7 @@ fun PermissionRequestScreen(
                                 .height(54.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = Color.Black
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
@@ -264,14 +234,14 @@ fun PermissionRequestScreen(
                         TextButton(onClick = onDismiss) {
                             Text(
                                 text = stringResource(R.string.recorder_permission_not_now),
-                                color = TextSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelLarge
                             )
                         }
                         TextButton(onClick = onPrivacyPolicy) {
                             Text(
                                 text = stringResource(R.string.settings_privacy_policy),
-                                color = TextSecondary.copy(alpha = 0.6f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 style = MaterialTheme.typography.labelMedium
                             )
                         }
@@ -291,8 +261,8 @@ private fun PermissionStatusCard(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = if (granted) accentColor.copy(alpha = 0.14f) else Color(0x261A1208)
-    val borderColor = if (granted) accentColor.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.14f)
+    val containerColor = if (granted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    val borderColor = if (granted) MaterialTheme.colorScheme.primary else Color.Transparent
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
@@ -307,8 +277,8 @@ private fun PermissionStatusCard(
                 .size(44.dp)
                 .clip(CircleShape)
                 .background(
-                    if (granted) accentColor.copy(alpha = 0.18f)
-                    else Color.White.copy(alpha = 0.08f)
+                    if (granted) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -316,7 +286,7 @@ private fun PermissionStatusCard(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = if (granted) accentColor else TextSecondary
+                tint = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -338,8 +308,8 @@ private fun PermissionStatusCard(
             modifier = Modifier
                 .clip(CircleShape)
                 .background(
-                    if (granted) accentColor.copy(alpha = 0.22f)
-                    else Color.White.copy(alpha = 0.06f)
+                    if (granted) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -350,8 +320,8 @@ private fun PermissionStatusCard(
                     .size(6.dp)
                     .clip(CircleShape)
                     .background(
-                        if (granted) accentColor
-                        else TextSecondary.copy(alpha = 0.5f)
+                        if (granted) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
             )
             Text(
@@ -361,7 +331,7 @@ private fun PermissionStatusCard(
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = if (granted) accentColor else TextSecondary
+                color = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -211,7 +211,7 @@ fun TimelineView(
             player.pause()
             var lastSeekTime = -1L
             snapshotFlow { scrollState.value }.collect { scrollValue ->
-                val seekTimeMs = (scrollValue / pixelsPerMs).toLong()
+                val seekTimeMs = Math.round(scrollValue.toDouble() / pixelsPerMs.toDouble())
                 if (kotlin.math.abs(seekTimeMs - lastSeekTime) > 20L) {
                     lastSeekTime = seekTimeMs
                     var accumulated = 0L
@@ -242,7 +242,7 @@ fun TimelineView(
             }
             snapshotFlow { currentTimelineMs() }.collect { timeMs ->
                 if (player.isPlaying) {
-                    val scrollOffset = (timeMs * pixelsPerMs).toInt()
+                    val scrollOffset = Math.round(timeMs.toDouble() * pixelsPerMs.toDouble()).toInt()
                     scrollState.scrollTo(scrollOffset)
                 }
             }
@@ -319,13 +319,15 @@ fun TimelineView(
                                     )
                             ) {
                                 segments.forEach { seg ->
-                                    CaptionTrackItem(
-                                        segment = seg,
-                                        clips = clips,
-                                        pixelsPerMs = pixelsPerMs,
-                                        isSelected = seg.id == selectedCaptionSegmentId,
-                                        onTap = onCaptionSegmentTap
-                                    )
+                                    key(seg.id) {
+                                        CaptionTrackItem(
+                                            segment = seg,
+                                            clips = clips,
+                                            pixelsPerMs = pixelsPerMs,
+                                            isSelected = seg.id == selectedCaptionSegmentId,
+                                            onTap = onCaptionSegmentTap
+                                        )
+                                    }
                                 }
                             }
                         }

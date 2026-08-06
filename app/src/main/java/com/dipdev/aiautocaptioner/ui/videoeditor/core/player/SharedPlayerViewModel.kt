@@ -35,12 +35,22 @@ class SharedPlayerViewModel @Inject constructor(
     /** The video path the current player was initialised with. */
     private var loadedPath: String = ""
 
+    private var isSuspendedForExport: Boolean = false
+    private var savedPositionMs: Long = 0L
+    private var savedMediaItemIndex: Int = 0
+    private var savedPlayWhenReady: Boolean = false
+    private var savedPlaylist: List<androidx.media3.common.MediaItem> = emptyList()
+
     /**
      * Initialise the player for [videoPath]. No-op if already initialised for the same path.
      * Safe to call from multiple screens on every recomposition.
      */
     fun initPlayer(videoPath: String) {
         if (videoPath.isEmpty()) return
+        if (isSuspendedForExport) {
+            resumePlayerFromExport()
+            return
+        }
         if (loadedPath == videoPath && _player.value != null) return
 
         // Release previous player if the path changed
@@ -53,6 +63,43 @@ class SharedPlayerViewModel @Inject constructor(
             playWhenReady = false
             prepare()
         }
+    }
+
+    /**
+     * Releases active ExoPlayer video surface and codec decoding buffers when navigating to Export.
+     * Prevents mobile hardware video codec resource depletion (CodecException: NO_MEMORY) during Media3 Transformer rendering.
+     */
+    fun suspendPlayerForExport() {
+        val exoPlayer = _player.value ?: return
+        if (isSuspendedForExport) return
+        isSuspendedForExport = true
+        savedPositionMs = exoPlayer.currentPosition
+        savedMediaItemIndex = exoPlayer.currentMediaItemIndex
+        savedPlayWhenReady = exoPlayer.playWhenReady
+        savedPlaylist = List(exoPlayer.mediaItemCount) { i -> exoPlayer.getMediaItemAt(i) }
+
+        exoPlayer.pause()
+        exoPlayer.clearVideoSurface()
+        exoPlayer.stop()
+        exoPlayer.clearMediaItems()
+    }
+
+    /**
+     * Re-initializes media buffers and state when returning from Export screen.
+     */
+    fun resumePlayerFromExport() {
+        val exoPlayer = _player.value ?: return
+        if (!isSuspendedForExport) return
+        isSuspendedForExport = false
+
+        if (savedPlaylist.isNotEmpty()) {
+            exoPlayer.setMediaItems(savedPlaylist, savedMediaItemIndex, savedPositionMs)
+        } else if (loadedPath.isNotEmpty()) {
+            exoPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(loadedPath))
+            exoPlayer.seekTo(savedPositionMs)
+        }
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = savedPlayWhenReady
     }
 
     /** Pause playback — call from lifecycle observers (ON_STOP / onDispose). */

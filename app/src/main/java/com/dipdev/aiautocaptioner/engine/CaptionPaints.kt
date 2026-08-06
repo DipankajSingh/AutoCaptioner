@@ -38,6 +38,24 @@ object BundledFonts {
         FontEntry("Bangers", "fonts/bangers.ttf", FontCategory.DISPLAY),
     )
 
+    private val assetCache = java.util.concurrent.ConcurrentHashMap<String, Typeface>()
+    private val resolvedCache = java.util.concurrent.ConcurrentHashMap<String, Typeface>()
+
+    fun getAssetTypeface(context: Context, assetPath: String): Typeface? {
+        if (assetPath.isEmpty()) return null
+        return assetCache.getOrPut(assetPath) {
+            try {
+                Typeface.createFromAsset(context.assets, assetPath)
+            } catch (e: Exception) {
+                Typeface.DEFAULT
+            }
+        }
+    }
+
+    fun getOrPutResolved(key: String, create: () -> Typeface): Typeface {
+        return resolvedCache.getOrPut(key) { create() }
+    }
+
     /** Display names for the font picker — in UI order. */
     val displayNames: List<String> = all.map { it.displayName }
 }
@@ -61,6 +79,9 @@ object CaptionPaints {
 
     /** Stroke outline drawn behind [text] */
     val outline = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    /** Glow drop shadow drawn behind outline */
+    val glow = Paint(Paint.ANTI_ALIAS_FLAG)
 
     /** Background rect/pill fill */
     val bg      = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -139,6 +160,23 @@ object CaptionPaints {
                     style.shadowOffsetY * baseScale,
                     style.shadowColor.toInt()
                 )
+            } else {
+                clearShadowLayer()
+            }
+        }
+
+        glow.apply {
+            textSize      = textSizePx
+            typeface      = tf
+            color         = style.glowColor.toInt()
+            this.style    = Paint.Style.FILL
+            textAlign     = Paint.Align.LEFT
+            letterSpacing = style.letterSpacing
+            isFilterBitmap = true
+            isDither      = true
+            flags         = flags or Paint.SUBPIXEL_TEXT_FLAG or Paint.LINEAR_TEXT_FLAG
+            if (style.glowEnabled && style.glowRadius > 0f) {
+                setShadowLayer(style.glowRadius * baseScale, 0f, 0f, style.glowColor.toInt())
             } else {
                 clearShadowLayer()
             }
@@ -228,36 +266,41 @@ object CaptionPaints {
      * Tries bundled assets first, then falls back to system fonts.
      */
     fun loadTypeface(context: Context, fontFamily: String, fontWeight: Int, isItalic: Boolean): Typeface {
-        // 1. Try bundled asset font
-        val entry = BundledFonts.all.find { it.displayName == fontFamily }
-        if (entry != null && entry.assetPath.isNotEmpty()) {
-            try {
-                val assetTf = Typeface.createFromAsset(context.assets, entry.assetPath)
-                // API 28+: variable fonts support exact weight extraction
-                if (android.os.Build.VERSION.SDK_INT >= 28) {
-                    return Typeface.create(assetTf, fontWeight.coerceIn(100, 900), isItalic)
+        val cacheKey = "$fontFamily-$fontWeight-$isItalic"
+        return BundledFonts.getOrPutResolved(cacheKey) {
+            // 1. Try bundled asset font
+            val entry = BundledFonts.all.find { it.displayName == fontFamily }
+            if (entry != null && entry.assetPath.isNotEmpty()) {
+                try {
+                    val assetTf = BundledFonts.getAssetTypeface(context, entry.assetPath)
+                    if (assetTf != null && assetTf != Typeface.DEFAULT) {
+                        // API 28+: variable fonts support exact weight extraction
+                        if (android.os.Build.VERSION.SDK_INT >= 28) {
+                            return@getOrPutResolved Typeface.create(assetTf, fontWeight.coerceIn(100, 900), isItalic)
+                        }
+                        // Pre-28: fallback to BOLD/NORMAL
+                        val tsStyle = resolveStyle(fontWeight, isItalic)
+                        return@getOrPutResolved Typeface.create(assetTf, tsStyle)
+                    }
+                } catch (_: Exception) {
+                    // Fall through to system font
                 }
-                // Pre-28: fallback to BOLD/NORMAL
-                val tsStyle = resolveStyle(fontWeight, isItalic)
-                return Typeface.create(assetTf, tsStyle)
-            } catch (_: Exception) {
-                // Fall through to system font
             }
-        }
 
-        // 2. System font — API 28+ has full weight support
-        if (android.os.Build.VERSION.SDK_INT >= 28) {
-            val systemTf = Typeface.create(fontFamily, Typeface.NORMAL)
-            return Typeface.create(systemTf, fontWeight.coerceIn(100, 900), isItalic)
-        }
+            // 2. System font — API 28+ has full weight support
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                val systemTf = Typeface.create(fontFamily, Typeface.NORMAL)
+                return@getOrPutResolved Typeface.create(systemTf, fontWeight.coerceIn(100, 900), isItalic)
+            }
 
-        // 3. Legacy fallback
-        val tsStyle = resolveStyle(fontWeight, isItalic)
-        val base = when (fontFamily) {
-            "System" -> Typeface.DEFAULT
-            else     -> Typeface.create(fontFamily, Typeface.NORMAL)
+            // 3. Legacy fallback
+            val tsStyle = resolveStyle(fontWeight, isItalic)
+            val base = when (fontFamily) {
+                "System" -> Typeface.DEFAULT
+                else     -> Typeface.create(fontFamily, Typeface.NORMAL)
+            }
+            Typeface.create(base, tsStyle)
         }
-        return Typeface.create(base, tsStyle)
     }
 
     private fun resolveStyle(fontWeight: Int, isItalic: Boolean): Int = when {

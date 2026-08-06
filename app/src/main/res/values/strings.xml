@@ -272,6 +272,9 @@
     <string name="editor_delete_title">Delete Project?</string>
     <string name="editor_delete_body">Are you sure you want to delete this project? Your edits will be lost.</string>
     <string name="editor_delete">Delete</string>
+    <string name="editor_discard_title">Discard Unsaved Edits?</string>
+    <string name="editor_discard_body">Are you sure you want to exit? Any unsaved timeline trimming edits will be discarded.</string>
+    <string name="editor_discard">Discard &amp; Exit</string>
 
     <!-- Caption Inline Editor -->
     <string name="caption_inline_edit">Edit Caption</string>
@@ -468,6 +471,9 @@
     <string name="color_tab_secondary_color">Secondary Color</string>
     <string name="color_tab_enable_glow">Enable Glow</string>
     <string name="color_tab_glow_radius">Glow Radius</string>
+    <string name="color_tab_active_bg">Active Bg</string>
+    <string name="color_tab_active_text">Active Text</string>
+    <string name="style_color">Color</string>
 
     <!-- Animation Tab -->
     <string name="anim_tab_display">Display</string>
