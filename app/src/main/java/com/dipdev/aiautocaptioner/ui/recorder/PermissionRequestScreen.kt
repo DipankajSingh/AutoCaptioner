@@ -138,7 +138,7 @@ fun PermissionRequestScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 AnimatedVisibility(
                     visible = visible,
@@ -171,7 +171,7 @@ fun PermissionRequestScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 AnimatedVisibility(
                     visible = visible,
@@ -185,7 +185,6 @@ fun PermissionRequestScreen(
                         PermissionStatusCard(
                             icon = Icons.Rounded.Videocam,
                             title = stringResource(R.string.recorder_permission_camera_title),
-                            description = stringResource(R.string.recorder_permission_camera_desc),
                             granted = cameraGranted,
                             accentColor = accent,
                             modifier = Modifier.weight(1f)
@@ -193,7 +192,6 @@ fun PermissionRequestScreen(
                         PermissionStatusCard(
                             icon = Icons.Rounded.Mic,
                             title = stringResource(R.string.recorder_permission_microphone_title),
-                            description = stringResource(R.string.recorder_permission_microphone_desc),
                             granted = micGranted,
                             accentColor = accent,
                             modifier = Modifier.weight(1f)
@@ -201,7 +199,7 @@ fun PermissionRequestScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 AnimatedVisibility(
                     visible = visible,
@@ -230,7 +228,7 @@ fun PermissionRequestScreen(
                                 fontSize = 16.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+
                         TextButton(onClick = onDismiss) {
                             Text(
                                 text = stringResource(R.string.recorder_permission_not_now),
@@ -256,19 +254,12 @@ fun PermissionRequestScreen(
 private fun PermissionStatusCard(
     icon: ImageVector,
     title: String,
-    description: String,
     granted: Boolean,
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = if (granted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-    val borderColor = if (granted) MaterialTheme.colorScheme.primary else Color.Transparent
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(containerColor)
-            .border(1.dp, borderColor, RoundedCornerShape(18.dp))
-            .padding(vertical = 18.dp, horizontal = 14.dp),
+        modifier = modifier.padding(horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Icon badge
@@ -294,13 +285,6 @@ private fun PermissionStatusCard(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = description,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary,
-            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(14.dp))
         // Status pill
