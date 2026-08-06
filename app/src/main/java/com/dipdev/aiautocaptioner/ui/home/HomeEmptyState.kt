@@ -60,9 +60,6 @@ internal fun EmptyProjectView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Spacer(Modifier.height(4.dp))
-
-        // 1. DYNAMIC STUDIO CREATION GRAPHIC (Video + Waveforms + Captions)
         val context = LocalContext.current
         AsyncImage(
             model = ImageRequest.Builder(context)
@@ -72,7 +69,7 @@ internal fun EmptyProjectView(
             contentDescription = stringResource(R.string.home_no_projects),
             modifier = Modifier
                 .padding(bottom = 8.dp)
-                .size(120.dp)
+                .size(200.dp)
         )
         
         // 2. Inspiring Studio Greeting
