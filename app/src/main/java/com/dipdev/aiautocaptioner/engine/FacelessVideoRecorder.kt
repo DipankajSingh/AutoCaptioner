@@ -55,6 +55,8 @@ class FacelessVideoRecorder {
     private var videoFps = 30
     private var videoBitrate = 4_000_000
     private var audioBitrate = 128_000
+    private var audioEnabled = true
+    private var sampleRate = 44100
     private val TIMEOUT_USEC = 10000L
 
     private var onCompleteCallback: ((File) -> Unit)? = null
@@ -77,6 +79,7 @@ class FacelessVideoRecorder {
         scale: Float = 1f,
         offsetX: Float = 0f,
         offsetY: Float = 0f,
+        muted: Boolean = false,
         outputFile: File,
         onComplete: (File) -> Unit,
         onError: (Exception) -> Unit,
@@ -92,6 +95,7 @@ class FacelessVideoRecorder {
         this.videoFps = fps
         this.videoBitrate = videoBitrate
         this.audioBitrate = audioBitrate
+        this.audioEnabled = !muted
         this.onCompleteCallback = onComplete
         this.onErrorCallback = onError
         this.onAmplitudeCallback = onAmplitude
@@ -114,30 +118,35 @@ class FacelessVideoRecorder {
             inputSurface = videoCodec?.createInputSurface()
             videoCodec?.start()
 
-            val sampleRate = 44100
-            val channelConfig = AudioFormat.CHANNEL_IN_MONO
-            val audioFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1)
-            audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, audioBitrate)
-            audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
+            if (audioEnabled) {
+                sampleRate = 44100
+                val channelConfig = AudioFormat.CHANNEL_IN_MONO
+                val audioFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1)
+                audioFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, audioBitrate)
+                audioFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
 
-            audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-            audioCodec?.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            audioCodec?.start()
+                audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
+                audioCodec?.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                audioCodec?.start()
 
-            val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT)
-            var bufferSize = minBufferSize * 4
-            if (bufferSize < 16384) bufferSize = 16384
-            audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
-            audioRecord?.startRecording()
+                val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT)
+                var bufferSize = minBufferSize * 4
+                if (bufferSize < 16384) bufferSize = 16384
+                audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
+                audioRecord?.startRecording()
+            }
 
             videoJob = scope.launch(Dispatchers.IO) { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
             videoEncoderJob = scope.launch { videoEncodeLoop() }
-            audioJob = scope.launch { audioEncodeLoop() }
+            if (audioEnabled) {
+                audioJob = scope.launch { audioEncodeLoop() }
+            }
 
         } catch (e: Exception) {
             isRecording.set(false)
             releaseResources()
+            scope.cancel()
             onError(e)
         }
     }
@@ -155,28 +164,45 @@ class FacelessVideoRecorder {
         isPaused.set(false)
         videoCodec?.setParameters(Bundle().apply {
             putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
+            putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
         })
     }
 
     fun stop() {
-        if (!isRecording.get()) return
-        if (isPaused.get()) {
-            resume()
-            Thread.sleep(50)
-        }
-        isRecording.set(false)
+        if (!isRecording.getAndSet(false)) return
+        val wasPaused = isPaused.get()
 
         scope.launch {
+            // Let the encoder flush any suspended frames before we tear down.
+            if (wasPaused) {
+                videoCodec?.setParameters(Bundle().apply {
+                    putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
+                    putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+                })
+                delay(50)
+            }
+
             withTimeoutOrNull(1000) { videoJob?.join() }
-            withTimeoutOrNull(2000) { videoEncoderJob?.join() }
-            withTimeoutOrNull(2000) { audioJob?.join() }
+            // Signal the encoder that no more input will arrive so it can drain to EOS
+            // (instead of being cut off by codec.stop(), which truncates the tail frames).
+            try {
+                videoCodec?.signalEndOfInputStream()
+            } catch (_: Exception) {}
+            withTimeoutOrNull(3000) { videoEncoderJob?.join() }
+            withTimeoutOrNull(3000) { audioJob?.join() }
 
             videoJob?.cancel()
             videoEncoderJob?.cancel()
             audioJob?.cancel()
 
             releaseResources()
-            outputFile?.let { onCompleteCallback?.invoke(it) }
+
+            if (isMuxerStarted && outputFile != null) {
+                onCompleteCallback?.invoke(outputFile!!)
+            } else {
+                onErrorCallback?.invoke(IllegalStateException("Recording finished without a valid output (muxer never started)"))
+            }
+            scope.cancel()
         }
     }
 
@@ -299,8 +325,10 @@ class FacelessVideoRecorder {
     private fun audioEncodeLoop() {
         val bufferInfo = MediaCodec.BufferInfo()
         val audioBuffer = ByteArray(4096)
+        val silenceBuffer = ByteArray(4096)
         var audioPts = 0L
-        var audioPtsUsBase = -1L
+        var lastAmplitudeEmitMs = 0L
+        val bytesPerFrame = sampleRate * 2L
 
         try {
             var eosReceived = false
@@ -313,27 +341,37 @@ class FacelessVideoRecorder {
                         val inputBuffer = audioCodec?.getInputBuffer(inputBufferIndex)
                         inputBuffer?.clear()
 
-                        val readBytes = if (isRecording.get() && !isPaused.get()) {
-                            audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
-                        } else {
-                            0
+                        var readBytes = 0
+                        if (isRecording.get()) {
+                            readBytes = if (isPaused.get()) {
+                                // Keep the audio track alive and continuous across a pause by
+                                // encoding silence instead of terminating the stream with EOS.
+                                silenceBuffer.size
+                            } else {
+                                audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
+                            }
                         }
-                        if (readBytes > 0) {
-                            var sum = 0.0
-                            for (i in 0 until readBytes step 2) {
-                                val sample = (audioBuffer[i].toInt() and 0xFF) or (audioBuffer[i + 1].toInt() shl 8)
-                                val shortSample = sample.toShort()
-                                sum += shortSample * shortSample
-                            }
-                            val rms = Math.sqrt(sum / (readBytes / 2.0))
-                            val amplitude = if (rms.isNaN()) 0f else (rms / 32768.0).toFloat().coerceIn(0f, 1f)
-                            onAmplitudeCallback?.invoke(amplitude)
 
-                            inputBuffer?.put(audioBuffer, 0, readBytes)
-                            if (audioPtsUsBase < 0L) {
-                                audioPtsUsBase = System.nanoTime() / 1000L
+                        if (readBytes > 0) {
+                            if (isPaused.get()) {
+                                inputBuffer?.put(silenceBuffer, 0, readBytes)
+                            } else {
+                                var sum = 0.0
+                                for (i in 0 until readBytes step 2) {
+                                    val sample = (audioBuffer[i].toInt() and 0xFF) or (audioBuffer[i + 1].toInt() shl 8)
+                                    val shortSample = sample.toShort()
+                                    sum += shortSample * shortSample
+                                }
+                                val rms = Math.sqrt(sum / (readBytes / 2.0))
+                                val amplitude = if (rms.isNaN()) 0f else (rms / 32768.0).toFloat().coerceIn(0f, 1f)
+                                val now = System.currentTimeMillis()
+                                if (now - lastAmplitudeEmitMs >= 100) {
+                                    lastAmplitudeEmitMs = now
+                                    onAmplitudeCallback?.invoke(amplitude)
+                                }
+                                inputBuffer?.put(audioBuffer, 0, readBytes)
                             }
-                            val ptsUs = audioPtsUsBase + (audioPts * 1000000L / (44100L * 2L))
+                            val ptsUs = (audioPts * 1000000L) / bytesPerFrame
                             audioCodec?.queueInputBuffer(inputBufferIndex, 0, readBytes, ptsUs, 0)
                             audioPts += readBytes
                         } else {
@@ -386,7 +424,7 @@ class FacelessVideoRecorder {
     }
 
     private fun checkMuxerStart() {
-        if (!isMuxerStarted && videoTrackIndex >= 0 && audioTrackIndex >= 0) {
+        if (!isMuxerStarted && videoTrackIndex >= 0 && (!audioEnabled || audioTrackIndex >= 0)) {
             muxer?.start()
             isMuxerStarted = true
         }
@@ -419,7 +457,5 @@ class FacelessVideoRecorder {
         inputSurface = null
 
         isPaused.set(false)
-
-        scope.cancel()
     }
 }

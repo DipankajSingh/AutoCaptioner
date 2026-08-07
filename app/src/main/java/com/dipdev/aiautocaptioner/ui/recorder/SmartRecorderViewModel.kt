@@ -351,6 +351,7 @@ class SmartRecorderViewModel @Inject constructor(
                     scale = scale,
                     offsetX = offsetX,
                     offsetY = offsetY,
+                    muted = currentState.isAudioMuted,
                     outputFile = outputFile,
                     onComplete = { file ->
                         val pId = currentProjectId ?: return@start
