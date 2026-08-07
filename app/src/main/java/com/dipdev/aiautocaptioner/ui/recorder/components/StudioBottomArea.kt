@@ -140,12 +140,19 @@ fun StudioBottomArea(
                 if (!isPermissionBlocked) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            IntegratedFilterShutter(
-                                activeFilter = uiState.activeFilter,
-                                onFilterSelected = onFilterSelected,
-                                isRecording = false,
-                                onRecordClick = onStartRecording
-                            )
+                            if (mode == RecordingMode.CAMERA) {
+                                IntegratedFilterShutter(
+                                    activeFilter = uiState.activeFilter,
+                                    onFilterSelected = onFilterSelected,
+                                    isRecording = false,
+                                    onRecordClick = onStartRecording
+                                )
+                            } else {
+                                HollowShutterRing(
+                                    isRecording = false,
+                                    onClick = onStartRecording
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(

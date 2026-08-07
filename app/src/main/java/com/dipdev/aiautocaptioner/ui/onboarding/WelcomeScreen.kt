@@ -24,12 +24,12 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,7 +49,6 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText
-import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.ArrowRight
 import compose.icons.feathericons.ChevronRight
@@ -62,7 +61,7 @@ fun WelcomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF06070A))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         // Cinematic ambient background glow accents
         Box(
@@ -72,7 +71,7 @@ fun WelcomeScreen(
                 .offset(x = (-120).dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(Color(0xFFFFC947).copy(alpha = 0.12f), Color.Transparent)
+                        colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), Color.Transparent)
                     )
                 )
         )
@@ -83,7 +82,18 @@ fun WelcomeScreen(
                 .offset(x = 120.dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(AccentAmber.copy(alpha = 0.12f), Color.Transparent)
+                        colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), Color.Transparent)
+                    )
+                )
+        )
+        // Rose accent glow behind the header
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .size(260.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(MaterialTheme.colorScheme.error.copy(alpha = 0.18f), Color.Transparent)
                     )
                 )
         )
@@ -127,23 +137,24 @@ fun WelcomeScreen(
             Spacer(Modifier.height(16.dp))
 
             // 3. High-Impact Headline & Subtitle positioned below the video showcase
+            val brightAmber = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.3f)
             Text(
-                text = "From raw clip to",
-                style = TextStyle(
-                    fontSize = 28.sp,
+                text = stringResource(R.string.welcome_headline_line1),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "viral Reel in seconds.",
-                style = TextStyle(
-                    fontSize = 28.sp,
+                text = stringResource(R.string.welcome_headline_line2),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Black,
                     brush = Brush.horizontalGradient(
-                        colors = listOf(Color(0xFFFFC947), AccentAmber)
+                        colors = listOf(brightAmber, MaterialTheme.colorScheme.primary)
                     ),
                     textAlign = TextAlign.Center
                 ),
@@ -153,10 +164,10 @@ fun WelcomeScreen(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "Add animated, eye-catching subtitles\ninstantly—without ever leaving your phone.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFB0B6C2),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
-                lineHeight = 18.sp
+                lineHeight = 22.sp
             )
 
             Spacer(Modifier.height(16.dp))
@@ -171,10 +182,9 @@ fun WelcomeScreen(
 
             // 5. Footer & Legal
             Text(
-                text = "Recorded, styled, and ready to share",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF717784),
-                fontWeight = FontWeight.Medium
+                text = stringResource(R.string.welcome_company),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
             )
             Spacer(Modifier.height(6.dp))
             LegalText()
@@ -192,9 +202,10 @@ private fun BeforeAfterVideoCards(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
+        val brightAmber = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.3f)
         Row(
             modifier = Modifier.fillMaxSize().clipToBounds(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // LEFT CARD: BEFORE (uncaptioned vertical reel)
             Box(
@@ -203,8 +214,8 @@ private fun BeforeAfterVideoCards(
                     .fillMaxHeight()
                     .clipToBounds()
                     .clip(RoundedCornerShape(22.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(22.dp))
-                    .background(Color(0xFF16181F))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(22.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 LoopingVideoPlayer(
                     rawResId = R.raw.before_sample,
@@ -217,14 +228,14 @@ private fun BeforeAfterVideoCards(
                         .padding(10.dp)
                         .align(Alignment.TopStart)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF262932).copy(alpha = 0.85f))
-                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "BEFORE",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.95f),
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp
                     )
@@ -238,8 +249,8 @@ private fun BeforeAfterVideoCards(
                     .fillMaxHeight()
                     .clipToBounds()
                     .clip(RoundedCornerShape(22.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(22.dp))
-                    .background(Color(0xFF16181F))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(22.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 LoopingVideoPlayer(
                     rawResId = R.raw.after_sample,
@@ -254,7 +265,7 @@ private fun BeforeAfterVideoCards(
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             Brush.horizontalGradient(
-                                listOf(Color(0xFFFFC947), AccentAmber)
+                                listOf(brightAmber, MaterialTheme.colorScheme.primary)
                             )
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -262,7 +273,7 @@ private fun BeforeAfterVideoCards(
                     Text(
                         text = "AFTER",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Black,
                         fontSize = 10.sp
                     )
@@ -276,14 +287,14 @@ private fun BeforeAfterVideoCards(
                 .align(Alignment.Center)
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF1E212A))
-                .border(1.5.dp, AccentAmber.copy(alpha = 0.7f), CircleShape),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = FeatherIcons.ArrowRight,
                 contentDescription = "Transformation to AutoCaptioned",
-                tint = AccentAmber,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -361,8 +372,9 @@ private fun ShimmerButton(
         ),
         label = "off"
     )
+    val brightAmber = lerp(MaterialTheme.colorScheme.primary, Color.White, 0.3f)
     val shimmer = Brush.linearGradient(
-        colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.3f), Color.Transparent),
+        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f), Color.Transparent),
         start = Offset(offset, 0f),
         end = Offset(offset + 260f, 130f)
     )
@@ -374,7 +386,7 @@ private fun ShimmerButton(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(Color(0xFFFFC947), AccentAmber)
+                    listOf(brightAmber, MaterialTheme.colorScheme.primary)
                 )
             )
             .clickable(onClick = onClick),
@@ -387,7 +399,7 @@ private fun ShimmerButton(
         ) {
             Text(
                 text = text,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Black,
                 fontSize = 18.sp,
                 letterSpacing = 0.4.sp
@@ -396,7 +408,7 @@ private fun ShimmerButton(
             Icon(
                 imageVector = FeatherIcons.ChevronRight,
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -406,11 +418,11 @@ private fun ShimmerButton(
 @Composable
 private fun LegalText() {
     val context = LocalContext.current
-    val termsColor = Color(0xFF717784)
-    val linkColor = Color(0xFFB5BAC6)
+    val termsColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val linkColor = MaterialTheme.colorScheme.primary
 
     val annotated = buildAnnotatedString {
-        append("Fully offline AI processing · You agree to our ")
+        append("You agree to our ")
         pushStringAnnotation(tag = "URL", annotation = AppLinks.TERMS_OF_SERVICE)
         withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
             append("Terms")
@@ -428,10 +440,10 @@ private fun LegalText() {
 
     Text(
         text = annotated,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.bodyMedium,
         color = termsColor,
         textAlign = TextAlign.Center,
-        lineHeight = 16.sp,
+        lineHeight = 18.sp,
         onTextLayout = { layoutResult = it },
         modifier = Modifier.pointerInput(Unit) {
             detectTapGestures { offset ->

@@ -1,17 +1,26 @@
 package com.dipdev.aiautocaptioner.engine.effects
 
+import android.content.Context
+import androidx.camera.core.CameraEffect
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
 class CameraEffectManagerTest {
 
     private lateinit var effectManager: CameraEffectManager
+    private lateinit var context: Context
 
     @Before
     fun setup() {
         effectManager = CameraEffectManager()
+        context = mockk<Context>().also {
+            every { it.applicationContext } returns it
+        }
     }
 
     @Test
@@ -47,6 +56,26 @@ class CameraEffectManagerTest {
 
         // Ensure every CreatorFilter maps to a unique integer GLSL uniform register
         assertEquals(testedFilters.size, observedIndices.size)
+    }
+
+    @Test
+    fun `buildCameraEffects defaults to preview and video capture targets`() {
+        val effects = effectManager.buildCameraEffects(context)
+        assertEquals(2, effects.size)
+        val targets = effects.fold(0) { acc, effect -> acc or effect.targets }
+        assertTrue(targets and CameraEffect.PREVIEW != 0)
+        assertTrue(targets and CameraEffect.VIDEO_CAPTURE != 0)
+    }
+
+    @Test
+    fun `buildCameraEffects targets only the requested use cases`() {
+        val previewEffects = effectManager.buildCameraEffects(context, CameraEffect.PREVIEW)
+        assertEquals(1, previewEffects.size)
+        assertTrue(previewEffects.single().targets == CameraEffect.PREVIEW)
+
+        val videoEffects = effectManager.buildCameraEffects(context, CameraEffect.VIDEO_CAPTURE)
+        assertEquals(1, videoEffects.size)
+        assertTrue(videoEffects.single().targets == CameraEffect.VIDEO_CAPTURE)
     }
 
     @Test

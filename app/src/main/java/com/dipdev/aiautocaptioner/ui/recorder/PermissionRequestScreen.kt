@@ -3,16 +3,10 @@ package com.dipdev.aiautocaptioner.ui.recorder
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,20 +36,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -63,9 +58,7 @@ import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
-import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
-import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 
 @Composable
 fun PermissionRequestScreen(
@@ -79,19 +72,10 @@ fun PermissionRequestScreen(
     onPrivacyPolicy: () -> Unit
 ) {
     ScreenThemeProvider(accentColor = AccentAmber) {
-        val accent = LocalAccentColor.current
         val context = LocalContext.current
 
         var visible by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { visible = true }
-
-        val glowPulse = rememberInfiniteTransition(label = "perm_glow")
-        val glowAlpha by glowPulse.animateFloat(
-            initialValue = 0.45f,
-            targetValue = 0.85f,
-            animationSpec = infiniteRepeatable(tween(2000, easing = LinearEasing), RepeatMode.Reverse),
-            label = "perm_glow_alpha"
-        )
 
         val heroScale = remember { Animatable(0.92f) }
         LaunchedEffect(Unit) {
@@ -108,19 +92,33 @@ fun PermissionRequestScreen(
         ) {
 
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Scrollable content that centers when it fits the viewport and scrolls from
+                // the top when it doesn't. Arrangement.Center alone is a no-op inside a
+                // verticalScroll column (infinite-height measurement), so we measure both
+                // heights and pick the arrangement explicitly.
+                val contentScrollState = rememberScrollState()
+                var contentHeight by remember { mutableIntStateOf(0) }
+                var viewportHeight by remember { mutableIntStateOf(0) }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .onSizeChanged { viewportHeight = it.height }
+                        .verticalScroll(contentScrollState)
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = if (contentHeight <= viewportHeight) Arrangement.Center else Arrangement.Top
+                ) {
+                    Column(
+                        modifier = Modifier.onSizeChanged { contentHeight = it.height },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Hero illustration (camera_permission.svg) — amber duotone
                 Box(
                     modifier = Modifier
-                        .size(width = 260.dp, height = 252.dp)
+                        .size(width = 200.dp, height = 194.dp)
                         .graphicsLayer {
                             scaleX = heroScale.value
                             scaleY = heroScale.value
@@ -185,64 +183,66 @@ fun PermissionRequestScreen(
                         PermissionStatusCard(
                             icon = Icons.Rounded.Videocam,
                             title = stringResource(R.string.recorder_permission_camera_title),
+                            description = stringResource(R.string.recorder_permission_camera_desc),
                             granted = cameraGranted,
-                            accentColor = accent,
                             modifier = Modifier.weight(1f)
                         )
                         PermissionStatusCard(
                             icon = Icons.Rounded.Mic,
                             title = stringResource(R.string.recorder_permission_microphone_title),
+                            description = stringResource(R.string.recorder_permission_microphone_desc),
                             granted = micGranted,
-                            accentColor = accent,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
+                    }
+                }
 
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(350, delayMillis = 300)) +
-                            slideInVertically(tween(400, easing = FastOutSlowInEasing)) { it / 5 }
+                // Pinned bottom CTA — always visible, no scrolling needed
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val anyPermanentlyDenied = cameraPermanentlyDenied || micPermanentlyDenied
-                        Button(
-                            onClick = if (anyPermanentlyDenied) onOpenSettings else onRequestPermissions,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                    val anyPermanentlyDenied = cameraPermanentlyDenied || micPermanentlyDenied
+                    Button(
+                        onClick = if (anyPermanentlyDenied) onOpenSettings else onRequestPermissions,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (anyPermanentlyDenied) R.string.recorder_open_settings
+                                else R.string.recorder_permission_allow_both
                             ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    if (anyPermanentlyDenied) R.string.recorder_open_settings
-                                    else R.string.recorder_permission_allow_both
-                                ),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                        }
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
 
-                        TextButton(onClick = onDismiss) {
-                            Text(
-                                text = stringResource(R.string.recorder_permission_not_now),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                        TextButton(onClick = onPrivacyPolicy) {
-                            Text(
-                                text = stringResource(R.string.settings_privacy_policy),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            text = stringResource(R.string.recorder_permission_not_now),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    TextButton(onClick = onPrivacyPolicy) {
+                        Text(
+                            text = stringResource(R.string.settings_privacy_policy),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
             }
@@ -254,8 +254,8 @@ fun PermissionRequestScreen(
 private fun PermissionStatusCard(
     icon: ImageVector,
     title: String,
+    description: String,
     granted: Boolean,
-    accentColor: Color,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -285,6 +285,16 @@ private fun PermissionStatusCard(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(14.dp))
         // Status pill

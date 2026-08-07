@@ -82,6 +82,16 @@ enum class CreatorFilter(
         subtitle = "Soft Pastel",
         shaderIndex = 5,
         accentColorHex = 0xFFF48FB1L
+    ),
+
+    /**
+     * Classic monochrome aesthetic with punchy contrast, emulating vintage high-speed black and white film.
+     */
+    BLACK_AND_WHITE(
+        displayName = "Noir",
+        subtitle = "B&W Film",
+        shaderIndex = 6,
+        accentColorHex = 0xFF757575L
     );
 
     companion object {

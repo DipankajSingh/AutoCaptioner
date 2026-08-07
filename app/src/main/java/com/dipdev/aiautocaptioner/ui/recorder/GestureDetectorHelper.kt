@@ -73,8 +73,8 @@ class GestureDetectorHelper(
             gestureRecognizer?.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
         } catch (_: Exception) {
             isProcessing = false
-            bitmapBuffer?.recycle()
         } finally {
+            bitmapBuffer?.recycle()
             imageProxy.close()
         }
     }

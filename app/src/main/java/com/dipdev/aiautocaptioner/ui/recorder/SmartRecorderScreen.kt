@@ -365,6 +365,7 @@ fun SmartRecorderContent(
             activeRecording?.stop()
             activeRecording = null
             cameraController.clearImageAnalysisAnalyzer()
+            cameraController.clearEffects()
             gestureHelper?.close()
             gestureHelper = null
         }
@@ -413,9 +414,11 @@ fun SmartRecorderContent(
                 val shouldBindCamera = mode == RecordingMode.CAMERA && recordingState != RecordingState.DONE
                 LaunchedEffect(shouldBindCamera, cameraController, lifecycleOwner) {
                     if (shouldBindCamera) {
+                        cameraController.setEffects(viewModel.cameraEffectManager.buildCameraEffects(context))
                         cameraController.bindToLifecycle(lifecycleOwner)
                     } else {
                         cameraController.unbind()
+                        cameraController.clearEffects()
                     }
                 }
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF101010))) {
@@ -424,7 +427,7 @@ fun SmartRecorderContent(
                             PreviewView(ctx).apply {
                                 this.controller = cameraController
                                 this.scaleType = PreviewView.ScaleType.FILL_CENTER
-                                this.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                                this.implementationMode = PreviewView.ImplementationMode.PERFORMANCE
                             }
                         },
                         modifier = Modifier.fillMaxSize().alpha(if (mode == RecordingMode.CAMERA) 1f else 0f)

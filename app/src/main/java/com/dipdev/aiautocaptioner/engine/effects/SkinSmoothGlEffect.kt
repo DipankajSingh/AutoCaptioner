@@ -11,7 +11,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BaseGlShaderProgram
 import androidx.media3.effect.GlEffect
 import androidx.media3.effect.GlShaderProgram
-import java.io.IOException
 
 /**
  * A real-time hardware GPU video effect implementing 2026 Frequency-Separated Skin Smoothing.
@@ -67,15 +66,15 @@ internal class SkinSmoothShaderProgram(
     private val glProgram: GlProgram
     private var uSmoothnessHandle: Int = 0
     private var uTexelSizeHandle: Int = 0
+    
+    @Volatile
     private var smoothnessValue: Float = initialSmoothness
     private var texelWidth: Float = 1.0f / 1080f
     private var texelHeight: Float = 1.0f / 1920f
 
     init {
         try {
-            glProgram = GlProgram(context, VERTEX_SHADER, FRAGMENT_SHADER)
-        } catch (e: IOException) {
-            throw VideoFrameProcessingException(e)
+            glProgram = GlProgram(VERTEX_SHADER, FRAGMENT_SHADER)
         } catch (e: GlUtil.GlException) {
             throw VideoFrameProcessingException(e)
         }
@@ -100,11 +99,23 @@ internal class SkinSmoothShaderProgram(
             glProgram.use()
             glProgram.setSamplerTexIdUniform("uTexSampler", inputTexId, 0)
             
+            glProgram.setBufferAttribute(
+                "aFramePosition",
+                GlUtil.getNormalizedCoordinateBounds(),
+                GlUtil.HOMOGENEOUS_COORDINATE_VECTOR_SIZE
+            )
+            glProgram.setBufferAttribute(
+                "aTexCoords",
+                GlUtil.getTextureCoordinateBounds(),
+                GlUtil.HOMOGENEOUS_COORDINATE_VECTOR_SIZE
+            )
+
+            glProgram.bindAttributesAndUniforms()
+
             // Push atomic uniforms (Zero allocations in render loop)
             GLES20.glUniform1f(uSmoothnessHandle, smoothnessValue)
             GLES20.glUniform2f(uTexelSizeHandle, texelWidth, texelHeight)
 
-            glProgram.bindAttributesAndUniforms()
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
             GlUtil.checkGlError()
         } catch (e: GlUtil.GlException) {

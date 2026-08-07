@@ -200,7 +200,6 @@ fun ExportScreen(
                                 .verticalScroll(rememberScrollState()),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(stringResource(R.string.export_settings), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(Dimens.Padding.large))
 
                             SegmentedSelector(

@@ -11,7 +11,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BaseGlShaderProgram
 import androidx.media3.effect.GlEffect
 import androidx.media3.effect.GlShaderProgram
-import java.io.IOException
 
 /**
  * Real-time high-precision color grading effect utilizing 10-bit HDR-safe mathematical formulas.
@@ -63,13 +62,13 @@ internal class LutShaderProgram(
 
     private val glProgram: GlProgram
     private var uFilterTypeHandle: Int = 0
+    
+    @Volatile
     private var filterTypeIndex: Int = initialFilterIndex
 
     init {
         try {
-            glProgram = GlProgram(context, VERTEX_SHADER, FRAGMENT_SHADER)
-        } catch (e: IOException) {
-            throw VideoFrameProcessingException(e)
+            glProgram = GlProgram(VERTEX_SHADER, FRAGMENT_SHADER)
         } catch (e: GlUtil.GlException) {
             throw VideoFrameProcessingException(e)
         }
@@ -89,10 +88,23 @@ internal class LutShaderProgram(
             glProgram.use()
             glProgram.setSamplerTexIdUniform("uTexSampler", inputTexId, 0)
 
-            // Atomic uniform update (Zero allocations in rendering loop)
-            GLES20.glUniform1i(uFilterTypeHandle, filterTypeIndex)
+            glProgram.setBufferAttribute(
+                "aFramePosition",
+                GlUtil.getNormalizedCoordinateBounds(),
+                GlUtil.HOMOGENEOUS_COORDINATE_VECTOR_SIZE
+            )
+            glProgram.setBufferAttribute(
+                "aTexCoords",
+                GlUtil.getTextureCoordinateBounds(),
+                GlUtil.HOMOGENEOUS_COORDINATE_VECTOR_SIZE
+            )
 
             glProgram.bindAttributesAndUniforms()
+
+            // Atomic uniform update (Zero allocations in rendering loop)
+            // MUST be called after bindAttributesAndUniforms to ensure Media3 doesn't reset it
+            GLES20.glUniform1i(uFilterTypeHandle, filterTypeIndex)
+
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
             GlUtil.checkGlError()
         } catch (e: GlUtil.GlException) {
@@ -205,6 +217,14 @@ internal class LutShaderProgram(
                     // Lift shadows by adding constant offset and compressing slope
                     vec3 pastel = (desat * 0.88) + vec3(0.10, 0.09, 0.12);
                     gl_FragColor = vec4(clamp(pastel, 0.0, 1.0), source.a);
+                    return;
+                }
+
+                // 6 -> Black and White (Noir: High contrast monochromatic film)
+                if (uFilterType == 6) {
+                    vec3 bw = vec3(luma);
+                    vec3 contrastedBw = applyContrast(bw, 1.15); // Adds a punchy, premium contrast
+                    gl_FragColor = vec4(clamp(contrastedBw, 0.0, 1.0), source.a);
                     return;
                 }
 

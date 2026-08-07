@@ -44,8 +44,11 @@ class StudioGpuCameraEffect(
 @OptIn(UnstableApi::class)
 class CameraEffectManager @Inject constructor() {
 
-    private val skinSmoothEffect = SkinSmoothGlEffect()
-    private val lutEffect = LutGlEffect()
+    private var smoothnessIntensity = 0.35f
+    private var activeFilter = CreatorFilter.NATURAL
+
+    private val activeSkinEffects = mutableListOf<SkinSmoothGlEffect>()
+    private val activeLutEffects = mutableListOf<LutGlEffect>()
 
     private val activeEffects = mutableListOf<CameraEffect>()
     private val activeProcessors = mutableListOf<StudioEffectSurfaceProcessor>()
@@ -56,24 +59,31 @@ class CameraEffectManager @Inject constructor() {
      *
      * @param context Application or activity context required for OpenGL shader creation.
      * @param targets CameraX surface targets (defaults to [CameraEffect.PREVIEW] and [CameraEffect.VIDEO_CAPTURE]).
-     * @return A list of [CameraEffect] ready to attach to CameraX UseCaseGroup or LifecycleCameraController.
+     * @return A set of [CameraEffect] ready to attach to [androidx.camera.view.LifecycleCameraController.setEffects].
      */
     fun buildCameraEffects(
         context: Context,
         targets: Int = CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE
-    ): List<CameraEffect> {
+    ): Set<CameraEffect> {
         activeProcessors.forEach { try { it.release() } catch (e: Exception) {} }
         activeProcessors.clear()
         activeEffects.clear()
+        activeSkinEffects.clear()
+        activeLutEffects.clear()
 
         val result = mutableListOf<CameraEffect>()
 
         // Build dedicated GPU effect pipeline for Live Preview Viewfinder
         if ((targets and CameraEffect.PREVIEW) != 0) {
+            val previewSkin = SkinSmoothGlEffect(smoothnessIntensity)
+            val previewLut = LutGlEffect(activeFilter)
+            activeSkinEffects.add(previewSkin)
+            activeLutEffects.add(previewLut)
+
             val previewProcessor = StudioEffectSurfaceProcessor(
                 context = context.applicationContext,
-                skinSmoothEffect = skinSmoothEffect,
-                lutEffect = lutEffect,
+                skinSmoothEffect = previewSkin,
+                lutEffect = previewLut,
                 executor = effectExecutor
             )
             activeProcessors.add(previewProcessor)
@@ -89,10 +99,15 @@ class CameraEffectManager @Inject constructor() {
 
         // Build dedicated GPU effect pipeline for Video Capture
         if ((targets and CameraEffect.VIDEO_CAPTURE) != 0) {
+            val videoSkin = SkinSmoothGlEffect(smoothnessIntensity)
+            val videoLut = LutGlEffect(activeFilter)
+            activeSkinEffects.add(videoSkin)
+            activeLutEffects.add(videoLut)
+
             val videoProcessor = StudioEffectSurfaceProcessor(
                 context = context.applicationContext,
-                skinSmoothEffect = skinSmoothEffect,
-                lutEffect = lutEffect,
+                skinSmoothEffect = videoSkin,
+                lutEffect = videoLut,
                 executor = effectExecutor
             )
             activeProcessors.add(videoProcessor)
@@ -106,20 +121,22 @@ class CameraEffectManager @Inject constructor() {
             activeEffects.add(videoEffect)
         }
 
-        return result
+        return result.toSet()
     }
 
     fun setSmoothnessIntensity(intensity: Float) {
-        skinSmoothEffect.setSmoothness(intensity)
+        smoothnessIntensity = intensity
+        activeSkinEffects.forEach { it.setSmoothness(intensity) }
     }
 
-    fun getSmoothnessIntensity(): Float = skinSmoothEffect.getSmoothness()
+    fun getSmoothnessIntensity(): Float = smoothnessIntensity
 
     fun setActiveFilter(filter: CreatorFilter) {
-        lutEffect.setActiveFilter(filter)
+        activeFilter = filter
+        activeLutEffects.forEach { it.setActiveFilter(filter) }
     }
 
-    fun getActiveFilter(): CreatorFilter = lutEffect.getActiveFilter()
+    fun getActiveFilter(): CreatorFilter = activeFilter
 
     /**
      * Releases all OpenGL ES program handles, EGL surfaces, and GPU memory associated with the active effects.
@@ -133,6 +150,8 @@ class CameraEffectManager @Inject constructor() {
         } finally {
             activeProcessors.clear()
             activeEffects.clear()
+            activeSkinEffects.clear()
+            activeLutEffects.clear()
         }
     }
 
@@ -154,16 +173,19 @@ internal class StudioEffectSurfaceProcessor(
 
     private var videoFrameProcessor: VideoFrameProcessor? = null
     private var pendingSurfaceInfo: SurfaceInfo? = null
-    private var isReleased = false
 
     override fun onInputSurface(request: SurfaceRequest) {
-        if (isReleased) {
-            request.willNotProvideSurface()
-            return
-        }
-
+        Log.w("CameraEffectFix", "onInputSurface called for resolution: ${request.resolution}")
         executor.execute {
             try {
+                // CameraX may call onInputSurface multiple times on the same processor across
+                // the pipeline's lifetime (PreviewView re-attach, mode switches, recording
+                // start/stop). Tear down any leftover processor from the previous cycle so the
+                // surface request can always be satisfied.
+                videoFrameProcessor?.release()
+                videoFrameProcessor = null
+                pendingSurfaceInfo = null
+
                 val effects: List<Effect> = listOf(skinSmoothEffect, lutEffect)
                 val colorInfo = ColorInfo.SDR_BT709_LIMITED
                 
@@ -198,18 +220,20 @@ internal class StudioEffectSurfaceProcessor(
                     .setColorInfo(colorInfo)
                     .build()
 
+                processor.setOnInputSurfaceReadyListener {
+                    val inputSurface = processor.inputSurface
+                    request.provideSurface(inputSurface, executor) { result ->
+                        Log.d("StudioEffectProcessor", "Input surface released: ${result.resultCode}")
+                        release()
+                    }
+                }
+
                 processor.registerInputStream(
-                    VideoFrameProcessor.INPUT_TYPE_SURFACE,
+                    VideoFrameProcessor.INPUT_TYPE_SURFACE_AUTOMATIC_FRAME_REGISTRATION,
                     format,
                     effects,
                     0L
                 )
-
-                val inputSurface = processor.inputSurface
-                request.provideSurface(inputSurface, executor) { result ->
-                    Log.d("StudioEffectProcessor", "Input surface released: ${result.resultCode}")
-                    release()
-                }
             } catch (e: Exception) {
                 Log.e("StudioEffectProcessor", "Failed to initialize Media3 VideoFrameProcessor", e)
                 request.willNotProvideSurface()
@@ -218,22 +242,24 @@ internal class StudioEffectSurfaceProcessor(
     }
 
     override fun onOutputSurface(surfaceOutput: SurfaceOutput) {
-        if (isReleased) return
-
+        Log.w("CameraEffectFix", "onOutputSurface called for size: ${surfaceOutput.size}")
         executor.execute {
             val processor = videoFrameProcessor
             val resolution = surfaceOutput.size
-            
+
             val surface = surfaceOutput.getSurface(executor) { event ->
                 Log.d("StudioEffectProcessor", "Output surface close event observed: $event")
                 videoFrameProcessor?.setOutputSurfaceInfo(null)
             }
+            
+            val identityMatrix = FloatArray(16).apply { android.opengl.Matrix.setIdentityM(this, 0) }
+            surfaceOutput.updateTransformMatrix(identityMatrix, identityMatrix)
 
             val surfaceInfo = SurfaceInfo(
                 surface,
                 resolution.width,
                 resolution.height,
-                0
+                0 // orientationDegrees
             )
 
             if (processor != null) {
@@ -245,16 +271,14 @@ internal class StudioEffectSurfaceProcessor(
     }
 
     fun release() {
-        if (isReleased) return
-        isReleased = true
         executor.execute {
             try {
                 videoFrameProcessor?.release()
-                pendingSurfaceInfo = null
             } catch (e: Exception) {
                 Log.w("StudioEffectProcessor", "Error releasing VideoFrameProcessor: ${e.message}")
             } finally {
                 videoFrameProcessor = null
+                pendingSurfaceInfo = null
             }
         }
     }

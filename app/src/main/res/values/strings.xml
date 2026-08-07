@@ -1,7 +1,5 @@
 <resources>
     <string name="app_name">Auto Captioner</string>
-
-    <string name="export_settings">Export Settings</string>
     
     <string name="export_original">Original</string>
     
@@ -511,13 +509,13 @@
     <string name="recorder_timer">Timer</string>
     
     <string name="recorder_open_settings">Open Settings</string>
-    <string name="recorder_permission_eyebrow">BEFORE YOU RECORD</string>
-    <string name="recorder_permission_screen_title">Allow camera &amp; microphone</string>
-    <string name="recorder_permission_screen_subtitle">Record sharp video with clear sound. Both are only used while you are recording.</string>
+    <string name="recorder_permission_eyebrow">QUICK SETUP</string>
+    <string name="recorder_permission_screen_title">We need your camera &amp; mic</string>
+    <string name="recorder_permission_screen_subtitle">We\'ll only use them while you are recording. Nothing gets saved or shared without you.</string>
     <string name="recorder_permission_camera_title">Camera</string>
-    <string name="recorder_permission_camera_desc">Record video &amp; preview</string>
+    <string name="recorder_permission_camera_desc">See what you\'re filming in real time</string>
     <string name="recorder_permission_microphone_title">Microphone</string>
-    <string name="recorder_permission_microphone_desc">Capture clear audio</string>
+    <string name="recorder_permission_microphone_desc">Pick up your voice loud &amp; clear</string>
     <string name="recorder_permission_granted">Granted</string>
     <string name="recorder_permission_needed">Needed</string>
     <string name="recorder_permission_allow_both">Allow Camera &amp; Microphone</string>
@@ -573,6 +571,9 @@
 
     <!-- Welcome / Onboarding -->
     <string name="welcome_brand">AutoCaptioner</string>
+    <string name="welcome_headline_line1">From raw clip to</string>
+    <string name="welcome_headline_line2">viral Reel in seconds.</string>
+    <string name="welcome_company">From DipDev Labs</string>
     
     <!-- Export History -->
     <string name="export_history_label">Exported Video</string>

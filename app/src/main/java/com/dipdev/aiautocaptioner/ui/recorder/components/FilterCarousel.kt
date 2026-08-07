@@ -194,6 +194,7 @@ private fun getFilterIcon(filter: CreatorFilter): ImageVector {
         CreatorFilter.STUDIO_BRIGHT -> FeatherIcons.Aperture
         CreatorFilter.CINEMATIC -> FeatherIcons.Film
         CreatorFilter.SOFT_PASTEL -> FeatherIcons.Cloud
+        CreatorFilter.BLACK_AND_WHITE -> FeatherIcons.Camera // Or another icon like Moon if available
     }
 }
 
@@ -205,5 +206,6 @@ private fun getFilterGradient(filter: CreatorFilter): Brush {
         CreatorFilter.STUDIO_BRIGHT -> Brush.linearGradient(listOf(Color(0xFF56CCF2), Color(0xFF2F80ED)))
         CreatorFilter.CINEMATIC -> Brush.linearGradient(listOf(Color(0xFF11998E), Color(0xFF38EF7D)))
         CreatorFilter.SOFT_PASTEL -> Brush.linearGradient(listOf(Color(0xFFF64F59), Color(0xFFC471ED)))
+        CreatorFilter.BLACK_AND_WHITE -> Brush.linearGradient(listOf(Color(0xFF434343), Color(0xFF000000)))
     }
 }
