@@ -22,7 +22,8 @@ enum class CreatorFilter(
     val displayName: String,
     val subtitle: String,
     val shaderIndex: Int,
-    val accentColorHex: Long
+    val accentColorHex: Long,
+    val drawableRes: Int
 ) {
     /**
      * Calibrated baseline sensor true-tone pass-through without color modification.
@@ -31,7 +32,8 @@ enum class CreatorFilter(
         displayName = "Natural",
         subtitle = "True-Tone Sensor",
         shaderIndex = 0,
-        accentColorHex = 0xFFFFFFFFL
+        accentColorHex = 0xFFFFFFFFL,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_natural
     ),
 
     /**
@@ -41,7 +43,8 @@ enum class CreatorFilter(
         displayName = "Clarity",
         subtitle = "Vibrant Pop",
         shaderIndex = 1,
-        accentColorHex = 0xFF00E5FFL
+        accentColorHex = 0xFF00E5FFL,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_vibrant
     ),
 
     /**
@@ -51,7 +54,8 @@ enum class CreatorFilter(
         displayName = "Golden Hour",
         subtitle = "Warm Glow",
         shaderIndex = 2,
-        accentColorHex = 0xFFFFAB00L
+        accentColorHex = 0xFFFFAB00L,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_warm
     ),
 
     /**
@@ -61,7 +65,8 @@ enum class CreatorFilter(
         displayName = "Clean",
         subtitle = "Studio Glam",
         shaderIndex = 3,
-        accentColorHex = 0xFFFFD700L
+        accentColorHex = 0xFFFFD700L,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_studio
     ),
 
     /**
@@ -71,7 +76,8 @@ enum class CreatorFilter(
         displayName = "Teal & Orange",
         subtitle = "Cinematic Film",
         shaderIndex = 4,
-        accentColorHex = 0xFFFF6E40L
+        accentColorHex = 0xFFFF6E40L,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_cinematic
     ),
 
     /**
@@ -81,7 +87,8 @@ enum class CreatorFilter(
         displayName = "Aesthetic",
         subtitle = "Soft Pastel",
         shaderIndex = 5,
-        accentColorHex = 0xFFF48FB1L
+        accentColorHex = 0xFFF48FB1L,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_pastel
     ),
 
     /**
@@ -91,7 +98,8 @@ enum class CreatorFilter(
         displayName = "Noir",
         subtitle = "B&W Film",
         shaderIndex = 6,
-        accentColorHex = 0xFF757575L
+        accentColorHex = 0xFF757575L,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_bw
     );
 
     companion object {

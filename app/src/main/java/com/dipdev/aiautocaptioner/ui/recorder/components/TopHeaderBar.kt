@@ -119,7 +119,9 @@ private fun HeaderActionPill(
             imageVector = icon,
             contentDescription = label,
             tint = Color(0xFFFFCC70),
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier
+                .size(13.dp)
+                .scale(1.25f)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(

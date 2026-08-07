@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -244,11 +245,14 @@ fun SmartRecorderContent(
 
     var showBgPicker by remember { mutableStateOf(false) }
     var flashEnabled by remember { mutableStateOf(false) }
+    
+
+
     var flipRotation by remember { mutableFloatStateOf(0f) }
     val animateFlip: Float by animateFloatAsState(
         targetValue = flipRotation,
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-        label = "flip_y"
+        label = "FlipAnimation"
     )
     val isFlipping = kotlin.math.abs(animateFlip - flipRotation) > 1f
 
@@ -260,6 +264,13 @@ fun SmartRecorderContent(
     }
 
     var activeRecording by remember { mutableStateOf<androidx.camera.video.Recording?>(null) }
+    
+    LaunchedEffect(mode, recordingState) {
+        if ((mode == RecordingMode.FACELESS || recordingState == RecordingState.DONE) && flashEnabled) {
+            flashEnabled = false
+            cameraController.enableTorch(false)
+        }
+    }
 
     val isPermissionBlocked = !cameraGranted || !micGranted
 
@@ -519,22 +530,32 @@ fun SmartRecorderContent(
                     .size(40.dp)
                     .clip(CircleShape)
             ) {
-                Icon(FeatherIcons.X, contentDescription = "Close", tint = Color.White)
+                Icon(
+                    FeatherIcons.X, 
+                    contentDescription = "Close", 
+                    tint = Color.White,
+                    modifier = Modifier.scale(1.25f)
+                )
             }
 
             // Center: Flash Button
-            IconButton(
-                onClick = {
-                    flashEnabled = !flashEnabled
-                    cameraController.enableTorch(flashEnabled)
-                },
-                modifier = Modifier.size(40.dp)
-            ) {
-                androidx.compose.material3.Icon(
-                    imageVector = if (flashEnabled) compose.icons.FeatherIcons.Zap else compose.icons.FeatherIcons.ZapOff,
-                    contentDescription = "Flash",
-                    tint = androidx.compose.ui.graphics.Color.White
-                )
+            if (recordingState != RecordingState.DONE && mode != RecordingMode.FACELESS) {
+                IconButton(
+                    onClick = {
+                        flashEnabled = !flashEnabled
+                        cameraController.enableTorch(flashEnabled)
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = if (flashEnabled) compose.icons.FeatherIcons.Zap else compose.icons.FeatherIcons.ZapOff,
+                        contentDescription = "Flash",
+                        tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.scale(1.25f)
+                    )
+                }
+            } else {
+                androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.size(40.dp))
             }
 
             // Far Right: Top Header Bar (Aspect Ratio & Quality pills) when IDLE

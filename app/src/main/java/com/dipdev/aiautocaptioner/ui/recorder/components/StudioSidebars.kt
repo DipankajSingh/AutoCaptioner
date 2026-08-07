@@ -74,7 +74,6 @@ fun StudioRightSidebar(
                     icon = FeatherIcons.Smile,
                     text = "Retouch",
                     isActive = uiState.isSmoothnessSliderVisible || uiState.smoothnessIntensity > 0f,
-                    breathingGlow = uiState.smoothnessIntensity > 0f,
                     onClick = onToggleSmoothness
                 )
                 SidebarButton(

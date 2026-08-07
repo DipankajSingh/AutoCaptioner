@@ -1,8 +1,9 @@
 package com.dipdev.aiautocaptioner.ui.recorder.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -10,31 +11,23 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.Aperture
-import compose.icons.feathericons.Camera
-import compose.icons.feathericons.Cloud
-import compose.icons.feathericons.Film
-import compose.icons.feathericons.Star
-import compose.icons.feathericons.Sun
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.platform.LocalConfiguration
 
 @Composable
 fun IntegratedFilterShutter(
@@ -50,14 +43,15 @@ fun IntegratedFilterShutter(
     
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    // Padding to center the 64.dp items perfectly under the 72.dp shutter
-    val itemWidth = 64.dp
+    
+    // The base size of the items
+    val itemWidth = 64.dp 
     val horizontalPadding = (screenWidth / 2) - (itemWidth / 2)
 
     // Snap behavior
     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Calculate center item continuously
+    // Calculate center item continuously for auto-select
     val centerItemIndex by remember(listState) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -98,7 +92,7 @@ fun IntegratedFilterShutter(
     }
 
     Box(
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.TopCenter,
         modifier = modifier.fillMaxWidth()
     ) {
         // Layer 1: The sliding filter thumbnails
@@ -106,7 +100,7 @@ fun IntegratedFilterShutter(
             state = listState,
             flingBehavior = flingBehavior,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 16.dp),
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 24.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             itemsIndexed(items = filters, key = { _, filter -> filter.name }) { index, filter ->
@@ -123,15 +117,69 @@ fun IntegratedFilterShutter(
                             }
                         }
                 ) {
-                    FilterPreviewCircle(filter = filter)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        FilterPreviewCircle(
+                            filter = filter,
+                            modifier = Modifier.graphicsLayer {
+                                val layoutInfo = listState.layoutInfo
+                                val center = layoutInfo.viewportStartOffset + layoutInfo.viewportSize.width / 2f
+                                val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+                                val fraction = if (itemInfo != null) {
+                                    val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                                    val distance = Math.abs(center - itemCenter)
+                                    val maxDistance = itemInfo.size * 1.5f
+                                    1f - (distance / maxDistance).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                }
+                                
+                                // Scale ranges from 0.75f (inactive) to 1.0f (active)
+                                val scale = 0.75f + (0.25f * fraction)
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                        )
+                        
+                        Text(
+                            text = filter.displayName,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            modifier = Modifier.graphicsLayer {
+                                val layoutInfo = listState.layoutInfo
+                                val center = layoutInfo.viewportStartOffset + layoutInfo.viewportSize.width / 2f
+                                val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+                                val fraction = if (itemInfo != null) {
+                                    val itemCenter = itemInfo.offset + itemInfo.size / 2f
+                                    val distance = Math.abs(center - itemCenter)
+                                    val maxDistance = itemInfo.size * 1.0f
+                                    1f - (distance / maxDistance).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                }
+                                // Fade out text for non-active items
+                                alpha = fraction
+                            }
+                        )
+                    }
                 }
             }
         }
         
         // Layer 2: The stationary shutter overlay (Hollow Ring)
+        // Image top is at 24dp padding. Image height is 64dp.
+        // Image center is at 24 + 32 = 56dp.
+        // Ring height is 80dp. Ring center is at 40dp.
+        // To align Ring center to Image center: Ring top = 56 - 40 = 16dp.
         HollowShutterRing(
             isRecording = isRecording,
-            onClick = onRecordClick
+            onClick = onRecordClick,
+            modifier = Modifier.padding(top = 16.dp) 
         )
     }
 }
@@ -144,22 +192,20 @@ fun HollowShutterRing(
 ) {
     Box(
         modifier = modifier
-            .size(72.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
+            .size(80.dp) // Increased from 72 to 80 to leave a gap between image and ring
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onClick() }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val baseRadius = (size.width / 2f) * 0.86f
-            
             // Draw ONLY the pure white outline
             drawCircle(
                 color = Color.White.copy(alpha = 0.9f),
-                radius = baseRadius - 6f,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f)
+                radius = (size.width / 2f) - 4.dp.toPx(),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx())
             )
         }
     }
@@ -172,40 +218,15 @@ private fun FilterPreviewCircle(
 ) {
     Box(
         modifier = modifier
-            .size(64.dp)
-            .clip(CircleShape)
-            .background(getFilterGradient(filter)),
+            .size(64.dp) // Base size, will be scaled down to 48dp by graphicsLayer when inactive
+            .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = getFilterIcon(filter),
+        Image(
+            painter = painterResource(id = filter.drawableRes),
             contentDescription = filter.displayName,
-            tint = Color.White.copy(alpha = 0.9f),
-            modifier = Modifier.size(28.dp)
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
         )
-    }
-}
-
-private fun getFilterIcon(filter: CreatorFilter): ImageVector {
-    return when (filter) {
-        CreatorFilter.NATURAL -> FeatherIcons.Camera
-        CreatorFilter.VIBRANT -> FeatherIcons.Star
-        CreatorFilter.WARM_GLOW -> FeatherIcons.Sun
-        CreatorFilter.STUDIO_BRIGHT -> FeatherIcons.Aperture
-        CreatorFilter.CINEMATIC -> FeatherIcons.Film
-        CreatorFilter.SOFT_PASTEL -> FeatherIcons.Cloud
-        CreatorFilter.BLACK_AND_WHITE -> FeatherIcons.Camera // Or another icon like Moon if available
-    }
-}
-
-private fun getFilterGradient(filter: CreatorFilter): Brush {
-    return when (filter) {
-        CreatorFilter.NATURAL -> Brush.linearGradient(listOf(Color(0xFF2B32B2), Color(0xFF1488CC)))
-        CreatorFilter.VIBRANT -> Brush.linearGradient(listOf(Color(0xFFC850C0), Color(0xFF4158D0)))
-        CreatorFilter.WARM_GLOW -> Brush.linearGradient(listOf(Color(0xFFFFCC70), Color(0xFFC850C0)))
-        CreatorFilter.STUDIO_BRIGHT -> Brush.linearGradient(listOf(Color(0xFF56CCF2), Color(0xFF2F80ED)))
-        CreatorFilter.CINEMATIC -> Brush.linearGradient(listOf(Color(0xFF11998E), Color(0xFF38EF7D)))
-        CreatorFilter.SOFT_PASTEL -> Brush.linearGradient(listOf(Color(0xFFF64F59), Color(0xFFC471ED)))
-        CreatorFilter.BLACK_AND_WHITE -> Brush.linearGradient(listOf(Color(0xFF434343), Color(0xFF000000)))
     }
 }

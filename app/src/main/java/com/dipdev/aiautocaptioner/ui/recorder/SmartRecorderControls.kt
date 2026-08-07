@@ -110,6 +110,7 @@ fun SidebarButton(
             tint = if (isActive) activeColor else Color.White.copy(alpha = alpha),
             modifier = Modifier
                 .size(24.dp)
+                .scale(1.2f) // Scale up to increase visual weight/thickness
         )
         
         if (badgeText != null && badgeText != "0.0") {

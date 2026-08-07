@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +30,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -47,6 +50,8 @@ import com.dipdev.aiautocaptioner.ui.recorder.RecordingState
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderState
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.RefreshCcw
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cameraswitch
 
 @Composable
 fun StudioBottomArea(
@@ -166,6 +171,14 @@ fun StudioBottomArea(
 
                             // Right Camera Flip Button (Lightning-fast thumb reach in Camera Mode)
                             if (mode == RecordingMode.CAMERA) {
+                                val interactionSource = remember { MutableInteractionSource() }
+                                val isPressed by interactionSource.collectIsPressedAsState()
+                                val scale by androidx.compose.animation.core.animateFloatAsState(
+                                    targetValue = if (isPressed) 0.85f else 1f,
+                                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.45f),
+                                    label = "flipScale"
+                                )
+                                
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.CenterEnd)
@@ -174,21 +187,21 @@ fun StudioBottomArea(
                                             this.rotationY = animateFlip
                                             cameraDistance = 8 * density
                                         }
+                                        .scale(scale)
                                         .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.22f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
                                         .clickable(
                                             indication = null,
-                                            interactionSource = remember { MutableInteractionSource() },
+                                            interactionSource = interactionSource,
                                             onClick = onFlipCamera
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = FeatherIcons.RefreshCcw,
+                                        imageVector = Icons.Rounded.Cameraswitch,
                                         contentDescription = stringResource(R.string.recorder_flip),
                                         tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier
+                                            .size(28.dp)
                                     )
                                 }
                             }
