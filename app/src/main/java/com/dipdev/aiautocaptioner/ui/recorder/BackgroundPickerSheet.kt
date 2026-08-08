@@ -75,7 +75,7 @@ private val GRADIENT_PRESETS = listOf(
     GradientPreset("Forest", listOf(Color(0xFF134E5E), Color(0xFF71B280))),
 )
 
-private enum class BgTab { COLOR, GRADIENT, VIDEO }
+private enum class BgTab { COLOR, GRADIENT }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,40 +92,19 @@ fun BackgroundPickerSheet(
         mutableLongStateOf(initColor.toArgb().toLong())
     }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-            if (bitmap != null) {
-                onBackgroundSelected(BackgroundState.ImageBitmap(bitmap))
-                onDismissRequest()
-            }
-        }
-    }
-
-    val videoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            onBackgroundSelected(BackgroundState.VideoUri(uri))
-            onDismissRequest()
-        }
-    }
+    // Removed videoPickerLauncher
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color(0xFF18181B),
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(top = 12.dp, bottom = 4.dp)
                     .size(width = 36.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Color.White.copy(alpha = 0.2f))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
             )
         }
     ) {
@@ -143,7 +122,7 @@ fun BackgroundPickerSheet(
                 text = "Background",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(top = 4.dp)
             )
 
@@ -178,10 +157,6 @@ fun BackgroundPickerSheet(
                             onDismissRequest()
                         }
                     )
-                    BgTab.VIDEO -> VideoTab(
-                        onPickImage = { imagePickerLauncher.launch("image/*") },
-                        onPickVideo = { videoPickerLauncher.launch("video/*") }
-                    )
                 }
             }
         }
@@ -198,19 +173,19 @@ private fun TabPillRow(activeTab: BgTab, onTabSelected: (BgTab) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.06f))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         BgTab.entries.forEach { tab ->
             val isActive = tab == activeTab
             val bg by animateColorAsState(
-                targetValue = if (isActive) Color(0xFF6366F1) else Color.Transparent,
+                targetValue = if (isActive) MaterialTheme.colorScheme.primary else Color.Transparent,
                 animationSpec = tween(200),
                 label = "tabBg"
             )
             val textColor by animateColorAsState(
-                targetValue = if (isActive) Color.White else Color.White.copy(alpha = 0.5f),
+                targetValue = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 animationSpec = tween(200),
                 label = "tabText"
             )
@@ -230,7 +205,6 @@ private fun TabPillRow(activeTab: BgTab, onTabSelected: (BgTab) -> Unit) {
                     text = when (tab) {
                         BgTab.COLOR -> "Color"
                         BgTab.GRADIENT -> "Gradient"
-                        BgTab.VIDEO -> "Video"
                     },
                     color = textColor,
                     fontSize = 13.sp,
@@ -274,7 +248,7 @@ private fun ColorTab(
                         .clip(CircleShape)
                         .background(color)
                         .then(
-                            if (isSelected) Modifier.border(2.dp, Color.White, CircleShape)
+                            if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                             else Modifier
                         )
                         .clickable(
@@ -292,7 +266,7 @@ private fun ColorTab(
                         .background(Color(customColorLong.toInt()))
                         .border(
                             width = if (showColorPicker) 2.dp else 1.dp,
-                            color = if (showColorPicker) Color(0xFF6366F1) else Color.White.copy(alpha = 0.3f),
+                            color = if (showColorPicker) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                             shape = CircleShape
                         )
                         .clickable(
@@ -304,7 +278,7 @@ private fun ColorTab(
                     Icon(
                         imageVector = FeatherIcons.Plus,
                         contentDescription = "Custom color",
-                        tint = Color.White.copy(alpha = 0.8f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -317,13 +291,13 @@ private fun ColorTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "Custom Color",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -346,7 +320,7 @@ private fun ColorTab(
                     Button(
                         onClick = { onColorSelected(Color(customColorLong.toInt())) },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text("Apply Color", fontWeight = FontWeight.SemiBold)
                     }
@@ -370,7 +344,7 @@ private fun GradientTab(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "Tap a gradient to apply it",
-            color = Color.White.copy(alpha = 0.4f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp
         )
         LazyVerticalGrid(
@@ -394,7 +368,7 @@ private fun GradientTab(
                             .clip(RoundedCornerShape(10.dp))
                             .background(Brush.linearGradient(preset.colors))
                             .then(
-                                if (isSelected) Modifier.border(2.dp, Color.White, RoundedCornerShape(10.dp))
+                                if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(10.dp))
                                 else Modifier
                             )
                             .clickable(
@@ -404,7 +378,7 @@ private fun GradientTab(
                     )
                     Text(
                         text = preset.name,
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f),
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                     )
@@ -414,80 +388,4 @@ private fun GradientTab(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Video tab — image from gallery + video from gallery
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun VideoTab(
-    onPickImage: () -> Unit,
-    onPickVideo: () -> Unit
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = "Import media from your gallery",
-            color = Color.White.copy(alpha = 0.4f),
-            fontSize = 12.sp
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Static image background
-            MediaPickerCard(
-                modifier = Modifier.weight(1f),
-                icon = { Icon(FeatherIcons.Image, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(28.dp)) },
-                title = "Photo",
-                subtitle = "Still image background",
-                onClick = onPickImage
-            )
-            // Looping video background
-            MediaPickerCard(
-                modifier = Modifier.weight(1f),
-                icon = { Icon(FeatherIcons.Film, contentDescription = null, tint = Color(0xFFA78BFA), modifier = Modifier.size(28.dp)) },
-                title = "Video",
-                subtitle = "Loops behind your voice",
-                onClick = onPickVideo
-            )
-        }
-    }
-}
-
-@Composable
-private fun MediaPickerCard(
-    modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.07f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onClick() }
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        icon()
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = subtitle,
-            color = Color.White.copy(alpha = 0.45f),
-            fontSize = 11.sp,
-            maxLines = 1
-        )
-    }
-}
+// Removed VideoTab and MediaPickerCard

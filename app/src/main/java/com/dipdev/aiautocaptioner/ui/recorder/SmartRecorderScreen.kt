@@ -485,21 +485,11 @@ fun SmartRecorderContent(
         }
 
         if (showTeleprompter) {
-            if (mode == RecordingMode.FACELESS) {
-                FacelessTeleprompterOverlay(
-                    text = teleprompterText,
-                    onTextChanged = { viewModel.updateTeleprompterText(it) },
-                    onDismiss = { viewModel.toggleTeleprompter() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                TeleprompterOverlay(
-                    text = teleprompterText,
-                    onTextChanged = { viewModel.updateTeleprompterText(it) },
-                    onDismiss = { viewModel.toggleTeleprompter() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+            TeleprompterOverlay(
+                text = teleprompterText,
+                onTextChanged = { viewModel.updateTeleprompterText(it) },
+                onDismiss = { viewModel.toggleTeleprompter() }
+            )
         }
 
         if (isCountdownActive) {

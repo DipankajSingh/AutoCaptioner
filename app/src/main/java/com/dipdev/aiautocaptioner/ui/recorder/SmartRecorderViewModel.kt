@@ -38,15 +38,7 @@ enum class RecordingState {
 
 sealed class BackgroundState {
     data class SolidColor(val color: Color) : BackgroundState()
-    data class ImageBitmap(
-        val bitmap: Bitmap,
-        val scale: Float = 1f,
-        val offsetX: Float = 0f,
-        val offsetY: Float = 0f
-    ) : BackgroundState()
     data class Gradient(val colors: List<Color>) : BackgroundState()
-    /** Looping video from the device gallery used as the recording background. */
-    data class VideoUri(val uri: Uri) : BackgroundState()
 }
 
 data class SmartRecorderState(
@@ -179,10 +171,7 @@ class SmartRecorderViewModel @Inject constructor(
     }
 
     fun updateImageTransform(scale: Float, offsetX: Float, offsetY: Float) {
-        val currentBg = currentState.selectedBackground
-        if (currentBg is BackgroundState.ImageBitmap) {
-            setState { copy(selectedBackground = currentBg.copy(scale = scale, offsetX = offsetX, offsetY = offsetY)) }
-        }
+        // No-op since video background was removed
     }
 
     fun setSelectedBackground(bg: BackgroundState) {
@@ -328,13 +317,8 @@ class SmartRecorderViewModel @Inject constructor(
             facelessRecorder = FacelessVideoRecorder()
 
             val bgState = currentState.selectedBackground
-            val bitmap = (bgState as? BackgroundState.ImageBitmap)?.bitmap
-            val scale = (bgState as? BackgroundState.ImageBitmap)?.scale ?: 1f
-            val offsetX = (bgState as? BackgroundState.ImageBitmap)?.offsetX ?: 0f
-            val offsetY = (bgState as? BackgroundState.ImageBitmap)?.offsetY ?: 0f
             val color = (bgState as? BackgroundState.SolidColor)?.color?.toArgb()
             val gradientColors = (bgState as? BackgroundState.Gradient)?.colors?.map { it.toArgb() }
-            val videoUri = (bgState as? BackgroundState.VideoUri)?.uri
 
             val quality = currentState.recordingQuality
             val ratio = currentState.aspectRatio
@@ -349,14 +333,8 @@ class SmartRecorderViewModel @Inject constructor(
                     fps = quality.fps,
                     videoBitrate = quality.videoBitrate,
                     audioBitrate = quality.audioBitrate,
-                    backgroundBitmap = bitmap,
                     backgroundColor = color,
                     gradientColors = gradientColors,
-                    scale = scale,
-                    offsetX = offsetX,
-                    offsetY = offsetY,
-                    videoUri = videoUri,
-                    context = context,
                     muted = currentState.isAudioMuted,
                     outputFile = outputFile,
                     onComplete = { file ->

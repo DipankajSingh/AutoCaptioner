@@ -51,7 +51,6 @@ class FacelessVideoRecorder {
     private var audioJob: Job? = null
     private var videoEncoderJob: Job? = null
     private var scope = CoroutineScope(Dispatchers.Default)
-    private var videoFrameExtractor: VideoFrameExtractor? = null
 
     private var videoWidth = 1080
     private var videoHeight = 1920
@@ -76,16 +75,8 @@ class FacelessVideoRecorder {
         fps: Int = 30,
         videoBitrate: Int = 4_000_000,
         audioBitrate: Int = 128_000,
-        backgroundBitmap: Bitmap?,
         backgroundColor: Int?,
         gradientColors: List<Int>?,
-        scale: Float = 1f,
-        offsetX: Float = 0f,
-        offsetY: Float = 0f,
-        /** Uri of a gallery video to use as a looping animated background. */
-        videoUri: Uri? = null,
-        /** Application context — required when [videoUri] is non-null. */
-        context: Context? = null,
         muted: Boolean = false,
         outputFile: File,
         onComplete: (File) -> Unit,
@@ -153,17 +144,9 @@ class FacelessVideoRecorder {
                 }
             }
 
-            // Start video background extractor if a URI was provided
-            if (videoUri != null && context != null) {
-                videoFrameExtractor = VideoFrameExtractor(
-                    context = context,
-                    uri = videoUri,
-                    targetWidth = width,
-                    targetHeight = height
-                ).also { it.start() }
+            videoJob = scope.launch(Dispatchers.IO) { 
+                videoDrawLoop(backgroundColor, gradientColors) 
             }
-
-            videoJob = scope.launch(Dispatchers.IO) { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
             videoEncoderJob = scope.launch { videoEncodeLoop() }
             if (audioEnabled) {
                 audioJob = scope.launch { audioEncodeLoop() }
@@ -226,10 +209,6 @@ class FacelessVideoRecorder {
             videoEncoderJob?.cancel()
             audioJob?.cancel()
 
-            // Release the video background decoder (if any) before releasing codec resources
-            videoFrameExtractor?.release()
-            videoFrameExtractor = null
-
             val muxerWasStarted = isMuxerStarted
             releaseResources()
 
@@ -243,76 +222,49 @@ class FacelessVideoRecorder {
     }
 
     private suspend fun videoDrawLoop(
-        bitmap: Bitmap?,
         color: Int?,
-        gradientColors: List<Int>?,
-        scale: Float = 1f,
-        offsetX: Float = 0f,
-        offsetY: Float = 0f
+        gradientColors: List<Int>?
     ) {
         val frameDurationMs = 1000L / videoFps
-        val rect = Rect(0, 0, videoWidth, videoHeight)
         var lastFrameTime = System.currentTimeMillis()
 
-        var gradientPaint: android.graphics.Paint? = null
-        if (gradientColors != null && gradientColors.size >= 2) {
-            gradientPaint = android.graphics.Paint().apply {
-                shader = android.graphics.LinearGradient(
-                    0f, 0f, 0f, videoHeight.toFloat(),
-                    gradientColors.toIntArray(),
-                    null,
-                    android.graphics.Shader.TileMode.CLAMP
-                )
-            }
-        }
+        if (inputSurface == null) return
 
-        val bitmapMatrix = android.graphics.Matrix()
-        if (bitmap != null) {
-            // Use Crop scaling (max) so the image fills the entire frame — matches the preview
-            val scaleX = videoWidth.toFloat() / bitmap.width
-            val scaleY = videoHeight.toFloat() / bitmap.height
-            val baseScale = maxOf(scaleX, scaleY) // Crop: take the larger scale so no bars
-            val dx = (videoWidth - bitmap.width * baseScale) / 2f
-            val dy = (videoHeight - bitmap.height * baseScale) / 2f
+        val eglCore = com.dipdev.aiautocaptioner.engine.render.EglCore()
+        val windowSurface = com.dipdev.aiautocaptioner.engine.render.WindowSurface(eglCore, inputSurface, true)
+        windowSurface.makeCurrent()
 
-            bitmapMatrix.postScale(baseScale, baseScale)
-            bitmapMatrix.postTranslate(dx, dy)
-            bitmapMatrix.postScale(scale, scale, videoWidth / 2f, videoHeight / 2f)
-            bitmapMatrix.postTranslate(offsetX, offsetY)
-        }
+        val bgRenderer = com.dipdev.aiautocaptioner.engine.render.BackgroundTextureRenderer()
 
         try {
+            var startRecordTime = System.nanoTime()
+            var totalPauseTimeNs = 0L
+            var lastPauseStartTime = 0L
+
             while (isRecording.get()) {
                 if (isPaused.get()) {
+                    if (lastPauseStartTime == 0L) {
+                        lastPauseStartTime = System.nanoTime()
+                    }
                     delay(16)
                     lastFrameTime = System.currentTimeMillis()
                     continue
+                } else if (lastPauseStartTime != 0L) {
+                    totalPauseTimeNs += (System.nanoTime() - lastPauseStartTime)
+                    lastPauseStartTime = 0L
                 }
 
-                val canvas = inputSurface?.lockCanvas(null)
-                if (canvas != null) {
-                    canvas.drawColor(Color.BLACK)
-                    // Video background: use latest decoded frame from VideoFrameExtractor
-                    val videoFrame = videoFrameExtractor?.getLatestFrame()
-                    if (videoFrame != null) {
-                        val vScaleX = videoWidth.toFloat() / videoFrame.width
-                        val vScaleY = videoHeight.toFloat() / videoFrame.height
-                        val vBase = maxOf(vScaleX, vScaleY)
-                        val vDx = (videoWidth - videoFrame.width * vBase) / 2f
-                        val vDy = (videoHeight - videoFrame.height * vBase) / 2f
-                        val vMatrix = android.graphics.Matrix()
-                        vMatrix.postScale(vBase, vBase)
-                        vMatrix.postTranslate(vDx, vDy)
-                        canvas.drawBitmap(videoFrame, vMatrix, null)
-                    } else if (bitmap != null) {
-                        canvas.drawBitmap(bitmap, bitmapMatrix, null)
-                    } else if (gradientPaint != null) {
-                        canvas.drawRect(rect, gradientPaint)
-                    } else if (color != null) {
-                        canvas.drawColor(color)
-                    }
-                    inputSurface?.unlockCanvasAndPost(canvas)
+                if (gradientColors != null && gradientColors.size >= 2) {
+                    bgRenderer.drawGradient(gradientColors[0], gradientColors.last())
+                } else if (color != null) {
+                    bgRenderer.drawSolidColor(color)
+                } else {
+                    bgRenderer.drawSolidColor(Color.BLACK)
                 }
+
+                val nsecs = System.nanoTime() - startRecordTime - totalPauseTimeNs
+                windowSurface.setPresentationTime(nsecs)
+                windowSurface.swapBuffers()
 
                 val elapsed = System.currentTimeMillis() - lastFrameTime
                 val sleepTime = frameDurationMs - elapsed
@@ -324,6 +276,10 @@ class FacelessVideoRecorder {
         } catch (e: Exception) {
             Log.e(TAG, "Video draw error", e)
             FirebaseCrashlytics.getInstance().recordException(e)
+        } finally {
+            bgRenderer.release()
+            windowSurface.release()
+            eglCore.release()
         }
     }
 
