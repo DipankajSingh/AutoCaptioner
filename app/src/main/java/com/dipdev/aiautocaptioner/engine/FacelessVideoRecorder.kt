@@ -1,6 +1,7 @@
 package com.dipdev.aiautocaptioner.engine
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -12,6 +13,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.media.MediaRecorder
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.Surface
@@ -49,6 +51,7 @@ class FacelessVideoRecorder {
     private var audioJob: Job? = null
     private var videoEncoderJob: Job? = null
     private var scope = CoroutineScope(Dispatchers.Default)
+    private var videoFrameExtractor: VideoFrameExtractor? = null
 
     private var videoWidth = 1080
     private var videoHeight = 1920
@@ -79,6 +82,10 @@ class FacelessVideoRecorder {
         scale: Float = 1f,
         offsetX: Float = 0f,
         offsetY: Float = 0f,
+        /** Uri of a gallery video to use as a looping animated background. */
+        videoUri: Uri? = null,
+        /** Application context — required when [videoUri] is non-null. */
+        context: Context? = null,
         muted: Boolean = false,
         outputFile: File,
         onComplete: (File) -> Unit,
@@ -146,6 +153,16 @@ class FacelessVideoRecorder {
                 }
             }
 
+            // Start video background extractor if a URI was provided
+            if (videoUri != null && context != null) {
+                videoFrameExtractor = VideoFrameExtractor(
+                    context = context,
+                    uri = videoUri,
+                    targetWidth = width,
+                    targetHeight = height
+                ).also { it.start() }
+            }
+
             videoJob = scope.launch(Dispatchers.IO) { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
             videoEncoderJob = scope.launch { videoEncodeLoop() }
             if (audioEnabled) {
@@ -209,6 +226,10 @@ class FacelessVideoRecorder {
             videoEncoderJob?.cancel()
             audioJob?.cancel()
 
+            // Release the video background decoder (if any) before releasing codec resources
+            videoFrameExtractor?.release()
+            videoFrameExtractor = null
+
             releaseResources()
 
             if (isMuxerStarted && outputFile != null) {
@@ -246,9 +267,10 @@ class FacelessVideoRecorder {
 
         val bitmapMatrix = android.graphics.Matrix()
         if (bitmap != null) {
+            // Use Crop scaling (max) so the image fills the entire frame — matches the preview
             val scaleX = videoWidth.toFloat() / bitmap.width
             val scaleY = videoHeight.toFloat() / bitmap.height
-            val baseScale = Math.min(scaleX, scaleY)
+            val baseScale = maxOf(scaleX, scaleY) // Crop: take the larger scale so no bars
             val dx = (videoWidth - bitmap.width * baseScale) / 2f
             val dy = (videoHeight - bitmap.height * baseScale) / 2f
 
@@ -269,7 +291,19 @@ class FacelessVideoRecorder {
                 val canvas = inputSurface?.lockCanvas(null)
                 if (canvas != null) {
                     canvas.drawColor(Color.BLACK)
-                    if (bitmap != null) {
+                    // Video background: use latest decoded frame from VideoFrameExtractor
+                    val videoFrame = videoFrameExtractor?.getLatestFrame()
+                    if (videoFrame != null) {
+                        val vScaleX = videoWidth.toFloat() / videoFrame.width
+                        val vScaleY = videoHeight.toFloat() / videoFrame.height
+                        val vBase = maxOf(vScaleX, vScaleY)
+                        val vDx = (videoWidth - videoFrame.width * vBase) / 2f
+                        val vDy = (videoHeight - videoFrame.height * vBase) / 2f
+                        val vMatrix = android.graphics.Matrix()
+                        vMatrix.postScale(vBase, vBase)
+                        vMatrix.postTranslate(vDx, vDy)
+                        canvas.drawBitmap(videoFrame, vMatrix, null)
+                    } else if (bitmap != null) {
                         canvas.drawBitmap(bitmap, bitmapMatrix, null)
                     } else if (gradientPaint != null) {
                         canvas.drawRect(rect, gradientPaint)

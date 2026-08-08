@@ -279,7 +279,7 @@ fun SmartRecorderContent(
             if (isPermissionBlocked) {
                 onRequestPermissions()
             } else {
-                viewModel.requestStartRecording(forceCountdown = forceCountdown) {
+                viewModel.requestStartRecording(forceCountdown = forceCountdown, context = context) {
                     viewModel.prepareCameraRecordingFile { file ->
                         if (activeRecording != null || cameraController.isRecording) {
                             return@prepareCameraRecordingFile
@@ -473,6 +473,17 @@ fun SmartRecorderContent(
                         viewModel.updateImageTransform(scale, offsetX, offsetY)
                     }
                 )
+            }
+
+            // REC / PAUSED indicator overlays for Faceless mode
+            // (In Camera mode these are rendered automatically over the CameraX preview,
+            //  but in Faceless mode the camera surface is unbound, so we must render them explicitly.)
+            if (mode == RecordingMode.FACELESS) {
+                when (recordingState) {
+                    RecordingState.RECORDING -> RecordingIndicator()
+                    RecordingState.PAUSED -> PausedIndicator()
+                    else -> {}
+                }
             }
         }
 
@@ -677,6 +688,7 @@ fun SmartRecorderContent(
 
     if (showBgPicker) {
         BackgroundPickerSheet(
+            currentBackground = selectedBackground,
             onDismissRequest = { showBgPicker = false },
             onBackgroundSelected = { viewModel.setSelectedBackground(it) }
         )

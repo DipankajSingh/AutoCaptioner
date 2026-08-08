@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.recorder
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.viewModelScope
@@ -44,6 +45,8 @@ sealed class BackgroundState {
         val offsetY: Float = 0f
     ) : BackgroundState()
     data class Gradient(val colors: List<Color>) : BackgroundState()
+    /** Looping video from the device gallery used as the recording background. */
+    data class VideoUri(val uri: Uri) : BackgroundState()
 }
 
 data class SmartRecorderState(
@@ -287,7 +290,7 @@ class SmartRecorderViewModel @Inject constructor(
         }
     }
 
-    fun requestStartRecording(forceCountdown: Int = 0, onProceedToCameraX: () -> Unit) {
+    fun requestStartRecording(forceCountdown: Int = 0, context: Context? = null, onProceedToCameraX: () -> Unit) {
         if (currentState.recordingState != RecordingState.IDLE || currentState.isCountdownActive) return
 
         val timer = maxOf(currentState.countdownTimer, forceCountdown)
@@ -300,21 +303,21 @@ class SmartRecorderViewModel @Inject constructor(
                 }
                 setState { copy(isCountdownActive = false) }
                 if (currentState.recordingMode == RecordingMode.FACELESS) {
-                    startFacelessRecordingInternal()
+                    startFacelessRecordingInternal(context)
                 } else {
                     onProceedToCameraX()
                 }
             }
         } else {
             if (currentState.recordingMode == RecordingMode.FACELESS) {
-                startFacelessRecordingInternal()
+                startFacelessRecordingInternal(context)
             } else {
                 onProceedToCameraX()
             }
         }
     }
 
-    private fun startFacelessRecordingInternal() {
+    private fun startFacelessRecordingInternal(context: Context? = null) {
         if (currentState.recordingState != RecordingState.IDLE) return
 
         viewModelScope.launch {
@@ -331,6 +334,7 @@ class SmartRecorderViewModel @Inject constructor(
             val offsetY = (bgState as? BackgroundState.ImageBitmap)?.offsetY ?: 0f
             val color = (bgState as? BackgroundState.SolidColor)?.color?.toArgb()
             val gradientColors = (bgState as? BackgroundState.Gradient)?.colors?.map { it.toArgb() }
+            val videoUri = (bgState as? BackgroundState.VideoUri)?.uri
 
             val quality = currentState.recordingQuality
             val ratio = currentState.aspectRatio
@@ -351,6 +355,8 @@ class SmartRecorderViewModel @Inject constructor(
                     scale = scale,
                     offsetX = offsetX,
                     offsetY = offsetY,
+                    videoUri = videoUri,
+                    context = context,
                     muted = currentState.isAudioMuted,
                     outputFile = outputFile,
                     onComplete = { file ->
