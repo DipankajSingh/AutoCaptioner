@@ -60,13 +60,13 @@ fun AdvancedColorPicker(
             
             drawCircle(
                 color = Color.White,
-                radius = 18.dp.toPx(),
+                radius = 12.dp.toPx(),
                 center = Offset(saturation * size.width, (1f - value) * size.height),
-                style = Stroke(width = 4.dp.toPx())
+                style = Stroke(width = 2.dp.toPx())
             )
             drawCircle(
-                color = Color.Black,
-                radius = 20.dp.toPx(),
+                color = Color.Black.copy(alpha = 0.3f),
+                radius = 13.dp.toPx(),
                 center = Offset(saturation * size.width, (1f - value) * size.height),
                 style = Stroke(width = 1.dp.toPx())
             )
@@ -78,7 +78,7 @@ fun AdvancedColorPicker(
         Canvas(modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
-            .height(28.dp)
+            .height(20.dp)
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     change.consume()
@@ -97,9 +97,14 @@ fun AdvancedColorPicker(
             
             drawCircle(
                 color = Color.White,
-                radius = size.height / 2f + 6.dp.toPx(),
+                radius = size.height / 2f + 2.dp.toPx(),
+                center = Offset((hue / 360f) * size.width, size.height / 2f)
+            )
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.2f),
+                radius = size.height / 2f + 2.dp.toPx(),
                 center = Offset((hue / 360f) * size.width, size.height / 2f),
-                style = Stroke(width = 6.dp.toPx())
+                style = Stroke(width = 1.dp.toPx())
             )
         }
     }

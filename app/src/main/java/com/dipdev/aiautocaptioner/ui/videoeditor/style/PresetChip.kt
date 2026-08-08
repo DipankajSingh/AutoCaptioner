@@ -55,57 +55,14 @@ fun PresetChip(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
-    val context = LocalContext.current
-    val density = LocalDensity.current
-
-    val typeface = remember(style.id, style.fontFamily, style.fontWeight, style.isItalic) {
-        CaptionPaints.loadTypeface(context, style.fontFamily, style.fontWeight, style.isItalic)
-    }
-
-    val textSizePx = with(density) { 20.sp.toPx() }
-    val outlineWidthPx = with(density) { (style.outlineWidth * 0.5f).dp.toPx() }
-
-    val fillPaint = remember(style.id, typeface, style.textColor, style.outlineOnly) {
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.typeface = typeface
-            textSize = textSizePx
-            color = style.textColor.toInt()
-            this.style = if (style.outlineOnly) Paint.Style.STROKE else Paint.Style.FILL
-            strokeWidth = if (style.outlineOnly) outlineWidthPx else 0f
-            strokeJoin = Paint.Join.ROUND
-            textAlign = Paint.Align.CENTER
-            textLocale = Locale.ROOT
-            flags = flags or Paint.SUBPIXEL_TEXT_FLAG
-        }
-    }
-
-    val outlinePaint = remember(style.id, typeface, style.outlineColor, style.outlineWidth) {
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.typeface = typeface
-            textSize = textSizePx
-            color = style.outlineColor.toInt()
-            this.style = Paint.Style.STROKE
-            strokeWidth = outlineWidthPx
-            strokeJoin = Paint.Join.ROUND
-            textAlign = Paint.Align.CENTER
-            textLocale = Locale.ROOT
-            flags = flags or Paint.SUBPIXEL_TEXT_FLAG
-        }
-    }
-
     val highlightColor = remember(style.highlightColor) { Color(style.highlightColor) }
-    val hasBackground = style.backgroundType != BackgroundType.NONE
-    val bgColor = remember(style.backgroundColor, style.backgroundOpacity, style.backgroundType) {
-        if (hasBackground) Color(style.backgroundColor).copy(alpha = style.backgroundOpacity)
-        else Color.Transparent
-    }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = if (isSelected) 8.dp else 1.dp,
         modifier = Modifier
-            .size(width = 80.dp, height = 96.dp)
+            .size(width = 130.dp, height = 96.dp)
             .border(
                 width = if (isSelected) 3.dp else 0.dp,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
@@ -125,31 +82,13 @@ fun PresetChip(
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Canvas(
+                AnimatedCaptionPreview(
+                    style = style,
                     modifier = Modifier
                         .matchParentSize()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                ) {
-                    if (hasBackground) {
-                        drawRoundRect(
-                            color = bgColor,
-                            cornerRadius = CornerRadius(4.dp.toPx()),
-                            topLeft = Offset(size.width * 0.1f, size.height * 0.2f),
-                            size = Size(size.width * 0.8f, size.height * 0.6f)
-                        )
-                    }
-
-                    drawIntoCanvas { canvas ->
-                        val x = size.width / 2f
-                        val y = size.height / 2f + textSizePx * 0.35f
-
-                        if (style.outlineWidth > 0 && !style.outlineOnly) {
-                            canvas.nativeCanvas.drawText("Aa", x, y, outlinePaint)
-                        }
-                        canvas.nativeCanvas.drawText("Aa", x, y, fillPaint)
-                    }
-                }
+                        .background(Color.Black.copy(alpha = 0.3f))
+                )
 
                 if (isSelected) {
                     Surface(

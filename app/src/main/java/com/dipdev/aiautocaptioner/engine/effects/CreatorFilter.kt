@@ -37,17 +37,6 @@ enum class CreatorFilter(
     ),
 
     /**
-     * Crisp contrast, clean whites, and elevated saturation designed to make speaking commentary pop in social feeds.
-     */
-    VIBRANT(
-        displayName = "Clarity",
-        subtitle = "Vibrant Pop",
-        shaderIndex = 1,
-        accentColorHex = 0xFF00E5FFL,
-        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_vibrant
-    ),
-
-    /**
      * Sun-kissed golden hour tone with warm midtones, ideal for cozy ambient talking-head sessions.
      */
     WARM_GLOW(
@@ -59,14 +48,14 @@ enum class CreatorFilter(
     ),
 
     /**
-     * Elevated midtone exposure with softened harsh highlights to combat artificial indoor LED lighting glare.
+     * Highly trending warm, nostalgic film emulation with lifted blacks and creamy skin tones.
      */
-    STUDIO_BRIGHT(
-        displayName = "Clean",
-        subtitle = "Studio Glam",
-        shaderIndex = 3,
-        accentColorHex = 0xFFFFD700L,
-        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_studio
+    VINTAGE_FILM(
+        displayName = "Kodak",
+        subtitle = "Vintage Film",
+        shaderIndex = 7,
+        accentColorHex = 0xFFFFD54FL,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_vintage
     ),
 
     /**
@@ -81,6 +70,28 @@ enum class CreatorFilter(
     ),
 
     /**
+     * Elevated midtone exposure with softened harsh highlights to combat artificial indoor LED lighting glare.
+     */
+    STUDIO_BRIGHT(
+        displayName = "Clean",
+        subtitle = "Studio Glam",
+        shaderIndex = 3,
+        accentColorHex = 0xFFFFD700L,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_studio
+    ),
+
+    /**
+     * Crisp contrast, clean whites, and elevated saturation designed to make speaking commentary pop in social feeds.
+     */
+    VIBRANT(
+        displayName = "Clarity",
+        subtitle = "Vibrant Pop",
+        shaderIndex = 1,
+        accentColorHex = 0xFF00E5FFL,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_vibrant
+    ),
+
+    /**
      * Dreamy aesthetic curve featuring slightly lifted shadows and diffused pastel midtones for lifestyle storytelling.
      */
     SOFT_PASTEL(
@@ -89,6 +100,28 @@ enum class CreatorFilter(
         shaderIndex = 5,
         accentColorHex = 0xFFF48FB1L,
         drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_pastel
+    ),
+
+    /**
+     * Cozy vlogger aesthetic with lowered exposure, crushed shadows, and desaturated greens.
+     */
+    MOODY_DARK(
+        displayName = "Moody",
+        subtitle = "Dark Academia",
+        shaderIndex = 8,
+        accentColorHex = 0xFF78909CL,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_moody
+    ),
+
+    /**
+     * Vibrant futuristic neon aesthetic with cool teal shadows and intense pink/magenta highlights.
+     */
+    CYBERPUNK(
+        displayName = "Neon",
+        subtitle = "Cyberpunk Night",
+        shaderIndex = 9,
+        accentColorHex = 0xFFFF00FFL,
+        drawableRes = com.dipdev.aiautocaptioner.R.drawable.filter_cyberpunk
     ),
 
     /**

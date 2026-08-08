@@ -228,6 +228,46 @@ internal class LutShaderProgram(
                     return;
                 }
 
+                // 7 -> Vintage Film (Kodak Gold: Warm midtones, lifted faded blacks)
+                if (uFilterType == 7) {
+                    vec3 warm = rgb * vec3(1.10, 1.05, 0.90);
+                    vec3 faded = warm * 0.9 + vec3(0.1, 0.08, 0.05); // Lift blacks
+                    vec3 vintage = applySaturation(faded, 0.95);
+                    gl_FragColor = vec4(clamp(vintage, 0.0, 1.0), source.a);
+                    return;
+                }
+
+                // 8 -> Moody Dark (Dark Academia: Low exposure, crushed shadows, desaturated greens)
+                if (uFilterType == 8) {
+                    // Lower exposure
+                    vec3 dark = rgb * 0.85;
+                    // Desaturate greens heavily
+                    float gMask = smoothstep(0.3, 0.7, dark.g - max(dark.r, dark.b));
+                    dark.g = mix(dark.g, (dark.r + dark.b) / 2.0, gMask * 0.8);
+                    
+                    vec3 moody = applyContrast(dark, 1.15); // Crush shadows
+                    // Shift shadows slightly cool
+                    moody -= vec3(0.0, 0.02, 0.05) * (1.0 - luma);
+                    gl_FragColor = vec4(clamp(moody, 0.0, 1.0), source.a);
+                    return;
+                }
+
+                // 9 -> Cyberpunk (Neon: Cool teal shadows, pink/magenta highlights)
+                if (uFilterType == 9) {
+                    vec3 tealShadow = vec3(0.0, 0.2, 0.3);
+                    vec3 magentaHighlight = vec3(1.2, 0.8, 1.3);
+                    
+                    float shadowMask = 1.0 - smoothstep(0.1, 0.6, luma);
+                    float highlightMask = smoothstep(0.4, 0.9, luma);
+                    
+                    vec3 cyber = rgb + (tealShadow * shadowMask * 0.5);
+                    cyber = cyber * mix(vec3(1.0), magentaHighlight, highlightMask * 0.9);
+                    cyber = applyContrast(cyber, 1.25);
+                    cyber = applySaturation(cyber, 1.15);
+                    gl_FragColor = vec4(clamp(cyber, 0.0, 1.0), source.a);
+                    return;
+                }
+
                 gl_FragColor = source;
             }
         """

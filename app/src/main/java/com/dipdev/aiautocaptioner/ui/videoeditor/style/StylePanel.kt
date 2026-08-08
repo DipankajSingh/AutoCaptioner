@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Remove
@@ -227,249 +228,62 @@ private fun CompactCaptionsHeader(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Adjust pill — opens adjust controls popup
-        Box {
-            Surface(
-                onClick = { onToggleAdjust(!showAdjust) },
-                shape = RoundedCornerShape(8.dp),
-                color = if (showAdjust) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        Surface(
+            onClick = {
+                onToggleAdjust(!showAdjust)
+                if (!showAdjust) showColor = false
+            },
+            shape = RoundedCornerShape(8.dp),
+            color = if (showAdjust) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Tune,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (showAdjust) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = stringResource(if (showAdjust) R.string.style_adjust_expand else R.string.style_adjust_collapse),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (showAdjust) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                    )
-                }
-            }
-
-            // Adjust controls dropdown as Popup
-            if (showAdjust) {
-                Popup(
-                    alignment = Alignment.TopStart,
-                    onDismissRequest = { onToggleAdjust(false) },
-                    properties = PopupProperties(focusable = true)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 6.dp,
-                        shadowElevation = 10.dp,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
-                        modifier = Modifier
-                            .padding(top = 34.dp)
-                            .width(320.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            // Size slider
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.style_size),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(36.dp)
-                                )
-                                PremiumSlider(
-                                    value = fontSize,
-                                    onValueChange = onFontSizeChange,
-                                    valueRange = 12f..160f,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = "${fontSize.toInt()}",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.width(28.dp)
-                                )
-                            }
-
-                            // Thickness (synthetic emboldening)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.style_thickness),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(54.dp)
-                                )
-                                PremiumSlider(
-                                    value = textThickness,
-                                    onValueChange = onTextThicknessChange,
-                                    valueRange = 0f..1f,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = "${(textThickness * 100).toInt()}%",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.width(36.dp)
-                                )
-                            }
-
-                            val showMaxWords = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
-                                com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_WORDS_PER_LINE, displayMode)
-                            val showMaxLines = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
-                                com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_LINES, displayMode)
-
-                            // Words + Lines (hidden for WORD_BY_WORD mode)
-                            if (showMaxWords || showMaxLines) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    if (showMaxWords) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.style_words),
-                                                fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.width(40.dp)
-                                            )
-                                            StepperControl(
-                                                value = maxWordsPerLine,
-                                                range = 1..10,
-                                                onValueChange = onMaxWordsChange
-                                            )
-                                        }
-                                    }
-                                    if (showMaxLines) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.style_lines),
-                                                fontSize = 12.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.width(32.dp)
-                                            )
-                                            StepperControl(
-                                                value = maxLines,
-                                                range = 1..5,
-                                                onValueChange = onMaxLinesChange
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Position
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.style_pos),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(36.dp)
-                                )
-                                PremiumSlider(
-                                    value = positionY,
-                                    onValueChange = onPositionYChange,
-                                    valueRange = 0.05f..0.95f,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = "${(positionY * 100).toInt()}%",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.width(36.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Rounded.Tune,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (showAdjust) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = stringResource(if (showAdjust) R.string.style_adjust_expand else R.string.style_adjust_collapse),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (showAdjust) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
             }
         }
 
         // Color pill — opens color picker popup
-        Box {
-            Surface(
-                onClick = {
-                    onToggleAdjust(false)
-                    showColor = !showColor
-                },
-                shape = RoundedCornerShape(8.dp),
-                color = if (showColor) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        Surface(
+            onClick = {
+                showColor = !showColor
+                if (showColor) onToggleAdjust(false)
+            },
+            shape = RoundedCornerShape(8.dp),
+            color = if (showColor) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ColorLens,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (showColor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = stringResource(R.string.style_color),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (showColor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                    )
-                }
-            }
-
-            if (showColor) {
-                Popup(
-                    alignment = Alignment.TopStart,
-                    onDismissRequest = { showColor = false },
-                    properties = PopupProperties(focusable = true)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 6.dp,
-                        shadowElevation = 10.dp,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
-                        modifier = Modifier
-                            .padding(top = 34.dp)
-                            .width(320.dp)
-                    ) {
-                        ColorPickerPopupContent(
-                            textColor = textColor,
-                            backgroundColor = backgroundColor,
-                            activeWordBgColor = activeWordBgColor,
-                            activeWordTextColor = activeWordTextColor,
-                            onColorChanged = onColorChanged
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Rounded.ColorLens,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = if (showColor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = stringResource(R.string.style_color),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (showColor) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
             }
         }
 
@@ -489,6 +303,197 @@ private fun CompactCaptionsHeader(
             )
         }
     }
+
+    // Adjust controls dropdown as Popup
+    if (showAdjust) {
+        Popup(
+            alignment = Alignment.TopCenter,
+            onDismissRequest = { onToggleAdjust(false) },
+            properties = PopupProperties(focusable = true)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                tonalElevation = 6.dp,
+                shadowElevation = 10.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                modifier = Modifier
+                    .padding(top = 44.dp)
+                    .widthIn(max = 340.dp)
+                    .fillMaxWidth(0.95f)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    // Size slider
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.style_size),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.width(36.dp)
+                        )
+                        PremiumSlider(
+                            value = fontSize,
+                            onValueChange = onFontSizeChange,
+                            valueRange = 12f..160f,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "${fontSize.toInt()}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            modifier = Modifier.widthIn(min = 32.dp)
+                        )
+                    }
+
+                    // Thickness (synthetic emboldening)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.style_thickness),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.width(64.dp)
+                        )
+                        PremiumSlider(
+                            value = textThickness,
+                            onValueChange = onTextThicknessChange,
+                            valueRange = 0f..1f,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "${(textThickness * 100).toInt()}%",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            modifier = Modifier.widthIn(min = 36.dp)
+                        )
+                    }
+
+                    val showMaxWords = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
+                        com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_WORDS_PER_LINE, displayMode)
+                    val showMaxLines = showLayoutControls && com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.isControlVisible(
+                        com.dipdev.aiautocaptioner.engine.DisplayModeBehavior.StyleControl.MAX_LINES, displayMode)
+
+                    // Words + Lines (hidden for WORD_BY_WORD mode)
+                    if (showMaxWords || showMaxLines) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            if (showMaxWords) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.style_words),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                        modifier = Modifier.width(40.dp)
+                                    )
+                                    StepperControl(
+                                        value = maxWordsPerLine,
+                                        range = 1..10,
+                                        onValueChange = onMaxWordsChange
+                                    )
+                                }
+                            }
+                            if (showMaxLines) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.style_lines),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                        modifier = Modifier.width(32.dp)
+                                    )
+                                    StepperControl(
+                                        value = maxLines,
+                                        range = 1..5,
+                                        onValueChange = onMaxLinesChange
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Position
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.style_pos),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.width(36.dp)
+                        )
+                        PremiumSlider(
+                            value = positionY,
+                            onValueChange = onPositionYChange,
+                            valueRange = 0.05f..0.95f,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "${(positionY * 100).toInt()}%",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            modifier = Modifier.widthIn(min = 36.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showColor) {
+        Popup(
+            alignment = Alignment.TopCenter,
+            onDismissRequest = { showColor = false },
+            properties = PopupProperties(focusable = true)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                shadowElevation = 10.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+                modifier = Modifier
+                    .padding(top = 44.dp)
+                    .widthIn(max = 340.dp)
+                    .fillMaxWidth(0.95f)
+            ) {
+                ColorPickerPopupContent(
+                    textColor = textColor,
+                    backgroundColor = backgroundColor,
+                    activeWordBgColor = activeWordBgColor,
+                    activeWordTextColor = activeWordTextColor,
+                    onColorChanged = onColorChanged
+                )
+            }
+        }
+    }
 }
 
 
@@ -500,7 +505,7 @@ private fun StepperControl(
     range: IntRange,
     onValueChange: (Int) -> Unit
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = androidx.compose.foundation.shape.CircleShape
     val containerColor = MaterialTheme.colorScheme.surfaceVariant
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -617,7 +622,7 @@ private fun ColorFieldSwatch(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = androidx.compose.foundation.shape.CircleShape
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -625,13 +630,15 @@ private fun ColorFieldSwatch(
         Text(
             text = label,
             fontSize = 10.sp,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 1f else 0.6f),
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Medium else androidx.compose.ui.text.font.FontWeight.Normal,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(36.dp)
                 .clip(shape)
                 .background(Color(color))
                 .border(

@@ -90,7 +90,8 @@ object LayoutEngine {
                 TextAlignment.START -> if (isRtl) positionCenter - lineW else positionCenter
                 TextAlignment.END -> if (isRtl) positionCenter else positionCenter - lineW
             }
-            val clampedX = x.coerceIn(marginH, (videoWidth - lineW - marginH).coerceAtLeast(0f))
+            val maxAllowed = (videoWidth - lineW - marginH).coerceAtLeast(marginH)
+            val clampedX = x.coerceIn(marginH, maxAllowed)
 
             LineLayout(lineWords, clampedX, lineW)
         }

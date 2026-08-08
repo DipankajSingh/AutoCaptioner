@@ -62,7 +62,7 @@ fun PremiumSlider(
         }
     }
     
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
     val fillColor = MaterialTheme.colorScheme.primary
     val thumbColor = MaterialTheme.colorScheme.primary
 
@@ -92,7 +92,7 @@ fun PremiumSlider(
                 )
             }
     ) {
-        val trackHeight = 4.dp.toPx()
+        val trackHeight = 2.dp.toPx()
         val cornerRadius = CornerRadius(trackHeight / 2f)
         val cy = size.height / 2f
 
@@ -110,7 +110,12 @@ fun PremiumSlider(
         )
         drawCircle(
             color = thumbColor,
-            radius = 14.dp.toPx(),
+            radius = 10.dp.toPx(),
+            center = Offset(size.width * internalRatio, cy)
+        )
+        drawCircle(
+            color = androidx.compose.ui.graphics.Color.White,
+            radius = 4.dp.toPx(),
             center = Offset(size.width * internalRatio, cy)
         )
     }

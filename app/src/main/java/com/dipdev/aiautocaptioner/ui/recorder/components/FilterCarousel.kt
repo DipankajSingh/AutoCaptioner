@@ -11,7 +11,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Camera
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -219,14 +223,24 @@ private fun FilterPreviewCircle(
     Box(
         modifier = modifier
             .size(64.dp) // Base size, will be scaled down to 48dp by graphicsLayer when inactive
-            .clip(CircleShape),
+            .clip(CircleShape)
+            .background(if (filter == CreatorFilter.NATURAL) Color.DarkGray.copy(alpha = 0.8f) else Color.Transparent),
         contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(id = filter.drawableRes),
-            contentDescription = filter.displayName,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (filter == CreatorFilter.NATURAL) {
+            Icon(
+                imageVector = compose.icons.FeatherIcons.Camera,
+                contentDescription = filter.displayName,
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            Image(
+                painter = painterResource(id = filter.drawableRes),
+                contentDescription = filter.displayName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
