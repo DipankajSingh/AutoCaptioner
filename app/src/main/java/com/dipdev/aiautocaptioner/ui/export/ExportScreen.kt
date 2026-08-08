@@ -57,10 +57,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
+import com.dipdev.aiautocaptioner.ui.components.MascotRobot
+import com.dipdev.aiautocaptioner.ui.components.MascotMode
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
@@ -278,10 +276,8 @@ fun ExportScreen(
                         ) {
                             Spacer(Modifier.height(Dimens.Padding.extraLarge))
 
-                            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.export))
-                            LottieAnimation(
-                                composition = composition,
-                                iterations = LottieConstants.IterateForever,
+                            MascotRobot(
+                                mode = MascotMode.Exporting,
                                 modifier = Modifier.size(140.dp)
                             )
                             Spacer(Modifier.height(Dimens.Padding.large))

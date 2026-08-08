@@ -134,7 +134,16 @@ class FacelessVideoRecorder {
                 var bufferSize = minBufferSize * 4
                 if (bufferSize < 16384) bufferSize = 16384
                 audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
+                
+                if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+                    throw IllegalStateException("AudioRecord failed to initialize")
+                }
+                
                 audioRecord?.startRecording()
+                
+                if (audioRecord?.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                    throw IllegalStateException("AudioRecord failed to start recording (microphone may be in use)")
+                }
             }
 
             videoJob = scope.launch(Dispatchers.IO) { videoDrawLoop(backgroundBitmap, backgroundColor, gradientColors, scale, offsetX, offsetY) }
@@ -144,11 +153,16 @@ class FacelessVideoRecorder {
             }
 
         } catch (e: Exception) {
-            isRecording.set(false)
-            releaseResources()
-            scope.cancel()
-            onError(e)
+            abortRecording(e)
         }
+    }
+
+    private fun abortRecording(e: Exception) {
+        if (!isRecording.getAndSet(false)) return
+        Log.e(TAG, "Aborting recording due to error", e)
+        releaseResources()
+        scope.cancel()
+        onErrorCallback?.invoke(e)
     }
 
     fun pause() {
@@ -350,6 +364,10 @@ class FacelessVideoRecorder {
                             } else {
                                 audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
                             }
+                            
+                            if (readBytes < 0) {
+                                throw IllegalStateException("AudioRecord failed with error code: $readBytes")
+                            }
                         }
 
                         if (readBytes > 0) {
@@ -420,6 +438,7 @@ class FacelessVideoRecorder {
         } catch (e: Exception) {
             Log.e(TAG, "Audio encode error", e)
             FirebaseCrashlytics.getInstance().recordException(e)
+            abortRecording(e)
         }
     }
 

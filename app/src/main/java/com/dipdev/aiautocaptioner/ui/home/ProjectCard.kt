@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +59,8 @@ import com.dipdev.aiautocaptioner.ui.components.GlassmorphicCard
 import com.dipdev.aiautocaptioner.ui.components.RenameDialog
 import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
 import java.io.File
+
+import androidx.compose.foundation.border
 
 @Composable
 fun ProjectCard(
@@ -94,142 +97,144 @@ fun ProjectCard(
         ),
         shape = RoundedCornerShape(20.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Left accent strip
+            // Hero Thumbnail
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)
-                    )
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-            // Title at the very top
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = project.title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = android.text.format.DateUtils.getRelativeTimeSpanString(project.updatedAt).toString(),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                project.thumbnailPath?.let { path ->
+                    AsyncImage(
+                        model = File(path),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
                 
-                var showMenu by remember { mutableStateOf(false) }
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(FeatherIcons.MoreVertical, contentDescription = stringResource(R.string.project_more_options))
-                    }
-                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.project_rename)) },
-                            onClick = { showMenu = false; showRenameDialog = true },
-                            leadingIcon = { Icon(FeatherIcons.Edit2, contentDescription = null) }
+                // Gradient overlay for better text/icon visibility
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                startY = 100f
+                            )
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.project_duplicate)) },
-                            onClick = { showMenu = false; onDuplicate() },
-                            leadingIcon = { Icon(FeatherIcons.Copy, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.project_share)) },
-                            onClick = { 
-                                showMenu = false
-                                val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
-                                onShareVideo(videoToShare)
-                            },
-                            leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.project_update_captions)) },
-                            onClick = { showMenu = false; onRetranscribe() },
-                            leadingIcon = { Icon(FeatherIcons.RefreshCw, contentDescription = null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.project_delete)) },
-                            onClick = { showMenu = false; showDeleteConfirm = true },
-                            leadingIcon = { Icon(FeatherIcons.Trash2, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                            colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error)
+                )
+
+                // Play Button overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            onClick = { onPlayVideo(project.workingVideoPath) },
+                            onClickLabel = stringResource(R.string.project_play_original)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = FeatherIcons.Play,
+                            contentDescription = stringResource(R.string.project_play_video),
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp).padding(start = 2.dp)
                         )
                     }
                 }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
 
-            // Main imported video
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Thumbnail
+                // Duration Badge
                 Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        project.thumbnailPath?.let { path ->
-                            AsyncImage(
-                                model = File(path),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        
-                        val videoToPlay = project.workingVideoPath
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
-                                .clickable(
-                                    onClick = { onPlayVideo(videoToPlay) },
-                                    onClickLabel = stringResource(R.string.project_play_original)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = FeatherIcons.Play,
-                                contentDescription = stringResource(R.string.project_play_video),
-                                tint = TextPrimary,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.project_original_video),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
                     Text(
                         text = formatDuration(project.videoDurationMs),
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
-
                 }
             }
+
+            // Info Section
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = project.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = android.text.format.DateUtils.getRelativeTimeSpanString(project.updatedAt).toString(),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                    
+                    var showMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(FeatherIcons.MoreVertical, contentDescription = stringResource(R.string.project_more_options))
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.project_rename)) },
+                                onClick = { showMenu = false; showRenameDialog = true },
+                                leadingIcon = { Icon(FeatherIcons.Edit2, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.project_duplicate)) },
+                                onClick = { showMenu = false; onDuplicate() },
+                                leadingIcon = { Icon(FeatherIcons.Copy, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.project_share)) },
+                                onClick = { 
+                                    showMenu = false
+                                    val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
+                                    onShareVideo(videoToShare)
+                                },
+                                leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.project_update_captions)) },
+                                onClick = { showMenu = false; onRetranscribe() },
+                                leadingIcon = { Icon(FeatherIcons.RefreshCw, contentDescription = null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.project_delete)) },
+                                onClick = { showMenu = false; showDeleteConfirm = true },
+                                leadingIcon = { Icon(FeatherIcons.Trash2, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.error)
+                            )
+                        }
+                    }
+                }
 
             // Exported Videos Gallery
             if (exports.isNotEmpty()) {

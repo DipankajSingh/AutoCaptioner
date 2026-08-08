@@ -20,8 +20,8 @@ android {
         applicationId = "com.dipdev.aiautocaptioner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 14
-        versionName = "2.3"
+        versionCode = 15
+        versionName = "2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -203,10 +203,7 @@ dependencies {
     // -------------------------------------------------------
     implementation(libs.androidx.core.splashscreen)
 
-    // -------------------------------------------------------
-    // Lottie — animations
-    // -------------------------------------------------------
-    implementation(libs.lottie.compose)
+
 
     // -------------------------------------------------------
     // Firebase

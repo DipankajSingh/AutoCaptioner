@@ -44,6 +44,16 @@ import compose.icons.feathericons.ArrowRight
 import compose.icons.feathericons.Scissors
 import compose.icons.feathericons.Video
 import compose.icons.feathericons.Zap
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun EmptyProjectView(
@@ -53,6 +63,45 @@ internal fun EmptyProjectView(
     onAdvancedStudio: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Staggered entry animation states
+    val animateIllustration = remember { Animatable(0f) }
+    val animateText = remember { Animatable(0f) }
+    val animatePrimary = remember { Animatable(0f) }
+    val animateSecondary1 = remember { Animatable(0f) }
+    val animateSecondary2 = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        launch { animateIllustration.animateTo(1f, tween(900, easing = EaseOutBack)) }
+        launch { 
+            delay(40)
+            animateText.animateTo(1f, tween(800, easing = EaseOutQuint)) 
+        }
+        launch { 
+            delay(80)
+            animatePrimary.animateTo(1f, tween(900, easing = EaseOutBack)) 
+        }
+        launch { 
+            delay(120)
+            animateSecondary1.animateTo(1f, tween(800, easing = EaseOutQuint)) 
+        }
+        launch { 
+            delay(160)
+            animateSecondary2.animateTo(1f, tween(800, easing = EaseOutQuint)) 
+        }
+    }
+
+    // Floating bobbing animation for the illustration
+    val infiniteTransition = rememberInfiniteTransition(label = "floating")
+    val floatOffset by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "floatOffset"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -70,25 +119,39 @@ internal fun EmptyProjectView(
             modifier = Modifier
                 .padding(bottom = 8.dp)
                 .size(200.dp)
+                .graphicsLayer {
+                    alpha = animateIllustration.value
+                    scaleX = animateIllustration.value
+                    scaleY = animateIllustration.value
+                    translationY = floatOffset * density
+                }
         )
         
         // 2. Inspiring Studio Greeting
-        Text(
-            text = stringResource(R.string.home_no_projects),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black,
-            color = Color.White,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = stringResource(R.string.home_no_projects_desc),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFFB0B6C2),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp),
-            lineHeight = 20.sp
-        )
+        Column(
+            modifier = Modifier.graphicsLayer {
+                alpha = animateText.value
+                translationY = (1f - animateText.value) * 20.dp.toPx()
+            },
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.home_no_projects),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.home_no_projects_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFB0B6C2),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                lineHeight = 20.sp
+            )
+        }
         
         Spacer(Modifier.height(20.dp))
 
@@ -97,7 +160,13 @@ internal fun EmptyProjectView(
             onClick = onQuickCaption,
             contentDescriptionText = stringResource(R.string.home_start_1tap),
             title = stringResource(R.string.home_1_tap_captions),
-            subtitle = stringResource(R.string.home_1_tap_desc)
+            subtitle = stringResource(R.string.home_1_tap_desc),
+            modifier = Modifier.graphicsLayer {
+                alpha = animatePrimary.value
+                scaleX = 0.9f + (animatePrimary.value * 0.1f)
+                scaleY = 0.9f + (animatePrimary.value * 0.1f)
+                translationY = (1f - animatePrimary.value) * 30.dp.toPx()
+            }
         )
 
         Spacer(Modifier.height(20.dp))
@@ -111,7 +180,10 @@ internal fun EmptyProjectView(
             letterSpacing = 1.2.sp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+                .graphicsLayer {
+                    alpha = animateSecondary1.value
+                },
             textAlign = TextAlign.Start
         )
         Spacer(Modifier.height(6.dp))
@@ -122,7 +194,11 @@ internal fun EmptyProjectView(
             subtitle = stringResource(R.string.home_record_desc),
             icon = FeatherIcons.Video,
             onClick = { onNavigateToSmartRecorder(lastRecordingMode) },
-            contentDescriptionText = stringResource(R.string.home_record_video)
+            contentDescriptionText = stringResource(R.string.home_record_video),
+            modifier = Modifier.graphicsLayer {
+                alpha = animateSecondary1.value
+                translationY = (1f - animateSecondary1.value) * 20.dp.toPx()
+            }
         )
 
         Spacer(Modifier.height(10.dp))
@@ -133,7 +209,11 @@ internal fun EmptyProjectView(
             subtitle = stringResource(R.string.home_advanced_desc),
             icon = FeatherIcons.Scissors,
             onClick = onAdvancedStudio,
-            contentDescriptionText = stringResource(R.string.home_start_advanced)
+            contentDescriptionText = stringResource(R.string.home_start_advanced),
+            modifier = Modifier.graphicsLayer {
+                alpha = animateSecondary2.value
+                translationY = (1f - animateSecondary2.value) * 20.dp.toPx()
+            }
         )
         
         Spacer(Modifier.height(16.dp))
@@ -148,16 +228,43 @@ private fun HeroExpressCard(
     contentDescriptionText: String,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f),
+        label = "heroScale"
+    )
+
+    // Animated glowing border
+    val infiniteTransition = rememberInfiniteTransition(label = "borderGlow")
+    val alphaAnim by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
+            .scale(scale)
             .semantics { contentDescription = contentDescriptionText },
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.5.dp, AccentAmber.copy(alpha = 0.75f)),
+        border = BorderStroke(1.5.dp, Brush.linearGradient(
+            colors = listOf(
+                AccentAmber.copy(alpha = alphaAnim),
+                Color(0xFFFFC947).copy(alpha = alphaAnim * 0.5f)
+            )
+        )),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1E160C)
-        )
+        ),
+        interactionSource = interactionSource
     ) {
         Row(
             modifier = Modifier

@@ -281,6 +281,10 @@ fun SmartRecorderContent(
             } else {
                 viewModel.requestStartRecording(forceCountdown = forceCountdown) {
                     viewModel.prepareCameraRecordingFile { file ->
+                        if (activeRecording != null || cameraController.isRecording) {
+                            return@prepareCameraRecordingFile
+                        }
+                        
                         val outputOptions = FileOutputOptions.Builder(file).build()
                         val executor = ContextCompat.getMainExecutor(context)
 

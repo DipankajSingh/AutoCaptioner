@@ -126,22 +126,22 @@ fun HomeScreen(
                             SpeedDialItem(
                                 icon = FeatherIcons.Zap,
                                 label = stringResource(R.string.home_1_tap_captions),
-                                color = AccentAmber,
-                                onColor = Color.White,
+                                color = MaterialTheme.colorScheme.primary,
+                                onColor = MaterialTheme.colorScheme.onPrimary,
                                 onClick = { quickPicker.launch("video/*") }
                             ),
                             SpeedDialItem(
                                 icon = FeatherIcons.Video,
                                 label = stringResource(R.string.home_record_video),
-                                color = Color(0xFF232632),
-                                onColor = Color(0xFFE2E7F0),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                onColor = MaterialTheme.colorScheme.onTertiary,
                                 onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
                             ),
                             SpeedDialItem(
                                 icon = FeatherIcons.Scissors,
                                 label = stringResource(R.string.home_advanced_studio),
-                                color = Color(0xFF232632),
-                                onColor = Color(0xFFE2E7F0),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                onColor = MaterialTheme.colorScheme.onTertiary,
                                 onClick = { videoPicker.launch("video/*") }
                             )
                         )

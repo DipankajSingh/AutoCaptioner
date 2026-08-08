@@ -10,6 +10,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -20,6 +21,14 @@ import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.components.ShimmerBrandText
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Settings
+
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 internal fun HomeTopBar(
@@ -39,9 +48,24 @@ internal fun HomeTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            val infiniteTransition = rememberInfiniteTransition(label = "mascotIdle")
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = -5f,
+                targetValue = 5f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2000, easing = EaseInOutSine),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "mascotRotation"
+            )
+            
             MascotRobot(
                 mode = MascotMode.Idle,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier
+                    .size(40.dp)
+                    .graphicsLayer {
+                        rotationZ = rotation
+                    },
                 tightCrop = true
             )
             ShimmerBrandText(
