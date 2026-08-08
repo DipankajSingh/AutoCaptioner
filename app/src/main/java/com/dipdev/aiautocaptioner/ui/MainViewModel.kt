@@ -1,10 +1,15 @@
 package com.dipdev.aiautocaptioner.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Parcelable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
+import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
+import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,17 +29,24 @@ import com.dipdev.aiautocaptioner.ui.navigation.Screen
 
 data class MainUiState(
     val startDestination: Screen? = null,
-    val glassmorphismEnabled: Boolean = true
+    val glassmorphismEnabled: Boolean = true,
+    val sharedVideoUri: Uri? = null,
+    val isImportingSharedVideo: Boolean = false,
+    val importError: String? = null
 ) : UiState
 
 sealed interface MainUiEvent : UiEvent
-sealed interface MainUiEffect : UiEffect
+sealed interface MainUiEffect : UiEffect {
+    data class NavigateToProcessing(val projectId: String) : MainUiEffect
+    data class NavigateToVideoEditor(val projectId: String) : MainUiEffect
+}
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val modelRepository: ModelRepository,
     private val captionRepository: CaptionRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val projectRepository: ProjectRepository
 ) : BaseViewModel<MainUiState, MainUiEvent, MainUiEffect>(MainUiState()) {
 
     init {
@@ -51,6 +63,49 @@ class MainViewModel @Inject constructor(
 
     override fun handleEvent(event: MainUiEvent) {
         // No events to handle
+    }
+    
+    fun onIntentReceived(intent: Intent) {
+        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("video/") == true) {
+            val uri = intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
+            if (uri != null) {
+                setState { copy(sharedVideoUri = uri, importError = null) }
+            }
+        }
+    }
+    
+    fun clearSharedUri() {
+        setState { copy(sharedVideoUri = null, importError = null) }
+    }
+    
+    fun importSharedVideo(isQuickCaption: Boolean) {
+        val uri = uiState.value.sharedVideoUri ?: return
+        
+        viewModelScope.launch {
+            setState { copy(isImportingSharedVideo = true, importError = null) }
+            
+            val mode = if (isQuickCaption) CreationMode.QUICK_CAPTION else CreationMode.ADVANCED
+            val result = projectRepository.importVideo(uri, mode)
+            
+            result.fold(
+                onSuccess = { projectId ->
+                    setState { copy(sharedVideoUri = null, isImportingSharedVideo = false) }
+                    if (isQuickCaption) {
+                        setEffect(MainUiEffect.NavigateToProcessing(projectId))
+                    } else {
+                        setEffect(MainUiEffect.NavigateToVideoEditor(projectId))
+                    }
+                },
+                onFailure = { error ->
+                    setState { 
+                        copy(
+                            isImportingSharedVideo = false, 
+                            importError = error.message ?: "Failed to import video"
+                        ) 
+                    }
+                }
+            )
+        }
     }
 
     private fun decideStartDestination() {

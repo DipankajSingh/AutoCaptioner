@@ -116,7 +116,7 @@ private fun shareVideoFile(context: Context, path: String) {
     try {
         val file = File(path)
         if (!file.exists()) return
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "video/mp4"
             putExtra(Intent.EXTRA_STREAM, uri)

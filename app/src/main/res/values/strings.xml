@@ -81,7 +81,7 @@
     <string name="model_sheet_translate_label">Also create English version</string>
     <string name="model_sheet_auto_detect_hint">We\'ll automatically detect the spoken language</string>
     <string name="sheet_prompt_label">Special words (optional)</string>
-    <string name="sheet_prompt_placeholder">Names, product titles, or topic words</string>
+    <string name="sheet_prompt_placeholder">e.g., specific names, brands, or unusual words spoken in the video</string>
     <string name="sheet_start_button">Generate Captions</string>
     <string name="sheet_download_button">Download &amp; Generate</string>
 
@@ -385,23 +385,37 @@
 
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
-    <string name="settings_appearance">Appearance</string>
-    <string name="settings_manage_subscription">Manage Subscription</string>
-    <string name="settings_manage_subscription_desc">View details and manage your AutoCaptioner Pro access</string>
-    <string name="settings_glassmorphism">Glassmorphism UI</string>
-    <string name="settings_glassmorphism_desc">Enable translucent backgrounds and blur effects</string>
-    <string name="settings_hq_timeline">High-Quality Timeline</string>
-    <string name="settings_hq_timeline_desc">Show extracted video frames in timeline instead of a lightweight placeholder</string>
+
+    <!-- Section: Caption Engine -->
+    <string name="settings_section_caption_engine">Caption Engine</string>
+    <string name="settings_ai_models">Voice Recognition</string>
+    <string name="settings_ai_models_active_format">Currently using: %s</string>
+    <string name="settings_ai_models_none">No voice model selected</string>
+
+    <!-- Section: Appearance -->
+    <string name="settings_appearance">Look &amp; Feel</string>
+    <string name="settings_manage_subscription">Your Plan</string>
+    <string name="settings_manage_subscription_desc">See what\'s included and make changes anytime</string>
+    <string name="settings_glassmorphism">Frosted Glass Style</string>
+    <string name="settings_glassmorphism_desc">Gives the app a glassy, frosted look</string>
+    <string name="settings_hq_timeline">Video Preview Strips</string>
+    <string name="settings_hq_timeline_desc">See your video as small frames while editing. Uses a bit more memory.</string>
+    <string name="settings_preview_fps">Editor Smoothness</string>
+    <string name="settings_preview_fps_desc">Smoother feels better, but uses more battery.</string>
+
+    <!-- Section: About -->
     <string name="settings_about">About</string>
     <string name="settings_version_format">Version %s</string>
-    <string name="settings_from_dipdev">From DipDev Labs</string>
+    <string name="settings_from_dipdev">Made by DipDev Labs</string>
+
+    <!-- Section: Data & Privacy -->
     <string name="settings_data_privacy">Data &amp; Privacy</string>
-    <string name="settings_analytics">Share Analytics &amp; Crash Data</string>
-    <string name="settings_analytics_desc">Help us improve AutoCaptioner by sharing anonymous usage and crash reports via Firebase. No media is ever sent.</string>
-    <string name="settings_bg_processing">Local Background Processing</string>
-    <string name="settings_bg_processing_desc">AutoCaptioner uses a background service to transcribe your videos locally on your device. This allows the app to process data even if you switch apps. None of your video or audio data is ever sent to the cloud.</string>
+    <string name="settings_analytics">Help improve the app</string>
+    <string name="settings_analytics_desc">Share how the app is used so we can keep making it better. We never see your videos or captions.</string>
+    <string name="settings_bg_processing">Works even when you switch apps</string>
+    <string name="settings_bg_processing_desc">Your video is processed right here on your phone — we never send your content anywhere. The app keeps working quietly in the background so you don\'t have to wait around.</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
-    <string name="settings_no_browser">No browser installed</string>
+    <string name="settings_no_browser">Couldn\'t open the link — no browser found</string>
     <string name="settings_terms">Terms &amp; Conditions</string>
 
     <!-- Style Panel -->
@@ -582,4 +596,10 @@
     <!-- Export ViewModel errors -->
     <string name="export_start_failed">Failed to start export service</string>
     <string name="export_save_failed">Failed to save to gallery</string>
+
+    <!-- Share Video Bottom Sheet -->
+    <string name="share_video_title">Caption this video?</string>
+    <string name="share_video_subtitle">How would you like to proceed with the shared video?</string>
+    <string name="share_video_auto_caption">Auto Caption</string>
+    <string name="share_video_edit_video">Edit Video</string>
 </resources>

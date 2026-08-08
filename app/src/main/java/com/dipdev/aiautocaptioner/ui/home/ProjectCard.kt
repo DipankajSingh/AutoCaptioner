@@ -130,12 +130,7 @@ fun ProjectCard(
 
                 // Play Button overlay
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(
-                            onClick = { onPlayVideo(project.workingVideoPath) },
-                            onClickLabel = stringResource(R.string.project_play_original)
-                        ),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -143,7 +138,11 @@ fun ProjectCard(
                             .size(56.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White.copy(alpha = 0.2f))
-                            .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
+                            .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                            .clickable(
+                                onClick = { onPlayVideo(project.workingVideoPath) },
+                                onClickLabel = stringResource(R.string.project_play_original)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -212,15 +211,19 @@ fun ProjectCard(
                                 onClick = { showMenu = false; onDuplicate() },
                                 leadingIcon = { Icon(FeatherIcons.Copy, contentDescription = null) }
                             )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.project_share)) },
-                                onClick = { 
-                                    showMenu = false
-                                    val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
-                                    onShareVideo(videoToShare)
-                                },
-                                leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
-                            )
+                            if (exports.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.project_share)) },
+                                    onClick = { 
+                                        showMenu = false
+                                        val latestExport = exports.maxByOrNull { it.exportedAt }?.videoFilePath
+                                        if (latestExport != null) {
+                                            onShareVideo(latestExport)
+                                        }
+                                    },
+                                    leadingIcon = { Icon(FeatherIcons.Share2, contentDescription = null) }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.project_update_captions)) },
                                 onClick = { showMenu = false; onRetranscribe() },
@@ -325,13 +328,17 @@ fun ProjectCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = {
-                    val videoToShare = project.exportedVideoPath ?: project.workingVideoPath
-                    onShareVideo(videoToShare)
-                }) {
-                    Icon(FeatherIcons.Share2, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.project_share), style = MaterialTheme.typography.labelMedium)
+                if (exports.isNotEmpty()) {
+                    TextButton(onClick = {
+                        val latestExport = exports.maxByOrNull { it.exportedAt }?.videoFilePath
+                        if (latestExport != null) {
+                            onShareVideo(latestExport)
+                        }
+                    }) {
+                        Icon(FeatherIcons.Share2, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.project_share), style = MaterialTheme.typography.labelMedium)
+                    }
                 }
                 TextButton(
                     onClick = { showDeleteConfirm = true },

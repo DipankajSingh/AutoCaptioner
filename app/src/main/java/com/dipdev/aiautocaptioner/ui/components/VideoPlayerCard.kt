@@ -152,8 +152,20 @@ fun VideoPlayerCard(
         }
     }
 
-    DisposableEffect(player) {
-        onDispose { player.release() }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    DisposableEffect(player, lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE || event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                player.pause()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        
+        onDispose { 
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            player.release() 
+        }
     }
 
     VideoPlayerCard(

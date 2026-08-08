@@ -238,7 +238,15 @@ fun TranscriptionBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Translate Toggle
-            if (selectedLanguage != "en") {
+            val isMultilingualSelected = selectedModel?.isMultilingual == true
+            
+            LaunchedEffect(isMultilingualSelected) {
+                if (!isMultilingualSelected && translateToEnglish) {
+                    translateToEnglish = false
+                }
+            }
+            
+            if (selectedLanguage != "en" && isMultilingualSelected) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

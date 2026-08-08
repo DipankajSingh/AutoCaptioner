@@ -128,6 +128,11 @@ class ModelRepository @Inject constructor(
                 file.delete()
                 Log.i(TAG, "Deleted model: $modelId")
             }
+            val tempFile = File(file.parent, "${file.name}.tmp")
+            if (tempFile.exists()) {
+                tempFile.delete()
+                Log.i(TAG, "Deleted temp file for model: $modelId")
+            }
         }
     }
 

@@ -12,6 +12,7 @@ import compose.icons.feathericons.Check
 import compose.icons.feathericons.Download
 import compose.icons.feathericons.Star
 import compose.icons.feathericons.Trash2
+import compose.icons.feathericons.X
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -159,9 +160,6 @@ private fun ModelCard(
 
             // Action / State Layout
             when {
-                isActive -> {
-                    // Nothing to show if active (Header already has Active tag)
-                }
                 model.isDownloaded -> {
                     // Option to Activate or Delete
                     Row(
@@ -193,9 +191,11 @@ private fun ModelCard(
                             IconButton(onClick = { showDeleteConfirm = true }) {
                                 Icon(FeatherIcons.Trash2, contentDescription = "Delete model", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Button(onClick = onSetActive) {
-                                Text("Set Active", maxLines = 1)
+                            if (!isActive) {
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Button(onClick = onSetActive) {
+                                    Text("Set Active", maxLines = 1)
+                                }
                             }
                         }
                     }
@@ -207,13 +207,31 @@ private fun ModelCard(
                     val animatedProgress by animateFloatAsState(targetValue = progress, animationSpec = tween(300), label = "dl_prog")
                     
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(
-                                text = if (isStarting) "Preparing..." else "Downloading...",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (isStarting) "Preparing..." else "Downloading...",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = onDelete,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        FeatherIcons.X,
+                                        contentDescription = "Cancel download",
+                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                             if (!isStarting && downloadState is DownloadState.Downloading) {
                                 Text(
                                     text = "${downloadState.progress}%",
@@ -258,8 +276,14 @@ private fun ModelCard(
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(downloadState.message, color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f), fontSize = 12.sp, lineHeight = 16.sp)
                         }
-                        Button(onClick = onDownload) {
-                            Text("Retry")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onDelete) {
+                                Icon(FeatherIcons.Trash2, contentDescription = "Delete model", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Button(onClick = onDownload) {
+                                Text("Retry")
+                            }
                         }
                     }
                 }

@@ -73,9 +73,9 @@ fun SettingsScreen(
                     .padding(16.dp)
             ) {
 
-            // ── AI & Models ───────────────────────────────────────────────────
+            // ── Caption Engine ─────────────────────────────────────────────
             Text(
-                text = "AI & Models",
+                text = stringResource(R.string.settings_section_caption_engine),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -92,12 +92,15 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "AI Models",
+                        text = stringResource(R.string.settings_ai_models),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = if (activeModelName != null) "Active: $activeModelName" else "No model selected",
+                        text = if (activeModelName != null)
+                            stringResource(R.string.settings_ai_models_active_format, activeModelName)
+                        else
+                            stringResource(R.string.settings_ai_models_none),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -206,11 +209,11 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(
-                        text = "Preview Frame Rate",
+                        text = stringResource(R.string.settings_preview_fps),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "30 FPS saves battery. 60 FPS is smoother.",
+                        text = stringResource(R.string.settings_preview_fps_desc),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
