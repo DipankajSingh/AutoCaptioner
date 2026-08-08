@@ -56,14 +56,10 @@ fun SmartRecorderFacelessPreview(
     val bgModifier = Modifier.fillMaxSize()
     when (val bg = selectedBackground) {
         is BackgroundState.SolidColor -> {
-            Box(modifier = bgModifier.background(bg.color)) {
-                FacelessIdleHint(isRecording = isRecording)
-            }
+            Box(modifier = bgModifier.background(bg.color))
         }
         is BackgroundState.Gradient -> {
-            Box(modifier = bgModifier.background(Brush.linearGradient(bg.colors))) {
-                FacelessIdleHint(isRecording = isRecording)
-            }
+            Box(modifier = bgModifier.background(Brush.linearGradient(bg.colors)))
         }
         is BackgroundState.ImageBitmap -> {
             // BoxWithConstraints gives us the viewport size in pixels for clamp math
@@ -166,72 +162,4 @@ fun VideoBackgroundPreview(uri: Uri, modifier: Modifier = Modifier) {
     )
 }
 
-// ---------------------------------------------------------------------------
-// Subtle idle hint overlay — only shown when not recording, fades on start
-// ---------------------------------------------------------------------------
 
-@Composable
-private fun FacelessIdleHint(isRecording: Boolean) {
-    val alpha by animateFloatAsState(
-        targetValue = if (isRecording) 0f else 1f,
-        animationSpec = tween(durationMillis = 600),
-        label = "idleHintAlpha"
-    )
-
-    if (alpha == 0f) return
-
-    val infiniteTransition = rememberInfiniteTransition(label = "micPulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "micPulseScale"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .alpha(alpha),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .graphicsLayer {
-                        scaleX = pulseScale
-                        scaleY = pulseScale
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(0.15f)
-                        .background(Color.White, CircleShape)
-                )
-                Text(text = "🎙", fontSize = 34.sp)
-            }
-            Text(
-                text = "Faceless Recording",
-                color = Color.White.copy(alpha = 0.80f),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = "Your voice is the video",
-                color = Color.White.copy(alpha = 0.45f),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}

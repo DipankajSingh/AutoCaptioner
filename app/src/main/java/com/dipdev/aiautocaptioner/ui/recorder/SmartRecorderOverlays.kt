@@ -194,13 +194,6 @@ fun RecordingIndicator(modifier: Modifier = Modifier) {
     val pulseAlpha = 0.25f + (1f - pulseFraction) * 0.75f
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Pulsing red border
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .border(3.dp, MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha))
-        )
-
         // REC badge — top right
         Row(
             modifier = Modifier
@@ -243,11 +236,6 @@ fun PausedIndicator(modifier: Modifier = Modifier) {
     )
 
     Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .border(3.dp, Color.White.copy(alpha = 0.4f))
-        )
 
         Row(
             modifier = Modifier

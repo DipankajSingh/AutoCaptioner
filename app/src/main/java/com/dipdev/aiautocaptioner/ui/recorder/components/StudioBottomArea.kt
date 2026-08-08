@@ -100,12 +100,7 @@ fun StudioBottomArea(
             )
         }
 
-        // Audio visualizer for faceless recording
-        if (mode == RecordingMode.FACELESS && recordingState == RecordingState.RECORDING) {
-            Box(modifier = Modifier.padding(bottom = 20.dp).height(32.dp).width(100.dp)) {
-                AudioVisualizerOverlay(amplitude = audioAmplitude)
-            }
-        }
+
 
         // Recording Duration Timer Pill located cleanly above bottom controls during recording
         if (recordingState == RecordingState.RECORDING || recordingState == RecordingState.PAUSED) {

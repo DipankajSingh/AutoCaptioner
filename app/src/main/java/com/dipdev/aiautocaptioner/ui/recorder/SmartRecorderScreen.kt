@@ -474,17 +474,6 @@ fun SmartRecorderContent(
                     }
                 )
             }
-
-            // REC / PAUSED indicator overlays for Faceless mode
-            // (In Camera mode these are rendered automatically over the CameraX preview,
-            //  but in Faceless mode the camera surface is unbound, so we must render them explicitly.)
-            if (mode == RecordingMode.FACELESS) {
-                when (recordingState) {
-                    RecordingState.RECORDING -> RecordingIndicator()
-                    RecordingState.PAUSED -> PausedIndicator()
-                    else -> {}
-                }
-            }
         }
 
         // --- 2. Zero-Flicker Instant Aspect Ratio Masking & Grid Overlays ---

@@ -230,9 +230,10 @@ class FacelessVideoRecorder {
             videoFrameExtractor?.release()
             videoFrameExtractor = null
 
+            val muxerWasStarted = isMuxerStarted
             releaseResources()
 
-            if (isMuxerStarted && outputFile != null) {
+            if (muxerWasStarted && outputFile != null) {
                 onCompleteCallback?.invoke(outputFile!!)
             } else {
                 onErrorCallback?.invoke(IllegalStateException("Recording finished without a valid output (muxer never started)"))
@@ -331,6 +332,7 @@ class FacelessVideoRecorder {
         try {
             var eosReceived = false
             var stopTimeOut = 0
+            var firstVideoPts = -1L
             while (!eosReceived) {
                 val encoderStatus = videoCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: break
                 if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
@@ -342,6 +344,13 @@ class FacelessVideoRecorder {
                 } else if (encoderStatus >= 0) {
                     val encodedData = videoCodec?.getOutputBuffer(encoderStatus)
                     if (encodedData != null && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                        
+                        // Normalize PTS to start near 0
+                        if (firstVideoPts == -1L) {
+                            firstVideoPts = bufferInfo.presentationTimeUs
+                        }
+                        bufferInfo.presentationTimeUs = maxOf(0L, bufferInfo.presentationTimeUs - firstVideoPts)
+
                         if (bufferInfo.size != 0) {
                             encodedData.position(bufferInfo.offset)
                             encodedData.limit(bufferInfo.offset + bufferInfo.size)
@@ -426,9 +435,12 @@ class FacelessVideoRecorder {
                             val ptsUs = (audioPts * 1000000L) / bytesPerFrame
                             audioCodec?.queueInputBuffer(inputBufferIndex, 0, readBytes, ptsUs, 0)
                             audioPts += readBytes
-                        } else {
+                        } else if (!isRecording.get()) {
                             audioCodec?.queueInputBuffer(inputBufferIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                             isEosSent = true
+                        } else {
+                            // If readBytes == 0 but we are still recording, just return the buffer without EOS
+                            audioCodec?.queueInputBuffer(inputBufferIndex, 0, 0, 0L, 0)
                         }
                     }
                 }
