@@ -22,6 +22,17 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Title
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ColorLens
+import androidx.compose.material.icons.rounded.FontDownload
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -360,7 +371,104 @@ fun EditorScreen(
                                     onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
                                     modifier = Modifier
                                         .align(Alignment.TopCenter)
-                                        .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
+                                        .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp),
+                                    leftContent = {
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = selectedTextOverlayId != null || selectedOverlayId != null,
+                                            enter = fadeIn(),
+                                            exit = fadeOut()
+                                        ) {
+                                            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                                                if (selectedTextOverlayId != null) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Edit,
+                                                        contentDescription = "Edit",
+                                                        tint = Color.White,
+                                                        modifier = Modifier
+                                                            .shadow(4.dp, CircleShape)
+                                                            .size(32.dp)
+                                                            .clip(CircleShape)
+                                                            .clickable {
+                                                                viewModel.setEvent(VideoEditorUiEvent.StartEditingText)
+                                                            }
+                                                            .padding(2.dp)
+                                                    )
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.ColorLens,
+                                                        contentDescription = "Color",
+                                                        tint = Color.White,
+                                                        modifier = Modifier
+                                                            .shadow(4.dp, CircleShape)
+                                                            .size(32.dp)
+                                                            .clip(CircleShape)
+                                                            .clickable { /* TODO: Open Color Picker */ }
+                                                            .padding(2.dp)
+                                                    )
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.FontDownload,
+                                                        contentDescription = "Font",
+                                                        tint = Color.White,
+                                                        modifier = Modifier
+                                                            .shadow(4.dp, CircleShape)
+                                                            .size(32.dp)
+                                                            .clip(CircleShape)
+                                                            .clickable { /* TODO: Open Font Picker */ }
+                                                            .padding(2.dp)
+                                                    )
+                                                }
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Delete,
+                                                    contentDescription = "Delete",
+                                                    tint = Color(0xFFE84855),
+                                                    modifier = Modifier
+                                                        .shadow(4.dp, CircleShape)
+                                                        .size(32.dp)
+                                                        .clip(CircleShape)
+                                                        .clickable {
+                                                            if (selectedTextOverlayId != null) {
+                                                                viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(selectedTextOverlayId!!))
+                                                            } else if (selectedOverlayId != null) {
+                                                                viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlayId!!))
+                                                            }
+                                                        }
+                                                        .padding(2.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    rightContent = {
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO,
+                                            enter = fadeIn(),
+                                            exit = fadeOut()
+                                        ) {
+                                            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Title,
+                                                    contentDescription = "Add Text",
+                                                    tint = Color.White,
+                                                    modifier = Modifier
+                                                        .shadow(4.dp, CircleShape)
+                                                        .size(32.dp)
+                                                        .clip(CircleShape)
+                                                        .clickable { viewModel.setEvent(VideoEditorUiEvent.StartAddingText) }
+                                                        .padding(2.dp)
+                                                )
+                                                
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Image,
+                                                    contentDescription = stringResource(R.string.timeline_add_image),
+                                                    tint = Color.White,
+                                                    modifier = Modifier
+                                                        .shadow(4.dp, CircleShape)
+                                                        .size(32.dp)
+                                                        .clip(CircleShape)
+                                                        .clickable { imagePickerLauncher.launch("image/*") }
+                                                        .padding(2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                 )
 
                                 // Fix 11: Inline caption editor extracted to CaptionInlineEditor composable
@@ -412,36 +520,7 @@ fun EditorScreen(
                                     modifier = Modifier.align(Alignment.Center).zIndex(10f)
                                 )
                             }
-                            
-                            // Global Action Buttons (Text, Image)
-                            Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)) {
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO &&
-                                            selectedOverlayId == null &&
-                                            selectedTextOverlayId == null &&
-                                            !uiState.isAddingText &&
-                                            uiState.editingTextOverlayId == null,
-                                    enter = fadeIn(),
-                                    exit = fadeOut()
-                                ) {
-                                    com.dipdev.aiautocaptioner.ui.videoeditor.shared.GlobalActionButtons(
-                                        onAddImage = { imagePickerLauncher.launch("image/*") },
-                                        onAddText = { viewModel.setEvent(VideoEditorUiEvent.StartAddingText) }
-                                    )
-                                }
-
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO &&
-                                            selectedTextOverlayId != null &&
-                                            uiState.editingTextOverlayId == null,
-                                    enter = fadeIn(),
-                                    exit = fadeOut()
-                                ) {
-                                    com.dipdev.aiautocaptioner.ui.videoeditor.shared.TextOverlayActionButtons(
-                                        onEdit = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) }
-                                    )
-                                }
-                            }
+                                                   // Old GlobalActionButtons deleted because they are now inside rightContent slot of EditorTopOverlay     }
                             } // end preview Box
 
                             Spacer(modifier = Modifier.height(2.dp))

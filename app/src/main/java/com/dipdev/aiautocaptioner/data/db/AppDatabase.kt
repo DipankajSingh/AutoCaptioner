@@ -323,6 +323,11 @@ abstract class AppDatabase : RoomDatabase() {
         /** Add text_overlays table */
         val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop partial index so Room validation doesn't fail on startup
+                // It will be recreated in onOpen()
+                db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
+
+                // Create the text overlays table
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS `text_overlays` (
                         `id` TEXT NOT NULL,

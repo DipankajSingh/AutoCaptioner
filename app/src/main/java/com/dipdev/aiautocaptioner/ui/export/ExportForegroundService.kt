@@ -40,6 +40,7 @@ import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.engine.CaptionOverlayEffect
 import com.dipdev.aiautocaptioner.engine.ImageOverlayEffect
+import com.dipdev.aiautocaptioner.engine.TextOverlayEffect
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -300,6 +301,23 @@ class ExportForegroundService : Service() {
                     textureOverlays.add(captionOverlayEffect)
                 }
 
+                val textOverlays = overlayRepository.getTextOverlaysForProjectSync(projectId)
+                val textOverlayEffects = textOverlays.mapNotNull { overlay ->
+                    try {
+                        TextOverlayEffect(
+                            context = this@ExportForegroundService,
+                            overlay = overlay,
+                            videoWidth = displayWidth,
+                            videoHeight = displayHeight,
+                            rotationDegrees = project.videoRotation
+                        )
+                    } catch (e: Throwable) {
+                        crashReporter.recordException(e)
+                        null
+                    }
+                }
+                textureOverlays.addAll(textOverlayEffects)
+
                 val overlays = overlayRepository.getOverlaysOnce(projectId)
                 val imageOverlayEffects = overlays.mapNotNull { overlay ->
                     try {
@@ -354,8 +372,25 @@ class ExportForegroundService : Service() {
                 ExportServiceManager.outputPath.value = outFile.absolutePath
 
                 val videoEffectsBuilder = ImmutableList.builder<androidx.media3.common.Effect>()
+                var finalTargetHeight = targetHeight
+                
+                // 4K Condition Check
                 if (targetHeight != null && targetHeight > 0) {
-                    videoEffectsBuilder.add(Presentation.createForHeight(targetHeight))
+                    if (project.videoWidth >= 3840 || project.videoHeight >= 3840) {
+                        // Skip upscaling logic if the original is already 4K or above,
+                        // meaning if targetHeight is less than the original, we respect the downscale (e.g. 4K -> 1080p).
+                        // If they chose 1080p output and original is 4K, let it scale down to 1080p.
+                        // If they chose 4K output and original is 4K, let it pass through.
+                        // So the presentation effect is fine.
+                    } else if (targetHeight >= 2160) {
+                        // Attempting to export 4K but source is less than 4K (e.g., 1080p).
+                        // Skip the upscaling to save resources and file size.
+                        finalTargetHeight = null
+                    }
+                }
+                
+                if (finalTargetHeight != null && finalTargetHeight > 0) {
+                    videoEffectsBuilder.add(Presentation.createForHeight(finalTargetHeight))
                 }
                 videoEffectsBuilder.add(OverlayEffect(textureOverlays.build()))
 
@@ -396,7 +431,7 @@ class ExportForegroundService : Service() {
                             ) {
                                 if (isFinishing) return
                                 Log.d(TAG, "Export completed")
-                                releaseOverlays(captionOverlayEffect, imageOverlayEffects)
+                                releaseOverlays(captionOverlayEffect, imageOverlayEffects, textOverlayEffects)
                                 isFinishing = true
                                 progressJob?.cancel()
                                 activeTransformer = null
@@ -439,7 +474,7 @@ class ExportForegroundService : Service() {
                             ) {
                                 if (isFinishing) return
                                 Log.e(TAG, "Export failed: ${exportException.message}")
-                                releaseOverlays(captionOverlayEffect, imageOverlayEffects)
+                                releaseOverlays(captionOverlayEffect, imageOverlayEffects, textOverlayEffects)
                                 isFinishing = true
                                 progressJob?.cancel()
                                 activeTransformer = null
@@ -522,10 +557,12 @@ class ExportForegroundService : Service() {
 
     private fun releaseOverlays(
         captionOverlayEffect: CaptionOverlayEffect?,
-        imageOverlayEffects: List<ImageOverlayEffect>
+        imageOverlayEffects: List<ImageOverlayEffect>,
+        textOverlayEffects: List<TextOverlayEffect>
     ) {
         captionOverlayEffect?.release()
         imageOverlayEffects.forEach { it.release() }
+        textOverlayEffects.forEach { it.release() }
     }
 
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
