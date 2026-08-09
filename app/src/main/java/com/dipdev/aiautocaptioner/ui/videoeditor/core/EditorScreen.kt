@@ -64,13 +64,13 @@ private val CaptionSegmentSaver = Saver<CaptionSegmentEntity?, Any>(
         (value as? List<*>)?.let { list ->
             if (list.size == 7) {
                 CaptionSegmentEntity(
-                    id = list[0] as String,
-                    projectId = list[1] as String,
-                    index = list[2] as Int,
-                    startTimeMs = list[3] as Long,
-                    endTimeMs = list[4] as Long,
-                    text = list[5] as String,
-                    isEdited = list[6] as Boolean
+                    id = list[0]?.toString() ?: return@let null,
+                    projectId = list[1]?.toString() ?: return@let null,
+                    index = (list[2] as? Int) ?: (list[2] as? Long)?.toInt() ?: 0,
+                    startTimeMs = (list[3] as? Long) ?: (list[3] as? Int)?.toLong() ?: 0L,
+                    endTimeMs = (list[4] as? Long) ?: (list[4] as? Int)?.toLong() ?: 0L,
+                    text = list[5]?.toString() ?: "",
+                    isEdited = list[6] as? Boolean ?: false
                 )
             } else null
         }

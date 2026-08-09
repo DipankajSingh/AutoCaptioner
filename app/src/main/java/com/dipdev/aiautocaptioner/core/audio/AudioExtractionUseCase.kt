@@ -101,7 +101,7 @@ class AudioExtractionUseCase @Inject constructor(
                                     FloatArray(fb.remaining()).also { fb.get(it) }
                                 }
                                 android.media.AudioFormat.ENCODING_PCM_8BIT -> {
-                                    FloatArray(info.size) { i -> (pcmBytes[i].toInt() - 128) / 128.0f }
+                                    FloatArray(info.size) { i -> ((pcmBytes[i].toInt() and 0xFF) - 128) / 128.0f }
                                 }
                                 else -> {
                                     val sb = byteBuffer.asShortBuffer()
@@ -113,7 +113,12 @@ class AudioExtractionUseCase @Inject constructor(
                             val monoFloats = if (channelCount > 1) {
                                 FloatArray(floatArray.size / channelCount) { i ->
                                     var sum = 0f
-                                    for (ch in 0 until channelCount) sum += floatArray[i * channelCount + ch]
+                                    for (ch in 0 until channelCount) {
+                                        val idx = i * channelCount + ch
+                                        if (idx < floatArray.size) {
+                                            sum += floatArray[idx]
+                                        }
+                                    }
                                     sum / channelCount
                                 }
                             } else {

@@ -44,14 +44,8 @@ fun StudioRightSidebar(
     onCycleTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    AnimatedVisibility(
-        visible = true,
-        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(250)),
-        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(200)),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -100,5 +94,5 @@ fun StudioRightSidebar(
                 onClick = onCycleTimer
             )
         }
-    }
 }
+

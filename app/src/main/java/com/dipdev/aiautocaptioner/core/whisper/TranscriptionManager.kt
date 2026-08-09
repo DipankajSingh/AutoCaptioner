@@ -65,7 +65,6 @@ class TranscriptionManager @Inject constructor(
 
     private val _segmentBuffer = Channel<StreamedSegment>(Channel.UNLIMITED)
     @Volatile private var dripJob: Job? = null
-    private val jobMutex = Mutex()
     private var activeJob: Job? = null
     @Volatile private var isCancelled = false
     private var transcriptionStartTimeMs: Long = 0L

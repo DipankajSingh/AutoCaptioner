@@ -144,7 +144,7 @@ class ThumbnailManager(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("ThumbnailManager", "Error", e)
             retrieverPool.forEach { it.release() }
             retrieverPool.clear()
         } finally {
@@ -239,7 +239,7 @@ class ThumbnailManager(private val context: Context) {
                 val bitmap = BitmapFactory.decodeFile(file.absolutePath)
                 if (bitmap != null) return@withContext bitmap
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("ThumbnailManager", "Error", e)
             }
         }
 
@@ -276,7 +276,7 @@ class ThumbnailManager(private val context: Context) {
                     return@withContext scaledBitmap
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("ThumbnailManager", "Error", e)
             } finally {
                 retrieverPool.offer(r)
             }

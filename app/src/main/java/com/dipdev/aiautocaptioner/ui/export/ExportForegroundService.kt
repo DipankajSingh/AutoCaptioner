@@ -182,7 +182,7 @@ class ExportForegroundService : Service() {
                 this,
                 NOTIFICATION_ID,
                 notification,
-                if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
+                if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING else 0
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -544,6 +544,10 @@ class ExportForegroundService : Service() {
     private fun stopExportService() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopSelf(startId)
     }
 }
 

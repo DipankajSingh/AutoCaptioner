@@ -144,142 +144,19 @@ fun AspectRatioMaskOverlay(aspectRatio: AspectRatio) {
 }
 
 @Composable
-fun AudioVisualizerOverlay(amplitude: Float) {
-    val safeAmplitude = if (amplitude.isNaN()) 0f else (amplitude * 15f).coerceIn(0f, 1f)
-    val baseColor = when {
-        safeAmplitude > 0.85f -> Color.Red
-        safeAmplitude < 0.15f -> Color.Yellow
-        else -> MaterialTheme.colorScheme.primary
-    }
-    Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        val barCount = 11
-        for (i in 0 until barCount) {
-            val distanceToCenter = Math.abs(i - barCount / 2).toFloat()
-            val scaleFactor = 1f - (distanceToCenter / (barCount / 2f))
-            val barAmp = safeAmplitude * scaleFactor * (0.6f + (Math.sin((safeAmplitude * 20f + i).toDouble()).toFloat() * 0.4f))
-            val targetHeight = 16f + (barAmp * 120f)
-            val animatedHeight by animateFloatAsState(
-                targetValue = targetHeight,
-                animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
-                label = "barHeight"
-            )
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 3.dp)
-                    .width(4.dp)
-                    .height(animatedHeight.dp)
-                    .clip(CircleShape)
-                    .background(baseColor.copy(alpha = 0.8f))
-            )
-        }
-    }
-}
-
-@Composable
-fun RecordingIndicator(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "rec_pulse")
-    val pulseFraction by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseFraction"
-    )
-    val pulseAlpha = 0.25f + (1f - pulseFraction) * 0.75f
-
-    Box(modifier = modifier.fillMaxSize()) {
-        // REC badge — top right
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 52.dp, end = 16.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color.Black.copy(alpha = 0.5f))
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha))
-            )
-            Text(
-                text = stringResource(R.string.rec_rec),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun PausedIndicator(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pause_blink")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pauseAlpha"
-    )
-
-    Box(modifier = modifier.fillMaxSize()) {
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 52.dp, end = 16.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color.Black.copy(alpha = 0.5f))
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = alpha))
-            )
-            Text(
-                text = stringResource(R.string.rec_paused),
-                color = Color.White.copy(alpha = alpha),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 1.sp
-            )
-        }
-    }
-}
-
-@Composable
 fun AnimatedCountdown(
     value: Int,
     modifier: Modifier = Modifier
 ) {
     val scale = remember { Animatable(0.5f) }
     val alpha = remember { Animatable(1f) }
-    val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(value) {
         scale.snapTo(0.5f)
         alpha.snapTo(1f)
-        coroutineScope.launch {
+        launch {
             scale.animateTo(1.4f, tween(700, easing = FastOutSlowInEasing))
         }
-        coroutineScope.launch {
+        launch {
             alpha.animateTo(0f, tween(700, easing = LinearEasing))
         }
     }

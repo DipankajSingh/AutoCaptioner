@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         // Ensure the intent is handled when the app is already in memory
         mainViewModel.onIntentReceived(intent)
     }

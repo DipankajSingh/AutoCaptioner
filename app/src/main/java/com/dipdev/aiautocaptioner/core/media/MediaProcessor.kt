@@ -73,10 +73,13 @@ class MediaProcessor @Inject constructor(
             }
 
             if (bitmap != null) {
-                outputFile.outputStream().use { out ->
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
+                try {
+                    outputFile.outputStream().use { out ->
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
+                    }
+                } finally {
+                    bitmap.recycle()
                 }
-                bitmap.recycle()
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to extract thumbnail: ${e.message}")

@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
+import com.dipdev.aiautocaptioner.BuildConfig
 
 @Singleton
 class PremiumManager @Inject constructor(
@@ -74,7 +75,7 @@ class PremiumManager @Inject constructor(
 
 
     suspend fun purchaseLifetime(activity: Activity): StoreTransaction? {
-        val isUnlocked = Firebase.remoteConfig.getBoolean("is_premium_unlocked_for_testing")
+        val isUnlocked = BuildConfig.DEBUG && Firebase.remoteConfig.getBoolean("is_premium_unlocked_for_testing")
         if (isUnlocked) {
             // Simulate a successful purchase to test the UX flow
             prefs.edit { putBoolean("simulated_premium", true) }
@@ -97,7 +98,7 @@ class PremiumManager @Inject constructor(
                 null
             }
         } catch (e: PurchasesException) {
-            e.printStackTrace()
+            android.util.Log.e("PremiumManager", "Purchase error", e)
             null
         }
     }

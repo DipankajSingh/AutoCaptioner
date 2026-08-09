@@ -13,26 +13,6 @@ object AnimationUtils {
 
     fun easeInCubic(t: Float): Float = t * t * t
 
-    fun bounceOut(t: Float): Float {
-        val n = 7.5625f
-        val d = 2.75f
-        return when {
-            t < 1f / d -> n * t * t
-            t < 2f / d -> {
-                val u = t - 1.5f / d
-                n * u * u + 0.75f
-            }
-            t < 2.5f / d -> {
-                val u = t - 2.25f / d
-                n * u * u + 0.9375f
-            }
-            else -> {
-                val u = t - 2.625f / d
-                n * u * u + 0.984375f
-            }
-        }
-    }
-
     fun elasticOut(t: Float): Float {
         if (t == 0f || t == 1f) return t
         val p = 0.3f

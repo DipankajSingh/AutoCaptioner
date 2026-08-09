@@ -228,7 +228,7 @@ class EditorViewModel @Inject constructor(
                     val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                     durationMs = durationStr?.toLongOrNull() ?: 0L
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    android.util.Log.e("EditorViewModel", "Error reading metadata", e)
                 } finally {
                     retriever?.release()
                 }

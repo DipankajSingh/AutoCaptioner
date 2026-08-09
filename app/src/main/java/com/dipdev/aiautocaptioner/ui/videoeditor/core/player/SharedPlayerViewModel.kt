@@ -100,6 +100,10 @@ class SharedPlayerViewModel @Inject constructor(
         }
         exoPlayer.prepare()
         exoPlayer.playWhenReady = savedPlayWhenReady
+
+        savedPlaylist = emptyList()
+        savedMediaItemIndex = 0
+        savedPositionMs = 0L
     }
 
     /** Pause playback — call from lifecycle observers (ON_STOP / onDispose). */

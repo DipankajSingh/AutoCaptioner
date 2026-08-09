@@ -8,6 +8,7 @@ import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
@@ -56,7 +57,7 @@ class OverlayManager(
                 }
                 overlayRepository.addOverlay(overlay)
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("OverlayManager", "Error adding overlay", e)
             }
         }
     }
@@ -77,12 +78,14 @@ class OverlayManager(
                     val file = File(overlay.imageUri)
                     if (file.exists()) file.delete()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    android.util.Log.e("OverlayManager", "Error deleting file", e)
                 }
             }
             
             if (isSelectedOverlay(overlayId)) {
-                onOverlaySelected(null)
+                withContext(Dispatchers.Main) {
+                    onOverlaySelected(null)
+                }
             }
         }
     }
@@ -129,7 +132,7 @@ class OverlayManager(
                         newImageUri = destFile.absolutePath
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    android.util.Log.e("OverlayManager", "Error duplicating overlay", e)
                 }
             }
             
@@ -146,7 +149,9 @@ class OverlayManager(
                 )
             }
             overlayRepository.addOverlay(duplicate)
-            onOverlaySelected(duplicate.id) // Auto select the new duplicate
+            withContext(Dispatchers.Main) {
+                onOverlaySelected(duplicate.id) // Auto select the new duplicate
+            }
         }
     }
 }

@@ -111,7 +111,6 @@ class TranscriptionForegroundService : Service() {
             wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AutoCaptioner::TranscriptionWakeLock").apply {
                 acquire(30 * 60 * 1000L) // 30 mins timeout max just in case
             }
-            Log.d(TAG, "WakeLock acquired")
         }
     }
 
@@ -119,7 +118,6 @@ class TranscriptionForegroundService : Service() {
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()
-                Log.d(TAG, "WakeLock released")
             }
         }
         wakeLock = null
@@ -303,5 +301,9 @@ class TranscriptionForegroundService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.cancel(NOTIFICATION_ID)
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopSelf(startId)
     }
 }

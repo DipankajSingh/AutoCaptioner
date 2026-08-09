@@ -45,7 +45,8 @@ object DatabaseModule {
                 )
             }
         }
-    }).addMigrations(
+    }).fallbackToDestructiveMigrationFrom(dropAllTables = true, 1, 2, 3)
+    .addMigrations(
         AppDatabase.MIGRATION_4_5,
         AppDatabase.MIGRATION_5_6,
         AppDatabase.MIGRATION_6_7,

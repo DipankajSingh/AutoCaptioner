@@ -90,8 +90,6 @@ import com.dipdev.aiautocaptioner.ui.components.UniversalDialog
 import com.dipdev.aiautocaptioner.ui.components.DialogType
 import com.dipdev.aiautocaptioner.ui.recorder.components.PauseResumeControls
 import com.dipdev.aiautocaptioner.ui.recorder.components.QuickShareBar
-import com.dipdev.aiautocaptioner.ui.recorder.components.SegmentBadge
-import com.dipdev.aiautocaptioner.ui.recorder.components.StorageIndicator
 import com.dipdev.aiautocaptioner.ui.recorder.components.SmoothnessSlider
 import com.dipdev.aiautocaptioner.ui.recorder.components.FloatingFilterBadge
 import com.dipdev.aiautocaptioner.ui.recorder.components.StudioRightSidebar
@@ -323,13 +321,11 @@ fun SmartRecorderContent(
             if (mode == RecordingMode.FACELESS) {
                 if (recordingState == RecordingState.PAUSED) {
                     viewModel.resumeRecording()
-                    Thread.sleep(50)
                 }
                 viewModel.stopFacelessRecording()
             } else {
                 if (recordingState == RecordingState.PAUSED) {
                     activeRecording?.resume()
-                    Thread.sleep(50)
                 }
                 activeRecording?.stop()
             }
@@ -398,7 +394,6 @@ fun SmartRecorderContent(
                     } else {
                         if (state == RecordingState.PAUSED) {
                             rec?.resume()
-                            Thread.sleep(50)
                         }
                         rec?.stop()
                     }
@@ -646,13 +641,11 @@ fun SmartRecorderContent(
                 if (mode == RecordingMode.CAMERA) {
                     if (recordingState == RecordingState.PAUSED) {
                         activeRecording?.resume()
-                        Thread.sleep(50)
                     }
                     activeRecording?.stop()
                 } else {
                     if (recordingState == RecordingState.PAUSED) {
                         viewModel.resumeRecording()
-                        Thread.sleep(50)
                     }
                     viewModel.stopFacelessRecording()
                 }

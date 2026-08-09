@@ -342,7 +342,7 @@ class SmartRecorderViewModel @Inject constructor(
                         finalizeRecording(pId, file, null, null)
                     },
                     onError = { e ->
-                        e.printStackTrace()
+                        android.util.Log.e("SmartRecorder", "Recording error", e)
                         val pId = currentProjectId
                         if (pId != null) {
                             viewModelScope.launch {

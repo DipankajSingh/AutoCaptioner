@@ -56,8 +56,6 @@ object BundledFonts {
         return resolvedCache.getOrPut(key) { create() }
     }
 
-    /** Display names for the font picker — in UI order. */
-    val displayNames: List<String> = all.map { it.displayName }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

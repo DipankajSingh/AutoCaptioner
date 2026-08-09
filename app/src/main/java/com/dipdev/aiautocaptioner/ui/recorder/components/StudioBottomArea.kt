@@ -42,7 +42,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
-import com.dipdev.aiautocaptioner.ui.recorder.AudioVisualizerOverlay
 import com.dipdev.aiautocaptioner.ui.recorder.ModeToggle
 import com.dipdev.aiautocaptioner.ui.recorder.RecordButton
 import com.dipdev.aiautocaptioner.ui.recorder.RecordingMode

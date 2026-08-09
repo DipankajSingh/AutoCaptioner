@@ -11,6 +11,7 @@ import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
@@ -39,12 +40,20 @@ class MediaManager @Inject constructor(
                 val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
                     ?: return@withContext
 
+                var writeSucceeded = false
                 resolver.openOutputStream(uri)?.use { out ->
                     FileInputStream(sourceFile).use { it.copyTo(out) }
+                    writeSucceeded = true
                 }
-                values.clear()
-                values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                resolver.update(uri, values, null, null)
+                
+                if (writeSucceeded) {
+                    values.clear()
+                    values.put(MediaStore.Video.Media.IS_PENDING, 0)
+                    resolver.update(uri, values, null, null)
+                } else {
+                    resolver.delete(uri, null, null)
+                    throw IOException("Failed to open output stream for MediaStore")
+                }
             } else {
                 @Suppress("DEPRECATION")
                 val destDir = File(

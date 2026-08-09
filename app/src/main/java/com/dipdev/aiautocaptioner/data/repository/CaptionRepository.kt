@@ -113,9 +113,6 @@ class CaptionRepository @Inject constructor(
     suspend fun getAllWordsForProject(projectId: String): List<CaptionWordEntity> =
         wordDao.getAllWordsForProject(projectId)
 
-    // Observe all words for a project
-    fun getAllWordsForProjectFlow(projectId: String): Flow<List<CaptionWordEntity>> =
-        wordDao.getAllWordsForProjectFlow(projectId)
     // Toggle emphasis on a word — called from caption editor
     suspend fun toggleEmphasis(
         wordId: String,
@@ -130,13 +127,6 @@ class CaptionRepository @Inject constructor(
             wordDao.deleteWordsForSegment(segmentId)
             wordDao.insertAll(newWords)
         }
-    }
-
-    // Update a list of existing words in-place (called from CaptionEditorViewModel
-    // when the user edits a segment and the word count matches the original).
-    // Uses @Update under the hood — does NOT insert new rows.
-    suspend fun updateWords(words: List<CaptionWordEntity>) {
-        wordDao.updateWords(words)
     }
 
     // ================================================================

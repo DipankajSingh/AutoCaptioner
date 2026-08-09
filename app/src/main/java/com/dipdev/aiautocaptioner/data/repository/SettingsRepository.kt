@@ -9,8 +9,11 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import java.io.IOException
+import androidx.datastore.preferences.core.emptyPreferences
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,44 +44,64 @@ class SettingsRepository @Inject constructor(
     private val SELECTED_CREATOR_FILTER_KEY = stringPreferencesKey("selected_creator_filter_name")
     private val SKIN_SMOOTHNESS_INTENSITY_KEY = floatPreferencesKey("skin_smoothness_intensity_float")
 
-    val glassmorphismFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+    val glassmorphismFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[GLASSMORPHISM_KEY] ?: true
     }.distinctUntilChanged()
 
-    val showTimelineThumbnailsFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+    val showTimelineThumbnailsFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[SHOW_TIMELINE_THUMBNAILS_KEY] ?: true
     }.distinctUntilChanged()
 
-    val telemetryEnabledFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+    val telemetryEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[TELEMETRY_ENABLED_KEY] ?: true // Default to true
     }.distinctUntilChanged()
 
-    val exportResolutionFlow: Flow<Int> = dataStore.data.map { prefs ->
+    val exportResolutionFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[EXPORT_RESOLUTION_KEY] ?: -1
     }
 
-    val exportFpsFlow: Flow<Int> = dataStore.data.map { prefs ->
+    val exportFpsFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[EXPORT_FPS_KEY] ?: -1
     }
 
-    val exportQualityFlow: Flow<Int> = dataStore.data.map { prefs ->
+    val exportQualityFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[EXPORT_QUALITY_KEY] ?: 1
     }
 
-    val lastRecordingModeFlow: Flow<String> = dataStore.data.map { prefs ->
+    val lastRecordingModeFlow: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[LAST_RECORDING_MODE_KEY] ?: "CAMERA"
     }
 
-    val lastAspectRatioFlow: Flow<String> = dataStore.data.map { prefs ->
+    val lastAspectRatioFlow: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[LAST_ASPECT_RATIO_KEY] ?: "PORTRAIT_9_16"
     }.distinctUntilChanged()
 
-    val lastRecordingQualityFlow: Flow<String> = dataStore.data.map { prefs ->
+    val lastRecordingQualityFlow: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[LAST_RECORDING_QUALITY_KEY] ?: "MEDIUM"
     }.distinctUntilChanged()
 
     /** Preview FPS: 30 (default, saves battery) or 60 (smooth but more power). */
-    val previewFpsFlow: Flow<Int> = dataStore.data.map { prefs ->
+    val previewFpsFlow: Flow<Int> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[PREVIEW_FPS_KEY] ?: 30
     }.distinctUntilChanged()
 
@@ -114,11 +137,15 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    val lastLanguageFlow: Flow<String> = dataStore.data.map { prefs ->
+    val lastLanguageFlow: Flow<String> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[LAST_LANGUAGE_KEY] ?: "en"
     }.distinctUntilChanged()
 
-    val lastTranslateFlow: Flow<Boolean> = dataStore.data.map { prefs ->
+    val lastTranslateFlow: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[LAST_TRANSLATE_KEY] ?: false
     }.distinctUntilChanged()
 
@@ -147,11 +174,15 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    val selectedCreatorFilterFlow: Flow<CreatorFilter> = dataStore.data.map { prefs ->
+    val selectedCreatorFilterFlow: Flow<CreatorFilter> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         CreatorFilter.fromName(prefs[SELECTED_CREATOR_FILTER_KEY])
     }.distinctUntilChanged()
 
-    val skinSmoothnessIntensityFlow: Flow<Float> = dataStore.data.map { prefs ->
+    val skinSmoothnessIntensityFlow: Flow<Float> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) }
+        .map { prefs ->
         prefs[SKIN_SMOOTHNESS_INTENSITY_KEY] ?: 0.35f
     }.distinctUntilChanged()
 

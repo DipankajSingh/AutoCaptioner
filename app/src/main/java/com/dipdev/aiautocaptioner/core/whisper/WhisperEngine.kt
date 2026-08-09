@@ -48,7 +48,6 @@ class WhisperEngine(private val context: Context) {
     // -------------------------------------------------------
     private external fun loadModel(modelPath: String): Long
     private external fun transcribe(handle: Long, audioData: FloatArray, language: String, translateToEnglish: Boolean, nThreads: Int, initialPrompt: String? = null, listener: ProgressListener? = null): ByteArray?
-    private external fun isModelLoaded(handle: Long): Boolean
     private external fun freeModel(handle: Long)
     private external fun getDetectedLanguage(handle: Long): String?
     private external fun transcribeWithTimestamps(
@@ -105,34 +104,6 @@ class WhisperEngine(private val context: Context) {
                     throw WhisperException.ModelLoadFailed()
                 }
                 nativeHandle = handle
-            }
-        }
-    }
-
-    /**
-     * Transcribe raw 16 kHz mono float32 audio samples.
-     * language → "en", "hi", "auto", etc. UI-only codes like "hinglish" are
-     * mapped to a real whisper.cpp code here.
-     */
-    suspend fun transcribeAudio(
-        samples: FloatArray,
-        language: String = "en",
-        translateToEnglish: Boolean = false,
-        initialPrompt: String? = null,
-        onProgress: ((Int) -> Unit)? = null
-    ): String {
-        val whisperLang = WhisperLanguages.whisperCode(language)
-        return withContext(Dispatchers.IO) {
-            engineMutex.withLock {
-                val handle = nativeHandle
-                if (handle == 0L) {
-                    Log.e(TAG, "Cannot transcribe — model not loaded")
-                    return@withContext ""
-                }
-                val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
-                val resultBytes = transcribe(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), initialPrompt, listener)
-                lastDetectedLanguage = getDetectedLanguage(handle)
-                if (resultBytes != null) String(resultBytes, Charsets.UTF_8) else ""
             }
         }
     }

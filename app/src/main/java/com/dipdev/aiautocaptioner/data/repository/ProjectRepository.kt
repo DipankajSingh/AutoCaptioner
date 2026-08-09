@@ -239,12 +239,22 @@ class ProjectRepository @Inject constructor(
                 // 3. Duplicate files on disk
                 fileStorageManager.duplicateProjectFiles(projectId, newProjectId)
 
-                // 4. Update file paths by swapping the projectId in the path
-                val newOriginalVideoUri = originalProject.originalVideoUri.replace(projectId, newProjectId)
-                val newWorkingVideoPath = originalProject.workingVideoPath.replace(projectId, newProjectId)
-                val newAudioPath = originalProject.audioPath?.replace(projectId, newProjectId)
-                val newThumbnailPath = originalProject.thumbnailPath?.replace(projectId, newProjectId)
-                val newExportedVideoPath = originalProject.exportedVideoPath?.replace(projectId, newProjectId)
+                // 4. Update file paths by swapping the projectId in the path safely
+                val newProjectDir = fileStorageManager.getProjectDir(newProjectId)
+                fun updatePath(path: String?): String? {
+                    if (path == null) return null
+                    return if (path.contains(projectId)) {
+                        File(newProjectDir, File(path).name).absolutePath
+                    } else {
+                        path
+                    }
+                }
+
+                val newOriginalVideoUri = updatePath(originalProject.originalVideoUri)!!
+                val newWorkingVideoPath = updatePath(originalProject.workingVideoPath)!!
+                val newAudioPath = updatePath(originalProject.audioPath)
+                val newThumbnailPath = updatePath(originalProject.thumbnailPath)
+                val newExportedVideoPath = updatePath(originalProject.exportedVideoPath)
 
                 // 5. Create new project entity
                 val now = System.currentTimeMillis()

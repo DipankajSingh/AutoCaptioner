@@ -88,7 +88,7 @@ fun TimelineView(
     val textMeasurer = rememberTextMeasurer()
     
     val density = LocalDensity.current
-    val pixelsPerMs = with(density) { (50.dp.toPx() / 1000f) * zoomLevel }
+    val pixelsPerMs = with(density) { (50.dp.toPx() / 1000f) * zoomLevel.coerceAtLeast(0.1f) }
     
     var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
     var draggingOverlayId by remember { mutableStateOf<String?>(null) }
@@ -112,7 +112,7 @@ fun TimelineView(
         if (draggedIdx != null && draggedIdx in clips.indices) {
             val centerInRow = dragPointerScreenX + scrollState.value
             var swapped = false
-            if (draggedIdx < clips.size - 1) {
+            if (draggedIdx < clipLayoutCenters.size - 1) {
                 val nextCenter = clipLayoutCenters[draggedIdx + 1]
                 if (centerInRow > nextCenter) {
                     onMoveClip(draggedIdx, draggedIdx + 1)
@@ -120,7 +120,7 @@ fun TimelineView(
                     swapped = true
                 }
             }
-            if (!swapped && draggedIdx > 0) {
+            if (!swapped && draggedIdx > 0 && draggedIdx < clipLayoutCenters.size) {
                 val prevCenter = clipLayoutCenters[draggedIdx - 1]
                 if (centerInRow < prevCenter) {
                     onMoveClip(draggedIdx, draggedIdx - 1)
@@ -149,7 +149,7 @@ fun TimelineView(
         }
     }
 
-    val targetChunkMs = (1000f / zoomLevel).toLong()
+    val targetChunkMs = (1000f / zoomLevel.coerceAtLeast(0.1f)).toLong()
     val thumbnailIntervalMs = remember(targetChunkMs) {
         when {
             targetChunkMs <= 100 -> 100L
