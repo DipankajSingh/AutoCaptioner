@@ -419,13 +419,26 @@ fun EditorScreen(
                                     visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO &&
                                             selectedOverlayId == null &&
                                             selectedTextOverlayId == null &&
-                                            !uiState.isAddingText,
+                                            !uiState.isAddingText &&
+                                            uiState.editingTextOverlayId == null,
                                     enter = fadeIn(),
                                     exit = fadeOut()
                                 ) {
                                     com.dipdev.aiautocaptioner.ui.videoeditor.shared.GlobalActionButtons(
                                         onAddImage = { imagePickerLauncher.launch("image/*") },
                                         onAddText = { viewModel.setEvent(VideoEditorUiEvent.StartAddingText) }
+                                    )
+                                }
+
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO &&
+                                            selectedTextOverlayId != null &&
+                                            uiState.editingTextOverlayId == null,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    com.dipdev.aiautocaptioner.ui.videoeditor.shared.TextOverlayActionButtons(
+                                        onEdit = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) }
                                     )
                                 }
                             }

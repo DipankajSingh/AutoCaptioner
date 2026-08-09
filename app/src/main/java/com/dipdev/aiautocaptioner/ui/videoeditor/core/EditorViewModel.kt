@@ -89,6 +89,7 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class DuplicateTextOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class MoveTextOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
     data object StartAddingText : VideoEditorUiEvent()
+    data object StartEditingText : VideoEditorUiEvent()
     data object CancelAddingText : VideoEditorUiEvent()
 }
 
@@ -254,6 +255,7 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.DuplicateTextOverlay -> overlayManager.duplicateTextOverlay(event.overlayId, viewModelScope)
             is VideoEditorUiEvent.MoveTextOverlayZ -> overlayManager.moveTextOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
             is VideoEditorUiEvent.StartAddingText -> setState { copy(isAddingText = true, editingTextOverlayId = null) }
+            is VideoEditorUiEvent.StartEditingText -> setState { copy(isAddingText = false, editingTextOverlayId = _selectedTextOverlayId.value) }
             is VideoEditorUiEvent.CancelAddingText -> setState { copy(isAddingText = false, editingTextOverlayId = null) }
         }
     }
