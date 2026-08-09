@@ -45,6 +45,7 @@ import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StylePanel
@@ -64,6 +65,10 @@ fun EditorBottomDock(
     selectedOverlayId: String?,
     onOverlaySelected: (String?) -> Unit,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
+    textOverlays: List<TextOverlayEntity> = emptyList(),
+    selectedTextOverlayId: String? = null,
+    onTextOverlaySelected: (String?) -> Unit = {},
+    onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
@@ -71,10 +76,12 @@ fun EditorBottomDock(
     onTrimClip: (String, Long, Long) -> Unit,
     onMoveOverlayZ: (String, Boolean) -> Unit,
     onDeleteOverlay: (String) -> Unit,
+    onDeleteTextOverlay: (String) -> Unit = {},
     styleViewModel: StyleViewModel,
     onSplit: () -> Unit,
     onDuplicate: (String) -> Unit,
     onDuplicateOverlay: (String) -> Unit,
+    onDuplicateTextOverlay: (String) -> Unit = {},
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
@@ -90,8 +97,9 @@ fun EditorBottomDock(
     translateToEnglish: Boolean = false,
     onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
     allowedLanguages: List<String> = listOf("multilingual"),
+    currentMode: EditorMode = EditorMode.VIDEO,
+    onModeChange: (EditorMode) -> Unit = {}
 ) {
-    var currentMode by remember { mutableStateOf(EditorMode.VIDEO) }
     var timelineHeight by remember { mutableStateOf(220.dp) }
     val maxTimelineHeight = maxHeight * 0.5f
     val animatedTimelineHeight by animateDpAsState(targetValue = timelineHeight, label = "timelineHeight")
@@ -126,7 +134,11 @@ fun EditorBottomDock(
                     selectedOverlayId = selectedOverlayId,
                     onOverlaySelected = onOverlaySelected,
                     onUpdateOverlay = onUpdateOverlay,
-                    onCaptionTap = { currentMode = EditorMode.CAPTIONS },
+                    textOverlays = textOverlays,
+                    selectedTextOverlayId = selectedTextOverlayId,
+                    onTextOverlaySelected = onTextOverlaySelected,
+                    onUpdateTextOverlay = onUpdateTextOverlay,
+                    onCaptionTap = { onModeChange(EditorMode.CAPTIONS) },
                     onAddImage = onAddImage,
                     onDragStateChange = onDragStateChange,
                     zoomLevel = zoomLevel,
@@ -135,9 +147,11 @@ fun EditorBottomDock(
                     onTrimClip = onTrimClip,
                     onMoveOverlayZ = onMoveOverlayZ,
                     onDeleteOverlay = onDeleteOverlay,
+                    onDeleteTextOverlay = onDeleteTextOverlay,
                     onSplit = onSplit,
                     onDuplicate = onDuplicate,
                     onDuplicateOverlay = onDuplicateOverlay,
+                    onDuplicateTextOverlay = onDuplicateTextOverlay,
                     onDelete = onDelete,
                     onZoomIn = onZoomIn,
                     onZoomOut = onZoomOut,
@@ -195,7 +209,7 @@ fun EditorBottomDock(
                     icon = FeatherIcons.Film,
                     label = stringResource(R.string.dock_video),
                     selected = currentMode == EditorMode.VIDEO,
-                    onClick = { currentMode = EditorMode.VIDEO },
+                    onClick = { onModeChange(EditorMode.VIDEO) },
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(16.dp))
@@ -203,7 +217,7 @@ fun EditorBottomDock(
                     icon = FeatherIcons.Type,
                     label = stringResource(R.string.dock_captions),
                     selected = currentMode == EditorMode.CAPTIONS,
-                    onClick = { currentMode = EditorMode.CAPTIONS },
+                    onClick = { onModeChange(EditorMode.CAPTIONS) },
                     modifier = Modifier.weight(1f)
                 )
             }

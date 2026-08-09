@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -95,6 +96,8 @@ fun EditorScreen(
         val thumbnails by viewModel.thumbnailManager.thumbnails.collectAsStateWithLifecycle()
         val overlays by viewModel.overlays.collectAsStateWithLifecycle()
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
+        val selectedTextOverlayId by viewModel.selectedTextOverlayId.collectAsStateWithLifecycle()
+        val textOverlays by viewModel.textOverlays.collectAsStateWithLifecycle()
         
         val step = uiState.step
         val processingUiState by processingViewModel.uiState.collectAsStateWithLifecycle()
@@ -130,6 +133,7 @@ fun EditorScreen(
 
         var selectedClipId by rememberSaveable { mutableStateOf<String?>(null) }
         var zoomLevel by rememberSaveable { mutableFloatStateOf(1f) }
+        var currentMode by rememberSaveable { mutableStateOf(com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO) }
 
         var showDiscardDialog by remember { mutableStateOf(false) }
         var selectedCaptionSegment by rememberSaveable(stateSaver = CaptionSegmentSaver) { mutableStateOf<CaptionSegmentEntity?>(null) }
@@ -380,6 +384,51 @@ fun EditorScreen(
                                     modifier = Modifier.align(Alignment.BottomCenter)
                                 )
                             }
+                            
+                            // Snapchat-style Text Inline Editor
+                            if (uiState.isAddingText || uiState.editingTextOverlayId != null) {
+                                val initialText = if (uiState.editingTextOverlayId != null) {
+                                    textOverlays.find { it.id == uiState.editingTextOverlayId }?.text ?: ""
+                                } else {
+                                    ""
+                                }
+                                
+                                com.dipdev.aiautocaptioner.ui.videoeditor.text.TextInlineEditor(
+                                    initialText = initialText,
+                                    onDismiss = {
+                                        viewModel.setEvent(VideoEditorUiEvent.CancelAddingText)
+                                    },
+                                    onSave = { newText ->
+                                        if (uiState.editingTextOverlayId != null) {
+                                            val overlay = textOverlays.find { it.id == uiState.editingTextOverlayId }
+                                            if (overlay != null) {
+                                                viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(overlay.copy(text = newText)))
+                                            }
+                                        } else {
+                                            viewModel.setEvent(VideoEditorUiEvent.AddTextOverlay(newText, editorState.currentTimelineMs))
+                                        }
+                                        viewModel.setEvent(VideoEditorUiEvent.CancelAddingText)
+                                    },
+                                    modifier = Modifier.align(Alignment.Center).zIndex(10f)
+                                )
+                            }
+                            
+                            // Global Action Buttons (Text, Image)
+                            Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)) {
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO &&
+                                            selectedOverlayId == null &&
+                                            selectedTextOverlayId == null &&
+                                            !uiState.isAddingText,
+                                    enter = fadeIn(),
+                                    exit = fadeOut()
+                                ) {
+                                    com.dipdev.aiautocaptioner.ui.videoeditor.shared.GlobalActionButtons(
+                                        onAddImage = { imagePickerLauncher.launch("image/*") },
+                                        onAddText = { viewModel.setEvent(VideoEditorUiEvent.StartAddingText) }
+                                    )
+                                }
+                            }
                             } // end preview Box
 
                             Spacer(modifier = Modifier.height(2.dp))
@@ -420,6 +469,13 @@ fun EditorScreen(
                                     if (it != null) selectedClipId = null
                                 },
                                 onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
+                                textOverlays = textOverlays,
+                                selectedTextOverlayId = selectedTextOverlayId,
+                                onTextOverlaySelected = { 
+                                    viewModel.setEvent(VideoEditorUiEvent.SelectTextOverlay(it)) 
+                                    if (it != null) selectedClipId = null
+                                },
+                                onUpdateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(it)) },
                                 onDragStateChange = { 
                                     if (!editorState.isDragging && it) {
                                         viewModel.setEvent(VideoEditorUiEvent.SaveState)
@@ -432,10 +488,12 @@ fun EditorScreen(
                                 onTrimClip = { id, start, end -> viewModel.setEvent(VideoEditorUiEvent.TrimClip(id, start, end, !editorState.isDragging)) },
                                 onMoveOverlayZ = { id, bringToFront -> viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront)) },
                                 onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
+                                onDeleteTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(it)) },
                                 styleViewModel = styleViewModel,
                                 onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
                                 onDuplicate = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
                                 onDuplicateOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(it)) },
+                                onDuplicateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(it)) },
                                 onDelete = { 
                                     viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
                                     selectedClipId = null
@@ -454,6 +512,8 @@ fun EditorScreen(
                                 },
                                 onGenerateCaptions = { showTranscriptionBottomSheet = true },
                                 onAddImage = { imagePickerLauncher.launch("image/*") },
+                                currentMode = currentMode,
+                                onModeChange = { currentMode = it },
                                 selectedLanguage = selectedLanguage,
                                 translateToEnglish = translateToEnglish,
                                 onLanguageSelected = { lang, trans ->

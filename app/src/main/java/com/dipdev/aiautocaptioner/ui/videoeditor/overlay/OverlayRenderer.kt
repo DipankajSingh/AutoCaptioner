@@ -6,6 +6,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -34,7 +37,10 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayContent
+import androidx.compose.foundation.gestures.detectTransformGestures
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -66,10 +72,14 @@ private fun computeVideoDisplayRect(
 @Composable
 fun OverlayRenderer(
     overlays: List<ImageOverlayEntity>,
+    textOverlays: List<TextOverlayEntity> = emptyList(),
     currentTimelineMs: () -> Long,
     selectedOverlayId: String?,
+    selectedTextOverlayId: String? = null,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
-    onSelectOverlay: (String) -> Unit,
+    onSelectOverlay: (String?) -> Unit,
+    onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
+    onSelectTextOverlay: (String?) -> Unit = {},
     modifier: Modifier = Modifier,
     videoWidth: Int = 0,
     videoHeight: Int = 0,
@@ -93,24 +103,47 @@ fun OverlayRenderer(
                 .clipToBounds()
                 .pointerInput(Unit) {
                     detectTapGestures {
-                        onSelectOverlay("")
+                        onSelectOverlay(null)
+                        onSelectTextOverlay(null)
                         player?.let { p ->
                             if (p.isPlaying) p.pause() else p.play()
                         }
                     }
                 }
         ) {
-            overlays.forEach { overlay ->
-                OverlayItem(
-                    overlay = overlay,
-                    canvasWidth = canvasWidth,
-                    canvasHeight = canvasHeight,
-                    isSelected = overlay.id == selectedOverlayId,
-                    currentTimelineMs = currentTimelineMs,
-                    onUpdateOverlay = onUpdateOverlay,
-                    onSelectOverlay = onSelectOverlay,
-                    player = player
-                )
+            val allOverlays = remember(overlays, textOverlays) {
+                (overlays.map { Pair(it.zOrder, it) } + textOverlays.map { Pair(it.zOrder, it) })
+                    .sortedBy { it.first }
+                    .map { it.second }
+            }
+
+            allOverlays.forEach { overlayItem ->
+                when (overlayItem) {
+                    is ImageOverlayEntity -> {
+                        OverlayItem(
+                            overlay = overlayItem,
+                            canvasWidth = canvasWidth,
+                            canvasHeight = canvasHeight,
+                            isSelected = overlayItem.id == selectedOverlayId,
+                            currentTimelineMs = currentTimelineMs,
+                            onUpdateOverlay = onUpdateOverlay,
+                            onSelectOverlay = onSelectOverlay,
+                            player = player
+                        )
+                    }
+                    is TextOverlayEntity -> {
+                        TextOverlayItem(
+                            overlay = overlayItem,
+                            canvasWidth = canvasWidth,
+                            canvasHeight = canvasHeight,
+                            isSelected = overlayItem.id == selectedTextOverlayId,
+                            currentTimelineMs = currentTimelineMs,
+                            onUpdateOverlay = onUpdateTextOverlay,
+                            onSelectOverlay = onSelectTextOverlay,
+                            player = player
+                        )
+                    }
+                }
             }
         }
     }
@@ -124,7 +157,7 @@ private fun BoxScope.OverlayItem(
     isSelected: Boolean,
     currentTimelineMs: () -> Long,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
-    onSelectOverlay: (String) -> Unit,
+    onSelectOverlay: (String?) -> Unit,
     player: Player?
 ) {
     val isVisible = currentTimelineMs() in overlay.startTimeMs..overlay.endTimeMs
@@ -297,6 +330,118 @@ private fun BoxScope.OverlayItem(
                     hasPendingTransform = true
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.TextOverlayItem(
+    overlay: TextOverlayEntity,
+    canvasWidth: Float,
+    canvasHeight: Float,
+    isSelected: Boolean,
+    currentTimelineMs: () -> Long,
+    onUpdateOverlay: (TextOverlayEntity) -> Unit,
+    onSelectOverlay: (String?) -> Unit,
+    player: Player?
+) {
+    val isVisible = currentTimelineMs() in overlay.startTimeMs..overlay.endTimeMs
+    if (!isVisible) return
+
+    var localScaleX by remember(overlay.id) { mutableFloatStateOf(overlay.scaleX) }
+    var localScaleY by remember(overlay.id) { mutableFloatStateOf(overlay.scaleY) }
+    var localPosX by remember(overlay.id) { mutableFloatStateOf(overlay.positionX) }
+    var localPosY by remember(overlay.id) { mutableFloatStateOf(overlay.positionY) }
+    var localRotation by remember(overlay.id) { mutableFloatStateOf(overlay.rotation) }
+    var lastTransformTime by remember(overlay.id) { mutableLongStateOf(0L) }
+    var hasPendingTransform by remember(overlay.id) { mutableStateOf(false) }
+    var wasPlaying by remember(overlay.id) { mutableStateOf(false) }
+
+    LaunchedEffect(overlay.scaleX, overlay.scaleY, overlay.positionX, overlay.positionY, overlay.rotation) {
+        if (System.currentTimeMillis() - lastTransformTime > 500) {
+            localScaleX = overlay.scaleX
+            localScaleY = overlay.scaleY
+            localPosX = overlay.positionX
+            localPosY = overlay.positionY
+            localRotation = overlay.rotation
+        }
+    }
+
+    LaunchedEffect(lastTransformTime) {
+        if (lastTransformTime > 0) {
+            delay(DEBOUNCE_MS)
+            onUpdateOverlay(
+                overlay.copy(
+                    scaleX = localScaleX,
+                    scaleY = localScaleY,
+                    positionX = localPosX,
+                    positionY = localPosY,
+                    rotation = localRotation
+                )
+            )
+            hasPendingTransform = false
+        }
+    }
+
+    DisposableEffect(overlay.id) {
+        onDispose {
+            if (hasPendingTransform) {
+                onUpdateOverlay(
+                    overlay.copy(
+                        scaleX = localScaleX,
+                        scaleY = localScaleY,
+                        positionX = localPosX,
+                        positionY = localPosY,
+                        rotation = localRotation
+                    )
+                )
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .graphicsLayer {
+                    translationX = (localPosX - 0.5f) * canvasWidth
+                    translationY = (localPosY - 0.5f) * canvasHeight
+                    scaleX = localScaleX
+                    scaleY = localScaleY
+                    rotationZ = localRotation
+                }
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) AccentRose else Color.Transparent
+                )
+                .pointerInput(overlay.id + "_lifecycle") {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        wasPlaying = player?.isPlaying == true
+                        player?.pause()
+                        onSelectOverlay(overlay.id)
+                        
+                        do {
+                            val event = awaitPointerEvent()
+                        } while (event.changes.any { it.pressed })
+                        
+                        if (wasPlaying) player?.play()
+                        wasPlaying = false
+                    }
+                }
+                .pointerInput(overlay.id + "_transform") {
+                    detectTransformGestures { _, pan, zoom, rotation ->
+                        localPosX += pan.x / canvasWidth
+                        localPosY += pan.y / canvasHeight
+                        localScaleX = clampScale(localScaleX * zoom)
+                        localScaleY = clampScale(localScaleY * zoom)
+                        localRotation += rotation
+                        lastTransformTime = System.currentTimeMillis()
+                        hasPendingTransform = true
+                    }
+                }
+        ) {
+            TextOverlayContent(overlay = overlay)
         }
     }
 }

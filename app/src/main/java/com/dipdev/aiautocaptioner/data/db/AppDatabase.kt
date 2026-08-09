@@ -17,6 +17,8 @@ import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.dao.ImageOverlayDao
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.dao.TextOverlayDao
 
 // @Database tells Room: "this class is the main database definition"
 // entities = all tables in this database
@@ -32,9 +34,10 @@ import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
         CaptionWordEntity::class,
         CaptionStyleEntity::class,
         ExportedFileEntity::class,
-        ImageOverlayEntity::class
+        ImageOverlayEntity::class,
+        TextOverlayEntity::class
     ],
-    version = 20,
+    version = 21,
     exportSchema = false,
     autoMigrations = []
 )
@@ -54,6 +57,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun captionStyleDao(): CaptionStyleDao
     abstract fun exportedFileDao(): ExportedFileDao
     abstract fun imageOverlayDao(): ImageOverlayDao
+    abstract fun textOverlayDao(): TextOverlayDao
 
     companion object {
         /** Add exportedVideoPath column (nullable, default NULL) */
@@ -313,6 +317,37 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
                 db.execSQL("ALTER TABLE caption_styles ADD COLUMN textThickness REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
+        /** Add text_overlays table */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `text_overlays` (
+                        `id` TEXT NOT NULL,
+                        `projectId` TEXT NOT NULL,
+                        `text` TEXT NOT NULL,
+                        `fontAssetPath` TEXT NOT NULL,
+                        `textColorArgb` INTEGER NOT NULL,
+                        `backgroundColorArgb` INTEGER NOT NULL,
+                        `backgroundOpacity` REAL NOT NULL,
+                        `textAlignment` TEXT NOT NULL,
+                        `fontSize` REAL NOT NULL,
+                        `positionX` REAL NOT NULL,
+                        `positionY` REAL NOT NULL,
+                        `scaleX` REAL NOT NULL,
+                        `scaleY` REAL NOT NULL,
+                        `rotation` REAL NOT NULL,
+                        `startTimeMs` INTEGER NOT NULL,
+                        `endTimeMs` INTEGER NOT NULL,
+                        `zOrder` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`),
+                        FOREIGN KEY(`projectId`) REFERENCES `projects`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_text_overlays_projectId` ON `text_overlays` (`projectId`)")
             }
         }
     }

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import com.dipdev.aiautocaptioner.core.video.ThumbnailManager
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
@@ -54,7 +55,9 @@ data class VideoEditorUiState(
     val selectedLanguage: String = "en",
     val translateToEnglish: Boolean = false,
     val videoWidth: Int = 0,
-    val videoHeight: Int = 0
+    val videoHeight: Int = 0,
+    val isAddingText: Boolean = false,
+    val editingTextOverlayId: String? = null
 ) : UiState
 sealed class VideoEditorUiEvent : UiEvent {
     data class LoadProject(val projectId: String) : VideoEditorUiEvent()
@@ -77,6 +80,16 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class SelectOverlay(val overlayId: String?) : VideoEditorUiEvent()
     data class DuplicateOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class MoveOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
+    
+    // Text Overlay Events
+    data class AddTextOverlay(val text: String, val currentPlayheadMs: Long) : VideoEditorUiEvent()
+    data class UpdateTextOverlay(val overlay: TextOverlayEntity) : VideoEditorUiEvent()
+    data class DeleteTextOverlay(val overlayId: String) : VideoEditorUiEvent()
+    data class SelectTextOverlay(val overlayId: String?) : VideoEditorUiEvent()
+    data class DuplicateTextOverlay(val overlayId: String) : VideoEditorUiEvent()
+    data class MoveTextOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
+    data object StartAddingText : VideoEditorUiEvent()
+    data object CancelAddingText : VideoEditorUiEvent()
 }
 
 sealed class VideoEditorUiEffect : UiEffect {
@@ -113,6 +126,21 @@ class EditorViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    private val _selectedTextOverlayId = MutableStateFlow<String?>(null)
+    val selectedTextOverlayId = _selectedTextOverlayId.asStateFlow()
+
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    val textOverlays: StateFlow<List<TextOverlayEntity>> = projectIdFlow
+        .flatMapLatest { id ->
+            if (id != null) overlayRepository.getTextOverlaysForProject(id)
+            else flowOf(emptyList())
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
@@ -134,7 +162,14 @@ class EditorViewModel @Inject constructor(
         getOverlays = { overlays.value },
         getProjectId = { currentProjectId },
         onOverlaySelected = { _selectedOverlayId.value = it },
-        isSelectedOverlay = { it == _selectedOverlayId.value }
+        isSelectedOverlay = { it == _selectedOverlayId.value },
+        getTextOverlays = { textOverlays.value },
+        onTextOverlaySelected = { 
+            _selectedTextOverlayId.value = it
+            // Only set editing state if we're actually selecting a text overlay for inline editing
+            if (it == null) setState { copy(editingTextOverlayId = null) } 
+        },
+        isSelectedTextOverlay = { it == _selectedTextOverlayId.value }
     )
     
     val thumbnailManager = ThumbnailManager(context)
@@ -197,6 +232,29 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.SelectOverlay -> overlayManager.selectOverlay(event.overlayId)
             is VideoEditorUiEvent.DuplicateOverlay -> overlayManager.duplicateOverlay(event.overlayId, viewModelScope)
             is VideoEditorUiEvent.MoveOverlayZ -> overlayManager.moveOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+            
+            // Text Overlays
+            is VideoEditorUiEvent.AddTextOverlay -> {
+                overlayManager.addTextOverlay(
+                    text = event.text,
+                    fontAssetPath = "fonts/inter.ttf",
+                    textColorArgb = android.graphics.Color.WHITE,
+                    backgroundColorArgb = android.graphics.Color.TRANSPARENT,
+                    backgroundOpacity = 0f,
+                    textAlignment = "CENTER",
+                    fontSize = 48f,
+                    currentPlayheadMs = event.currentPlayheadMs,
+                    scope = viewModelScope
+                )
+                setState { copy(isAddingText = false, editingTextOverlayId = null) }
+            }
+            is VideoEditorUiEvent.UpdateTextOverlay -> overlayManager.updateTextOverlay(event.overlay, viewModelScope)
+            is VideoEditorUiEvent.DeleteTextOverlay -> overlayManager.deleteTextOverlay(event.overlayId, viewModelScope)
+            is VideoEditorUiEvent.SelectTextOverlay -> overlayManager.selectTextOverlay(event.overlayId)
+            is VideoEditorUiEvent.DuplicateTextOverlay -> overlayManager.duplicateTextOverlay(event.overlayId, viewModelScope)
+            is VideoEditorUiEvent.MoveTextOverlayZ -> overlayManager.moveTextOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+            is VideoEditorUiEvent.StartAddingText -> setState { copy(isAddingText = true, editingTextOverlayId = null) }
+            is VideoEditorUiEvent.CancelAddingText -> setState { copy(isAddingText = false, editingTextOverlayId = null) }
         }
     }
 

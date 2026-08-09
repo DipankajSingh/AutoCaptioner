@@ -50,6 +50,8 @@ import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
+import com.dipdev.aiautocaptioner.ui.videoeditor.text.components.TextOverlayTrackItem
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Type
 import kotlinx.coroutines.isActive
@@ -70,6 +72,10 @@ fun TimelineView(
     selectedOverlayId: String? = null,
     onOverlaySelected: (String) -> Unit = {},
     onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
+    textOverlays: List<TextOverlayEntity> = emptyList(),
+    selectedTextOverlayId: String? = null,
+    onTextOverlaySelected: (String) -> Unit = {},
+    onTextOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
     onMoveOverlayZ: (String, Boolean) -> Unit = {_,_ ->},
     onCaptionTap: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
@@ -480,6 +486,93 @@ fun TimelineView(
                             }
                         }
                     }
+
+                    textOverlays.forEach { overlay ->
+                        key(overlay.id) {
+                            var isDragging by remember { mutableStateOf(false) }
+                            var dragOffsetY by remember { mutableFloatStateOf(0f) }
+                            
+                            Row(modifier = Modifier.height(48.dp).fillMaxWidth().padding(bottom = 4.dp)) {
+                                // Track Header (Drag Handle)
+                                Box(
+                                    modifier = Modifier
+                                        .width(40.dp)
+                                        .fillMaxHeight()
+                                        .zIndex(2f)
+                                        .graphicsLayer {
+                                            translationY = dragOffsetY
+                                            scaleX = if (isDragging) 1.1f else 1f
+                                            scaleY = if (isDragging) 1.1f else 1f
+                                            shadowElevation = if (isDragging) 8.dp.toPx() else 0f
+                                        }
+                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
+                                        .timelineLayerReorderGesture(
+                                            key1 = overlay.id,
+                                            rowHeightPx = 52f, // 48dp height + 4dp gap
+                                            onDragStart = { 
+                                                isDragging = true 
+                                                dragOffsetY = 0f
+                                            },
+                                            onDragOffsetChange = { deltaY -> dragOffsetY += deltaY },
+                                            onMoveLayer = { moveUp -> onMoveOverlayZ(overlay.id, moveUp) },
+                                            onDragEnd = {
+                                                isDragging = false
+                                                dragOffsetY = 0f
+                                            }
+                                        )
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        val dotRadius = 1.5.dp.toPx()
+                                        val spacingX = 6.dp.toPx()
+                                        val spacingY = 6.dp.toPx()
+                                        val startX = size.width / 2 - spacingX / 2
+                                        val startY = size.height / 2 - spacingY
+                                        for (row in 0..2) {
+                                            for (col in 0..1) {
+                                                drawCircle(
+                                                    color = TextSecondary,
+                                                    radius = dotRadius,
+                                                    center = androidx.compose.ui.geometry.Offset(startX + col * spacingX, startY + row * spacingY)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
+                                    val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
+                                    val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
+                                    val durationMs = maxOf(0L, endTimeMs - startTimeMs)
+                                    
+                                    if (durationMs > 0) {
+                                        TextOverlayTrackItem(
+                                            overlay = overlay,
+                                            isSelectedOverlay = overlay.id == selectedTextOverlayId,
+                                            pixelsPerMs = pixelsPerMs,
+                                            currentEndTimeMs = endTimeMs,
+                                            totalEditedMs = totalEditedMs,
+                                            primaryColor = primaryColor,
+                                            scrollStateValue = scrollOffset,
+                                            timelineWidthPx = boxWidthPx,
+                                            trackContentOffsetPx = halfWidthPx,
+                                            onOverlaySelected = onTextOverlaySelected,
+                                            onDragStateChange = { 
+                                                onDragStateChange(it)
+                                                if (!it) draggingOverlayId = null
+                                            },
+                                            onOverlayTimingChanged = onTextOverlayTimingChanged,
+                                            onDragPointerStart = {
+                                                dragPointerScreenX = it
+                                                draggingOverlayId = overlay.id
+                                            },
+                                            onDragPointerMove = { dragPointerScreenX = it }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.width(totalWidthDp).height(40.dp))
                 }
             }
