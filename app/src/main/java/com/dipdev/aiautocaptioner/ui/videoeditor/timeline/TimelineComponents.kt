@@ -369,10 +369,7 @@ fun DraggableTrackContainer(
                     scaleY = if (isDragging) 1.1f else 1f
                     shadowElevation = if (isDragging) 8.dp.toPx() else 0f
                 }
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp)
-                )
+                .background(Color.Transparent)
                 .timelineLayerReorderGesture(
                     key1 = trackId,
                     rowHeightPx = 52f, // 48dp height + 4dp gap
