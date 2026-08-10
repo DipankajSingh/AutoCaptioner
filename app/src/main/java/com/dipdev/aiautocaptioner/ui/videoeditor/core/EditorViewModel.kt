@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
@@ -128,6 +129,10 @@ class EditorViewModel @Inject constructor(
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
 
+    // Conflated channel that serializes overlay DB restores for undo/redo so rapid
+    // undo/redo can't interleave delete+insert writes out of order.
+    private val restoreChannel = Channel<EditorSnapshot>(Channel.CONFLATED)
+
     private val historyManager = HistoryManager(
         getOriginalDurationMs = { originalDurationMs },
         getCurrentClips = { currentState.clips },
@@ -146,11 +151,7 @@ class EditorViewModel @Inject constructor(
             } 
         },
         onRestoreSnapshot = { snapshot ->
-            currentProjectId?.let { id ->
-                viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    overlayRepository.restoreOverlays(id, snapshot.imageOverlays, snapshot.textOverlays)
-                }
-            }
+            restoreChannel.trySend(snapshot)
         }
     )
     
@@ -182,6 +183,14 @@ class EditorViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            for (snapshot in restoreChannel) {
+                currentProjectId?.let { id ->
+                    overlayRepository.restoreOverlays(id, snapshot.imageOverlays, snapshot.textOverlays)
+                }
+            }
+        }
+
         viewModelScope.launch {
             settingsRepository.showTimelineThumbnailsFlow.collect { showThumbs ->
                 setState { copy(showTimelineThumbnails = showThumbs) }

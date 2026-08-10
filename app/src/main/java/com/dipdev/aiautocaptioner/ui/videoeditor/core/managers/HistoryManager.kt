@@ -10,17 +10,36 @@ data class EditorSnapshot(
     val textOverlays: List<TextOverlayEntity>
 )
 
+private const val COALESCE_WINDOW_MS = 500L
+
 class HistoryManager(
     private val getOriginalDurationMs: () -> Long,
     private val getCurrentClips: () -> List<Clip>,
     private val getCurrentImageOverlays: () -> List<ImageOverlayEntity>,
     private val getCurrentTextOverlays: () -> List<TextOverlayEntity>,
     private val onStateChanged: (clips: List<Clip>, imageOverlays: List<ImageOverlayEntity>, textOverlays: List<TextOverlayEntity>, hasEdits: Boolean, canUndo: Boolean, canRedo: Boolean) -> Unit,
-    private val onRestoreSnapshot: (EditorSnapshot) -> Unit,
-    private val onUndoToOriginal: () -> Unit
+    private val onRestoreSnapshot: (EditorSnapshot) -> Unit
 ) {
     private val history = mutableListOf<EditorSnapshot>()
     private var historyIndex = -1
+    private var lastSaveTimeMs = 0L
+
+    fun setBaseline(
+        clips: List<Clip>,
+        imageOverlays: List<ImageOverlayEntity>,
+        textOverlays: List<TextOverlayEntity>
+    ) {
+        history.clear()
+        history.add(
+            EditorSnapshot(
+                ArrayList(clips),
+                ArrayList(imageOverlays),
+                ArrayList(textOverlays)
+            )
+        )
+        historyIndex = 0
+        lastSaveTimeMs = 0L
+    }
 
     fun saveState(
         clipsToSave: List<Clip> = getCurrentClips(),
@@ -38,13 +57,21 @@ class HistoryManager(
         if (historyIndex < history.size - 1) {
             history.subList(historyIndex + 1, history.size).clear()
         }
-        history.add(snapshot)
-        historyIndex++
-        
-        if (history.size > 50) {
-            history.removeAt(0)
-            historyIndex--
+
+        val now = System.currentTimeMillis()
+        if (historyIndex >= 0 && history.isNotEmpty() && now - lastSaveTimeMs < COALESCE_WINDOW_MS) {
+            // Coalesce rapid consecutive updates (e.g. per-commit overlay drags)
+            // into a single history entry so a drag is one undo step.
+            history[historyIndex] = snapshot
+        } else {
+            history.add(snapshot)
+            historyIndex++
+            if (history.size > 50) {
+                history.removeAt(0)
+                historyIndex--
+            }
         }
+        lastSaveTimeMs = now
         
         updateState(clipsToSave, imageOverlaysToSave, textOverlaysToSave)
     }
@@ -68,29 +95,26 @@ class HistoryManager(
     }
 
     fun undo() {
-        val canUndo = historyIndex >= 0
-        if (canUndo) {
-            val currentSnapshot = EditorSnapshot(
-                getCurrentClips(),
-                getCurrentImageOverlays(),
-                getCurrentTextOverlays()
-            )
-            
-            if (historyIndex == history.size - 1 && history.lastOrNull() != currentSnapshot) {
-                saveState(currentSnapshot.clips, currentSnapshot.imageOverlays, currentSnapshot.textOverlays)
-                // We just saved the current state, so historyIndex is now at the current state.
-                // We want to undo to the previous state, so we decrement once below.
-            }
-            historyIndex--
-            
-            if (historyIndex < 0) {
-                onUndoToOriginal()
-            } else {
-                val newSnapshot = history[historyIndex]
-                onRestoreSnapshot(newSnapshot)
-                updateState(newSnapshot.clips, newSnapshot.imageOverlays, newSnapshot.textOverlays)
-            }
+        if (historyIndex < 0) return
+
+        val currentSnapshot = EditorSnapshot(
+            getCurrentClips(),
+            getCurrentImageOverlays(),
+            getCurrentTextOverlays()
+        )
+
+        if (historyIndex == history.size - 1 && history.lastOrNull() != currentSnapshot) {
+            // Unsaved changes exist on top of the latest history entry.
+            // Persist them so they can be stepped back to, then decrement below.
+            saveState(currentSnapshot.clips, currentSnapshot.imageOverlays, currentSnapshot.textOverlays)
         }
+
+        historyIndex--
+        if (historyIndex < 0) historyIndex = 0
+
+        val newSnapshot = history[historyIndex]
+        onRestoreSnapshot(newSnapshot)
+        updateState(newSnapshot.clips, newSnapshot.imageOverlays, newSnapshot.textOverlays)
     }
 
     fun redo() {
@@ -189,5 +213,6 @@ class HistoryManager(
     fun reset() {
         history.clear()
         historyIndex = -1
+        lastSaveTimeMs = 0L
     }
 }
