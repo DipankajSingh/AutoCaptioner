@@ -64,8 +64,6 @@ fun VideoTimelinePanel(
     onOverlaySelected: (String?) -> Unit,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
-    selectedTextOverlayId: String? = null,
-    onTextOverlaySelected: (String?) -> Unit = {},
     onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
     onCaptionTap: () -> Unit,
     modifier: Modifier = Modifier,
@@ -144,14 +142,12 @@ fun VideoTimelinePanel(
                     onMoveClip = onMoveClip,
                     overlays = overlays,
                     selectedOverlayId = selectedOverlayId,
-                    onOverlaySelected = { onOverlaySelected(it); onTextOverlaySelected(null) },
+                    onOverlaySelected = onOverlaySelected,
                     onOverlayTimingChanged = { id, startMs, endMs ->
                         val overlay = updatedOverlays.find { it.id == id } ?: return@TimelineView
                         onUpdateOverlay(overlay.copy(startTimeMs = startMs, endTimeMs = endMs))
                     },
                     textOverlays = textOverlays,
-                    selectedTextOverlayId = selectedTextOverlayId,
-                    onTextOverlaySelected = { onTextOverlaySelected(it); onOverlaySelected(null) },
                     onTextOverlayTimingChanged = { id, startMs, endMs ->
                         val textOverlay = updatedTextOverlays.find { it.id == id } ?: return@TimelineView
                         onUpdateTextOverlay(textOverlay.copy(startTimeMs = startMs, endTimeMs = endMs))
@@ -198,8 +194,7 @@ fun VideoTimelinePanel(
                 ) {
                     val hasClipSelection = selectedClipId != null
                     val hasOverlaySelection = selectedOverlayId != null
-                    val hasTextOverlaySelection = selectedTextOverlayId != null
-                    val hasAnySelection = hasClipSelection || hasOverlaySelection || hasTextOverlaySelection
+                    val hasAnySelection = hasClipSelection || hasOverlaySelection
                     val accentColor = MaterialTheme.colorScheme.primary
                     val grayColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 
@@ -215,8 +210,9 @@ fun VideoTimelinePanel(
                         stringResource(R.string.timeline_duplicate), 
                         tint = if (hasAnySelection) accentColor else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
-                            if (hasOverlaySelection) selectedOverlayId?.let { onDuplicateOverlay(it) }
-                            else if (hasTextOverlaySelection) selectedTextOverlayId?.let { onDuplicateTextOverlay(it) }
+                            if (hasOverlaySelection) selectedOverlayId?.let { 
+                                if (textOverlays.any { t -> t.id == it }) onDuplicateTextOverlay(it) else onDuplicateOverlay(it) 
+                            }
                             else if (hasClipSelection) selectedClipId?.let { onDuplicate(it) }
                         }
                     )
@@ -225,8 +221,9 @@ fun VideoTimelinePanel(
                         stringResource(R.string.project_delete), 
                         tint = if (hasAnySelection) MaterialTheme.colorScheme.error else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
-                            if (hasOverlaySelection) selectedOverlayId?.let { onDeleteOverlay(it) }
-                            else if (hasTextOverlaySelection) selectedTextOverlayId?.let { onDeleteTextOverlay(it) }
+                            if (hasOverlaySelection) selectedOverlayId?.let { 
+                                if (textOverlays.any { t -> t.id == it }) onDeleteTextOverlay(it) else onDeleteOverlay(it) 
+                            }
                             else if (hasClipSelection) selectedClipId?.let { onDelete(it) }
                         }
                     )

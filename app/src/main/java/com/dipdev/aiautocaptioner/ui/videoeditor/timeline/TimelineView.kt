@@ -75,8 +75,6 @@ fun TimelineView(
     onOverlaySelected: (String) -> Unit = {},
     onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
     textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
-    selectedTextOverlayId: String? = null,
-    onTextOverlaySelected: (String) -> Unit = {},
     onTextOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
     onMoveOverlayZ: (String, Boolean) -> Unit = {_,_ ->},
     onCaptionTap: () -> Unit = {},
@@ -549,7 +547,7 @@ fun TimelineView(
                                     if (durationMs > 0) {
                                         TextOverlayTrackItem(
                                             overlay = overlay,
-                                            isSelectedOverlay = overlay.id == selectedTextOverlayId,
+                                            isSelectedOverlay = overlay.id == selectedOverlayId,
                                             pixelsPerMs = pixelsPerMs,
                                             currentEndTimeMs = endTimeMs,
                                             totalEditedMs = totalEditedMs,
@@ -557,7 +555,7 @@ fun TimelineView(
                                             scrollStateValue = scrollOffset,
                                             timelineWidthPx = boxWidthPx,
                                             trackContentOffsetPx = halfWidthPx,
-                                            onOverlaySelected = onTextOverlaySelected,
+                                            onOverlaySelected = { onOverlaySelected(overlay.id) },
                                             onDragStateChange = { 
                                                 onDragStateChange(it)
                                                 if (!it) draggingOverlayId = null

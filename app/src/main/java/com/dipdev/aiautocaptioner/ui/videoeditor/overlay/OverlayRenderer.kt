@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.size.Size
+import androidx.compose.ui.platform.LocalContext
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
@@ -76,11 +79,9 @@ fun OverlayRenderer(
     textOverlays: List<TextOverlayEntity> = emptyList(),
     currentTimelineMs: () -> Long,
     selectedOverlayId: String?,
-    selectedTextOverlayId: String? = null,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String?) -> Unit,
     onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
-    onSelectTextOverlay: (String?) -> Unit = {},
     modifier: Modifier = Modifier,
     videoWidth: Int = 0,
     videoHeight: Int = 0,
@@ -105,7 +106,6 @@ fun OverlayRenderer(
                 .pointerInput(Unit) {
                     detectTapGestures {
                         onSelectOverlay(null)
-                        onSelectTextOverlay(null)
                         player?.let { p ->
                             if (p.isPlaying) p.pause() else p.play()
                         }
@@ -139,10 +139,10 @@ fun OverlayRenderer(
                                 overlay = overlayItem,
                                 canvasWidth = canvasWidth,
                                 canvasHeight = canvasHeight,
-                                isSelected = overlayItem.id == selectedTextOverlayId,
+                                isSelected = overlayItem.id == selectedOverlayId,
                                 currentTimelineMs = currentTimelineMs,
                                 onUpdateOverlay = onUpdateTextOverlay,
-                                onSelectOverlay = onSelectTextOverlay,
+                                onSelectOverlay = onSelectOverlay,
                                 player = player
                             )
                         }
@@ -246,38 +246,34 @@ private fun BoxScope.OverlayItem(
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
+                .graphicsLayer {
+                    translationX = (localPosX - 0.5f) * canvasWidth
+                    translationY = (localPosY - 0.5f) * canvasHeight
+                    scaleX = localScaleX
+                    scaleY = localScaleY
+                }
                 .pointerInput(overlay.id + "_drag") {
                     detectDragGestures(
                         onDragStart = {
-                            wasPlaying = player?.isPlaying == true
                             player?.pause()
                             onSelectOverlay(overlay.id)
                         },
-                        onDragEnd = {
-                            if (wasPlaying) player?.play()
-                            wasPlaying = false
-                        },
-                        onDragCancel = {
-                            if (wasPlaying) player?.play()
-                            wasPlaying = false
-                        },
+                        onDragEnd = {},
+                        onDragCancel = {},
                         onDrag = { change, pan ->
                             change.consume()
-                            localPosX += pan.x / canvasWidth
-                            localPosY += pan.y / canvasHeight
+                            localPosX += (pan.x * localScaleX) / canvasWidth
+                            localPosY += (pan.y * localScaleY) / canvasHeight
                             lastTransformTime = System.currentTimeMillis()
                             hasPendingTransform = true
                         }
                     )
                 }
                 .pointerInput(overlay.id + "_tap") {
-                    detectTapGestures { onSelectOverlay(overlay.id) }
-                }
-                .graphicsLayer {
-                    translationX = (localPosX - 0.5f) * canvasWidth
-                    translationY = (localPosY - 0.5f) * canvasHeight
-                    scaleX = localScaleX
-                    scaleY = localScaleY
+                    detectTapGestures { 
+                        player?.pause()
+                        onSelectOverlay(overlay.id) 
+                    }
                 }
                 .border(
                     width = if (isSelected) 2.dp else 0.dp,
@@ -301,8 +297,12 @@ private fun BoxScope.OverlayItem(
                         } else 100.dp
                     )
             ) {
+                val context = LocalContext.current
                 AsyncImage(
-                    model = overlay.imageUri,
+                    model = ImageRequest.Builder(context)
+                        .data(overlay.imageUri)
+                        .size(Size.ORIGINAL)
+                        .build(),
                     contentDescription = stringResource(R.string.side_image_overlay),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
@@ -407,38 +407,33 @@ private fun BoxScope.TextOverlayItem(
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .pointerInput(overlay.id + "_lifecycle") {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        wasPlaying = player?.isPlaying == true
-                        player?.pause()
-                        onSelectOverlay(overlay.id)
-                        
-                        do {
-                            val event = awaitPointerEvent()
-                        } while (event.changes.any { it.pressed })
-                        
-                        if (wasPlaying) player?.play()
-                        wasPlaying = false
-                    }
-                }
-                .pointerInput(overlay.id + "_transform") {
-                    detectTransformGestures { _, pan, zoom, rotation ->
-                        localPosX += pan.x / canvasWidth
-                        localPosY += pan.y / canvasHeight
-                        localScaleX = clampScale(localScaleX * zoom)
-                        localScaleY = clampScale(localScaleY * zoom)
-                        localRotation += rotation
-                        lastTransformTime = System.currentTimeMillis()
-                        hasPendingTransform = true
-                    }
-                }
                 .graphicsLayer {
                     translationX = (localPosX - 0.5f) * canvasWidth
                     translationY = (localPosY - 0.5f) * canvasHeight
                     scaleX = localScaleX
                     scaleY = localScaleY
                     rotationZ = localRotation
+                }
+                .pointerInput(overlay.id + "_tap") {
+                    detectTapGestures {
+                        player?.pause()
+                        onSelectOverlay(overlay.id)
+                    }
+                }
+                .pointerInput(overlay.id + "_transform") {
+                    detectTransformGestures { _, pan, zoom, rotation ->
+                        val angleRad = localRotation * Math.PI / 180.0
+                        val parentPanX = (pan.x * localScaleX) * Math.cos(angleRad) - (pan.y * localScaleY) * Math.sin(angleRad)
+                        val parentPanY = (pan.x * localScaleX) * Math.sin(angleRad) + (pan.y * localScaleY) * Math.cos(angleRad)
+                        
+                        localPosX += parentPanX.toFloat() / canvasWidth
+                        localPosY += parentPanY.toFloat() / canvasHeight
+                        localScaleX = clampScale(localScaleX * zoom)
+                        localScaleY = clampScale(localScaleY * zoom)
+                        localRotation += rotation
+                        lastTransformTime = System.currentTimeMillis()
+                        hasPendingTransform = true
+                    }
                 }
                 .border(
                     width = if (isSelected) 2.dp else 0.dp,

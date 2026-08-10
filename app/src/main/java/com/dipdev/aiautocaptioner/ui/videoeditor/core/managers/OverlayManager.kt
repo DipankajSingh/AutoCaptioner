@@ -24,8 +24,6 @@ class OverlayManager(
     private val isSelectedOverlay: (String) -> Boolean,
     private val getTextOverlays: () -> List<TextOverlayEntity> = { emptyList() },
     private val setTextOverlays: (List<TextOverlayEntity>) -> Unit = {},
-    private val onTextOverlaySelected: (String?) -> Unit = {},
-    private val isSelectedTextOverlay: (String) -> Boolean = { false },
     private val onStateUpdated: () -> Unit = {}
 ) {
     private val zOrderLock = Any()
@@ -229,7 +227,7 @@ class OverlayManager(
                 
                 withContext(Dispatchers.Main) {
                     setTextOverlays(getTextOverlays() + overlay)
-                    onTextOverlaySelected(overlay.id)
+                    onOverlaySelected(overlay.id)
                     onStateUpdated()
                 }
                 overlayRepository.addTextOverlay(overlay)
@@ -253,8 +251,8 @@ class OverlayManager(
         val newList = getTextOverlays().filter { it.id != overlayId }
         setTextOverlays(newList)
         onStateUpdated()
-        if (isSelectedTextOverlay(overlayId)) {
-            onTextOverlaySelected(null)
+        if (isSelectedOverlay(overlayId)) {
+            onOverlaySelected(null)
         }
         
         scope.launch(Dispatchers.IO) {
@@ -263,7 +261,7 @@ class OverlayManager(
     }
 
     fun selectTextOverlay(overlayId: String?) {
-        onTextOverlaySelected(overlayId)
+        onOverlaySelected(overlayId)
     }
 
     fun duplicateTextOverlay(overlayId: String, scope: CoroutineScope) {
@@ -285,7 +283,7 @@ class OverlayManager(
             
             withContext(Dispatchers.Main) {
                 setTextOverlays(getTextOverlays() + duplicate)
-                onTextOverlaySelected(duplicate.id)
+                onOverlaySelected(duplicate.id)
                 onStateUpdated()
             }
             overlayRepository.addTextOverlay(duplicate)

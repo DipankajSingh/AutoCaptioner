@@ -18,8 +18,8 @@ import androidx.room.PrimaryKey
     indices = [Index("projectId")]
 )
 data class TextOverlayEntity(
-    @PrimaryKey val id: String,
-    val projectId: String,
+    @PrimaryKey override val id: String,
+    override val projectId: String,
     val text: String,
     val fontAssetPath: String,
     val textColorArgb: Int,
@@ -27,13 +27,13 @@ data class TextOverlayEntity(
     val backgroundOpacity: Float,
     val textAlignment: String,
     val fontSize: Float,
-    val positionX: Float,
-    val positionY: Float,
-    val scaleX: Float,
-    val scaleY: Float,
-    val rotation: Float,
-    val startTimeMs: Long,
-    val endTimeMs: Long,
-    val zOrder: Int,
-    val createdAt: Long
-)
+    override val positionX: Float,
+    override val positionY: Float,
+    override val scaleX: Float,
+    override val scaleY: Float,
+    override val rotation: Float,
+    override val startTimeMs: Long,
+    override val endTimeMs: Long,
+    override var zOrder: Int,
+    override val createdAt: Long
+) : OverlayEntity

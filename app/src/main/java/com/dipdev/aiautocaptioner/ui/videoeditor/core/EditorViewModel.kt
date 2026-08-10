@@ -122,9 +122,6 @@ class EditorViewModel @Inject constructor(
     private val _selectedOverlayId = MutableStateFlow<String?>(null)
     val selectedOverlayId = _selectedOverlayId.asStateFlow()
 
-    private val _selectedTextOverlayId = MutableStateFlow<String?>(null)
-    val selectedTextOverlayId = _selectedTextOverlayId.asStateFlow()
-
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
@@ -165,12 +162,6 @@ class EditorViewModel @Inject constructor(
         isSelectedOverlay = { it == _selectedOverlayId.value },
         getTextOverlays = { currentState.textOverlays },
         setTextOverlays = { list -> setState { copy(textOverlays = list.toPersistentList()) } },
-        onTextOverlaySelected = { 
-            _selectedTextOverlayId.value = it
-            // Only set editing state if we're actually selecting a text overlay for inline editing
-            if (it == null) setState { copy(editingTextOverlayId = null) } 
-        },
-        isSelectedTextOverlay = { it == _selectedTextOverlayId.value },
         onStateUpdated = { historyManager.saveState() }
     )
     
@@ -283,7 +274,7 @@ class EditorViewModel @Inject constructor(
                 overlayManager.moveTextOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
             }
             is VideoEditorUiEvent.StartAddingText -> setState { copy(isAddingText = true, editingTextOverlayId = null) }
-            is VideoEditorUiEvent.StartEditingText -> setState { copy(isAddingText = false, editingTextOverlayId = _selectedTextOverlayId.value) }
+            is VideoEditorUiEvent.StartEditingText -> setState { copy(isAddingText = false, editingTextOverlayId = _selectedOverlayId.value) }
             is VideoEditorUiEvent.CancelAddingText -> setState { copy(isAddingText = false, editingTextOverlayId = null) }
         }
     }

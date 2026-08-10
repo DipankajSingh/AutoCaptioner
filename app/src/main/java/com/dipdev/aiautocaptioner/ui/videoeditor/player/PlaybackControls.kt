@@ -45,6 +45,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun PlayPauseTapOverlay(
     player: Player,
+    onTap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showPlayPauseIcon by remember { mutableStateOf(false) }
@@ -56,6 +57,7 @@ fun PlayPauseTapOverlay(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) {
+                onTap()
                 if (player.isPlaying) player.pause() else player.play()
                 showPlayPauseIcon = true
             },
