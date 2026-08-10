@@ -30,7 +30,7 @@ class OverlayManager(
 ) {
     private val zOrderLock = Any()
     
-    fun addOverlay(uri: String, scope: CoroutineScope) {
+    fun addOverlay(uri: String, currentPlayheadMs: Long, scope: CoroutineScope) {
         val projectId = getProjectId() ?: return
         scope.launch(Dispatchers.IO) {
             try {
@@ -55,8 +55,8 @@ class OverlayManager(
                         id = UUID.randomUUID().toString(),
                         projectId = projectId,
                         imageUri = destFile.absolutePath,
-                        startTimeMs = 0L,
-                        endTimeMs = 5000L,
+                        startTimeMs = currentPlayheadMs,
+                        endTimeMs = currentPlayheadMs + 5000L,
                         zOrder = maxZ + 1,
                         createdAt = System.currentTimeMillis(),
                         naturalWidth = decodeOpts.outWidth,

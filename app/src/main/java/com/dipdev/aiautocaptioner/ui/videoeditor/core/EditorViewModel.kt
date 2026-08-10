@@ -81,7 +81,7 @@ sealed class VideoEditorUiEvent : UiEvent {
     data object Cancel : VideoEditorUiEvent()
     data object DeleteProject : VideoEditorUiEvent()
     data class SaveLanguage(val language: String, val translateToEnglish: Boolean) : VideoEditorUiEvent()
-    data class AddOverlay(val uri: String) : VideoEditorUiEvent()
+    data class AddOverlay(val uri: String, val currentPlayheadMs: Long) : VideoEditorUiEvent()
     data class UpdateOverlay(val overlay: ImageOverlayEntity) : VideoEditorUiEvent()
     data class DeleteOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class SelectOverlay(val overlayId: String?) : VideoEditorUiEvent()
@@ -237,7 +237,8 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.DeleteProject -> deleteProject()
             is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
             is VideoEditorUiEvent.AddOverlay -> {
-                overlayManager.addOverlay(event.uri, viewModelScope)
+                historyManager.saveState()
+                overlayManager.addOverlay(event.uri, event.currentPlayheadMs, viewModelScope)
             }
             is VideoEditorUiEvent.UpdateOverlay -> {
                 overlayManager.updateOverlay(event.overlay, viewModelScope)

@@ -246,16 +246,6 @@ private fun BoxScope.OverlayItem(
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .graphicsLayer {
-                    translationX = (localPosX - 0.5f) * canvasWidth
-                    translationY = (localPosY - 0.5f) * canvasHeight
-                    scaleX = localScaleX
-                    scaleY = localScaleY
-                }
-                .border(
-                    width = if (isSelected) 2.dp else 0.dp,
-                    color = if (isSelected) AccentRose else Color.Transparent
-                )
                 .pointerInput(overlay.id + "_drag") {
                     detectDragGestures(
                         onDragStart = {
@@ -283,6 +273,16 @@ private fun BoxScope.OverlayItem(
                 .pointerInput(overlay.id + "_tap") {
                     detectTapGestures { onSelectOverlay(overlay.id) }
                 }
+                .graphicsLayer {
+                    translationX = (localPosX - 0.5f) * canvasWidth
+                    translationY = (localPosY - 0.5f) * canvasHeight
+                    scaleX = localScaleX
+                    scaleY = localScaleY
+                }
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) AccentRose else Color.Transparent
+                )
         ) {
             Box(
                 modifier = Modifier
@@ -407,17 +407,6 @@ private fun BoxScope.TextOverlayItem(
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .graphicsLayer {
-                    translationX = (localPosX - 0.5f) * canvasWidth
-                    translationY = (localPosY - 0.5f) * canvasHeight
-                    scaleX = localScaleX
-                    scaleY = localScaleY
-                    rotationZ = localRotation
-                }
-                .border(
-                    width = if (isSelected) 2.dp else 0.dp,
-                    color = if (isSelected) AccentRose else Color.Transparent
-                )
                 .pointerInput(overlay.id + "_lifecycle") {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
@@ -444,6 +433,17 @@ private fun BoxScope.TextOverlayItem(
                         hasPendingTransform = true
                     }
                 }
+                .graphicsLayer {
+                    translationX = (localPosX - 0.5f) * canvasWidth
+                    translationY = (localPosY - 0.5f) * canvasHeight
+                    scaleX = localScaleX
+                    scaleY = localScaleY
+                    rotationZ = localRotation
+                }
+                .border(
+                    width = if (isSelected) 2.dp else 0.dp,
+                    color = if (isSelected) AccentRose else Color.Transparent
+                )
         ) {
             TextOverlayContent(overlay = overlay)
         }

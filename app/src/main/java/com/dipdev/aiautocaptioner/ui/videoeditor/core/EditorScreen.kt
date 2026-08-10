@@ -154,10 +154,11 @@ fun EditorScreen(
         var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
         var pendingTranscriptionParams by remember { mutableStateOf<PendingTranscriptionParams?>(null) }
 
+        var pendingImagePlayheadMs by remember { mutableLongStateOf(0L) }
         val imagePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri ->
-            uri?.let { viewModel.setEvent(VideoEditorUiEvent.AddOverlay(it.toString())) }
+            uri?.let { viewModel.setEvent(VideoEditorUiEvent.AddOverlay(it.toString(), pendingImagePlayheadMs)) }
         }
 
         // Fix A: pause when app goes to background — shared player, shared responsibility
@@ -468,7 +469,10 @@ fun EditorScreen(
                                                         .shadow(4.dp, CircleShape)
                                                         .size(32.dp)
                                                         .clip(CircleShape)
-                                                        .clickable { imagePickerLauncher.launch("image/*") }
+                                                        .clickable { 
+                                                            pendingImagePlayheadMs = editorState.currentTimelineMs
+                                                            imagePickerLauncher.launch("image/*") 
+                                                        }
                                                         .padding(2.dp)
                                                 )
                                             }
@@ -608,7 +612,10 @@ fun EditorScreen(
                                     inlineEditText = seg.text
                                 },
                                 onGenerateCaptions = { showTranscriptionBottomSheet = true },
-                                onAddImage = { imagePickerLauncher.launch("image/*") },
+                                onAddImage = { 
+                                    pendingImagePlayheadMs = editorState.currentTimelineMs
+                                    imagePickerLauncher.launch("image/*") 
+                                },
                                 currentMode = currentMode,
                                 onModeChange = { currentMode = it },
                                 selectedLanguage = selectedLanguage,
