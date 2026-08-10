@@ -37,7 +37,7 @@ import com.dipdev.aiautocaptioner.data.db.dao.TextOverlayDao
         ImageOverlayEntity::class,
         TextOverlayEntity::class
     ],
-    version = 21,
+    version = 22,
     exportSchema = false,
     autoMigrations = []
 )
@@ -353,6 +353,18 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_text_overlays_projectId` ON `text_overlays` (`projectId`)")
+            }
+        }
+
+        /** Add opacity, filterName, and isFlippedX to image_overlays */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop partial index so Room validation doesn't fail on startup
+                db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
+
+                db.execSQL("ALTER TABLE image_overlays ADD COLUMN opacity REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE image_overlays ADD COLUMN filterName TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE image_overlays ADD COLUMN isFlippedX INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

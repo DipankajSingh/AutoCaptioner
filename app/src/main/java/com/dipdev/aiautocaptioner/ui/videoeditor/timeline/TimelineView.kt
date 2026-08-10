@@ -2,7 +2,6 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.timeline
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -10,55 +9,53 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
-import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
-import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 import com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageOverlayTrackItem
 import com.dipdev.aiautocaptioner.ui.videoeditor.text.components.TextOverlayTrackItem
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Type
-import kotlinx.coroutines.isActive
-import kotlin.time.Duration.Companion.milliseconds
 
+sealed interface TimelineTrackItem {
+    val id: String
+    val zOrder: Int
+}
+
+data class ImageTrackItem(val entity: ImageOverlayEntity) : TimelineTrackItem {
+    override val id = entity.id
+    override val zOrder = entity.zOrder
+}
+
+data class TextTrackItem(val entity: TextOverlayEntity) : TimelineTrackItem {
+    override val id = entity.id
+    override val zOrder = entity.zOrder
+}
 @SuppressLint("DefaultLocale")
 @Composable
 fun TimelineView(
@@ -87,173 +84,18 @@ fun TimelineView(
     selectedCaptionSegmentId: String? = null,
     onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {}
 ) {
-    val scrollState = rememberScrollState()
-    val verticalScrollState = rememberScrollState()
-    val scrollOffset by remember { derivedStateOf { scrollState.value } }
-    var boxWidthPx by remember { mutableIntStateOf(0) }
+    val state = rememberTimelineState(
+        clips = clips,
+        zoomLevel = zoomLevel,
+        player = player,
+        currentTimelineMs = currentTimelineMs,
+        onMoveClip = onMoveClip,
+        onRequestThumbnails = onRequestThumbnails,
+        onDragStateChange = onDragStateChange
+    )
+
     val textMeasurer = rememberTextMeasurer()
-    
     val density = LocalDensity.current
-    val pixelsPerMs = with(density) { (50.dp.toPx() / 1000f) * zoomLevel.coerceAtLeast(0.1f) }
-    
-    var draggingClipIndex by remember { mutableStateOf<Int?>(null) }
-    var draggingOverlayId by remember { mutableStateOf<String?>(null) }
-    var dragPointerScreenX by remember { mutableFloatStateOf(0f) }
-    val totalEditedMs = remember(clips) { clips.sumOf { it.endTrimMs - it.startTrimMs } }
-
-    val halfWidthPx = boxWidthPx / 2f
-    val clipLayoutCenters = remember(clips, pixelsPerMs, halfWidthPx) {
-        val centers = FloatArray(clips.size)
-        var accX = 0f
-        for (i in clips.indices) {
-            val width = (clips[i].endTrimMs - clips[i].startTrimMs) * pixelsPerMs
-            centers[i] = halfWidthPx + accX + width / 2
-            accX += width
-        }
-        centers
-    }
-
-    val checkSwaps: () -> Unit = {
-        val draggedIdx = draggingClipIndex
-        if (draggedIdx != null && draggedIdx in clips.indices) {
-            val centerInRow = dragPointerScreenX + scrollState.value
-            var swapped = false
-            if (draggedIdx < clipLayoutCenters.size - 1) {
-                val nextCenter = clipLayoutCenters[draggedIdx + 1]
-                if (centerInRow > nextCenter) {
-                    onMoveClip(draggedIdx, draggedIdx + 1)
-                    draggingClipIndex = draggedIdx + 1
-                    swapped = true
-                }
-            }
-            if (!swapped && draggedIdx > 0 && draggedIdx < clipLayoutCenters.size) {
-                val prevCenter = clipLayoutCenters[draggedIdx - 1]
-                if (centerInRow < prevCenter) {
-                    onMoveClip(draggedIdx, draggedIdx - 1)
-                    draggingClipIndex = draggedIdx - 1
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(draggingClipIndex, draggingOverlayId) {
-        if (draggingClipIndex != null || draggingOverlayId != null) {
-            val edgeThreshold = with(density) { 60.dp.toPx() }
-            val speed = 15f
-            while (isActive) {
-                var scrolled = false
-                if (dragPointerScreenX < edgeThreshold && scrollState.value > 0) {
-                    scrollState.scrollTo((scrollState.value - speed.toInt()).coerceAtLeast(0))
-                    scrolled = true
-                } else if (dragPointerScreenX > boxWidthPx - edgeThreshold && scrollState.value < scrollState.maxValue) {
-                    scrollState.scrollTo((scrollState.value + speed.toInt()).coerceAtMost(scrollState.maxValue))
-                    scrolled = true
-                }
-                if (scrolled) checkSwaps()
-                kotlinx.coroutines.delay(16.milliseconds)
-            }
-        }
-    }
-
-    val targetChunkMs = (1000f / zoomLevel.coerceAtLeast(0.1f)).toLong()
-    val thumbnailIntervalMs = remember(targetChunkMs) {
-        when {
-            targetChunkMs <= 100 -> 100L
-            targetChunkMs <= 250 -> 250L
-            targetChunkMs <= 500 -> 500L
-            targetChunkMs <= 1000 -> 1000L
-            targetChunkMs <= 2000 -> 2000L
-            else -> 5000L
-        }
-    }
-
-    LaunchedEffect(boxWidthPx, pixelsPerMs, clips, thumbnailIntervalMs) {
-        if (boxWidthPx == 0 || pixelsPerMs == 0f) return@LaunchedEffect
-        snapshotFlow { scrollState.value }.collect {
-            kotlinx.coroutines.delay(80L.milliseconds) // Debounce rapid scroll events
-
-            val visibleStartMs = (scrollState.value / pixelsPerMs).toLong()
-            val visibleEndMs = ((scrollState.value + boxWidthPx) / pixelsPerMs).toLong()
-
-            val requested = mutableSetOf<Long>()
-            var currentTimelineMs = 0L
-
-            for (clip in clips) {
-                val clipDurationMs = clip.endTrimMs - clip.startTrimMs
-                val clipStartTimelineMs = currentTimelineMs
-                val clipEndTimelineMs = currentTimelineMs + clipDurationMs
-
-                // If the clip intersects with the visible edited timeline
-                if (clipEndTimelineMs > visibleStartMs && clipStartTimelineMs < visibleEndMs) {
-                    val visibleClipStartMs = maxOf(clipStartTimelineMs, visibleStartMs)
-                    val visibleClipEndMs = minOf(clipEndTimelineMs, visibleEndMs)
-
-                    // Map the visible edited times to original video timestamps
-                    val offsetIntoClipStartMs = visibleClipStartMs - clipStartTimelineMs
-                    val offsetIntoClipEndMs = visibleClipEndMs - clipStartTimelineMs
-
-                    val originalStartMs = clip.startTrimMs + offsetIntoClipStartMs
-                    val originalEndMs = clip.startTrimMs + offsetIntoClipEndMs
-
-                    val startChunk = (originalStartMs / thumbnailIntervalMs) * thumbnailIntervalMs
-                    val endChunk = (originalEndMs / thumbnailIntervalMs) * thumbnailIntervalMs
-
-                    for (time in startChunk..endChunk step thumbnailIntervalMs) {
-                        requested.add(time)
-                    }
-                }
-                currentTimelineMs += clipDurationMs
-            }
-
-            onRequestThumbnails(requested.toList())
-        }
-    }
-
-    val mergedClips = remember(clips) { mergeContiguousClips(clips) }
-
-    LaunchedEffect(scrollState.isScrollInProgress, pixelsPerMs) {
-        if (scrollState.isScrollInProgress) {
-            onDragStateChange(true)
-            player.pause()
-            var lastSeekTime = -1L
-            snapshotFlow { scrollState.value }.collect { scrollValue ->
-                val seekTimeMs = Math.round(scrollValue.toDouble() / pixelsPerMs.toDouble())
-                if (kotlin.math.abs(seekTimeMs - lastSeekTime) > 20L) {
-                    lastSeekTime = seekTimeMs
-                    var accumulated = 0L
-                    var targetWindowIndex = 0
-                    var targetPosInWindow = 0L
-
-                    for (i in mergedClips.indices) {
-                        val clipDuration = mergedClips[i].endTrimMs - mergedClips[i].startTrimMs
-                        if (seekTimeMs >= accumulated && seekTimeMs < accumulated + clipDuration) {
-                            targetWindowIndex = i
-                            targetPosInWindow = seekTimeMs - accumulated
-                            break
-                        }
-                        accumulated += clipDuration
-                    }
-
-                    if (seekTimeMs >= totalEditedMs && mergedClips.isNotEmpty()) {
-                        targetWindowIndex = mergedClips.size - 1
-                        targetPosInWindow = mergedClips.last().endTrimMs - mergedClips.last().startTrimMs
-                    }
-
-                    player.seekTo(targetWindowIndex, targetPosInWindow)
-                }
-            }
-        } else {
-            if (draggingClipIndex == null && draggingOverlayId == null) {
-                onDragStateChange(false)
-            }
-            snapshotFlow { currentTimelineMs() }.collect { timeMs ->
-                if (player.isPlaying) {
-                    val scrollOffset = Math.round(timeMs.toDouble() * pixelsPerMs.toDouble()).toInt()
-                    scrollState.scrollTo(scrollOffset)
-                }
-            }
-        }
-    }
 
     val surfaceColor = MaterialTheme.colorScheme.background
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
@@ -264,28 +106,29 @@ fun TimelineView(
     Box(
         modifier = modifier
             .background(surfaceColor)
-            .onGloballyPositioned { coordinates -> boxWidthPx = coordinates.size.width }
+            .onGloballyPositioned { coordinates -> state.boxWidthPx = coordinates.size.width }
     ) {
-        val halfWidthDp = with(density) { (boxWidthPx / 2).toDp() }
-        val safeTotalWidthPx = maxOf(1f, totalEditedMs * pixelsPerMs)
+        val halfWidthDp = with(density) { (state.boxWidthPx / 2).toDp() }
+        val safeTotalWidthPx = maxOf(1f, state.totalEditedMs * state.pixelsPerMs)
         val totalWidthDp = with(density) { safeTotalWidthPx.toDp() }
+        val halfWidthPx = state.boxWidthPx / 2f
 
         // Main Timeline Area
         Row(
             modifier = Modifier
                 .fillMaxHeight()
-                .horizontalScroll(scrollState, enabled = true)
+                .horizontalScroll(state.scrollState, enabled = true)
         ) {
             Spacer(modifier = Modifier.width(halfWidthDp - 40.dp))
 
             Column(modifier = Modifier.fillMaxHeight()) {
                 Row {
                     Spacer(modifier = Modifier.width(40.dp))
-                    TimelineRuler(totalEditedMs, pixelsPerMs, totalWidthDp, zoomLevel, textMeasurer, onSurfaceColor)
+                    TimelineRuler(state.totalEditedMs, state.pixelsPerMs, totalWidthDp, zoomLevel, textMeasurer, onSurfaceColor)
                 }
                 
-                Column(modifier = Modifier.weight(1f).verticalScroll(verticalScrollState)) {
-                    // Caption Track (top of timeline)
+                Column(modifier = Modifier.weight(1f).verticalScroll(state.verticalScrollState)) {
+                    // Caption Track
                     if (segments.isNotEmpty()) {
                         Row(
                             modifier = Modifier
@@ -312,14 +155,13 @@ fun TimelineView(
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
-                            // Caption chips positioned inside total timeline width
                             Box(
                                 modifier = Modifier
                                     .width(totalWidthDp)
                                     .fillMaxHeight()
                                     .background(
                                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-                                        androidx.compose.foundation.shape.RoundedCornerShape(
+                                        RoundedCornerShape(
                                             topEnd = 6.dp, bottomEnd = 6.dp
                                         )
                                     )
@@ -329,7 +171,7 @@ fun TimelineView(
                                         CaptionTrackItem(
                                             segment = seg,
                                             clips = clips,
-                                            pixelsPerMs = pixelsPerMs,
+                                            pixelsPerMs = state.pixelsPerMs,
                                             isSelected = seg.id == selectedCaptionSegmentId,
                                             onTap = onCaptionSegmentTap
                                         )
@@ -339,6 +181,7 @@ fun TimelineView(
                         }
                     }
 
+                    // Video Clips Track
                     if (clips.isEmpty()) {
                         Row(modifier = Modifier.height(100.dp).fillMaxWidth()) {
                             Spacer(modifier = Modifier.width(40.dp))
@@ -356,15 +199,15 @@ fun TimelineView(
                             clips.forEachIndexed { index, clip ->
                                 key(clip.id) {
                                     val durationMs = clip.endTrimMs - clip.startTrimMs
-                                    val clipWidthPx = maxOf(1f, durationMs * pixelsPerMs)
+                                    val clipWidthPx = maxOf(1f, durationMs * state.pixelsPerMs)
                                     val clipWidthDp = with(density) { clipWidthPx.toDp() }
                                     
                                     val isSelected = clip.id == selectedClipId
                                     val currentClipIndex by rememberUpdatedState(index)
-                                    val isBeingDragged = draggingClipIndex == currentClipIndex
-                                    val layoutCenter = clipLayoutCenters[index]
+                                    val isBeingDragged = state.draggingClipIndex == currentClipIndex
+                                    val layoutCenter = if(index < state.clipLayoutCenters.size) state.clipLayoutCenters[index] else 0f
                                     val currentDragOffset = if (isBeingDragged) {
-                                        (dragPointerScreenX + scrollOffset) - layoutCenter
+                                        (state.dragPointerScreenX + state.scrollOffset) - layoutCenter
                                     } else { 0f }
                                     
                                     val hasGapBefore = index > 0 && clips[index].startTrimMs >= clips[index - 1].endTrimMs
@@ -379,20 +222,20 @@ fun TimelineView(
                                         clipWidthDp = clipWidthDp,
                                         isBeingDragged = isBeingDragged,
                                         currentDragOffset = currentDragOffset,
-                                        clipLayoutCenters = clipLayoutCenters,
-                                        scrollStateValue = scrollOffset,
+                                        clipLayoutCenters = state.clipLayoutCenters,
+                                        scrollStateValue = state.scrollOffset,
                                         surfaceVariantColor = surfaceVariantColor,
                                         outlineColor = outlineColor,
                                         onDragStateChange = onDragStateChange,
-                                        onDragPointerStart = { dragPointerScreenX = it },
-                                        onDragPointerChange = { dragPointerScreenX += it },
-                                        onCheckSwaps = checkSwaps,
-                                        onDraggingIndexChange = { draggingClipIndex = it },
+                                        onDragPointerStart = { state.dragPointerScreenX = it },
+                                        onDragPointerChange = { state.dragPointerScreenX += it },
+                                        onCheckSwaps = state.checkSwaps,
+                                        onDraggingIndexChange = { state.draggingClipIndex = it },
                                         onClipSelected = onClipSelected,
                                         hasGapBefore = hasGapBefore,
                                         onTrimClip = onTrimClip,
-                                        pixelsPerMs = pixelsPerMs,
-                                        thumbnailIntervalMs = thumbnailIntervalMs
+                                        pixelsPerMs = state.pixelsPerMs,
+                                        thumbnailIntervalMs = state.thumbnailIntervalMs
                                     )
                                 }
                             }
@@ -401,172 +244,90 @@ fun TimelineView(
 
                     Spacer(modifier = Modifier.width(totalWidthDp).height(4.dp))
 
-                    overlays.forEach { overlay ->
-                        key(overlay.id) {
-                            var isDragging by remember { mutableStateOf(false) }
-                            var dragOffsetY by remember { mutableFloatStateOf(0f) }
-                            
-                            Row(modifier = Modifier.height(48.dp).fillMaxWidth().padding(bottom = 4.dp)) {
-                                // Track Header (Drag Handle)
-                                Box(
-                                    modifier = Modifier
-                                        .width(40.dp)
-                                        .fillMaxHeight()
-                                        .zIndex(2f)
-                                        .graphicsLayer {
-                                            translationY = dragOffsetY
-                                            scaleX = if (isDragging) 1.1f else 1f
-                                            scaleY = if (isDragging) 1.1f else 1f
-                                            shadowElevation = if (isDragging) 8.dp.toPx() else 0f
-                                        }
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
-                                        .timelineLayerReorderGesture(
-                                            key1 = overlay.id,
-                                            rowHeightPx = 52f, // 48dp height + 4dp gap
-                                            onDragStart = { 
-                                                isDragging = true 
-                                                dragOffsetY = 0f
-                                            },
-                                            onDragOffsetChange = { deltaY -> dragOffsetY += deltaY },
-                                            onMoveLayer = { moveUp -> onMoveOverlayZ(overlay.id, moveUp) },
-                                            onDragEnd = {
-                                                isDragging = false
-                                                dragOffsetY = 0f
-                                            }
-                                        )
-                                ) {
-                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                        val dotRadius = 1.5.dp.toPx()
-                                        val spacingX = 6.dp.toPx()
-                                        val spacingY = 6.dp.toPx()
-                                        val startX = size.width / 2 - spacingX / 2
-                                        val startY = size.height / 2 - spacingY
-                                        for (row in 0..2) {
-                                            for (col in 0..1) {
-                                                drawCircle(
-                                                    color = TextSecondary,
-                                                    radius = dotRadius,
-                                                    center = androidx.compose.ui.geometry.Offset(startX + col * spacingX, startY + row * spacingY)
+                    val allTracks = androidx.compose.runtime.remember(overlays, textOverlays) {
+                        (overlays.map { ImageTrackItem(it) } + textOverlays.map { TextTrackItem(it) })
+                            .sortedByDescending { it.zOrder }
+                    }
+
+                    allTracks.forEach { trackItem ->
+                        when (trackItem) {
+                            is ImageTrackItem -> {
+                                val overlay = trackItem.entity
+                                key(overlay.id) {
+                                    DraggableTrackContainer(
+                                        trackId = overlay.id,
+                                        onMoveLayer = { moveUp -> onMoveOverlayZ(overlay.id, moveUp) }
+                                    ) {
+                                        Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
+                                            val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) state.totalEditedMs else overlay.endTimeMs.coerceAtMost(state.totalEditedMs)
+                                            val startTimeMs = overlay.startTimeMs.coerceAtMost(state.totalEditedMs)
+                                            val durationMs = maxOf(0L, endTimeMs - startTimeMs)
+                                            
+                                            if (durationMs > 0) {
+                                                ImageOverlayTrackItem(
+                                                    overlay = overlay,
+                                                    isSelectedOverlay = overlay.id == selectedOverlayId,
+                                                    pixelsPerMs = state.pixelsPerMs,
+                                                    currentEndTimeMs = endTimeMs,
+                                                    totalEditedMs = state.totalEditedMs,
+                                                    primaryColor = primaryColor,
+                                                    scrollStateValue = state.scrollOffset,
+                                                    timelineWidthPx = state.boxWidthPx,
+                                                    trackContentOffsetPx = halfWidthPx,
+                                                    onOverlaySelected = onOverlaySelected,
+                                                    onDragStateChange = { 
+                                                        onDragStateChange(it)
+                                                        if (!it) state.draggingOverlayId = null
+                                                    },
+                                                    onOverlayTimingChanged = onOverlayTimingChanged,
+                                                    onDragPointerStart = {
+                                                        state.dragPointerScreenX = it
+                                                        state.draggingOverlayId = overlay.id
+                                                    },
+                                                    onDragPointerMove = { state.dragPointerScreenX = it }
                                                 )
                                             }
                                         }
-                                    }
-                                }
-                                
-                                Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
-                                    val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
-                                    val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
-                                    val durationMs = maxOf(0L, endTimeMs - startTimeMs)
-                                    
-                                    if (durationMs > 0) {
-                                        ImageOverlayTrackItem(
-                                            overlay = overlay,
-                                            isSelectedOverlay = overlay.id == selectedOverlayId,
-                                            pixelsPerMs = pixelsPerMs,
-                                            currentEndTimeMs = endTimeMs,
-                                            totalEditedMs = totalEditedMs,
-                                            primaryColor = primaryColor,
-                                            scrollStateValue = scrollOffset,
-                                            timelineWidthPx = boxWidthPx,
-                                            trackContentOffsetPx = halfWidthPx,
-                                            onOverlaySelected = onOverlaySelected,
-                                            onDragStateChange = { 
-                                                onDragStateChange(it)
-                                                if (!it) draggingOverlayId = null
-                                            },
-                                            onOverlayTimingChanged = onOverlayTimingChanged,
-                                            onDragPointerStart = {
-                                                dragPointerScreenX = it
-                                                draggingOverlayId = overlay.id
-                                            },
-                                            onDragPointerMove = { dragPointerScreenX = it }
-                                        )
                                     }
                                 }
                             }
-                        }
-                    }
-
-                    textOverlays.forEach { overlay ->
-                        key(overlay.id) {
-                            var isDragging by remember { mutableStateOf(false) }
-                            var dragOffsetY by remember { mutableFloatStateOf(0f) }
-                            
-                            Row(modifier = Modifier.height(48.dp).fillMaxWidth().padding(bottom = 4.dp)) {
-                                // Track Header (Drag Handle)
-                                Box(
-                                    modifier = Modifier
-                                        .width(40.dp)
-                                        .fillMaxHeight()
-                                        .zIndex(2f)
-                                        .graphicsLayer {
-                                            translationY = dragOffsetY
-                                            scaleX = if (isDragging) 1.1f else 1f
-                                            scaleY = if (isDragging) 1.1f else 1f
-                                            shadowElevation = if (isDragging) 8.dp.toPx() else 0f
-                                        }
-                                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
-                                        .timelineLayerReorderGesture(
-                                            key1 = overlay.id,
-                                            rowHeightPx = 52f, // 48dp height + 4dp gap
-                                            onDragStart = { 
-                                                isDragging = true 
-                                                dragOffsetY = 0f
-                                            },
-                                            onDragOffsetChange = { deltaY -> dragOffsetY += deltaY },
-                                            onMoveLayer = { moveUp -> onMoveOverlayZ(overlay.id, moveUp) },
-                                            onDragEnd = {
-                                                isDragging = false
-                                                dragOffsetY = 0f
-                                            }
-                                        )
-                                ) {
-                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                        val dotRadius = 1.5.dp.toPx()
-                                        val spacingX = 6.dp.toPx()
-                                        val spacingY = 6.dp.toPx()
-                                        val startX = size.width / 2 - spacingX / 2
-                                        val startY = size.height / 2 - spacingY
-                                        for (row in 0..2) {
-                                            for (col in 0..1) {
-                                                drawCircle(
-                                                    color = TextSecondary,
-                                                    radius = dotRadius,
-                                                    center = androidx.compose.ui.geometry.Offset(startX + col * spacingX, startY + row * spacingY)
+                            is TextTrackItem -> {
+                                val overlay = trackItem.entity
+                                key(overlay.id) {
+                                    DraggableTrackContainer(
+                                        trackId = overlay.id,
+                                        onMoveLayer = { moveUp -> onMoveOverlayZ(overlay.id, moveUp) }
+                                    ) {
+                                        Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
+                                            val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) state.totalEditedMs else overlay.endTimeMs.coerceAtMost(state.totalEditedMs)
+                                            val startTimeMs = overlay.startTimeMs.coerceAtMost(state.totalEditedMs)
+                                            val durationMs = maxOf(0L, endTimeMs - startTimeMs)
+                                            
+                                            if (durationMs > 0) {
+                                                TextOverlayTrackItem(
+                                                    overlay = overlay,
+                                                    isSelectedOverlay = overlay.id == selectedOverlayId,
+                                                    pixelsPerMs = state.pixelsPerMs,
+                                                    currentEndTimeMs = endTimeMs,
+                                                    totalEditedMs = state.totalEditedMs,
+                                                    primaryColor = primaryColor,
+                                                    scrollStateValue = state.scrollOffset,
+                                                    timelineWidthPx = state.boxWidthPx,
+                                                    trackContentOffsetPx = halfWidthPx,
+                                                    onOverlaySelected = { onOverlaySelected(overlay.id) },
+                                                    onDragStateChange = { 
+                                                        onDragStateChange(it)
+                                                        if (!it) state.draggingOverlayId = null
+                                                    },
+                                                    onOverlayTimingChanged = onTextOverlayTimingChanged,
+                                                    onDragPointerStart = {
+                                                        state.dragPointerScreenX = it
+                                                        state.draggingOverlayId = overlay.id
+                                                    },
+                                                    onDragPointerMove = { state.dragPointerScreenX = it }
                                                 )
                                             }
                                         }
-                                    }
-                                }
-                                
-                                Box(modifier = Modifier.width(totalWidthDp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))) {
-                                    val endTimeMs = if (overlay.endTimeMs == Long.MAX_VALUE) totalEditedMs else overlay.endTimeMs.coerceAtMost(totalEditedMs)
-                                    val startTimeMs = overlay.startTimeMs.coerceAtMost(totalEditedMs)
-                                    val durationMs = maxOf(0L, endTimeMs - startTimeMs)
-                                    
-                                    if (durationMs > 0) {
-                                        TextOverlayTrackItem(
-                                            overlay = overlay,
-                                            isSelectedOverlay = overlay.id == selectedOverlayId,
-                                            pixelsPerMs = pixelsPerMs,
-                                            currentEndTimeMs = endTimeMs,
-                                            totalEditedMs = totalEditedMs,
-                                            primaryColor = primaryColor,
-                                            scrollStateValue = scrollOffset,
-                                            timelineWidthPx = boxWidthPx,
-                                            trackContentOffsetPx = halfWidthPx,
-                                            onOverlaySelected = { onOverlaySelected(overlay.id) },
-                                            onDragStateChange = { 
-                                                onDragStateChange(it)
-                                                if (!it) draggingOverlayId = null
-                                            },
-                                            onOverlayTimingChanged = onTextOverlayTimingChanged,
-                                            onDragPointerStart = {
-                                                dragPointerScreenX = it
-                                                draggingOverlayId = overlay.id
-                                            },
-                                            onDragPointerMove = { dragPointerScreenX = it }
-                                        )
                                     }
                                 }
                             }

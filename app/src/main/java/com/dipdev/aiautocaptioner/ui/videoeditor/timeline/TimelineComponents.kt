@@ -18,7 +18,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -47,6 +52,7 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
+import com.dipdev.aiautocaptioner.ui.theme.TextSecondary
 
 @SuppressLint("DefaultLocale")
 @Composable
@@ -333,3 +339,80 @@ fun PlayheadMarker() {
         )
     }
 }
+
+@Composable
+fun DraggableTrackContainer(
+    trackId: String,
+    onMoveLayer: (Boolean) -> Unit,
+    content: @Composable () -> Unit
+) {
+    var isDragging by remember { mutableStateOf(false) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+
+    Row(
+        modifier = Modifier
+            .height(48.dp)
+            .fillMaxWidth()
+            .padding(bottom = 4.dp)
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                translationY = dragOffsetY
+            }
+    ) {
+        // Track Header (Drag Handle)
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .fillMaxHeight()
+                .graphicsLayer {
+                    scaleX = if (isDragging) 1.1f else 1f
+                    scaleY = if (isDragging) 1.1f else 1f
+                    shadowElevation = if (isDragging) 8.dp.toPx() else 0f
+                }
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp)
+                )
+                .timelineLayerReorderGesture(
+                    key1 = trackId,
+                    rowHeightPx = 52f, // 48dp height + 4dp gap
+                    onDragStart = {
+                        isDragging = true
+                        dragOffsetY = 0f
+                    },
+                    onDragOffsetChange = { deltaY -> dragOffsetY += deltaY },
+                    onMoveLayer = { moveUp -> 
+                        onMoveLayer(moveUp) 
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        dragOffsetY = 0f
+                    }
+                )
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val dotRadius = 1.5.dp.toPx()
+                val spacingX = 6.dp.toPx()
+                val spacingY = 6.dp.toPx()
+                val startX = size.width / 2 - spacingX / 2
+                val startY = size.height / 2 - spacingY
+                for (row in 0..2) {
+                    for (col in 0..1) {
+                        drawCircle(
+                            color = TextSecondary,
+                            radius = dotRadius,
+                            center = Offset(
+                                startX + col * spacingX,
+                                startY + row * spacingY
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // Track Body
+        content()
+    }
+}
+

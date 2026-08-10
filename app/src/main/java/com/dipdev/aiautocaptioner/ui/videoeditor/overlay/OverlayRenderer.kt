@@ -298,14 +298,39 @@ private fun BoxScope.OverlayItem(
                     )
             ) {
                 val context = LocalContext.current
+                val colorFilter = remember(overlay.filterName) {
+                    when (overlay.filterName) {
+                        "Grayscale" -> androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(0f) })
+                        "Sepia" -> androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+                            0.393f, 0.769f, 0.189f, 0f, 0f,
+                            0.349f, 0.686f, 0.168f, 0f, 0f,
+                            0.272f, 0.534f, 0.131f, 0f, 0f,
+                            0f, 0f, 0f, 1f, 0f
+                        )))
+                        "Invert" -> androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+                            -1f, 0f, 0f, 0f, 255f,
+                            0f, -1f, 0f, 0f, 255f,
+                            0f, 0f, -1f, 0f, 255f,
+                            0f, 0f, 0f, 1f, 0f
+                        )))
+                        else -> null
+                    }
+                }
+                
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(overlay.imageUri)
                         .size(Size.ORIGINAL)
                         .build(),
                     contentDescription = stringResource(R.string.side_image_overlay),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = if (overlay.isFlippedX) -1f else 1f
+                        },
                     contentScale = ContentScale.Fit,
+                    alpha = overlay.opacity,
+                    colorFilter = colorFilter,
                     onSuccess = { state ->
                         val image = state.result.image
                         val w = image.width.toFloat()

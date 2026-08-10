@@ -110,33 +110,50 @@ class OverlayManager(
     }
 
     fun moveOverlayZ(overlayId: String, bringToFront: Boolean, scope: CoroutineScope) {
-        val currentList = getOverlays().sortedBy { it.zOrder }.toMutableList()
-        val index = currentList.indexOfFirst { it.id == overlayId }
+        val images = getOverlays().map { Pair(it.id, it.zOrder) }
+        val texts = getTextOverlays().map { Pair(it.id, it.zOrder) }
+        val all = (images + texts).sortedBy { it.second }.toMutableList()
+
+        val index = all.indexOfFirst { it.first == overlayId }
         if (index == -1) return
         
-        val overlay = currentList[index]
-        if (bringToFront && index < currentList.size - 1) {
-            val next = currentList[index + 1]
-            val currentZ = overlay.zOrder
-            currentList[index] = overlay.copy(zOrder = next.zOrder)
-            currentList[index + 1] = next.copy(zOrder = currentZ)
-            setOverlays(currentList)
-            onStateUpdated()
-            scope.launch(Dispatchers.IO) {
-                overlayRepository.updateOverlay(currentList[index])
-                overlayRepository.updateOverlay(currentList[index + 1])
-            }
+        var swapWithIndex = -1
+        if (bringToFront && index < all.size - 1) {
+            swapWithIndex = index + 1
         } else if (!bringToFront && index > 0) {
-            val prev = currentList[index - 1]
-            val currentZ = overlay.zOrder
-            currentList[index] = overlay.copy(zOrder = prev.zOrder)
-            currentList[index - 1] = prev.copy(zOrder = currentZ)
-            setOverlays(currentList)
-            onStateUpdated()
-            scope.launch(Dispatchers.IO) {
-                overlayRepository.updateOverlay(currentList[index])
-                overlayRepository.updateOverlay(currentList[index - 1])
+            swapWithIndex = index - 1
+        }
+        
+        if (swapWithIndex != -1) {
+            val current = all[index]
+            val swapWith = all[swapWithIndex]
+            
+            val newCurrentZ = swapWith.second
+            val newSwapWithZ = current.second
+            
+            var newImages = getOverlays()
+            var newTexts = getTextOverlays()
+            
+            val updateEntity = { id: String, newZ: Int ->
+                if (newImages.any { it.id == id }) {
+                    newImages = newImages.map { if (it.id == id) it.copy(zOrder = newZ) else it }
+                    scope.launch(Dispatchers.IO) {
+                        newImages.find { it.id == id }?.let { overlayRepository.updateOverlay(it) }
+                    }
+                } else if (newTexts.any { it.id == id }) {
+                    newTexts = newTexts.map { if (it.id == id) it.copy(zOrder = newZ) else it }
+                    scope.launch(Dispatchers.IO) {
+                        newTexts.find { it.id == id }?.let { overlayRepository.updateTextOverlay(it) }
+                    }
+                }
             }
+            
+            updateEntity(current.first, newCurrentZ)
+            updateEntity(swapWith.first, newSwapWithZ)
+            
+            setOverlays(newImages)
+            setTextOverlays(newTexts)
+            onStateUpdated()
         }
     }
 
@@ -290,34 +307,5 @@ class OverlayManager(
         }
     }
 
-    fun moveTextOverlayZ(overlayId: String, bringToFront: Boolean, scope: CoroutineScope) {
-        val currentList = getTextOverlays().sortedBy { it.zOrder }.toMutableList()
-        val index = currentList.indexOfFirst { it.id == overlayId }
-        if (index == -1) return
-        
-        val overlay = currentList[index]
-        if (bringToFront && index < currentList.size - 1) {
-            val next = currentList[index + 1]
-            val currentZ = overlay.zOrder
-            currentList[index] = overlay.copy(zOrder = next.zOrder)
-            currentList[index + 1] = next.copy(zOrder = currentZ)
-            setTextOverlays(currentList)
-            onStateUpdated()
-            scope.launch(Dispatchers.IO) {
-                overlayRepository.updateTextOverlay(currentList[index])
-                overlayRepository.updateTextOverlay(currentList[index + 1])
-            }
-        } else if (!bringToFront && index > 0) {
-            val prev = currentList[index - 1]
-            val currentZ = overlay.zOrder
-            currentList[index] = overlay.copy(zOrder = prev.zOrder)
-            currentList[index - 1] = prev.copy(zOrder = currentZ)
-            setTextOverlays(currentList)
-            onStateUpdated()
-            scope.launch(Dispatchers.IO) {
-                overlayRepository.updateTextOverlay(currentList[index])
-                overlayRepository.updateTextOverlay(currentList[index - 1])
-            }
-        }
-    }
+
 }

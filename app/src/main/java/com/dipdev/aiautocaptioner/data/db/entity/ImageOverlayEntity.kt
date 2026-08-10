@@ -32,7 +32,10 @@ data class ImageOverlayEntity(
     override var zOrder: Int = 0,
     override val createdAt: Long,
     val naturalWidth: Int = 0,
-    val naturalHeight: Int = 0
+    val naturalHeight: Int = 0,
+    val opacity: Float = 1f,
+    val filterName: String? = null,
+    val isFlippedX: Boolean = false
 ) : OverlayEntity {
     @androidx.room.Ignore override val rotation: Float = 0f
 }

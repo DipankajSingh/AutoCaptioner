@@ -376,69 +376,25 @@ fun EditorScreen(
                                         .align(Alignment.TopCenter)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp),
                                     leftContent = {
-                                        androidx.compose.animation.AnimatedVisibility(
-                                            visible = selectedOverlayId != null,
-                                            enter = fadeIn(),
-                                            exit = fadeOut()
-                                        ) {
-                                            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                                        com.dipdev.aiautocaptioner.ui.videoeditor.shared.OverlaySideToolbar(
+                                            selectedOverlayId = selectedOverlayId,
+                                            isTextOverlay = textOverlays.any { it.id == selectedOverlayId },
+                                            onEdit = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) },
+                                            onColor = { /* TODO: Open Color Picker */ },
+                                            onFont = { /* TODO: Open Font Picker */ },
+                                            onDuplicate = { selectedOverlayId?.let { viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(it)) } },
+                                            onCrop = { /* Disabled */ },
+                                            onFilters = { /* TODO: Open Filters BottomSheet */ },
+                                            onOpacity = { /* TODO: Open Opacity BottomSheet */ },
+                                            onDelete = {
                                                 if (textOverlays.any { it.id == selectedOverlayId }) {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.Edit,
-                                                        contentDescription = "Edit",
-                                                        tint = Color.White,
-                                                        modifier = Modifier
-                                                            .shadow(4.dp, CircleShape)
-                                                            .size(32.dp)
-                                                            .clip(CircleShape)
-                                                            .clickable {
-                                                                viewModel.setEvent(VideoEditorUiEvent.StartEditingText)
-                                                            }
-                                                            .padding(2.dp)
-                                                    )
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.ColorLens,
-                                                        contentDescription = "Color",
-                                                        tint = Color.White,
-                                                        modifier = Modifier
-                                                            .shadow(4.dp, CircleShape)
-                                                            .size(32.dp)
-                                                            .clip(CircleShape)
-                                                            .clickable { /* TODO: Open Color Picker */ }
-                                                            .padding(2.dp)
-                                                    )
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.FontDownload,
-                                                        contentDescription = "Font",
-                                                        tint = Color.White,
-                                                        modifier = Modifier
-                                                            .shadow(4.dp, CircleShape)
-                                                            .size(32.dp)
-                                                            .clip(CircleShape)
-                                                            .clickable { /* TODO: Open Font Picker */ }
-                                                            .padding(2.dp)
-                                                    )
+                                                    viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(selectedOverlayId!!))
+                                                } else if (selectedOverlayId != null) {
+                                                    viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlayId!!))
                                                 }
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Delete,
-                                                    contentDescription = "Delete",
-                                                    tint = Color(0xFFE84855),
-                                                    modifier = Modifier
-                                                        .shadow(4.dp, CircleShape)
-                                                        .size(32.dp)
-                                                        .clip(CircleShape)
-                                                        .clickable {
-                                                            if (textOverlays.any { it.id == selectedOverlayId }) {
-                                                                viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(selectedOverlayId!!))
-                                                            } else if (selectedOverlayId != null) {
-                                                                viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlayId!!))
-                                                            }
-                                                            viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
-                                                        }
-                                                        .padding(2.dp)
-                                                )
+                                                viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
                                             }
-                                        }
+                                        )
                                     },
                                     rightContent = {
                                         androidx.compose.animation.AnimatedVisibility(

@@ -158,18 +158,7 @@ fun VideoTimelinePanel(
                     player = player,
                     currentTimelineMs = currentTimelineMs,
                     onTrimClip = onTrimClip,
-                    // Fix 17: was silently dropped — onMoveOverlayZ was accepted but never forwarded
-                    onMoveOverlayZ = { id, bringToFront ->
-                        val overlay = updatedOverlays.find { it.id == id }
-                        if (overlay != null) {
-                            onMoveOverlayZ(id, bringToFront)
-                        } else {
-                            val textOverlay = updatedTextOverlays.find { it.id == id }
-                            if (textOverlay != null) {
-                                onMoveOverlayZ(id, bringToFront)
-                            }
-                        }
-                    },
+                    onMoveOverlayZ = onMoveOverlayZ,
                     segments = segments,
                     selectedCaptionSegmentId = selectedCaptionSegmentId,
                     onCaptionSegmentTap = onCaptionSegmentTap,
