@@ -18,7 +18,8 @@ import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.ClipManager
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.EditorSnapshot
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.HistoryManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.OverlayManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.export.ExportService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentList
 
 sealed class VideoEditorUiStep {
     data object Idle : VideoEditorUiStep()
@@ -46,7 +50,7 @@ sealed class VideoEditorUiStep {
 
 data class VideoEditorUiState(
     val step: VideoEditorUiStep = VideoEditorUiStep.Idle,
-    val clips: List<Clip> = emptyList(),
+    val clips: ImmutableList<Clip> = persistentListOf(),
     val hasEdits: Boolean = false,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
@@ -57,7 +61,9 @@ data class VideoEditorUiState(
     val videoWidth: Int = 0,
     val videoHeight: Int = 0,
     val isAddingText: Boolean = false,
-    val editingTextOverlayId: String? = null
+    val editingTextOverlayId: String? = null,
+    val imageOverlays: ImmutableList<ImageOverlayEntity> = persistentListOf(),
+    val textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf()
 ) : UiState
 sealed class VideoEditorUiEvent : UiEvent {
     data class LoadProject(val projectId: String) : VideoEditorUiEvent()
@@ -115,62 +121,56 @@ class EditorViewModel @Inject constructor(
     private val _selectedOverlayId = MutableStateFlow<String?>(null)
     val selectedOverlayId = _selectedOverlayId.asStateFlow()
 
-    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
-    val overlays: StateFlow<List<ImageOverlayEntity>> = projectIdFlow
-        .flatMapLatest { id ->
-            if (id != null) overlayRepository.getOverlaysForProject(id)
-            else flowOf(emptyList())
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
-
     private val _selectedTextOverlayId = MutableStateFlow<String?>(null)
     val selectedTextOverlayId = _selectedTextOverlayId.asStateFlow()
-
-    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
-    val textOverlays: StateFlow<List<TextOverlayEntity>> = projectIdFlow
-        .flatMapLatest { id ->
-            if (id != null) overlayRepository.getTextOverlaysForProject(id)
-            else flowOf(emptyList())
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
 
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
 
-    private val clipManager = ClipManager(
+    private val historyManager = HistoryManager(
         getOriginalDurationMs = { originalDurationMs },
         getCurrentClips = { currentState.clips },
-        onStateChanged = { newClips, edits, undo, redo -> 
-            setState { copy(clips = newClips, hasEdits = edits, canUndo = undo, canRedo = redo) } 
+        getCurrentImageOverlays = { currentState.imageOverlays },
+        getCurrentTextOverlays = { currentState.textOverlays },
+        onStateChanged = { newClips, newImg, newTxt, edits, undo, redo -> 
+            setState { 
+                copy(
+                    clips = newClips.toPersistentList(), 
+                    imageOverlays = newImg.toPersistentList(),
+                    textOverlays = newTxt.toPersistentList(),
+                    hasEdits = edits, 
+                    canUndo = undo, 
+                    canRedo = redo
+                ) 
+            } 
         },
-        onUndoToOriginal = {
-            setState { copy(clips = listOf(Clip(startTrimMs = 0L, endTrimMs = originalDurationMs)), hasEdits = false) }
+        onRestoreSnapshot = { snapshot ->
+            currentProjectId?.let { id ->
+                viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    overlayRepository.restoreOverlays(id, snapshot.imageOverlays, snapshot.textOverlays)
+                }
+            }
         }
     )
     
     val overlayManager = OverlayManager(
         context = context,
         overlayRepository = overlayRepository,
-        getOverlays = { overlays.value },
+        getOverlays = { currentState.imageOverlays },
+        setOverlays = { list -> setState { copy(imageOverlays = list.toPersistentList()) } },
         getProjectId = { currentProjectId },
         onOverlaySelected = { _selectedOverlayId.value = it },
         isSelectedOverlay = { it == _selectedOverlayId.value },
-        getTextOverlays = { textOverlays.value },
+        getTextOverlays = { currentState.textOverlays },
+        setTextOverlays = { list -> setState { copy(textOverlays = list.toPersistentList()) } },
         onTextOverlaySelected = { 
             _selectedTextOverlayId.value = it
             // Only set editing state if we're actually selecting a text overlay for inline editing
             if (it == null) setState { copy(editingTextOverlayId = null) } 
         },
-        isSelectedTextOverlay = { it == _selectedTextOverlayId.value }
+        isSelectedTextOverlay = { it == _selectedTextOverlayId.value },
+        onStateUpdated = { historyManager.saveState() }
     )
     
     val thumbnailManager = ThumbnailManager(context)
@@ -214,25 +214,35 @@ class EditorViewModel @Inject constructor(
     override fun handleEvent(event: VideoEditorUiEvent) {
         when (event) {
             is VideoEditorUiEvent.LoadProject -> loadProject(event.projectId)
-            is VideoEditorUiEvent.Undo -> clipManager.undo()
-            is VideoEditorUiEvent.Redo -> clipManager.redo()
-            is VideoEditorUiEvent.SaveState -> clipManager.saveState()
+            is VideoEditorUiEvent.Undo -> historyManager.undo()
+            is VideoEditorUiEvent.Redo -> historyManager.redo()
+            is VideoEditorUiEvent.SaveState -> historyManager.saveState()
             is VideoEditorUiEvent.UpdateDurationFromPlayer -> updateDurationFromPlayer(event.actualDurationMs)
-            is VideoEditorUiEvent.SplitClipAtAbsoluteTime -> clipManager.splitClipAtAbsoluteTime(event.absoluteTimelineMs)
-            is VideoEditorUiEvent.TrimClip -> clipManager.trimClip(event.clipId, event.newStartTrimMs, event.newEndTrimMs, event.saveToHistory)
-            is VideoEditorUiEvent.DeleteClip -> clipManager.deleteClip(event.clipId)
-            is VideoEditorUiEvent.DuplicateClip -> clipManager.duplicateClip(event.clipId)
-            is VideoEditorUiEvent.MoveClip -> clipManager.moveClip(event.fromIndex, event.toIndex, event.saveToHistory)
+            is VideoEditorUiEvent.SplitClipAtAbsoluteTime -> historyManager.splitClipAtAbsoluteTime(event.absoluteTimelineMs)
+            is VideoEditorUiEvent.TrimClip -> historyManager.trimClip(event.clipId, event.newStartTrimMs, event.newEndTrimMs, event.saveToHistory)
+            is VideoEditorUiEvent.DeleteClip -> historyManager.deleteClip(event.clipId)
+            is VideoEditorUiEvent.DuplicateClip -> historyManager.duplicateClip(event.clipId)
+            is VideoEditorUiEvent.MoveClip -> historyManager.moveClip(event.fromIndex, event.toIndex, event.saveToHistory)
             is VideoEditorUiEvent.ApplyEdits -> applyEdits(event.navigateToExport)
             is VideoEditorUiEvent.Cancel -> cancel()
             is VideoEditorUiEvent.DeleteProject -> deleteProject()
             is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
-            is VideoEditorUiEvent.AddOverlay -> overlayManager.addOverlay(event.uri, viewModelScope)
-            is VideoEditorUiEvent.UpdateOverlay -> overlayManager.updateOverlay(event.overlay, viewModelScope)
-            is VideoEditorUiEvent.DeleteOverlay -> overlayManager.deleteOverlay(event.overlayId, viewModelScope)
+            is VideoEditorUiEvent.AddOverlay -> {
+                overlayManager.addOverlay(event.uri, viewModelScope)
+            }
+            is VideoEditorUiEvent.UpdateOverlay -> {
+                overlayManager.updateOverlay(event.overlay, viewModelScope)
+            }
+            is VideoEditorUiEvent.DeleteOverlay -> {
+                overlayManager.deleteOverlay(event.overlayId, viewModelScope)
+            }
             is VideoEditorUiEvent.SelectOverlay -> overlayManager.selectOverlay(event.overlayId)
-            is VideoEditorUiEvent.DuplicateOverlay -> overlayManager.duplicateOverlay(event.overlayId, viewModelScope)
-            is VideoEditorUiEvent.MoveOverlayZ -> overlayManager.moveOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+            is VideoEditorUiEvent.DuplicateOverlay -> {
+                overlayManager.duplicateOverlay(event.overlayId, viewModelScope)
+            }
+            is VideoEditorUiEvent.MoveOverlayZ -> {
+                overlayManager.moveOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+            }
             
             // Text Overlays
             is VideoEditorUiEvent.AddTextOverlay -> {
@@ -249,11 +259,19 @@ class EditorViewModel @Inject constructor(
                 )
                 setState { copy(isAddingText = false, editingTextOverlayId = null) }
             }
-            is VideoEditorUiEvent.UpdateTextOverlay -> overlayManager.updateTextOverlay(event.overlay, viewModelScope)
-            is VideoEditorUiEvent.DeleteTextOverlay -> overlayManager.deleteTextOverlay(event.overlayId, viewModelScope)
+            is VideoEditorUiEvent.UpdateTextOverlay -> {
+                overlayManager.updateTextOverlay(event.overlay, viewModelScope)
+            }
+            is VideoEditorUiEvent.DeleteTextOverlay -> {
+                overlayManager.deleteTextOverlay(event.overlayId, viewModelScope)
+            }
             is VideoEditorUiEvent.SelectTextOverlay -> overlayManager.selectTextOverlay(event.overlayId)
-            is VideoEditorUiEvent.DuplicateTextOverlay -> overlayManager.duplicateTextOverlay(event.overlayId, viewModelScope)
-            is VideoEditorUiEvent.MoveTextOverlayZ -> overlayManager.moveTextOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+            is VideoEditorUiEvent.DuplicateTextOverlay -> {
+                overlayManager.duplicateTextOverlay(event.overlayId, viewModelScope)
+            }
+            is VideoEditorUiEvent.MoveTextOverlayZ -> {
+                overlayManager.moveTextOverlayZ(event.overlayId, event.bringToFront, viewModelScope)
+            }
             is VideoEditorUiEvent.StartAddingText -> setState { copy(isAddingText = true, editingTextOverlayId = null) }
             is VideoEditorUiEvent.StartEditingText -> setState { copy(isAddingText = false, editingTextOverlayId = _selectedTextOverlayId.value) }
             is VideoEditorUiEvent.CancelAddingText -> setState { copy(isAddingText = false, editingTextOverlayId = null) }
@@ -294,11 +312,21 @@ class EditorViewModel @Inject constructor(
                 }
                 originalDurationMs = durationMs
                 originalVideoPath = workingPath
-                clipManager.reset()
+                
+                val dbImageOverlays = overlayRepository.getOverlaysOnce(projectId)
+                val dbTextOverlays = overlayRepository.getTextOverlaysForProjectSync(projectId)
+                
+                historyManager.setBaseline(
+                    clips = listOf(Clip(startTrimMs = 0L, endTrimMs = durationMs)),
+                    imageOverlays = dbImageOverlays,
+                    textOverlays = dbTextOverlays
+                )
                 
                 setState { 
                     copy(
-                        clips = listOf(Clip(startTrimMs = 0L, endTrimMs = durationMs)),
+                        clips = persistentListOf(Clip(startTrimMs = 0L, endTrimMs = durationMs)),
+                        imageOverlays = dbImageOverlays.toPersistentList(),
+                        textOverlays = dbTextOverlays.toPersistentList(),
                         hasEdits = false,
                         canUndo = false,
                         canRedo = false,
@@ -319,7 +347,7 @@ class EditorViewModel @Inject constructor(
             originalDurationMs = actualDurationMs
             setState { copy(originalDurationMs = actualDurationMs) }
             if (!currentState.hasEdits && currentState.clips.size == 1) {
-                setState { copy(clips = listOf(Clip(startTrimMs = 0L, endTrimMs = actualDurationMs))) }
+                setState { copy(clips = persistentListOf(Clip(startTrimMs = 0L, endTrimMs = actualDurationMs))) }
             }
         }
     }

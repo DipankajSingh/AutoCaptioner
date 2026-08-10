@@ -18,14 +18,18 @@ class OverlayManager(
     private val context: Context,
     private val overlayRepository: OverlayRepository,
     private val getOverlays: () -> List<ImageOverlayEntity>,
+    private val setOverlays: (List<ImageOverlayEntity>) -> Unit = {},
     private val getProjectId: () -> String?,
     private val onOverlaySelected: (String?) -> Unit,
     private val isSelectedOverlay: (String) -> Boolean,
     private val getTextOverlays: () -> List<TextOverlayEntity> = { emptyList() },
+    private val setTextOverlays: (List<TextOverlayEntity>) -> Unit = {},
     private val onTextOverlaySelected: (String?) -> Unit = {},
-    private val isSelectedTextOverlay: (String) -> Boolean = { false }
+    private val isSelectedTextOverlay: (String) -> Boolean = { false },
+    private val onStateUpdated: () -> Unit = {}
 ) {
     private val zOrderLock = Any()
+    
     fun addOverlay(uri: String, scope: CoroutineScope) {
         val projectId = getProjectId() ?: return
         scope.launch(Dispatchers.IO) {
@@ -59,6 +63,11 @@ class OverlayManager(
                         naturalHeight = decodeOpts.outHeight
                     )
                 }
+                
+                withContext(Dispatchers.Main) {
+                    setOverlays(getOverlays() + overlay)
+                    onStateUpdated()
+                }
                 overlayRepository.addOverlay(overlay)
             } catch (e: Exception) {
                 android.util.Log.e("OverlayManager", "Error adding overlay", e)
@@ -67,13 +76,23 @@ class OverlayManager(
     }
 
     fun updateOverlay(overlay: ImageOverlayEntity, scope: CoroutineScope) {
-        scope.launch {
+        val newList = getOverlays().map { if (it.id == overlay.id) overlay else it }
+        setOverlays(newList)
+        onStateUpdated()
+        scope.launch(Dispatchers.IO) {
             overlayRepository.updateOverlay(overlay)
         }
     }
 
     fun deleteOverlay(overlayId: String, scope: CoroutineScope) {
         val overlay = getOverlays().find { it.id == overlayId }
+        val newList = getOverlays().filter { it.id != overlayId }
+        setOverlays(newList)
+        onStateUpdated()
+        if (isSelectedOverlay(overlayId)) {
+            onOverlaySelected(null)
+        }
+        
         scope.launch(Dispatchers.IO) {
             overlayRepository.deleteOverlay(overlayId)
             
@@ -85,12 +104,6 @@ class OverlayManager(
                     android.util.Log.e("OverlayManager", "Error deleting file", e)
                 }
             }
-            
-            if (isSelectedOverlay(overlayId)) {
-                withContext(Dispatchers.Main) {
-                    onOverlaySelected(null)
-                }
-            }
         }
     }
 
@@ -99,22 +112,32 @@ class OverlayManager(
     }
 
     fun moveOverlayZ(overlayId: String, bringToFront: Boolean, scope: CoroutineScope) {
-        scope.launch {
-            val currentList = getOverlays().sortedBy { it.zOrder }
-            val index = currentList.indexOfFirst { it.id == overlayId }
-            if (index == -1) return@launch
-            
-            val overlay = currentList[index]
-            if (bringToFront && index < currentList.size - 1) {
-                val next = currentList[index + 1]
-                val currentZ = overlay.zOrder
-                overlayRepository.updateOverlay(overlay.copy(zOrder = next.zOrder))
-                overlayRepository.updateOverlay(next.copy(zOrder = currentZ))
-            } else if (!bringToFront && index > 0) {
-                val prev = currentList[index - 1]
-                val currentZ = overlay.zOrder
-                overlayRepository.updateOverlay(overlay.copy(zOrder = prev.zOrder))
-                overlayRepository.updateOverlay(prev.copy(zOrder = currentZ))
+        val currentList = getOverlays().sortedBy { it.zOrder }.toMutableList()
+        val index = currentList.indexOfFirst { it.id == overlayId }
+        if (index == -1) return
+        
+        val overlay = currentList[index]
+        if (bringToFront && index < currentList.size - 1) {
+            val next = currentList[index + 1]
+            val currentZ = overlay.zOrder
+            currentList[index] = overlay.copy(zOrder = next.zOrder)
+            currentList[index + 1] = next.copy(zOrder = currentZ)
+            setOverlays(currentList)
+            onStateUpdated()
+            scope.launch(Dispatchers.IO) {
+                overlayRepository.updateOverlay(currentList[index])
+                overlayRepository.updateOverlay(currentList[index + 1])
+            }
+        } else if (!bringToFront && index > 0) {
+            val prev = currentList[index - 1]
+            val currentZ = overlay.zOrder
+            currentList[index] = overlay.copy(zOrder = prev.zOrder)
+            currentList[index - 1] = prev.copy(zOrder = currentZ)
+            setOverlays(currentList)
+            onStateUpdated()
+            scope.launch(Dispatchers.IO) {
+                overlayRepository.updateOverlay(currentList[index])
+                overlayRepository.updateOverlay(currentList[index - 1])
             }
         }
     }
@@ -152,10 +175,13 @@ class OverlayManager(
                     createdAt = System.currentTimeMillis()
                 )
             }
-            overlayRepository.addOverlay(duplicate)
+            
             withContext(Dispatchers.Main) {
-                onOverlaySelected(duplicate.id) // Auto select the new duplicate
+                setOverlays(getOverlays() + duplicate)
+                onOverlaySelected(duplicate.id)
+                onStateUpdated() // Auto select the new duplicate
             }
+            overlayRepository.addOverlay(duplicate)
         }
     }
 
@@ -200,10 +226,13 @@ class OverlayManager(
                         createdAt = System.currentTimeMillis()
                     )
                 }
-                overlayRepository.addTextOverlay(overlay)
+                
                 withContext(Dispatchers.Main) {
+                    setTextOverlays(getTextOverlays() + overlay)
                     onTextOverlaySelected(overlay.id)
+                    onStateUpdated()
                 }
+                overlayRepository.addTextOverlay(overlay)
             } catch (e: Exception) {
                 android.util.Log.e("OverlayManager", "Error adding text overlay", e)
             }
@@ -211,20 +240,25 @@ class OverlayManager(
     }
 
     fun updateTextOverlay(overlay: TextOverlayEntity, scope: CoroutineScope) {
-        scope.launch {
+        val newList = getTextOverlays().map { if (it.id == overlay.id) overlay else it }
+        setTextOverlays(newList)
+        onStateUpdated()
+        scope.launch(Dispatchers.IO) {
             overlayRepository.updateTextOverlay(overlay)
         }
     }
 
     fun deleteTextOverlay(overlayId: String, scope: CoroutineScope) {
         val projectId = getProjectId() ?: return
+        val newList = getTextOverlays().filter { it.id != overlayId }
+        setTextOverlays(newList)
+        onStateUpdated()
+        if (isSelectedTextOverlay(overlayId)) {
+            onTextOverlaySelected(null)
+        }
+        
         scope.launch(Dispatchers.IO) {
             overlayRepository.deleteTextOverlay(overlayId, projectId)
-            if (isSelectedTextOverlay(overlayId)) {
-                withContext(Dispatchers.Main) {
-                    onTextOverlaySelected(null)
-                }
-            }
         }
     }
 
@@ -248,30 +282,43 @@ class OverlayManager(
                     createdAt = System.currentTimeMillis()
                 )
             }
-            overlayRepository.addTextOverlay(duplicate)
+            
             withContext(Dispatchers.Main) {
+                setTextOverlays(getTextOverlays() + duplicate)
                 onTextOverlaySelected(duplicate.id)
+                onStateUpdated()
             }
+            overlayRepository.addTextOverlay(duplicate)
         }
     }
 
     fun moveTextOverlayZ(overlayId: String, bringToFront: Boolean, scope: CoroutineScope) {
-        scope.launch {
-            val currentList = getTextOverlays().sortedBy { it.zOrder }
-            val index = currentList.indexOfFirst { it.id == overlayId }
-            if (index == -1) return@launch
-            
-            val overlay = currentList[index]
-            if (bringToFront && index < currentList.size - 1) {
-                val next = currentList[index + 1]
-                val currentZ = overlay.zOrder
-                overlayRepository.updateTextOverlay(overlay.copy(zOrder = next.zOrder))
-                overlayRepository.updateTextOverlay(next.copy(zOrder = currentZ))
-            } else if (!bringToFront && index > 0) {
-                val prev = currentList[index - 1]
-                val currentZ = overlay.zOrder
-                overlayRepository.updateTextOverlay(overlay.copy(zOrder = prev.zOrder))
-                overlayRepository.updateTextOverlay(prev.copy(zOrder = currentZ))
+        val currentList = getTextOverlays().sortedBy { it.zOrder }.toMutableList()
+        val index = currentList.indexOfFirst { it.id == overlayId }
+        if (index == -1) return
+        
+        val overlay = currentList[index]
+        if (bringToFront && index < currentList.size - 1) {
+            val next = currentList[index + 1]
+            val currentZ = overlay.zOrder
+            currentList[index] = overlay.copy(zOrder = next.zOrder)
+            currentList[index + 1] = next.copy(zOrder = currentZ)
+            setTextOverlays(currentList)
+            onStateUpdated()
+            scope.launch(Dispatchers.IO) {
+                overlayRepository.updateTextOverlay(currentList[index])
+                overlayRepository.updateTextOverlay(currentList[index + 1])
+            }
+        } else if (!bringToFront && index > 0) {
+            val prev = currentList[index - 1]
+            val currentZ = overlay.zOrder
+            currentList[index] = overlay.copy(zOrder = prev.zOrder)
+            currentList[index - 1] = prev.copy(zOrder = currentZ)
+            setTextOverlays(currentList)
+            onStateUpdated()
+            scope.launch(Dispatchers.IO) {
+                overlayRepository.updateTextOverlay(currentList[index])
+                overlayRepository.updateTextOverlay(currentList[index - 1])
             }
         }
     }

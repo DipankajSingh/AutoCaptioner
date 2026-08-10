@@ -1,23 +1,44 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.core.managers
 
+import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 
-class ClipManager(
+data class EditorSnapshot(
+    val clips: List<Clip>,
+    val imageOverlays: List<ImageOverlayEntity>,
+    val textOverlays: List<TextOverlayEntity>
+)
+
+class HistoryManager(
     private val getOriginalDurationMs: () -> Long,
     private val getCurrentClips: () -> List<Clip>,
-    private val onStateChanged: (clips: List<Clip>, hasEdits: Boolean, canUndo: Boolean, canRedo: Boolean) -> Unit,
+    private val getCurrentImageOverlays: () -> List<ImageOverlayEntity>,
+    private val getCurrentTextOverlays: () -> List<TextOverlayEntity>,
+    private val onStateChanged: (clips: List<Clip>, imageOverlays: List<ImageOverlayEntity>, textOverlays: List<TextOverlayEntity>, hasEdits: Boolean, canUndo: Boolean, canRedo: Boolean) -> Unit,
+    private val onRestoreSnapshot: (EditorSnapshot) -> Unit,
     private val onUndoToOriginal: () -> Unit
 ) {
-    private val history = mutableListOf<List<Clip>>()
+    private val history = mutableListOf<EditorSnapshot>()
     private var historyIndex = -1
 
-    fun saveState(clipsToSave: List<Clip> = getCurrentClips()) {
-        if (historyIndex >= 0 && history[historyIndex] == clipsToSave) return
+    fun saveState(
+        clipsToSave: List<Clip> = getCurrentClips(),
+        imageOverlaysToSave: List<ImageOverlayEntity> = getCurrentImageOverlays(),
+        textOverlaysToSave: List<TextOverlayEntity> = getCurrentTextOverlays()
+    ) {
+        val snapshot = EditorSnapshot(
+            ArrayList(clipsToSave),
+            ArrayList(imageOverlaysToSave),
+            ArrayList(textOverlaysToSave)
+        )
+        
+        if (historyIndex >= 0 && history[historyIndex] == snapshot) return
 
         if (historyIndex < history.size - 1) {
             history.subList(historyIndex + 1, history.size).clear()
         }
-        history.add(ArrayList(clipsToSave))
+        history.add(snapshot)
         historyIndex++
         
         if (history.size > 50) {
@@ -25,7 +46,7 @@ class ClipManager(
             historyIndex--
         }
         
-        updateState(clipsToSave)
+        updateState(clipsToSave, imageOverlaysToSave, textOverlaysToSave)
     }
 
     private fun checkHasEdits(clips: List<Clip>): Boolean {
@@ -34,10 +55,12 @@ class ClipManager(
         return clip.startTrimMs != 0L || clip.endTrimMs != getOriginalDurationMs()
     }
 
-    private fun updateState(newClips: List<Clip>, hasEditsOverride: Boolean? = null) {
+    private fun updateState(newClips: List<Clip>, newImg: List<ImageOverlayEntity>, newTxt: List<TextOverlayEntity>, hasEditsOverride: Boolean? = null) {
         val actualHasEdits = hasEditsOverride ?: checkHasEdits(newClips)
         onStateChanged(
             newClips,
+            newImg,
+            newTxt,
             actualHasEdits,
             historyIndex >= 0,
             historyIndex < history.size - 1
@@ -47,19 +70,25 @@ class ClipManager(
     fun undo() {
         val canUndo = historyIndex >= 0
         if (canUndo) {
-            val currentClips = getCurrentClips()
-            if (historyIndex == history.size - 1 && history.lastOrNull() != currentClips) {
-                saveState(currentClips)
+            val currentSnapshot = EditorSnapshot(
+                getCurrentClips(),
+                getCurrentImageOverlays(),
+                getCurrentTextOverlays()
+            )
+            
+            if (historyIndex == history.size - 1 && history.lastOrNull() != currentSnapshot) {
+                saveState(currentSnapshot.clips, currentSnapshot.imageOverlays, currentSnapshot.textOverlays)
                 // We just saved the current state, so historyIndex is now at the current state.
                 // We want to undo to the previous state, so we decrement once below.
             }
             historyIndex--
-            val newClips = if (historyIndex >= 0) history[historyIndex] else emptyList()
             
             if (historyIndex < 0) {
                 onUndoToOriginal()
             } else {
-                updateState(newClips)
+                val newSnapshot = history[historyIndex]
+                onRestoreSnapshot(newSnapshot)
+                updateState(newSnapshot.clips, newSnapshot.imageOverlays, newSnapshot.textOverlays)
             }
         }
     }
@@ -68,7 +97,9 @@ class ClipManager(
         val canRedo = historyIndex < history.size - 1
         if (canRedo) {
             historyIndex++
-            updateState(history[historyIndex])
+            val nextSnapshot = history[historyIndex]
+            onRestoreSnapshot(nextSnapshot)
+            updateState(nextSnapshot.clips, nextSnapshot.imageOverlays, nextSnapshot.textOverlays)
         }
     }
 
@@ -93,13 +124,14 @@ class ClipManager(
             val clip = currentClips[targetClipIndex]
             val absoluteSplitMs = clip.startTrimMs + relativeSplitMs
             if (absoluteSplitMs >= clip.startTrimMs + 100 && absoluteSplitMs <= clip.endTrimMs - 100) {
-                saveState(currentClips)
+                saveState(clipsToSave = currentClips)
                 val clip1 = Clip(startTrimMs = clip.startTrimMs, endTrimMs = absoluteSplitMs)
                 val clip2 = Clip(startTrimMs = absoluteSplitMs, endTrimMs = clip.endTrimMs)
                 currentClips.removeAt(targetClipIndex)
                 currentClips.add(targetClipIndex, clip2)
                 currentClips.add(targetClipIndex, clip1)
-                updateState(currentClips)
+                onRestoreSnapshot(EditorSnapshot(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays()))
+                updateState(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays())
             }
         }
     }
@@ -107,9 +139,10 @@ class ClipManager(
     fun deleteClip(clipId: String) {
         val currentClips = getCurrentClips().toMutableList()
         if (currentClips.size > 1) {
-            saveState(currentClips)
+            saveState(clipsToSave = currentClips)
             currentClips.removeAll { it.id == clipId }
-            updateState(currentClips)
+            onRestoreSnapshot(EditorSnapshot(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays()))
+            updateState(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays())
         }
     }
 
@@ -117,11 +150,12 @@ class ClipManager(
         val currentClips = getCurrentClips().toMutableList()
         val index = currentClips.indexOfFirst { it.id == clipId }
         if (index != -1) {
-            saveState(currentClips)
+            saveState(clipsToSave = currentClips)
             val clipToDuplicate = currentClips[index]
             val newClip = Clip(startTrimMs = clipToDuplicate.startTrimMs, endTrimMs = clipToDuplicate.endTrimMs)
             currentClips.add(index + 1, newClip)
-            updateState(currentClips)
+            onRestoreSnapshot(EditorSnapshot(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays()))
+            updateState(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays())
         }
     }
 
@@ -130,11 +164,12 @@ class ClipManager(
         val index = currentClips.indexOfFirst { it.id == clipId }
         if (index != -1) {
             if (saveToHistory) {
-                saveState(currentClips)
+                saveState(clipsToSave = currentClips)
             }
             val clipToTrim = currentClips[index]
             currentClips[index] = clipToTrim.copy(startTrimMs = newStartTrimMs, endTrimMs = newEndTrimMs)
-            updateState(currentClips)
+            onRestoreSnapshot(EditorSnapshot(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays()))
+            updateState(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays())
         }
     }
 
@@ -142,11 +177,12 @@ class ClipManager(
         val currentClips = getCurrentClips().toMutableList()
         if (fromIndex in currentClips.indices && toIndex in currentClips.indices) {
             if (saveToHistory) {
-                saveState(currentClips)
+                saveState(clipsToSave = currentClips)
             }
             val clip = currentClips.removeAt(fromIndex)
             currentClips.add(toIndex, clip)
-            updateState(currentClips)
+            onRestoreSnapshot(EditorSnapshot(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays()))
+            updateState(currentClips, getCurrentImageOverlays(), getCurrentTextOverlays())
         }
     }
     
