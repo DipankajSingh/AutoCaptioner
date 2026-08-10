@@ -13,18 +13,21 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.withTranslation
 import androidx.media3.common.Player
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.engine.CaptionEngine
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
+import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.videoeditor.overlay.OverlayRenderer
 
 @Composable
 fun PreviewSection(
     player: Player,
-    overlays: List<ImageOverlayEntity>,
+    overlays: ImmutableList<ImageOverlayEntity>,
     currentTimelineMs: () -> Long,
     currentSourceMs: () -> Long,
     selectedOverlayId: String?,
@@ -36,6 +39,10 @@ fun PreviewSection(
     activeStyle: CaptionStyleEntity? = null,
     segments: List<CaptionSegmentEntity> = emptyList(),
     wordsMap: Map<String, List<CaptionWordEntity>> = emptyMap(),
+    textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
+    selectedTextOverlayId: String? = null,
+    onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
+    onSelectTextOverlay: (String?) -> Unit = {}
 ) {
     Box(modifier = modifier) {
         VideoPlayerCard(
@@ -49,10 +56,14 @@ fun PreviewSection(
 
         OverlayRenderer(
             overlays = overlays,
+            textOverlays = textOverlays,
             currentTimelineMs = currentTimelineMs,
             selectedOverlayId = selectedOverlayId,
+            selectedTextOverlayId = selectedTextOverlayId,
             onUpdateOverlay = onUpdateOverlay,
             onSelectOverlay = { id -> onSelectOverlay(id) },
+            onUpdateTextOverlay = onUpdateTextOverlay,
+            onSelectTextOverlay = onSelectTextOverlay,
             videoWidth = videoWidth,
             videoHeight = videoHeight,
             player = player

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -118,30 +119,33 @@ fun OverlayRenderer(
             }
 
             allOverlays.forEach { overlayItem ->
-                when (overlayItem) {
-                    is ImageOverlayEntity -> {
-                        OverlayItem(
-                            overlay = overlayItem,
-                            canvasWidth = canvasWidth,
-                            canvasHeight = canvasHeight,
-                            isSelected = overlayItem.id == selectedOverlayId,
-                            currentTimelineMs = currentTimelineMs,
-                            onUpdateOverlay = onUpdateOverlay,
-                            onSelectOverlay = onSelectOverlay,
-                            player = player
-                        )
-                    }
-                    is TextOverlayEntity -> {
-                        TextOverlayItem(
-                            overlay = overlayItem,
-                            canvasWidth = canvasWidth,
-                            canvasHeight = canvasHeight,
-                            isSelected = overlayItem.id == selectedTextOverlayId,
-                            currentTimelineMs = currentTimelineMs,
-                            onUpdateOverlay = onUpdateTextOverlay,
-                            onSelectOverlay = onSelectTextOverlay,
-                            player = player
-                        )
+                val overlayId = if (overlayItem is ImageOverlayEntity) overlayItem.id else (overlayItem as TextOverlayEntity).id
+                key(overlayId) {
+                    when (overlayItem) {
+                        is ImageOverlayEntity -> {
+                            OverlayItem(
+                                overlay = overlayItem,
+                                canvasWidth = canvasWidth,
+                                canvasHeight = canvasHeight,
+                                isSelected = overlayItem.id == selectedOverlayId,
+                                currentTimelineMs = currentTimelineMs,
+                                onUpdateOverlay = onUpdateOverlay,
+                                onSelectOverlay = onSelectOverlay,
+                                player = player
+                            )
+                        }
+                        is TextOverlayEntity -> {
+                            TextOverlayItem(
+                                overlay = overlayItem,
+                                canvasWidth = canvasWidth,
+                                canvasHeight = canvasHeight,
+                                isSelected = overlayItem.id == selectedTextOverlayId,
+                                currentTimelineMs = currentTimelineMs,
+                                onUpdateOverlay = onUpdateTextOverlay,
+                                onSelectOverlay = onSelectTextOverlay,
+                                player = player
+                            )
+                        }
                     }
                 }
             }

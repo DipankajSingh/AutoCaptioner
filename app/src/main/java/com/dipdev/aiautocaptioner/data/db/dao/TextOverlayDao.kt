@@ -19,9 +19,15 @@ interface TextOverlayDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(overlay: TextOverlayEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(overlays: List<TextOverlayEntity>)
+
     @Update
     suspend fun update(overlay: TextOverlayEntity)
 
     @Query("DELETE FROM text_overlays WHERE id = :id AND projectId = :projectId")
     suspend fun delete(id: String, projectId: String)
+
+    @Query("DELETE FROM text_overlays WHERE projectId = :projectId")
+    suspend fun deleteByProjectId(projectId: String)
 }

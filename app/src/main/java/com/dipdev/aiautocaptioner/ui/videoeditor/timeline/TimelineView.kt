@@ -44,6 +44,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
@@ -61,18 +63,18 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun TimelineView(
     modifier: Modifier = Modifier,
-    clips: List<Clip>,
+    clips: ImmutableList<Clip>,
     thumbnails: Map<Long, Bitmap>,
     onRequestThumbnails: (List<Long>) -> Unit,
     originalDurationMs: Long,
     selectedClipId: String?,
     onClipSelected: (String) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
-    overlays: List<ImageOverlayEntity> = emptyList(),
+    overlays: ImmutableList<ImageOverlayEntity> = persistentListOf(),
     selectedOverlayId: String? = null,
     onOverlaySelected: (String) -> Unit = {},
     onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
-    textOverlays: List<TextOverlayEntity> = emptyList(),
+    textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
     selectedTextOverlayId: String? = null,
     onTextOverlaySelected: (String) -> Unit = {},
     onTextOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},

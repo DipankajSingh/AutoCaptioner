@@ -39,6 +39,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
@@ -50,18 +52,18 @@ fun VideoTimelinePanel(
     timelineHeight: Dp,
     maxTimelineHeight: Dp,
     onTimelineHeightChanged: (Dp) -> Unit,
-    clips: List<Clip>,
+    clips: ImmutableList<Clip>,
     thumbnails: Map<Long, Bitmap>,
     onRequestThumbnails: (List<Long>) -> Unit,
     originalDurationMs: Long,
     selectedClipId: String?,
     onClipSelected: (String?) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
-    overlays: List<ImageOverlayEntity>,
+    overlays: ImmutableList<ImageOverlayEntity>,
     selectedOverlayId: String?,
     onOverlaySelected: (String?) -> Unit,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
-    textOverlays: List<TextOverlayEntity> = emptyList(),
+    textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
     selectedTextOverlayId: String? = null,
     onTextOverlaySelected: (String?) -> Unit = {},
     onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},

@@ -54,4 +54,16 @@ class OverlayRepository @Inject constructor(
     suspend fun deleteTextOverlay(id: String, projectId: String) {
         textDao.delete(id, projectId)
     }
+
+    suspend fun restoreOverlays(
+        projectId: String,
+        imageOverlays: List<ImageOverlayEntity>,
+        textOverlays: List<TextOverlayEntity>
+    ) {
+        imageDao.deleteByProjectId(projectId)
+        textDao.deleteByProjectId(projectId)
+        
+        imageDao.insertAll(imageOverlays)
+        textDao.insertAll(textOverlays)
+    }
 }

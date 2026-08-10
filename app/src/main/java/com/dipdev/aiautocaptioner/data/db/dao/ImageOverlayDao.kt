@@ -14,11 +14,17 @@ interface ImageOverlayDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(overlay: ImageOverlayEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(overlays: List<ImageOverlayEntity>)
+
     @Update
     suspend fun update(overlay: ImageOverlayEntity)
 
     @Query("DELETE FROM image_overlays WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM image_overlays WHERE projectId = :projectId")
+    suspend fun deleteByProjectId(projectId: String)
 
     @Query("SELECT * FROM image_overlays WHERE projectId = :projectId ORDER BY zOrder ASC")
     fun getOverlaysForProject(projectId: String): Flow<List<ImageOverlayEntity>>

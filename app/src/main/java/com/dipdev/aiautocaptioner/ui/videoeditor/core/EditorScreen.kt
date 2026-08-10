@@ -105,10 +105,11 @@ fun EditorScreen(
     ScreenThemeProvider(accentColor = AccentAmber) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val thumbnails by viewModel.thumbnailManager.thumbnails.collectAsStateWithLifecycle()
-        val overlays by viewModel.overlays.collectAsStateWithLifecycle()
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
         val selectedTextOverlayId by viewModel.selectedTextOverlayId.collectAsStateWithLifecycle()
-        val textOverlays by viewModel.textOverlays.collectAsStateWithLifecycle()
+        
+        val overlays = uiState.imageOverlays
+        val textOverlays = uiState.textOverlays
         
         val step = uiState.step
         val processingUiState by processingViewModel.uiState.collectAsStateWithLifecycle()
@@ -346,6 +347,10 @@ fun EditorScreen(
                                     activeStyle = activeStyle,
                                     segments = segments,
                                     wordsMap = wordsMap,
+                                    textOverlays = textOverlays,
+                                    selectedTextOverlayId = selectedTextOverlayId,
+                                    onUpdateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(it)) },
+                                    onSelectTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectTextOverlay(it)) },
                                     modifier = Modifier.fillMaxSize()
                                 )
 

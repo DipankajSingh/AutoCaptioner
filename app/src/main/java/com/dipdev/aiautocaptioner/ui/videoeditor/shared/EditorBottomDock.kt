@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.zIndex
 import androidx.media3.common.Player
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
@@ -54,18 +56,18 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
 @Composable
 fun EditorBottomDock(
     maxHeight: Dp,
-    clips: List<Clip>,
+    clips: ImmutableList<Clip>,
     thumbnails: Map<Long, Bitmap>,
     onRequestThumbnails: (List<Long>) -> Unit,
     originalDurationMs: Long,
     selectedClipId: String?,
     onClipSelected: (String?) -> Unit,
     onMoveClip: (Int, Int) -> Unit,
-    overlays: List<ImageOverlayEntity>,
+    overlays: ImmutableList<ImageOverlayEntity>,
     selectedOverlayId: String?,
     onOverlaySelected: (String?) -> Unit,
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
-    textOverlays: List<TextOverlayEntity> = emptyList(),
+    textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
     selectedTextOverlayId: String? = null,
     onTextOverlaySelected: (String?) -> Unit = {},
     onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
