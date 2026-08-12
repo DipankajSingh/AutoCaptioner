@@ -15,6 +15,9 @@ import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.StaticOverlaySettings
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 
+private const val TEXT_BASE_WIDTH = 1080f
+private const val QUALITY_SCALE = 2f
+
 @UnstableApi
 class TextOverlayEffect(
     private val context: Context,
@@ -33,9 +36,10 @@ class TextOverlayEffect(
     }
 
     private fun createTextBitmap(): Bitmap {
+        val fontPx = overlay.fontSize * videoWidth / TEXT_BASE_WIDTH
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = overlay.textColorArgb
-            textSize = overlay.fontSize * 2f // Render at higher resolution for quality
+            textSize = fontPx * QUALITY_SCALE
             try {
                 if (overlay.fontAssetPath.isNotEmpty()) {
                     typeface = Typeface.createFromAsset(context.assets, overlay.fontAssetPath)
@@ -47,11 +51,15 @@ class TextOverlayEffect(
             }
         }
 
-        // Calculate text width
-        val textWidth = (StaticLayout.getDesiredWidth(overlay.text, textPaint) + 20).coerceAtLeast(10f).toInt()
+        val textWidth = if (overlay.textWidth != null) {
+            ((overlay.textWidth * videoWidth) * QUALITY_SCALE).toInt().coerceAtLeast(10)
+        } else {
+            (StaticLayout.getDesiredWidth(overlay.text, textPaint) + 20f).coerceAtLeast(10f).toInt()
+        }
+
         val alignment = when (overlay.textAlignment.uppercase()) {
-            "START" -> Layout.Alignment.ALIGN_NORMAL
-            "END" -> Layout.Alignment.ALIGN_OPPOSITE
+            "START", "LEFT" -> Layout.Alignment.ALIGN_NORMAL
+            "END", "RIGHT" -> Layout.Alignment.ALIGN_OPPOSITE
             else -> Layout.Alignment.ALIGN_CENTER
         }
 
@@ -75,13 +83,14 @@ class TextOverlayEffect(
         val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        if (overlay.backgroundOpacity > 0f) {
+        if (overlay.backgroundStyle != "NONE" && overlay.backgroundOpacity > 0f) {
             val bgPaint = Paint().apply {
                 color = overlay.backgroundColorArgb
-                alpha = (overlay.backgroundOpacity * 255).toInt()
+                alpha = (overlay.backgroundOpacity.coerceIn(0f, 1f) * 255).toInt().coerceIn(0, 255)
                 style = Paint.Style.FILL
             }
-            canvas.drawRect(0f, 0f, bitmapWidth.toFloat(), bitmapHeight.toFloat(), bgPaint)
+            val cornerRadius = 8f * context.resources.displayMetrics.density
+            canvas.drawRoundRect(0f, 0f, bitmapWidth.toFloat(), bitmapHeight.toFloat(), cornerRadius, cornerRadius, bgPaint)
         }
 
         staticLayout.draw(canvas)
@@ -125,19 +134,7 @@ class TextOverlayEffect(
         val mappedX = actualX * 2f - 1f
         val mappedY = 1f - (actualY * 2f)
 
-        val displayW = if (isRotated) bgHeight else bgWidth
-        val displayH = if (isRotated) bgWidth else bgHeight
-
-        val imgAspect = cachedBitmap.width.toFloat() / cachedBitmap.height.toFloat().coerceAtLeast(1f)
-        val vidAspect = displayW.toFloat() / displayH.toFloat().coerceAtLeast(1f)
-        val fitScale = if (imgAspect > vidAspect) {
-            displayW.toFloat() / cachedBitmap.width.toFloat().coerceAtLeast(1f)
-        } else {
-            displayH.toFloat() / cachedBitmap.height.toFloat().coerceAtLeast(1f)
-        }
-
-        // Compensate for the 2x scale used in rendering the text for quality
-        val finalScale = fitScale * 0.5f
+        val finalScale = 1f / QUALITY_SCALE
 
         return StaticOverlaySettings.Builder()
             .setBackgroundFrameAnchor(mappedX, mappedY)

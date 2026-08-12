@@ -20,13 +20,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 private const val MIN_SCALE = 0.05f
 private const val MAX_SCALE = 5.0f
+private const val MIN_TEXT_WIDTH_FRACTION = 0.2f
+private const val MAX_TEXT_WIDTH_FRACTION = 1.0f
 private const val HANDLE_VISUAL_DP = 16
 private const val HANDLE_TOUCH_DP = 48
 private const val HANDLE_MARGIN_PX = 10f
@@ -41,7 +40,9 @@ fun OverlayResizeHandle(
     boxHeightPx: Float,
     scaleX: Float,
     scaleY: Float,
-    onScaleChange: (Float, Float) -> Unit
+    onScaleChange: (Float, Float) -> Unit,
+    textWidthFraction: Float? = null,
+    onTextWidthChange: ((Float) -> Unit)? = null
 ) {
     val density = LocalDensity.current
     val imgCenterX = posX * canvasWidth
@@ -56,7 +57,7 @@ fun OverlayResizeHandle(
     var cumDragX by remember { mutableFloatStateOf(0f) }
     var cumDragY by remember { mutableFloatStateOf(0f) }
     var initialScale by remember { mutableFloatStateOf(1f) }
-    var initialDist by remember { mutableFloatStateOf(1f) }
+    var initialTextWidthFraction by remember { mutableFloatStateOf(1f) }
     var initPointerX by remember { mutableFloatStateOf(0f) }
     var initPointerY by remember { mutableFloatStateOf(0f) }
     var initCenterX by remember { mutableFloatStateOf(0f) }
@@ -77,15 +78,14 @@ fun OverlayResizeHandle(
                 detectDragGestures(
                     onDragStart = { localOffset ->
                         isDragging = true
-                        initialScale = scaleX
+                        // Images always use one scale value so their source aspect
+                        // ratio cannot be stretched by the corner handle.
+                        initialScale = (scaleX + scaleY) / 2f
+                        initialTextWidthFraction = textWidthFraction ?: 1f
                         initCenterX = imgCenterX
                         initCenterY = imgCenterY
                         initPointerX = handleCanvasX + localOffset.x - halfTouchPx
                         initPointerY = handleCanvasY + localOffset.y - halfTouchPx
-                        initialDist = sqrt(
-                            (initPointerX - imgCenterX).pow(2) +
-                                    (initPointerY - imgCenterY).pow(2)
-                        ).coerceAtLeast(1f)
                         cumDragX = 0f
                         cumDragY = 0f
                     },
@@ -96,15 +96,30 @@ fun OverlayResizeHandle(
                         cumDragX += dragAmount.x
                         cumDragY += dragAmount.y
 
-                        val curX = initPointerX + cumDragX
-                        val curY = initPointerY + cumDragY
-                        val curDist = sqrt(
-                            (curX - initCenterX).pow(2) +
-                                    (curY - initCenterY).pow(2)
-                        )
-                        val ratio = curDist / initialDist
-                        val newScale = (initialScale * ratio).coerceIn(MIN_SCALE, MAX_SCALE)
-                        onScaleChange(newScale, newScale)
+                        if (textWidthFraction != null && onTextWidthChange != null) {
+                            // Text boxes resize horizontally. One canvas-width of drag maps to
+                            // one full width fraction; the previous 0.5 multiplier made the
+                            // handle feel as though it stopped responding halfway through a drag.
+                            val dragFraction = cumDragX / canvasWidth
+                            val newWidthFraction = (initialTextWidthFraction + dragFraction)
+                                .coerceIn(MIN_TEXT_WIDTH_FRACTION, MAX_TEXT_WIDTH_FRACTION)
+                            onTextWidthChange(newWidthFraction)
+                        } else {
+                            // For image overlays, use distance-based ratio for aspect ratio maintenance
+                            val curX = initPointerX + cumDragX
+                            val curY = initPointerY + cumDragY
+                            val currentDistance = kotlin.math.hypot(
+                                curX - initCenterX,
+                                curY - initCenterY
+                            ).coerceAtLeast(1f)
+                            val initialDistance = kotlin.math.hypot(
+                                initPointerX - initCenterX,
+                                initPointerY - initCenterY
+                            ).coerceAtLeast(1f)
+                            val newScale = (initialScale * currentDistance / initialDistance)
+                                .coerceIn(MIN_SCALE, MAX_SCALE)
+                            onScaleChange(newScale, newScale)
+                        }
                     }
                 )
             }

@@ -3,66 +3,80 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.core
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.zIndex
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Title
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.ColorLens
-import androidx.compose.material.icons.rounded.FontDownload
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.clickable
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentMapOf
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
-import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
-import com.dipdev.aiautocaptioner.ui.theme.AccentViolet
-import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
-import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
+import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
+import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
+import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
+import com.dipdev.aiautocaptioner.ui.videoeditor.style.VerticalPremiumSlider
+import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
+import com.dipdev.aiautocaptioner.ui.videoeditor.player.MiniScrubber
+import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
+import com.dipdev.aiautocaptioner.ui.videoeditor.player.TimerPill
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorBottomDock
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorTopOverlay
-import com.dipdev.aiautocaptioner.ui.videoeditor.player.MiniScrubber
-import com.dipdev.aiautocaptioner.ui.videoeditor.player.TimerPill
-import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
-import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
-import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
-import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
-import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.Edit2
-import compose.icons.feathericons.X
-import androidx.compose.ui.res.stringResource
-import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
+import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -149,6 +163,9 @@ fun EditorScreen(
         var showDiscardDialog by remember { mutableStateOf(false) }
         var selectedCaptionSegment by rememberSaveable(stateSaver = CaptionSegmentSaver) { mutableStateOf<CaptionSegmentEntity?>(null) }
         var inlineEditText by rememberSaveable { mutableStateOf("") }
+        var showTextColorMenu by remember { mutableStateOf(false) }
+        var showTextSizeSlider by remember { mutableStateOf(false) }
+        var cropOverlay by remember { mutableStateOf<com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity?>(null) }
         
         var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
         var pendingTranscriptionParams by remember { mutableStateOf<PendingTranscriptionParams?>(null) }
@@ -176,8 +193,18 @@ fun EditorScreen(
             }
         }
 
-        BackHandler(enabled = hasEdits && !showDiscardDialog) {
+        BackHandler(enabled = showTextColorMenu) {
+            showTextColorMenu = false
+        }
+
+        BackHandler(enabled = hasEdits && !showDiscardDialog && !showTextColorMenu) {
             showDiscardDialog = true
+        }
+
+        // While a text overlay is being edited, Back should commit the edit
+        // (dismissing the keyboard once via the IME) before any destructive back press.
+        BackHandler(enabled = uiState.editingTextOverlayId != null && !showTextColorMenu) {
+            viewModel.setEvent(VideoEditorUiEvent.StopEditingText)
         }
 
         LaunchedEffect(Unit) {
@@ -223,6 +250,20 @@ fun EditorScreen(
             styleViewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
         }
 
+        LaunchedEffect(selectedOverlayId) {
+            if (selectedOverlayId == null) {
+                showTextSizeSlider = false
+            }
+        }
+
+
+        // Pause playback when entering text-edit mode so the video doesn't keep
+        // rolling under the keyboard while the user types.
+        LaunchedEffect(uiState.editingTextOverlayId) {
+            if (uiState.editingTextOverlayId != null) {
+                player?.pause()
+            }
+        }
 
         // Fix A: initialise the shared player once the video path is known
         val originalVideoPath = (step as? VideoEditorUiStep.Ready)?.originalPath ?: ""
@@ -342,6 +383,7 @@ fun EditorScreen(
                                     selectedOverlayId = selectedOverlayId,
                                     onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
                                     onSelectOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) },
+                                    modifier = Modifier.fillMaxSize(),
                                     videoWidth = videoWidth,
                                     videoHeight = videoHeight,
                                     activeStyle = activeStyle,
@@ -349,7 +391,8 @@ fun EditorScreen(
                                     wordsMap = wordsMap,
                                     textOverlays = textOverlays,
                                     onUpdateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(it)) },
-                                    modifier = Modifier.fillMaxSize()
+                                    editingTextOverlayId = uiState.editingTextOverlayId,
+                                    onStopEditingTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.StopEditingText) }
                                 )
 
                                 // Status bar shadow
@@ -376,16 +419,30 @@ fun EditorScreen(
                                         .align(Alignment.TopCenter)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp),
                                     leftContent = {
+                                        var showOpacitySheet by remember { mutableStateOf(false) }
+                                        var showFiltersSheet by remember { mutableStateOf(false) }
+                                        val currentImageOverlay = overlays.find { it.id == selectedOverlayId }
+
                                         com.dipdev.aiautocaptioner.ui.videoeditor.shared.OverlaySideToolbar(
                                             selectedOverlayId = selectedOverlayId,
-                                            isTextOverlay = textOverlays.any { it.id == selectedOverlayId },
+                                            isTextOverlay = textOverlays.any { it.id == selectedOverlayId } || uiState.editingTextOverlayId == selectedOverlayId,
+                                            onFontSize = {
+                                                if (selectedOverlayId != null && textOverlays.any { it.id == selectedOverlayId }) {
+                                                    showTextSizeSlider = !showTextSizeSlider
+                                                }
+                                            },
                                             onEdit = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) },
-                                            onColor = { /* TODO: Open Color Picker */ },
-                                            onFont = { /* TODO: Open Font Picker */ },
-                                            onDuplicate = { selectedOverlayId?.let { viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(it)) } },
-                                            onCrop = { /* Disabled */ },
-                                            onFilters = { /* TODO: Open Filters BottomSheet */ },
-                                            onOpacity = { /* TODO: Open Opacity BottomSheet */ },
+                                            onColorMenuClicked = { showTextColorMenu = true },
+                                            onDuplicate = { 
+                                                if (textOverlays.any { it.id == selectedOverlayId }) {
+                                                    viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(selectedOverlayId!!))
+                                                } else if (selectedOverlayId != null) {
+                                                    viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(selectedOverlayId!!))
+                                                }
+                                            },
+                                            onCrop = { cropOverlay = currentImageOverlay },
+                                            onFilters = { showFiltersSheet = true },
+                                            onOpacity = { showOpacitySheet = true },
                                             onDelete = {
                                                 if (textOverlays.any { it.id == selectedOverlayId }) {
                                                     viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(selectedOverlayId!!))
@@ -395,41 +452,91 @@ fun EditorScreen(
                                                 viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
                                             }
                                         )
+
+                                        if (showTextSizeSlider && selectedOverlayId != null) {
+                                            val currentTextOverlay = textOverlays.find { it.id == selectedOverlayId }
+                                            if (currentTextOverlay != null) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
+                                                            shape = RoundedCornerShape(12.dp)
+                                                        )
+                                                        .padding(horizontal = 12.dp, vertical = 16.dp)
+                                                ) {
+                                                    VerticalPremiumSlider(
+                                                        value = currentTextOverlay.fontSize,
+                                                        valueRange = 24f..120f,
+                                                        onValueChange = { newSize: Float ->
+                                                            viewModel.setEvent(
+                                                                VideoEditorUiEvent.UpdateTextOverlay(
+                                                                    currentTextOverlay.copy(fontSize = newSize)
+                                                                )
+                                                            )
+                                                        },
+                                                        modifier = Modifier
+                                                            .height(220.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        if (showOpacitySheet && currentImageOverlay != null) {
+                                            com.dipdev.aiautocaptioner.ui.videoeditor.image.components.OpacityControlSheet(
+                                                overlay = currentImageOverlay,
+                                                onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
+                                                onDismiss = { showOpacitySheet = false }
+                                            )
+                                        }
+
+                                        if (showFiltersSheet && currentImageOverlay != null) {
+                                            com.dipdev.aiautocaptioner.ui.videoeditor.image.components.FilterControlSheet(
+                                                overlay = currentImageOverlay,
+                                                onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
+                                                onDismiss = { showFiltersSheet = false }
+                                            )
+                                        }
                                     },
                                     rightContent = {
+                                        val isVisible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO
+                                        
                                         androidx.compose.animation.AnimatedVisibility(
-                                            visible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO,
+                                            visible = isVisible,
                                             enter = fadeIn(),
                                             exit = fadeOut()
                                         ) {
-                                            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Title,
-                                                    contentDescription = "Add Text",
-                                                    tint = Color.White,
-                                                    modifier = Modifier
-                                                        .shadow(4.dp, CircleShape)
-                                                        .size(32.dp)
-                                                        .clip(CircleShape)
-                                                        .clickable { viewModel.setEvent(VideoEditorUiEvent.StartAddingText) }
-                                                        .padding(2.dp)
-                                                )
-                                                
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Image,
-                                                    contentDescription = stringResource(R.string.timeline_add_image),
-                                                    tint = Color.White,
-                                                    modifier = Modifier
-                                                        .shadow(4.dp, CircleShape)
-                                                        .size(32.dp)
-                                                        .clip(CircleShape)
-                                                        .clickable { 
-                                                            pendingImagePlayheadMs = editorState.currentTimelineMs
-                                                            imagePickerLauncher.launch("image/*") 
-                                                        }
-                                                        .padding(2.dp)
-                                                )
-                                            }
+                                            Icon(
+                                                imageVector = Icons.Rounded.Title,
+                                                contentDescription = "Add Text",
+                                                tint = Color.White,
+                                                modifier = Modifier
+                                                    .shadow(4.dp, CircleShape)
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .clickable { viewModel.setEvent(VideoEditorUiEvent.StartAddingText(editorState.currentTimelineMs)) }
+                                                    .padding(2.dp)
+                                            )
+                                        }
+                                        
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = isVisible,
+                                            enter = fadeIn(),
+                                            exit = fadeOut()
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Image,
+                                                contentDescription = stringResource(R.string.timeline_add_image),
+                                                tint = Color.White,
+                                                modifier = Modifier
+                                                    .shadow(4.dp, CircleShape)
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .clickable { 
+                                                        pendingImagePlayheadMs = editorState.currentTimelineMs
+                                                        imagePickerLauncher.launch("image/*") 
+                                                    }
+                                                    .padding(2.dp)
+                                            )
                                         }
                                     }
                                 )
@@ -456,35 +563,18 @@ fun EditorScreen(
                                 )
                             }
                             
-                            // Snapchat-style Text Inline Editor
-                            if (uiState.isAddingText || uiState.editingTextOverlayId != null) {
-                                val initialText = if (uiState.editingTextOverlayId != null) {
-                                    textOverlays.find { it.id == uiState.editingTextOverlayId }?.text ?: ""
-                                } else {
-                                    ""
-                                }
-                                
-                                com.dipdev.aiautocaptioner.ui.videoeditor.text.TextInlineEditor(
-                                    initialText = initialText,
-                                    onDismiss = {
-                                        viewModel.setEvent(VideoEditorUiEvent.CancelAddingText)
-                                    },
-                                    onSave = { newText ->
-                                        if (uiState.editingTextOverlayId != null) {
-                                            val overlay = textOverlays.find { it.id == uiState.editingTextOverlayId }
-                                            if (overlay != null) {
-                                                viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(overlay.copy(text = newText)))
-                                            }
-                                        } else {
-                                            viewModel.setEvent(VideoEditorUiEvent.AddTextOverlay(newText, editorState.currentTimelineMs))
-                                        }
-                                        viewModel.setEvent(VideoEditorUiEvent.CancelAddingText)
-                                    },
-                                    modifier = Modifier.align(Alignment.Center).zIndex(10f)
-                                )
-                            }
+
+
                                                    // Old GlobalActionButtons deleted because they are now inside rightContent slot of EditorTopOverlay     }
                             } // end preview Box
+
+                            cropOverlay?.let { overlayToCrop ->
+                                com.dipdev.aiautocaptioner.ui.videoeditor.image.components.ImageCropOverlay(
+                                    overlay = overlayToCrop,
+                                    onApply = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
+                                    onDismiss = { cropOverlay = null }
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(2.dp))
 
@@ -618,6 +708,24 @@ fun EditorScreen(
             streamedSegments = processingUiState.streamedSegments,
             onCancel = { processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel) }
         )
+
+        if (showTextColorMenu && selectedOverlayId != null) {
+            val overlay = textOverlays.find { it.id == selectedOverlayId }
+            if (overlay != null) {
+                com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayColorPickerPopup(
+                    textColorArgb = overlay.textColorArgb,
+                    backgroundColorArgb = overlay.backgroundColorArgb,
+                    onColorChanged = { field, color ->
+                        val updated = when (field) {
+                            com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayColorField.TEXT -> overlay.copy(textColorArgb = color)
+                            com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayColorField.BACKGROUND -> overlay.copy(backgroundColorArgb = color, backgroundOpacity = 1f, backgroundStyle = "SOLID")
+                        }
+                        viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(updated))
+                    },
+                    onDismissRequest = { showTextColorMenu = false }
+                )
+            }
+        }
     }
 }
 

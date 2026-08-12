@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -23,38 +24,37 @@ import androidx.compose.ui.unit.dp
 fun OverlaySideToolbar(
     selectedOverlayId: String?,
     isTextOverlay: Boolean,
+    onFontSize: () -> Unit = {},
     onEdit: () -> Unit = {},
-    onColor: () -> Unit = {},
-    onFont: () -> Unit = {},
+    onColorMenuClicked: () -> Unit = {},
     onDuplicate: () -> Unit = {},
     onCrop: () -> Unit = {},
     onFilters: () -> Unit = {},
     onOpacity: () -> Unit = {},
     onDelete: () -> Unit = {}
 ) {
-    AnimatedVisibility(
-        visible = selectedOverlayId != null,
-        enter = fadeIn(),
-        exit = fadeOut()
+    val visible = selectedOverlayId != null
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            if (isTextOverlay) {
-                ToolbarIcon(icon = Icons.Rounded.Edit, contentDescription = "Edit", onClick = onEdit)
-                ToolbarIcon(icon = Icons.Rounded.ColorLens, contentDescription = "Color", onClick = onColor)
-                ToolbarIcon(icon = Icons.Rounded.FontDownload, contentDescription = "Font", onClick = onFont)
-            } else {
-                ToolbarIcon(icon = Icons.Rounded.ContentCopy, contentDescription = "Duplicate", onClick = onDuplicate)
-                ToolbarIcon(icon = Icons.Rounded.Crop, contentDescription = "Crop", onClick = onCrop, enabled = false)
-                ToolbarIcon(icon = Icons.Rounded.AutoFixHigh, contentDescription = "Filters", onClick = onFilters)
-                ToolbarIcon(icon = Icons.Rounded.Opacity, contentDescription = "Opacity", onClick = onOpacity)
-            }
-            ToolbarIcon(
-                icon = Icons.Rounded.Delete,
-                contentDescription = "Delete",
-                onClick = onDelete,
-                tint = Color(0xFFE84855)
-            )
+        if (isTextOverlay) {
+            ToolbarIcon(icon = Icons.Rounded.FormatSize, contentDescription = "Text size", onClick = onFontSize, visible = visible)
+            ToolbarIcon(icon = Icons.Rounded.Edit, contentDescription = "Edit", onClick = onEdit, visible = visible)
+            ToolbarIcon(icon = Icons.Rounded.ColorLens, contentDescription = "Color", onClick = onColorMenuClicked, visible = visible)
+        } else {
+            ToolbarIcon(icon = Icons.Rounded.ContentCopy, contentDescription = "Duplicate", onClick = onDuplicate, visible = visible)
+            ToolbarIcon(icon = Icons.Rounded.Crop, contentDescription = "Crop", onClick = onCrop, visible = visible)
+            ToolbarIcon(icon = Icons.Rounded.AutoFixHigh, contentDescription = "Filters", onClick = onFilters, visible = visible)
+            ToolbarIcon(icon = Icons.Rounded.Opacity, contentDescription = "Opacity", onClick = onOpacity, visible = visible)
         }
+        ToolbarIcon(
+            icon = Icons.Rounded.Delete,
+            contentDescription = "Delete",
+            onClick = onDelete,
+            tint = Color(0xFFE84855),
+            visible = visible
+        )
     }
 }
 
@@ -64,17 +64,24 @@ private fun ToolbarIcon(
     contentDescription: String,
     onClick: () -> Unit,
     tint: Color = Color.White,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    visible: Boolean = true
 ) {
-    Icon(
-        imageVector = icon,
-        contentDescription = contentDescription,
-        tint = if (enabled) tint else tint.copy(alpha = 0.5f),
-        modifier = Modifier
-            .shadow(4.dp, CircleShape)
-            .size(32.dp)
-            .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(2.dp)
-    )
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) tint else tint.copy(alpha = 0.5f),
+            modifier = Modifier
+                .shadow(4.dp, CircleShape)
+                .size(32.dp)
+                .clip(CircleShape)
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(2.dp)
+        )
+    }
 }

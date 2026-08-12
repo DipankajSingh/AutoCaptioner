@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 
+@Suppress("DEPRECATION")
 @Composable
 fun EditorTopOverlay(
     canUndo: Boolean,
@@ -48,8 +50,8 @@ fun EditorTopOverlay(
         verticalAlignment = Alignment.Top
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            modifier = Modifier.fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
@@ -63,49 +65,72 @@ fun EditorTopOverlay(
                     .padding(2.dp)
             )
             
-            leftContent()
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            BottomUpFlowColumn(
+                modifier = Modifier.weight(1f),
+                verticalSpacing = 20.dp,
+                horizontalSpacing = 12.dp,
+                wrapDirection = WrapDirection.Right
+            ) {
+                leftContent()
+            }
         }
 
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            modifier = Modifier.fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val accent = LocalAccentColor.current
-            Icon(
-                imageVector = Icons.Rounded.Download,
-                contentDescription = stringResource(R.string.side_export),
-                tint = accent,
-                modifier = Modifier
-                    .shadow(4.dp, CircleShape)
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable { onNavigateToExport() }
-                    .padding(2.dp)
-            )
-            Icon(
-                imageVector = Icons.Rounded.Undo,
-                contentDescription = stringResource(R.string.side_undo),
-                tint = if (canUndo) Color.White else Color.White.copy(alpha = 0.38f),
-                modifier = Modifier
-                    .shadow(4.dp, CircleShape)
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable(enabled = canUndo) { onUndo() }
-                    .padding(2.dp)
-            )
-            Icon(
-                imageVector = Icons.Rounded.Redo,
-                contentDescription = stringResource(R.string.side_redo),
-                tint = if (canRedo) Color.White else Color.White.copy(alpha = 0.38f),
-                modifier = Modifier
-                    .shadow(4.dp, CircleShape)
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable(enabled = canRedo) { onRedo() }
-                    .padding(2.dp)
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val accent = LocalAccentColor.current
+                Icon(
+                    imageVector = Icons.Rounded.Download,
+                    contentDescription = stringResource(R.string.side_export),
+                    tint = accent,
+                    modifier = Modifier
+                        .shadow(4.dp, CircleShape)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable { onNavigateToExport() }
+                        .padding(2.dp)
+                )
+                Icon(
+                    imageVector = Icons.Rounded.Undo,
+                    contentDescription = stringResource(R.string.side_undo),
+                    tint = if (canUndo) Color.White else Color.White.copy(alpha = 0.38f),
+                    modifier = Modifier
+                        .shadow(4.dp, CircleShape)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(enabled = canUndo) { onUndo() }
+                        .padding(2.dp)
+                )
+                Icon(
+                    imageVector = Icons.Rounded.Redo,
+                    contentDescription = stringResource(R.string.side_redo),
+                    tint = if (canRedo) Color.White else Color.White.copy(alpha = 0.38f),
+                    modifier = Modifier
+                        .shadow(4.dp, CircleShape)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(enabled = canRedo) { onRedo() }
+                        .padding(2.dp)
+                )
+            }
             
-            rightContent()
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            BottomUpFlowColumn(
+                modifier = Modifier.weight(1f),
+                verticalSpacing = 20.dp,
+                horizontalSpacing = 12.dp,
+                wrapDirection = WrapDirection.Left
+            ) {
+                rightContent()
+            }
         }
     }
 }

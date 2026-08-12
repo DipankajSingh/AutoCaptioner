@@ -89,14 +89,14 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class MoveOverlayZ(val overlayId: String, val bringToFront: Boolean) : VideoEditorUiEvent()
     
     // Text Overlay Events
-    data class AddTextOverlay(val text: String, val currentPlayheadMs: Long) : VideoEditorUiEvent()
     data class UpdateTextOverlay(val overlay: TextOverlayEntity) : VideoEditorUiEvent()
     data class DeleteTextOverlay(val overlayId: String) : VideoEditorUiEvent()
     data class SelectTextOverlay(val overlayId: String?) : VideoEditorUiEvent()
     data class DuplicateTextOverlay(val overlayId: String) : VideoEditorUiEvent()
 
-    data object StartAddingText : VideoEditorUiEvent()
+    data class StartAddingText(val currentPlayheadMs: Long) : VideoEditorUiEvent()
     data object StartEditingText : VideoEditorUiEvent()
+    data object StopEditingText : VideoEditorUiEvent()
     data object CancelAddingText : VideoEditorUiEvent()
 }
 
@@ -237,7 +237,10 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.DeleteOverlay -> {
                 overlayManager.deleteOverlay(event.overlayId, viewModelScope)
             }
-            is VideoEditorUiEvent.SelectOverlay -> overlayManager.selectOverlay(event.overlayId)
+            is VideoEditorUiEvent.SelectOverlay -> {
+                commitActiveEditing()
+                overlayManager.selectOverlay(event.overlayId)
+            }
             is VideoEditorUiEvent.DuplicateOverlay -> {
                 overlayManager.duplicateOverlay(event.overlayId, viewModelScope)
             }
@@ -246,22 +249,15 @@ class EditorViewModel @Inject constructor(
             }
             
             // Text Overlays
-            is VideoEditorUiEvent.AddTextOverlay -> {
-                overlayManager.addTextOverlay(
-                    text = event.text,
-                    fontAssetPath = "fonts/inter.ttf",
-                    textColorArgb = android.graphics.Color.WHITE,
-                    backgroundColorArgb = android.graphics.Color.TRANSPARENT,
-                    backgroundOpacity = 0f,
-                    textAlignment = "CENTER",
-                    fontSize = 48f,
-                    currentPlayheadMs = event.currentPlayheadMs,
-                    scope = viewModelScope
-                )
-                setState { copy(isAddingText = false, editingTextOverlayId = null) }
-            }
             is VideoEditorUiEvent.UpdateTextOverlay -> {
-                overlayManager.updateTextOverlay(event.overlay, viewModelScope)
+                // While a text overlay is being edited, text updates are draft-only:
+                // they mutate UI state but don't touch the DB or undo history.
+                // The single persist + history entry happens on commit (StopEditingText).
+                if (event.overlay.id == currentState.editingTextOverlayId) {
+                    overlayManager.updateTextOverlayDraft(event.overlay)
+                } else {
+                    overlayManager.updateTextOverlay(event.overlay, viewModelScope)
+                }
             }
             is VideoEditorUiEvent.DeleteTextOverlay -> {
                 overlayManager.deleteTextOverlay(event.overlayId, viewModelScope)
@@ -271,9 +267,71 @@ class EditorViewModel @Inject constructor(
                 overlayManager.duplicateTextOverlay(event.overlayId, viewModelScope)
             }
 
-            is VideoEditorUiEvent.StartAddingText -> setState { copy(isAddingText = true, editingTextOverlayId = null) }
-            is VideoEditorUiEvent.StartEditingText -> setState { copy(isAddingText = false, editingTextOverlayId = _selectedOverlayId.value) }
-            is VideoEditorUiEvent.CancelAddingText -> setState { copy(isAddingText = false, editingTextOverlayId = null) }
+            is VideoEditorUiEvent.StartAddingText -> {
+                // Commit any in-progress text editing session first.
+                commitActiveEditing()
+                val currentPlayheadMs = event.currentPlayheadMs
+                val projectId = currentProjectId ?: return
+                val maxImageZ = currentState.imageOverlays.maxOfOrNull { it.zOrder } ?: -1
+                val maxTextZ = currentState.textOverlays.maxOfOrNull { it.zOrder } ?: -1
+                val maxZ = maxOf(maxImageZ, maxTextZ)
+
+                val overlay = com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    projectId = projectId,
+                    text = "",
+                    fontAssetPath = "fonts/inter.ttf",
+                    textColorArgb = android.graphics.Color.WHITE,
+                    backgroundColorArgb = android.graphics.Color.BLACK,
+                    backgroundOpacity = 0.5f,
+                    backgroundStyle = "NONE",
+                    textAlignment = "CENTER",
+                    fontSize = com.dipdev.aiautocaptioner.ui.videoeditor.text.DEFAULT_FONT_SIZE,
+                    textWidth = com.dipdev.aiautocaptioner.ui.videoeditor.text.DEFAULT_TEXT_WIDTH_FRACTION,
+                    positionX = 0.5f,
+                    positionY = 0.5f,
+                    scaleX = 1f,
+                    scaleY = 1f,
+                    rotation = 0f,
+                    startTimeMs = currentPlayheadMs,
+                    endTimeMs = currentPlayheadMs + 5000L,
+                    zOrder = maxZ + 1,
+                    createdAt = System.currentTimeMillis()
+                )
+                // Add to canvas immediately as a draft (no history entry yet).
+                overlayManager.addTextOverlayDraft(overlay)
+
+                setState { copy(isAddingText = false, editingTextOverlayId = overlay.id) }
+                _selectedOverlayId.value = overlay.id
+            }
+            is VideoEditorUiEvent.StartEditingText -> {
+                val id = _selectedOverlayId.value ?: return
+                if (currentState.textOverlays.none { it.id == id }) return
+                if (currentState.editingTextOverlayId != id) {
+                    commitActiveEditing()
+                }
+                setState { copy(editingTextOverlayId = id) }
+            }
+            is VideoEditorUiEvent.StopEditingText -> commitActiveEditing()
+            is VideoEditorUiEvent.CancelAddingText -> commitActiveEditing()
+        }
+    }
+
+    /**
+     * Ends the active text editing session (if any). If the overlay has text,
+     * this is the single moment the draft is persisted to the DB and recorded
+     * in the undo history as one step. Blank overlays are deleted instead.
+     */
+    private fun commitActiveEditing() {
+        val editingId = currentState.editingTextOverlayId ?: return
+        val overlay = currentState.textOverlays.find { it.id == editingId }
+        setState { copy(editingTextOverlayId = null, isAddingText = false) }
+        if (overlay == null) return
+
+        if (overlay.text.isBlank()) {
+            overlayManager.deleteTextOverlay(overlay.id, viewModelScope, recordHistory = false)
+        } else {
+            overlayManager.commitTextOverlay(overlay, viewModelScope)
         }
     }
 

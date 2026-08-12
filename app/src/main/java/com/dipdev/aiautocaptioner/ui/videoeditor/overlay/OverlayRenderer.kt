@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
@@ -43,6 +44,7 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
+import com.dipdev.aiautocaptioner.ui.videoeditor.text.DEFAULT_TEXT_WIDTH_FRACTION
 import com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayContent
 import androidx.compose.foundation.gestures.detectTransformGestures
 import kotlinx.coroutines.delay
@@ -82,6 +84,9 @@ fun OverlayRenderer(
     onUpdateOverlay: (ImageOverlayEntity) -> Unit,
     onSelectOverlay: (String?) -> Unit,
     onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
+    editingTextOverlayId: String? = null,
+    onStopEditingTextOverlay: () -> Unit = {},
+    onStartEditingTextOverlay: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     videoWidth: Int = 0,
     videoHeight: Int = 0,
@@ -103,11 +108,16 @@ fun OverlayRenderer(
                 .width(with(LocalDensity.current) { canvasWidth.toDp() })
                 .height(with(LocalDensity.current) { canvasHeight.toDp() })
                 .clipToBounds()
-                .pointerInput(Unit) {
+                .pointerInput(editingTextOverlayId) {
                     detectTapGestures {
-                        onSelectOverlay(null)
-                        player?.let { p ->
-                            if (p.isPlaying) p.pause() else p.play()
+                        if (editingTextOverlayId != null) {
+                            // Tap outside while editing = commit (don't toggle playback)
+                            onStopEditingTextOverlay()
+                        } else {
+                            onSelectOverlay(null)
+                            player?.let { p ->
+                                if (p.isPlaying) p.pause() else p.play()
+                            }
                         }
                     }
                 }
@@ -139,7 +149,10 @@ fun OverlayRenderer(
                                 overlay = overlayItem,
                                 canvasWidth = canvasWidth,
                                 canvasHeight = canvasHeight,
-                                isSelected = overlayItem.id == selectedOverlayId,
+                                isSelected = selectedOverlayId == overlayItem.id,
+                                isEditing = editingTextOverlayId == overlayItem.id,
+                                onStopEditing = onStopEditingTextOverlay,
+                                onStartEditing = { onStartEditingTextOverlay(overlayItem.id) },
                                 currentTimelineMs = currentTimelineMs,
                                 onUpdateOverlay = onUpdateTextOverlay,
                                 onSelectOverlay = onSelectOverlay,
@@ -369,6 +382,9 @@ private fun BoxScope.TextOverlayItem(
     canvasWidth: Float,
     canvasHeight: Float,
     isSelected: Boolean,
+    isEditing: Boolean,
+    onStopEditing: () -> Unit,
+    onStartEditing: () -> Unit,
     currentTimelineMs: () -> Long,
     onUpdateOverlay: (TextOverlayEntity) -> Unit,
     onSelectOverlay: (String?) -> Unit,
@@ -382,30 +398,40 @@ private fun BoxScope.TextOverlayItem(
     var localPosX by remember(overlay.id) { mutableFloatStateOf(overlay.positionX) }
     var localPosY by remember(overlay.id) { mutableFloatStateOf(overlay.positionY) }
     var localRotation by remember(overlay.id) { mutableFloatStateOf(overlay.rotation) }
+    var localTextWidth by remember(overlay.id) { mutableFloatStateOf(overlay.textWidth ?: DEFAULT_TEXT_WIDTH_FRACTION) }
     var lastTransformTime by remember(overlay.id) { mutableLongStateOf(0L) }
     var hasPendingTransform by remember(overlay.id) { mutableStateOf(false) }
-    var wasPlaying by remember(overlay.id) { mutableStateOf(false) }
+    
+    var boxWidthPx by remember { mutableFloatStateOf(0f) }
+    var boxHeightPx by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(overlay.scaleX, overlay.scaleY, overlay.positionX, overlay.positionY, overlay.rotation) {
+    // The resize handle deliberately updates localTextWidth immediately and
+    // persists it after a short debounce. Render from that same local value so
+    // the box tracks the user's finger rather than jumping every debounce.
+    val renderedOverlay = overlay.copy(textWidth = localTextWidth)
+
+    LaunchedEffect(overlay.scaleX, overlay.scaleY, overlay.positionX, overlay.positionY, overlay.rotation, overlay.textWidth) {
         if (System.currentTimeMillis() - lastTransformTime > 500) {
             localScaleX = overlay.scaleX
             localScaleY = overlay.scaleY
             localPosX = overlay.positionX
             localPosY = overlay.positionY
             localRotation = overlay.rotation
+            localTextWidth = overlay.textWidth ?: DEFAULT_TEXT_WIDTH_FRACTION
         }
     }
 
     LaunchedEffect(lastTransformTime) {
         if (lastTransformTime > 0) {
-            delay(DEBOUNCE_MS)
+            kotlinx.coroutines.delay(DEBOUNCE_MS)
             onUpdateOverlay(
                 overlay.copy(
                     scaleX = localScaleX,
                     scaleY = localScaleY,
                     positionX = localPosX,
                     positionY = localPosY,
-                    rotation = localRotation
+                    rotation = localRotation,
+                    textWidth = localTextWidth
                 )
             )
             hasPendingTransform = false
@@ -421,7 +447,8 @@ private fun BoxScope.TextOverlayItem(
                         scaleY = localScaleY,
                         positionX = localPosX,
                         positionY = localPosY,
-                        rotation = localRotation
+                        rotation = localRotation,
+                        textWidth = localTextWidth
                     )
                 )
             }
@@ -429,20 +456,17 @@ private fun BoxScope.TextOverlayItem(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .graphicsLayer {
-                    translationX = (localPosX - 0.5f) * canvasWidth
-                    translationY = (localPosY - 0.5f) * canvasHeight
-                    scaleX = localScaleX
-                    scaleY = localScaleY
-                    rotationZ = localRotation
-                }
+        // While editing, the text field needs clean touches (cursor placement,
+        // selection, IME), so move/transform/tap gestures are disabled.
+        val interactionModifier = if (isEditing) {
+            Modifier
+        } else {
+            Modifier
                 .pointerInput(overlay.id + "_tap") {
                     detectTapGestures {
                         player?.pause()
                         onSelectOverlay(overlay.id)
+                        onStartEditing()
                     }
                 }
                 .pointerInput(overlay.id + "_transform") {
@@ -450,7 +474,7 @@ private fun BoxScope.TextOverlayItem(
                         val angleRad = localRotation * Math.PI / 180.0
                         val parentPanX = (pan.x * localScaleX) * Math.cos(angleRad) - (pan.y * localScaleY) * Math.sin(angleRad)
                         val parentPanY = (pan.x * localScaleX) * Math.sin(angleRad) + (pan.y * localScaleY) * Math.cos(angleRad)
-                        
+
                         localPosX += parentPanX.toFloat() / canvasWidth
                         localPosY += parentPanY.toFloat() / canvasHeight
                         localScaleX = clampScale(localScaleX * zoom)
@@ -460,12 +484,70 @@ private fun BoxScope.TextOverlayItem(
                         hasPendingTransform = true
                     }
                 }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .onSizeChanged { size ->
+                    boxWidthPx = size.width.toFloat()
+                    boxHeightPx = size.height.toFloat()
+                }
+                .graphicsLayer {
+                    translationX = (localPosX - 0.5f) * canvasWidth
+                    translationY = (localPosY - 0.5f) * canvasHeight
+                    scaleX = localScaleX
+                    scaleY = localScaleY
+                    rotationZ = localRotation
+                }
+                .then(interactionModifier)
                 .border(
                     width = if (isSelected) 2.dp else 0.dp,
                     color = if (isSelected) AccentRose else Color.Transparent
                 )
         ) {
-            TextOverlayContent(overlay = overlay)
+            if (isEditing) {
+                com.dipdev.aiautocaptioner.ui.videoeditor.text.InlineTextEditor(
+                    overlay = overlay,
+                    containerSize = androidx.compose.ui.unit.IntSize(canvasWidth.toInt(), canvasHeight.toInt()),
+                    onTextChange = {
+                        onUpdateOverlay(overlay.copy(text = it))
+                    },
+                    onFontChange = { fontAssetPath ->
+                        onUpdateOverlay(overlay.copy(fontAssetPath = fontAssetPath))
+                    }
+                )
+            } else {
+                TextOverlayContent(
+                    overlay = renderedOverlay,
+                    canvasWidth = canvasWidth
+                )
+            }
+        }
+        
+        if (isSelected && !isEditing && boxWidthPx > 0f && boxHeightPx > 0f) {
+            OverlayResizeHandle(
+                canvasWidth = canvasWidth,
+                canvasHeight = canvasHeight,
+                posX = localPosX,
+                posY = localPosY,
+                boxWidthPx = boxWidthPx,
+                boxHeightPx = boxHeightPx,
+                scaleX = localScaleX,
+                scaleY = localScaleY,
+                onScaleChange = { sx, sy ->
+                    localScaleX = clampScale(sx)
+                    localScaleY = clampScale(sy)
+                    lastTransformTime = System.currentTimeMillis()
+                    hasPendingTransform = true
+                },
+                textWidthFraction = localTextWidth,
+                onTextWidthChange = { newFraction ->
+                    localTextWidth = newFraction
+                    lastTransformTime = System.currentTimeMillis()
+                    hasPendingTransform = true
+                }
+            )
         }
     }
 }

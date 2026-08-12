@@ -67,7 +67,7 @@ class MainViewModel @Inject constructor(
     
     fun onIntentReceived(intent: Intent) {
         if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("video/") == true) {
-            val uri = intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
+            val uri = androidx.core.content.IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
             if (uri != null) {
                 setState { copy(sharedVideoUri = uri, importError = null) }
             }

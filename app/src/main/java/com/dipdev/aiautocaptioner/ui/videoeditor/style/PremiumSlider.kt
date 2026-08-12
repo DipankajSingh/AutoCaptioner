@@ -3,6 +3,7 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.style
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -117,6 +118,108 @@ fun PremiumSlider(
             color = androidx.compose.ui.graphics.Color.White,
             radius = 4.dp.toPx(),
             center = Offset(size.width * internalRatio, cy)
+        )
+    }
+}
+
+@Composable
+fun VerticalPremiumSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier
+) {
+    var internalRatio by remember {
+        mutableFloatStateOf(((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f))
+    }
+    var isDragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(value) {
+        if (!isDragging) {
+            internalRatio = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
+        }
+    }
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val trackBackgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
+    val glowColor = primaryColor.copy(alpha = 0.5f)
+
+    Canvas(
+        modifier = modifier
+            .width(60.dp)
+            .height(220.dp)
+            .pointerInput(valueRange) {
+                detectVerticalDragGestures(
+                    onDragStart = { isDragging = true },
+                    onDragEnd = { isDragging = false },
+                    onDragCancel = { isDragging = false }
+                ) { change, dragAmount ->
+                    change.consume()
+                    internalRatio = (internalRatio - dragAmount / size.height).coerceIn(0f, 1f)
+                    val realValue = valueRange.start + internalRatio * (valueRange.endInclusive - valueRange.start)
+                    onValueChange(realValue)
+                }
+            }
+            .pointerInput(valueRange) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        val newRatio = (1f - (offset.y / size.height)).coerceIn(0f, 1f)
+                        val realValue = valueRange.start + newRatio * (valueRange.endInclusive - valueRange.start)
+                        onValueChange(realValue)
+                    }
+                )
+            }
+    ) {
+        val trackWidth = 3.dp.toPx()
+        val trackCornerRadius = CornerRadius(trackWidth / 2f)
+        val cx = size.width / 2f
+        val thumbY = size.height * (1f - internalRatio)
+        val thumbRadius = if (isDragging) 14.dp.toPx() else 12.dp.toPx()
+
+        // Draw glow effect (outer glow)
+        if (isDragging) {
+            drawCircle(
+                color = glowColor,
+                radius = thumbRadius + 8.dp.toPx(),
+                center = Offset(cx, thumbY)
+            )
+        }
+
+        // Draw background track
+        drawRoundRect(
+            color = trackBackgroundColor,
+            size = Size(width = trackWidth, height = size.height),
+            topLeft = Offset(cx - trackWidth / 2f, 0f),
+            cornerRadius = trackCornerRadius
+        )
+
+        // Draw filled track
+        drawRoundRect(
+            color = primaryColor,
+            size = Size(width = trackWidth, height = size.height * internalRatio),
+            topLeft = Offset(cx - trackWidth / 2f, size.height * (1f - internalRatio)),
+            cornerRadius = trackCornerRadius
+        )
+
+        // Draw premium thumb with shadow
+        drawCircle(
+            color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
+            radius = thumbRadius + 2.dp.toPx(),
+            center = Offset(cx, thumbY + 3.dp.toPx())
+        )
+
+        // Main thumb
+        drawCircle(
+            color = primaryColor,
+            radius = thumbRadius,
+            center = Offset(cx, thumbY)
+        )
+
+        // Thumb highlight for premium look
+        drawCircle(
+            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f),
+            radius = thumbRadius / 2.5f,
+            center = Offset(cx - thumbRadius / 3f, thumbY - thumbRadius / 3f)
         )
     }
 }

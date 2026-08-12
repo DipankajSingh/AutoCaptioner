@@ -199,10 +199,10 @@ fun VideoTimelinePanel(
                         stringResource(R.string.timeline_duplicate), 
                         tint = if (hasAnySelection) accentColor else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
-                            if (hasOverlaySelection) selectedOverlayId?.let { 
+                            if (hasOverlaySelection) selectedOverlayId.let { 
                                 if (textOverlays.any { t -> t.id == it }) onDuplicateTextOverlay(it) else onDuplicateOverlay(it) 
                             }
-                            else if (hasClipSelection) selectedClipId?.let { onDuplicate(it) }
+                            else if (hasClipSelection) selectedClipId.let { onDuplicate(it) }
                         }
                     )
                     Icon(
@@ -210,10 +210,10 @@ fun VideoTimelinePanel(
                         stringResource(R.string.project_delete), 
                         tint = if (hasAnySelection) MaterialTheme.colorScheme.error else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
-                            if (hasOverlaySelection) selectedOverlayId?.let { 
+                            if (hasOverlaySelection) selectedOverlayId.let { 
                                 if (textOverlays.any { t -> t.id == it }) onDeleteTextOverlay(it) else onDeleteOverlay(it) 
                             }
-                            else if (hasClipSelection) selectedClipId?.let { onDelete(it) }
+                            else if (hasClipSelection) selectedClipId.let { onDelete(it) }
                         }
                     )
                 }

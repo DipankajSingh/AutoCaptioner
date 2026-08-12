@@ -157,7 +157,7 @@ fun AnimatedCaptionPreview(
                 drawRoundRect(
                     color = Color(style.backgroundColor).copy(alpha = style.backgroundOpacity),
                     topLeft = Offset(startX - padH, startY - padV),
-                    size = Size(totalTextWidth.toFloat() + (padH * 2), maxTextHeight + (padV * 2)),
+                    size = Size(totalTextWidth + (padH * 2), maxTextHeight + (padV * 2)),
                     cornerRadius = CornerRadius(cornerRadius)
                 )
             }

@@ -37,7 +37,7 @@ import com.dipdev.aiautocaptioner.data.db.dao.TextOverlayDao
         ImageOverlayEntity::class,
         TextOverlayEntity::class
     ],
-    version = 22,
+    version = 24,
     exportSchema = false,
     autoMigrations = []
 )
@@ -365,6 +365,24 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE image_overlays ADD COLUMN opacity REAL NOT NULL DEFAULT 1.0")
                 db.execSQL("ALTER TABLE image_overlays ADD COLUMN filterName TEXT DEFAULT NULL")
                 db.execSQL("ALTER TABLE image_overlays ADD COLUMN isFlippedX INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Add backgroundStyle to text_overlays */
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop partial index so Room validation doesn't fail on startup
+                db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
+
+                db.execSQL("ALTER TABLE text_overlays ADD COLUMN backgroundStyle TEXT NOT NULL DEFAULT 'NONE'")
+            }
+        }
+
+        /** Add textWidth to text_overlays */
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS `index_caption_styles_default_name`")
+                db.execSQL("ALTER TABLE text_overlays ADD COLUMN textWidth REAL DEFAULT NULL")
             }
         }
     }

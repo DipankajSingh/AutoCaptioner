@@ -201,73 +201,71 @@ class OverlayManager(
     }
 
     // --- Text Overlays ---
-    fun addTextOverlay(
-        text: String,
-        fontAssetPath: String,
-        textColorArgb: Int,
-        backgroundColorArgb: Int,
-        backgroundOpacity: Float,
-        textAlignment: String,
-        fontSize: Float,
-        currentPlayheadMs: Long,
-        scope: CoroutineScope
-    ) {
-        val projectId = getProjectId() ?: return
-        scope.launch(Dispatchers.IO) {
-            try {
-                val overlay = synchronized(zOrderLock) {
-                    val maxImageZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
-                    val maxTextZ = getTextOverlays().maxOfOrNull { it.zOrder } ?: -1
-                    val maxZ = maxOf(maxImageZ, maxTextZ)
-                    
-                    TextOverlayEntity(
-                        id = UUID.randomUUID().toString(),
-                        projectId = projectId,
-                        text = text,
-                        fontAssetPath = fontAssetPath,
-                        textColorArgb = textColorArgb,
-                        backgroundColorArgb = backgroundColorArgb,
-                        backgroundOpacity = backgroundOpacity,
-                        textAlignment = textAlignment,
-                        fontSize = fontSize,
-                        positionX = 0.5f,
-                        positionY = 0.5f,
-                        scaleX = 1f,
-                        scaleY = 1f,
-                        rotation = 0f,
-                        startTimeMs = currentPlayheadMs,
-                        endTimeMs = currentPlayheadMs + 5000L,
-                        zOrder = maxZ + 1,
-                        createdAt = System.currentTimeMillis()
-                    )
-                }
-                
-                withContext(Dispatchers.Main) {
-                    setTextOverlays(getTextOverlays() + overlay)
-                    onOverlaySelected(overlay.id)
-                    onStateUpdated()
-                }
-                overlayRepository.addTextOverlay(overlay)
-            } catch (e: Exception) {
-                android.util.Log.e("OverlayManager", "Error adding text overlay", e)
+
+    /**
+     * Adds a text overlay to the UI state only. No DB write and no history
+     * entry — used for the instant draft box shown when the user taps T.
+     * The overlay is persisted on commit (see [commitTextOverlay]).
+     */
+    fun addTextOverlayDraft(overlay: TextOverlayEntity) {
+        setTextOverlays(getTextOverlays() + overlay)
+    }
+
+    /**
+     * Replaces a text overlay in the UI state only (draft edits while the
+     * overlay is being edited). No DB write, no history entry.
+     */
+    fun updateTextOverlayDraft(overlay: TextOverlayEntity) {
+        val currentList = getTextOverlays()
+        setTextOverlays(currentList.map { if (it.id == overlay.id) overlay else it })
+    }
+
+    /**
+     * Persists the final state of a text overlay: records one history step and
+     * writes to the DB (upsert). Called once when an edit session ends.
+     */
+    fun commitTextOverlay(overlay: TextOverlayEntity, scope: CoroutineScope) {
+        val currentList = getTextOverlays()
+        setTextOverlays(
+            if (currentList.any { it.id == overlay.id }) {
+                currentList.map { if (it.id == overlay.id) overlay else it }
+            } else {
+                currentList + overlay
             }
+        )
+        onStateUpdated()
+        scope.launch(Dispatchers.IO) {
+            overlayRepository.addTextOverlay(overlay)
         }
     }
 
     fun updateTextOverlay(overlay: TextOverlayEntity, scope: CoroutineScope) {
-        val newList = getTextOverlays().map { if (it.id == overlay.id) overlay else it }
-        setTextOverlays(newList)
-        onStateUpdated()
-        scope.launch(Dispatchers.IO) {
-            overlayRepository.updateTextOverlay(overlay)
+        val currentList = getTextOverlays()
+        val exists = currentList.any { it.id == overlay.id }
+        
+        if (exists) {
+            val newList = currentList.map { if (it.id == overlay.id) overlay else it }
+            setTextOverlays(newList)
+            onStateUpdated()
+            scope.launch(Dispatchers.IO) {
+                overlayRepository.updateTextOverlay(overlay)
+            }
+        } else {
+            setTextOverlays(currentList + overlay)
+            onStateUpdated()
+            scope.launch(Dispatchers.IO) {
+                overlayRepository.addTextOverlay(overlay)
+            }
         }
     }
 
-    fun deleteTextOverlay(overlayId: String, scope: CoroutineScope) {
+    fun deleteTextOverlay(overlayId: String, scope: CoroutineScope, recordHistory: Boolean = true) {
         val projectId = getProjectId() ?: return
         val newList = getTextOverlays().filter { it.id != overlayId }
         setTextOverlays(newList)
-        onStateUpdated()
+        if (recordHistory) {
+            onStateUpdated()
+        }
         if (isSelectedOverlay(overlayId)) {
             onOverlaySelected(null)
         }

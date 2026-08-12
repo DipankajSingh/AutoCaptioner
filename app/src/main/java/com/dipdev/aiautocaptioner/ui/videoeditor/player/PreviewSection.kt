@@ -40,7 +40,9 @@ fun PreviewSection(
     segments: List<CaptionSegmentEntity> = emptyList(),
     wordsMap: Map<String, List<CaptionWordEntity>> = emptyMap(),
     textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
-    onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {}
+    onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
+    editingTextOverlayId: String? = null,
+    onStopEditingTextOverlay: () -> Unit = {}
 ) {
     Box(modifier = modifier) {
         VideoPlayerCard(
@@ -63,6 +65,8 @@ fun PreviewSection(
             onUpdateOverlay = onUpdateOverlay,
             onSelectOverlay = onSelectOverlay,
             onUpdateTextOverlay = onUpdateTextOverlay,
+            editingTextOverlayId = editingTextOverlayId,
+            onStopEditingTextOverlay = onStopEditingTextOverlay,
             videoWidth = videoWidth,
             videoHeight = videoHeight,
             player = player
