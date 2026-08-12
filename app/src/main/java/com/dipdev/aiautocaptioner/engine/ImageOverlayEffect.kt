@@ -1,6 +1,10 @@
 package com.dipdev.aiautocaptioner.engine
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.common.OverlaySettings
@@ -18,6 +22,9 @@ class ImageOverlayEffect(
     private val videoWidth: Int,
     private val videoHeight: Int,
     private val rotationDegrees: Int = 0
+    ,private val opacity: Float = 1f
+    ,private val filterName: String? = null
+    ,private val isFlippedX: Boolean = false
 ) : BitmapOverlay() {
 
     private var released = false
@@ -28,6 +35,33 @@ class ImageOverlayEffect(
     private var bgWidth = videoWidth
     private var bgHeight = videoHeight
 
+    /** Compose preview uses these exact color matrices. Apply them once to the
+     * export bitmap so preview and rendered video use the same visual setting. */
+    private val renderedBitmap: Bitmap by lazy {
+        val matrix = when (filterName) {
+            "Grayscale" -> ColorMatrix().apply { setSaturation(0f) }
+            "Sepia" -> ColorMatrix(floatArrayOf(
+                0.393f, 0.769f, 0.189f, 0f, 0f,
+                0.349f, 0.686f, 0.168f, 0f, 0f,
+                0.272f, 0.534f, 0.131f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            ))
+            "Invert" -> ColorMatrix(floatArrayOf(
+                -1f, 0f, 0f, 0f, 255f,
+                0f, -1f, 0f, 0f, 255f,
+                0f, 0f, -1f, 0f, 255f,
+                0f, 0f, 0f, 1f, 0f
+            ))
+            else -> null
+        } ?: return@lazy bitmap
+
+        Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888).also { filtered ->
+            Canvas(filtered).drawBitmap(bitmap, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                colorFilter = ColorMatrixColorFilter(matrix)
+            })
+        }
+    }
+
     override fun configure(size: androidx.media3.common.util.Size) {
         super.configure(size)
         bgWidth = size.width
@@ -35,7 +69,7 @@ class ImageOverlayEffect(
     }
 
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
-        return bitmap
+        return renderedBitmap
     }
 
     override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
@@ -66,25 +100,26 @@ class ImageOverlayEffect(
         val displayW = if (isRotated) bgHeight else bgWidth
         val displayH = if (isRotated) bgWidth else bgHeight
 
-        val imgAspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
+        val imgAspect = renderedBitmap.width.toFloat() / renderedBitmap.height.toFloat().coerceAtLeast(1f)
         val vidAspect = displayW.toFloat() / displayH.toFloat().coerceAtLeast(1f)
         val fitScale = if (imgAspect > vidAspect) {
-            displayW.toFloat() / bitmap.width.toFloat().coerceAtLeast(1f)
+            displayW.toFloat() / renderedBitmap.width.toFloat().coerceAtLeast(1f)
         } else {
-            displayH.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
+            displayH.toFloat() / renderedBitmap.height.toFloat().coerceAtLeast(1f)
         }
 
         return StaticOverlaySettings.Builder()
             .setBackgroundFrameAnchor(mappedX, mappedY)
-            .setScale(scaleX * fitScale, scaleY * fitScale)
+            .setScale((if (isFlippedX) -scaleX else scaleX) * fitScale, scaleY * fitScale)
             .setRotationDegrees(if (isRotated) -rotationDegrees.toFloat() else 0f)
-            .setAlphaScale(if (isVisible) 1f else 0f)
+            .setAlphaScale(if (isVisible) opacity.coerceIn(0f, 1f) else 0f)
             .build()
     }
 
     override fun release() {
         if (!released) {
             released = true
+            if (renderedBitmap !== bitmap && !renderedBitmap.isRecycled) renderedBitmap.recycle()
             super.release()
         }
     }

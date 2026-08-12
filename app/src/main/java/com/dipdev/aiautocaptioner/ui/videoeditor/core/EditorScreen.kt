@@ -48,7 +48,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -354,6 +356,14 @@ fun EditorScreen(
                         }
 
                         val totalEditedMs = remember(clips) { clips.sumOf { it.endTrimMs - it.startTrimMs } }
+                        val density = LocalDensity.current
+                        // This editor draws edge-to-edge, so imePadding alone is
+                        // laid out behind the IME on some devices. Offset the tray
+                        // by the real keyboard inset, excluding the nav-bar inset.
+                        val keyboardInsetPx = (
+                            WindowInsets.ime.getBottom(density) -
+                                WindowInsets.navigationBars.getBottom(density)
+                            ).coerceAtLeast(0)
 
                         // Fix A: pass injected player into EditorState (no longer creates its own)
                         val editorState = rememberEditorState(
@@ -365,10 +375,11 @@ fun EditorScreen(
                             }
                         )
 
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                             // Video Player and Overlays
                             Box(
                                 modifier = Modifier
@@ -665,6 +676,26 @@ fun EditorScreen(
                                 allowedLanguages = allowedLanguages,
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            }
+
+                            // Keep text controls in the screen layer, rather than the
+                            // video canvas. This makes the tray span the editor and
+                            // places it immediately above the real IME.
+                            textOverlays.find { it.id == uiState.editingTextOverlayId }?.let { editingOverlay ->
+                                com.dipdev.aiautocaptioner.ui.videoeditor.text.FontStyleCarousel(
+                                    selectedAssetPath = editingOverlay.fontAssetPath,
+                                    onFontChange = { fontAssetPath ->
+                                        viewModel.setEvent(
+                                            VideoEditorUiEvent.UpdateTextOverlay(
+                                                editingOverlay.copy(fontAssetPath = fontAssetPath)
+                                            )
+                                        )
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .offset { IntOffset(0, -keyboardInsetPx) }
+                                )
+                            }
                         }
                     }
                 }

@@ -512,9 +512,6 @@ private fun BoxScope.TextOverlayItem(
                     containerSize = androidx.compose.ui.unit.IntSize(canvasWidth.toInt(), canvasHeight.toInt()),
                     onTextChange = {
                         onUpdateOverlay(overlay.copy(text = it))
-                    },
-                    onFontChange = { fontAssetPath ->
-                        onUpdateOverlay(overlay.copy(fontAssetPath = fontAssetPath))
                     }
                 )
             } else {
@@ -524,7 +521,7 @@ private fun BoxScope.TextOverlayItem(
                 )
             }
         }
-        
+
         if (isSelected && !isEditing && boxWidthPx > 0f && boxHeightPx > 0f) {
             OverlayResizeHandle(
                 canvasWidth = canvasWidth,

@@ -51,11 +51,17 @@ class TextOverlayEffect(
             }
         }
 
-        val textWidth = if (overlay.textWidth != null) {
+        // Keep the same box model as TextOverlayContent: a fixed total text
+        // box width, with font-relative padding on every side.
+        val horizontalPadding = fontPx * 0.75f * QUALITY_SCALE
+        val verticalPadding = fontPx * 0.5f * QUALITY_SCALE
+        val boxWidth = if (overlay.textWidth != null) {
             ((overlay.textWidth * videoWidth) * QUALITY_SCALE).toInt().coerceAtLeast(10)
         } else {
-            (StaticLayout.getDesiredWidth(overlay.text, textPaint) + 20f).coerceAtLeast(10f).toInt()
+            (StaticLayout.getDesiredWidth(overlay.text, textPaint) + horizontalPadding * 2f)
+                .toInt().coerceAtLeast(10)
         }
+        val textWidth = (boxWidth - horizontalPadding * 2f).toInt().coerceAtLeast(1)
 
         val alignment = when (overlay.textAlignment.uppercase()) {
             "START", "LEFT" -> Layout.Alignment.ALIGN_NORMAL
@@ -77,8 +83,8 @@ class TextOverlayEffect(
             )
         }
 
-        val bitmapWidth = staticLayout.width
-        val bitmapHeight = staticLayout.height
+        val bitmapWidth = boxWidth
+        val bitmapHeight = (staticLayout.height + verticalPadding * 2f).toInt().coerceAtLeast(1)
 
         val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -89,11 +95,14 @@ class TextOverlayEffect(
                 alpha = (overlay.backgroundOpacity.coerceIn(0f, 1f) * 255).toInt().coerceIn(0, 255)
                 style = Paint.Style.FILL
             }
-            val cornerRadius = 8f * context.resources.displayMetrics.density
+            val cornerRadius = fontPx * 0.5f * QUALITY_SCALE
             canvas.drawRoundRect(0f, 0f, bitmapWidth.toFloat(), bitmapHeight.toFloat(), cornerRadius, cornerRadius, bgPaint)
         }
 
+        canvas.save()
+        canvas.translate(horizontalPadding, verticalPadding)
         staticLayout.draw(canvas)
+        canvas.restore()
         return bitmap
     }
 

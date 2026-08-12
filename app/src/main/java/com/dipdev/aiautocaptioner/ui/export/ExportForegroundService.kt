@@ -355,7 +355,10 @@ class ExportForegroundService : Service() {
                                 endTimeMs = overlay.endTimeMs,
                                 videoWidth = displayWidth,
                                 videoHeight = displayHeight,
-                                rotationDegrees = project.videoRotation
+                                rotationDegrees = project.videoRotation,
+                                opacity = overlay.opacity,
+                                filterName = overlay.filterName,
+                                isFlippedX = overlay.isFlippedX
                             )
                         } else null
                     } catch (e: Throwable) {
