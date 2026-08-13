@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import compose.icons.FeatherIcons
 import compose.icons.feathericons.Camera
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,12 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun IntegratedFilterShutter(
     activeFilter: CreatorFilter,
     onFilterSelected: (CreatorFilter) -> Unit,
-    isRecording: Boolean,
     onRecordClick: () -> Unit,
     modifier: Modifier = Modifier,
     filters: List<CreatorFilter> = CreatorFilter.entries
@@ -47,7 +46,7 @@ fun IntegratedFilterShutter(
     
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    
+
     // The base size of the items
     val itemWidth = 64.dp 
     val horizontalPadding = (screenWidth / 2) - (itemWidth / 2)
@@ -64,7 +63,7 @@ fun IntegratedFilterShutter(
             var minDistance = Int.MAX_VALUE
             for (item in layoutInfo.visibleItemsInfo) {
                 val itemCenter = item.offset + item.size / 2
-                val distance = Math.abs(itemCenter - center)
+                val distance = abs(itemCenter - center)
                 if (distance < minDistance) {
                     minDistance = distance
                     closestItemIndex = item.index
@@ -133,7 +132,7 @@ fun IntegratedFilterShutter(
                                 val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
                                 val fraction = if (itemInfo != null) {
                                     val itemCenter = itemInfo.offset + itemInfo.size / 2f
-                                    val distance = Math.abs(center - itemCenter)
+                                    val distance = abs(center - itemCenter)
                                     val maxDistance = itemInfo.size * 1.5f
                                     1f - (distance / maxDistance).coerceIn(0f, 1f)
                                 } else {
@@ -160,7 +159,7 @@ fun IntegratedFilterShutter(
                                 val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
                                 val fraction = if (itemInfo != null) {
                                     val itemCenter = itemInfo.offset + itemInfo.size / 2f
-                                    val distance = Math.abs(center - itemCenter)
+                                    val distance = abs(center - itemCenter)
                                     val maxDistance = itemInfo.size * 1.0f
                                     1f - (distance / maxDistance).coerceIn(0f, 1f)
                                 } else {
@@ -181,7 +180,6 @@ fun IntegratedFilterShutter(
         // Ring height is 80dp. Ring center is at 40dp.
         // To align Ring center to Image center: Ring top = 56 - 40 = 16dp.
         HollowShutterRing(
-            isRecording = isRecording,
             onClick = onRecordClick,
             modifier = Modifier.padding(top = 16.dp) 
         )
@@ -190,7 +188,6 @@ fun IntegratedFilterShutter(
 
 @Composable
 fun HollowShutterRing(
-    isRecording: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {

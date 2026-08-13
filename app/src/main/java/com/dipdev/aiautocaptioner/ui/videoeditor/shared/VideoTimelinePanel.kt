@@ -147,7 +147,6 @@ fun VideoTimelinePanel(
                         val textOverlay = updatedTextOverlays.find { it.id == id } ?: return@TimelineView
                         onUpdateTextOverlay(textOverlay.copy(startTimeMs = startMs, endTimeMs = endMs))
                     },
-                    onCaptionTap = onCaptionTap,
                     onDragStateChange = onDragStateChange,
                     zoomLevel = zoomLevel,
                     player = player,

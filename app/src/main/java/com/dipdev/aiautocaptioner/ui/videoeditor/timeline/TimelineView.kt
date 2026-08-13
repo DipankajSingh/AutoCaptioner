@@ -74,7 +74,6 @@ fun TimelineView(
     textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
     onTextOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
     onMoveOverlayZ: (String, Boolean) -> Unit = {_,_ ->},
-    onCaptionTap: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
@@ -278,7 +277,10 @@ fun TimelineView(
                                                         onDragStateChange(it)
                                                         if (!it) state.draggingOverlayId = null
                                                     },
-                                                    onOverlayTimingChanged = onOverlayTimingChanged,
+                           /**
+ * Converts an exact pixel font size into the TextUnit sp value that Compose
+ * renders as that many px (accounting for density and system font scale).
+ */                         onOverlayTimingChanged = onOverlayTimingChanged,
                                                     onDragPointerStart = {
                                                         state.dragPointerScreenX = it
                                                         state.draggingOverlayId = overlay.id
@@ -311,7 +313,6 @@ fun TimelineView(
                                                     totalEditedMs = state.totalEditedMs,
                                                     primaryColor = primaryColor,
                                                     scrollStateValue = state.scrollOffset,
-                                                    timelineWidthPx = state.boxWidthPx,
                                                     trackContentOffsetPx = halfWidthPx,
                                                     onOverlaySelected = { onOverlaySelected(overlay.id) },
                                                     onDragStateChange = { 

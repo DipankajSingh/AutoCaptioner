@@ -20,6 +20,7 @@ import com.dipdev.aiautocaptioner.data.model.mergeContiguousClips
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 @Stable
@@ -176,9 +177,10 @@ fun rememberTimelineState(
             player.pause()
             var lastSeekTime = -1L
             snapshotFlow { state.scrollState.value }.collect { scrollValue ->
-                val seekTimeMs = Math.round(scrollValue.toDouble() / state.pixelsPerMs.toDouble())
+                val seekTimeMs =
+                    (scrollValue.toDouble() / state.pixelsPerMs.toDouble()).roundToInt()
                 if (kotlin.math.abs(seekTimeMs - lastSeekTime) > 20L) {
-                    lastSeekTime = seekTimeMs
+                    lastSeekTime = seekTimeMs.toLong()
                     var accumulated = 0L
                     var targetWindowIndex = 0
                     var targetPosInWindow = 0L
@@ -207,7 +209,7 @@ fun rememberTimelineState(
             }
             snapshotFlow { currentTimelineMs() }.collect { timeMs ->
                 if (player.isPlaying) {
-                    val scrollOffset = Math.round(timeMs.toDouble() * state.pixelsPerMs.toDouble()).toInt()
+                    val scrollOffset = (timeMs.toDouble() * state.pixelsPerMs.toDouble()).roundToInt()
                     state.scrollState.scrollTo(scrollOffset)
                 }
             }

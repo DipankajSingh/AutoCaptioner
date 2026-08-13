@@ -9,52 +9,25 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
-import androidx.camera.view.attachToComposeSurface
 import androidx.camera.view.video.AudioConfig
-import androidx.camera.compose.CameraXViewfinder
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import com.dipdev.aiautocaptioner.ui.recorder.model.AspectRatio
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.displayCutoutPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.PanTool
-import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -72,7 +45,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -88,32 +60,13 @@ import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.recorder.components.TopHeaderBar
 import com.dipdev.aiautocaptioner.ui.components.UniversalDialog
 import com.dipdev.aiautocaptioner.ui.components.DialogType
-import com.dipdev.aiautocaptioner.ui.recorder.components.PauseResumeControls
-import com.dipdev.aiautocaptioner.ui.recorder.components.QuickShareBar
-import com.dipdev.aiautocaptioner.ui.recorder.components.SmoothnessSlider
 import com.dipdev.aiautocaptioner.ui.recorder.components.FloatingFilterBadge
 import com.dipdev.aiautocaptioner.ui.recorder.components.StudioRightSidebar
 import com.dipdev.aiautocaptioner.ui.recorder.components.StudioBottomArea
-import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.mutableFloatStateOf
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.Aperture
-import compose.icons.feathericons.Clock
-import compose.icons.feathericons.FileText
-import compose.icons.feathericons.Grid
-import compose.icons.feathericons.Image
-import compose.icons.feathericons.RefreshCcw
-import compose.icons.feathericons.Smile
 import compose.icons.feathericons.X
 import compose.icons.feathericons.Zap
 import compose.icons.feathericons.ZapOff
@@ -602,7 +555,6 @@ fun SmartRecorderContent(
             recordingState = recordingState,
             mode = mode,
             isPermissionBlocked = isPermissionBlocked,
-            audioAmplitude = audioAmplitude,
             elapsedSeconds = elapsedSeconds,
             animateFlip = animateFlip,
             onFilterSelected = { filter -> viewModel.selectFilter(filter) },

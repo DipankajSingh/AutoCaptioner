@@ -1,5 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.style
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,17 +19,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.rounded.ColorLens
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,20 +38,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -111,12 +102,12 @@ fun StylePanel(
 
             activeStyle?.let { style ->
                 if (!hasCaptions) {
-                    androidx.compose.foundation.layout.Column(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = "No captions yet",
@@ -124,7 +115,7 @@ fun StylePanel(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         androidx.compose.material3.Button(
                             onClick = onGenerateCaptions,
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
@@ -627,7 +618,7 @@ private fun ColorFieldSwatch(
             text = label,
             fontSize = 10.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 1f else 0.6f),
-            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Medium else androidx.compose.ui.text.font.FontWeight.Normal,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )

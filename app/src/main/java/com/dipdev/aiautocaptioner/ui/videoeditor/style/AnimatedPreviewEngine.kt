@@ -18,7 +18,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
@@ -105,9 +104,6 @@ fun AnimatedCaptionPreview(
     val wordMeasurements = remember(transformedWords, fillStyle) {
         transformedWords.map { word -> textMeasurer.measure(word, style = fillStyle) }
     }
-    val wordMeasurementsOutline = remember(transformedWords, outlineStyle) {
-        transformedWords.map { word -> textMeasurer.measure(word, style = outlineStyle) }
-    }
 
     val totalTextWidth = wordMeasurements.sumOf { it.size.width } + (spaceWidth * (transformedWords.size - 1))
     val maxTextHeight = wordMeasurements.maxOfOrNull { it.size.height }?.toFloat() ?: 0f
@@ -169,7 +165,6 @@ fun AnimatedCaptionPreview(
             
             val isActive = (i == activeWordIndex)
             val isPast = (i < activeWordIndex)
-            val isFuture = (i > activeWordIndex)
 
             // Filtering based on DisplayMode
             val shouldDraw = when (style.displayMode) {

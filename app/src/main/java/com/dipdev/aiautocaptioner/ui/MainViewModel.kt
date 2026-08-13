@@ -2,30 +2,22 @@ package com.dipdev.aiautocaptioner.ui
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Parcelable
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
-import kotlinx.coroutines.flow.distinctUntilChanged
-
 import com.dipdev.aiautocaptioner.ui.navigation.Screen
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class MainUiState(
     val startDestination: Screen? = null,

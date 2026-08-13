@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Smile
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Custom social-media studio smoothness slider designed for instant touch-drag adjustment.
@@ -41,7 +42,7 @@ fun SmoothnessSlider(
 ) {
     val percentage = (currentSmoothness * 100f).toInt().coerceIn(0, 100)
     
-    var lastPercentage by remember { mutableStateOf(percentage) }
+    var lastPercentage by remember { mutableIntStateOf(percentage) }
     var isPulsing by remember { mutableStateOf(false) }
     var isInteracting by remember { mutableStateOf(false) }
 
@@ -56,7 +57,7 @@ fun SmoothnessSlider(
     // Auto-confirm & dismiss after 2.5 seconds of zero touch activity
     LaunchedEffect(isInteracting, currentSmoothness) {
         if (!isInteracting) {
-            delay(2500)
+            delay(2500.milliseconds)
             onDismiss()
         }
     }

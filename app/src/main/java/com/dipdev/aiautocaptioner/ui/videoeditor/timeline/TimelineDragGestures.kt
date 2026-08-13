@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.roundToInt
 
 /**
  * Attaches a **long-press → drag** gesture that lets the user reposition a
@@ -33,7 +34,7 @@ fun Modifier.timelineMoveGesture(
     fun currentEdge(): Long {
         if (pixelsPerMs() <= 0f) return initialStartMs
         val duration = initialEndMs - initialStartMs
-        val deltaMs = Math.round(accumulatedPx.toDouble() / pixelsPerMs().toDouble())
+        val deltaMs = (accumulatedPx.toDouble() / pixelsPerMs().toDouble()).roundToInt()
         return (initialStartMs + deltaMs).coerceIn(0L, totalDurationMs() - duration)
     }
 
@@ -93,7 +94,7 @@ fun Modifier.timelineTrimGesture(
 
     fun currentEdge(): Long {
         if (pixelsPerMs() <= 0f) return initialEdgeMs
-        val deltaMs = Math.round(accumulatedPx.toDouble() / pixelsPerMs().toDouble())
+        val deltaMs = (accumulatedPx.toDouble() / pixelsPerMs().toDouble()).roundToInt()
         return (initialEdgeMs + deltaMs).coerceIn(minEdgeMs(), maxEdgeMs())
     }
 
@@ -137,7 +138,7 @@ fun Modifier.timelineClipSwapGesture(
     onDragEnd: () -> Unit,
 ): Modifier = this.pointerInput(key1, key2) {
     detectDragGesturesAfterLongPress(
-        onDragStart = { offset ->
+        onDragStart = { _ ->
             onDragStart()
             onDragPointerStart(clipCenterPx - scrollStateValue)
         },

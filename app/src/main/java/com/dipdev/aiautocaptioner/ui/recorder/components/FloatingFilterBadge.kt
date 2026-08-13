@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Animated center-screen translucent pill badge in Instagram/Snapchat aesthetic.
@@ -53,7 +54,7 @@ fun FloatingFilterBadge(
             previousFilter = activeFilter
             displayedFilter = activeFilter
             isVisible = true
-            delay(800)
+            delay(800.milliseconds)
             isVisible = false
         }
     }

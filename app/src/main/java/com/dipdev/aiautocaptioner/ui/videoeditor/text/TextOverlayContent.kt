@@ -2,7 +2,6 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -21,9 +20,9 @@ import com.dipdev.aiautocaptioner.engine.BundledFonts
 
 @Composable
 fun TextOverlayContent(
+    modifier: Modifier = Modifier,
     overlay: TextOverlayEntity,
-    canvasWidth: Float = 0f,
-    modifier: Modifier = Modifier
+    canvasWidth: Float = 0f
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -55,7 +54,7 @@ fun TextOverlayContent(
     val boxWidthPx = textBoxWidthPx(widthFraction, canvasWidth)
     val widthMod = with(density) { if (boxWidthPx > 0f) Modifier.width(boxWidthPx.toDp()) else Modifier }
 
-    val fontSize = with(density) { density.pxToTextUnit(textFontPx(overlay.fontSize, canvasWidth)) }
+    val fontSize = density.pxToTextUnit(textFontPx(overlay.fontSize, canvasWidth))
 
     val hp = textHPaddingPx(overlay.fontSize, canvasWidth)
     val vp = textVPaddingPx(overlay.fontSize, canvasWidth)

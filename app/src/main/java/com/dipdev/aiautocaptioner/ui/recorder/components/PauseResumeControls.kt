@@ -21,7 +21,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Pause
 import compose.icons.feathericons.Play
-import compose.icons.feathericons.Square
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.recorder.RecordButton
 

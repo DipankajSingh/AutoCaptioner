@@ -1,18 +1,22 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.style
 
 import android.app.Activity
-import androidx.lifecycle.viewModelScope
 import android.content.Context
-import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
-import com.dipdev.aiautocaptioner.data.db.entity.BackgroundType
+import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.data.billing.PremiumManager
+import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity
-import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
-import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
+import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
-import com.dipdev.aiautocaptioner.data.db.entity.TextAlignment
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
+import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
+import com.dipdev.aiautocaptioner.ui.base.UiEffect
+import com.dipdev.aiautocaptioner.ui.base.UiEvent
+import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.dipdev.aiautocaptioner.ui.captioneditor.CaptionAlignmentUtils
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.restorePurchasesWith
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -20,17 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
-import com.revenuecat.purchases.restorePurchasesWith
-
-import com.dipdev.aiautocaptioner.data.billing.PremiumManager
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionWordEntity
-import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
-import com.dipdev.aiautocaptioner.ui.base.UiEffect
-import com.dipdev.aiautocaptioner.ui.base.UiEvent
-import com.dipdev.aiautocaptioner.ui.base.UiState
-import com.dipdev.aiautocaptioner.R
-import com.revenuecat.purchases.Purchases
+import kotlin.time.Duration.Companion.milliseconds
 
 data class StyleEditorUiState(
     val isPremium: Boolean = false,
@@ -58,9 +52,7 @@ sealed interface StyleEditorUiEvent : UiEvent {
     data object Redo : StyleEditorUiEvent
     data class PurchaseLifetime(val activity: Activity) : StyleEditorUiEvent
     data object RestorePurchases : StyleEditorUiEvent
-    /** Inline quick-edit from VideoEditor popup: update a segment's text without entering full CaptionEditor. */
     data class UpdateSegmentText(val segmentId: String, val newText: String) : StyleEditorUiEvent
-    /** Fix 9: marks the caption editor as visited so the export warning does not reappear */
     data class MarkCaptionEditorVisited(val projectId: String) : StyleEditorUiEvent
 }
 
@@ -99,7 +91,6 @@ class StyleViewModel @Inject constructor(
     }
 
     private fun purchaseLifetime() {
-        // Fix 15: Purchase is handled by RevenueCat Paywall directly in UI — no-op here.
     }
 
     private fun restorePurchases() {
@@ -295,7 +286,7 @@ class StyleViewModel @Inject constructor(
     private fun scheduleAutoSave(style: CaptionStyleEntity) {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
-            delay(500L) // debounce — only save after user stops editing
+            delay(500L.milliseconds)
             val projectId = uiState.value.project?.id ?: return@launch
             val stored = captionRepository.getStyleById(style.id)
             val isUnmodified = stored != null && stored == style
@@ -405,7 +396,6 @@ class StyleViewModel @Inject constructor(
         viewModelScope.launch {
             if (!style.isDefault) {
                 captionRepository.deleteStyle(style)
-                // If we deleted the active style, switch to the first available
                 if (uiState.value.activeStyle?.id == style.id) {
                     setState { copy(activeStyle = uiState.value.styles.firstOrNull()) }
                 }
@@ -418,9 +408,9 @@ class StyleViewModel @Inject constructor(
     }
 }
 
-enum class StyleTab(val labelResId: Int) {
-    TEXT(R.string.style_tab_text),
-    COLOR(R.string.style_tab_color),
-    ANIMATION(R.string.style_tab_animation),
-    PRESETS(R.string.style_tab_presets)
+enum class StyleTab() {
+    TEXT(),
+    COLOR(),
+    ANIMATION(),
+    PRESETS()
 }

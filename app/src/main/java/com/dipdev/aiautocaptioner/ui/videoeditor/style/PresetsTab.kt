@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,10 +31,6 @@ fun PresetsTab(
 ) {
     val listState = rememberLazyListState()
 
-    // Scroll to the currently-active preset only when the styles list first loads
-    // (i.e., when the panel opens and data arrives from the DB).
-    // We intentionally do NOT re-scroll on every activeStyle change — that caused
-    // the chip strip to snap back left every time the user tapped a different preset.
     LaunchedEffect(styles) {
         val index = styles.indexOfFirst { it.id == activeStyle?.id }
         if (index >= 0) {
