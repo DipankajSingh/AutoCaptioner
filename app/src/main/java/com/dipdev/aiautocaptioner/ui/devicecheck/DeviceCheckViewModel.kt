@@ -1,26 +1,17 @@
 package com.dipdev.aiautocaptioner.ui.devicecheck
 
-import android.app.ActivityManager
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.os.Build
-import androidx.lifecycle.ViewModel
 import com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase
 import com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
 data class DeviceInfo(
     val totalRamMb: Int,
@@ -28,10 +19,6 @@ data class DeviceInfo(
     val androidVersion: Int,
     val cpuAbi: String
 )
-
-// SafetyCheckState removed in favor of ModelSafetyCheckState from DeviceCapabilityUseCase
-
-
 
 data class DeviceCheckUiState(
     val deviceInfo: DeviceInfo? = null,

@@ -17,11 +17,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
-import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import androidx.compose.ui.res.stringResource
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.ModelStat
+import com.dipdev.aiautocaptioner.ui.components.UniversalDialog
+import com.dipdev.aiautocaptioner.ui.components.DialogType
 
 @Composable
 fun DeviceCheckScreen(
@@ -143,31 +144,31 @@ fun DeviceCheckScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    when (val state = safetyState) {
+    when (safetyState) {
         is ModelSafetyCheckState.StorageError -> {
-            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
-                type = com.dipdev.aiautocaptioner.ui.components.DialogType.ERROR,
+            UniversalDialog(
+                type = DialogType.ERROR,
                 onDismissRequest = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) },
-                title = "Not enough storage",
-                body = "Not enough storage. Please free up space and try again.",
-                confirmText = "OK",
+                title = stringResource(R.string.dialog_storage_title),
+                body = stringResource(R.string.dialog_storage_body, safetyState.requiredMb),
+                confirmText = stringResource(R.string.dialog_okay),
                 onConfirm = {
                     viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
                 }
             )
         }
         is ModelSafetyCheckState.CellularWarning -> {
-            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
-                type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
+            UniversalDialog(
+                type = DialogType.WARNING,
                 onDismissRequest = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) },
-                title = "Cellular Data Warning",
-                body = "You are on mobile data. This download is around ${state.sizeMb} MB. Continue on mobile data?",
-                confirmText = "Download Anyway",
+                title = stringResource(R.string.dialog_cellular_title),
+                body = stringResource(R.string.dialog_cellular_body, safetyState.sizeMb),
+                confirmText = stringResource(R.string.dialog_download_anyway),
                 onConfirm = {
                     viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState)
                     selectedModelId?.let { onModelSelected(it) }
                 },
-                dismissText = "Cancel",
+                dismissText = stringResource(R.string.caption_cancel),
                 onDismiss = { viewModel.setEvent(DeviceCheckUiEvent.ResetSafetyState) }
             )
         }
