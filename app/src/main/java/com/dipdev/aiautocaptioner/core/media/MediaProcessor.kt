@@ -56,8 +56,7 @@ class MediaProcessor @Inject constructor(
         } finally {
             try {
                 retriever.release()
-            } catch (e: Exception) {
-                // Ignore
+            } catch (_: Exception) {
             }
         }
     }

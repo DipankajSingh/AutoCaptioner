@@ -8,7 +8,6 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
-import android.os.PowerManager
 import android.os.StatFs
 import com.dipdev.aiautocaptioner.R
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -80,41 +79,20 @@ class DeviceCapabilityUseCase @Inject constructor(
                status == BatteryManager.BATTERY_STATUS_FULL
     }
 
-    fun getOptimalThreadCount(): Int {
-        val maxThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return maxThreads
-
-        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return maxThreads
-        return when (pm.currentThermalStatus) {
-            PowerManager.THERMAL_STATUS_NONE     -> maxThreads
-            PowerManager.THERMAL_STATUS_LIGHT    -> (maxThreads - 1).coerceAtLeast(1)
-            PowerManager.THERMAL_STATUS_MODERATE -> (maxThreads / 2).coerceAtLeast(1)
-            else                                 -> 1  // SEVERE, CRITICAL, EMERGENCY, SHUTDOWN
-        }
-    }
-
-    fun getRecommendedModel(language: String): String {
-        return getRecommendedModelWithReason(language).modelId
-    }
-
     fun getRecommendedModelWithReason(language: String): RecommendationResult {
         val totalRamMb = getTotalRamMb()
 
-        return when {
-            // Auto-detect: prefer multilingual so any language works
-            language == "auto" -> when {
+        return when (language) {
+            "auto" -> when {
                 totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
                 totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
                 else -> RecommendationResult("base", R.string.recommend_reason_low_end)
             }
-            // English: prefer English-only models (faster, same accuracy)
-            language == "en" -> when {
+            "en" -> when {
                 totalRamMb >= 4000 -> RecommendationResult("small.en", R.string.recommend_reason_high_end)
                 totalRamMb >= 2000 -> RecommendationResult("base.en", R.string.recommend_reason_mid_range)
                 else -> RecommendationResult("tiny.en", R.string.recommend_reason_low_end_english)
             }
-            // Specific non-English language: recommend multilingual as baseline
-            // (ViewModel upgrades to language-specific fine-tuned model if available)
             else -> when {
                 totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
                 totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)

@@ -1,35 +1,56 @@
 package com.dipdev.aiautocaptioner.core.whisper
 
-/**
- * Single source of truth for the language list shown in the UI.
- *
- * "hinglish" is a synthetic UI language: whisper.cpp (g_lang table) has no
- * Hinglish code, so it is mapped to the real whisper code "hi" (Hindi).
- * "zh-TW" is likewise not a whisper.cpp code — traditional Chinese is
- * transcribed with the "zh" code.
- */
+import java.util.Locale
+
 object WhisperLanguages {
 
-    /** UI language codes, in the default (unranked) display order. */
-    val UI_CODES: List<String> = listOf(
-        "auto", "en", "hi", "hinglish", "es", "fr", "de",
-        "zh", "zh-TW", "yue", "ja", "ko",
-        "it", "ar", "ru", "pt", "ta", "te",
-        "nl", "tr", "pl", "vi", "th", "id", "ms"
+    data class Language(
+        val code: String,
+        val whisperCode: String = code,
+        val displayNameOverride: String? = null
     )
 
-    /** Real whisper.cpp language code for a UI code. */
-    fun whisperCode(uiCode: String): String = when (uiCode) {
-        "hinglish" -> "hi"
-        "zh-TW" -> "zh"
-        else -> uiCode
+    private val SUPPORTED_LANGUAGES = listOf(
+        Language("auto", displayNameOverride = "Auto"),
+        Language("en"),
+        Language("hi"),
+        Language("hinglish", whisperCode = "hi", displayNameOverride = "Hinglish"),
+        Language("es"),
+        Language("fr"),
+        Language("de"),
+        Language("zh", displayNameOverride = "Chinese (Simplified)"),
+        Language("zh-TW", whisperCode = "zh", displayNameOverride = "Chinese (Traditional)"),
+        Language("yue", displayNameOverride = "Cantonese"),
+        Language("ja"),
+        Language("ko"),
+        Language("it"),
+        Language("ar"),
+        Language("ru"),
+        Language("pt"),
+        Language("ta"),
+        Language("te"),
+        Language("nl"),
+        Language("tr"),
+        Language("pl"),
+        Language("vi"),
+        Language("th"),
+        Language("id"),
+        Language("ms")
+    )
+
+    val UI_CODES: List<String> = SUPPORTED_LANGUAGES.map { it.code }
+
+    private val whisperMapping = SUPPORTED_LANGUAGES.associate { it.code to it.whisperCode }
+    private val displayNameOverrides = SUPPORTED_LANGUAGES.associate { it.code to it.displayNameOverride }
+
+    fun whisperCode(uiCode: String): String = whisperMapping[uiCode] ?: uiCode
+
+    fun getDisplayName(code: String): String {
+        displayNameOverrides[code]?.let { return it }
+        val locale = Locale.forLanguageTag(code)
+        return locale.getDisplayName(Locale.getDefault()).replaceFirstChar { it.uppercase() }
     }
 
-    /**
-     * Regional language rankings keyed by ISO-3166 country code.
-     * The first entries are shown first in the language list for users in
-     * that country.
-     */
     private val countryLanguages: Map<String, List<String>> = mapOf(
         // South Asia
         "IN" to listOf("hi", "hinglish", "en", "ta", "te", "ur", "bn", "pa", "mr", "gu", "kn", "ml"),
@@ -87,27 +108,33 @@ object WhisperLanguages {
         "KE" to listOf("en", "sw")
     )
 
-    /**
-     * Orders [UI_CODES] for a device: "auto" first, then the regional
-     * languages for [countryCode] (falling back to [deviceLanguage] when the
-     * country is unknown), then the remaining languages in default order.
-     */
     fun orderedCodes(countryCode: String?, deviceLanguage: String?): List<String> {
-        val ranked = countryCode?.let { countryLanguages[it.uppercase()] }
-            ?: deviceLanguage?.let { lang ->
-                countryLanguages.values.firstOrNull { ranked -> ranked.contains(lang) }
-                    ?: listOf(lang)
-            }
-            ?: emptyList()
+        val uiCodeSet = UI_CODES.toSet()
+        val result = LinkedHashSet<String>()
+        
+        result.add("auto")
 
-        return buildList {
-            add("auto")
-            ranked.forEach { code ->
-                if (code != "auto" && code in UI_CODES && code !in this) add(code)
-            }
-            UI_CODES.forEach { code ->
-                if (code != "auto" && code !in this) add(code)
+        // 1. Languages for the specific country
+        countryCode?.uppercase()?.let { country ->
+            countryLanguages[country]?.forEach { code ->
+                if (code in uiCodeSet) result.add(code)
             }
         }
+
+        // 2. Device language
+        deviceLanguage?.let { lang ->
+            if (lang in uiCodeSet) result.add(lang)
+            // If device language is not in UI_CODES, try to find a country that uses it
+            else {
+                countryLanguages.values.firstOrNull { it.contains(lang) }?.forEach { code ->
+                   if (code in uiCodeSet) result.add(code)
+                }
+            }
+        }
+
+        // 3. All other supported languages
+        UI_CODES.forEach { result.add(it) }
+
+        return result.toList()
     }
 }

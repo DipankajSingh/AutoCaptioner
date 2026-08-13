@@ -334,14 +334,7 @@ fun SettingsScreen(
 
 
                 // About Section
-                Text(
-                    text = stringResource(R.string.settings_about),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Column(
+                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -349,7 +342,7 @@ fun SettingsScreen(
                         text = stringResource(R.string.app_name),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                     )
 
                     val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)

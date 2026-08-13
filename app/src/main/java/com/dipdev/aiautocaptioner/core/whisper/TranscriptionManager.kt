@@ -13,7 +13,6 @@ import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
-
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 import com.dipdev.aiautocaptioner.ui.processing.StreamedSegment
 import com.google.firebase.Firebase
@@ -31,8 +30,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
@@ -70,7 +67,6 @@ class TranscriptionManager @Inject constructor(
     private var transcriptionStartTimeMs: Long = 0L
     @Volatile private var activeProjectId: String? = null
 
-    // Notifications are now handled by TranscriptionForegroundService by observing the 'step' stateflow
 
     fun startProcess(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, isRegenerating: Boolean = false, initialPrompt: String? = null) {
         if (activeJob?.isActive == true) {
@@ -84,11 +80,9 @@ class TranscriptionManager @Inject constructor(
 
         activeJob = managerScope.launch {
             try {
-                // Ensure service is started to host the notification and hold Wakelock
                 val serviceIntent = Intent(context, TranscriptionForegroundService::class.java)
                 ContextCompat.startForegroundService(context, serviceIntent)
 
-                // Battery safety: abort if battery is critically low and not charging
                 val batteryLevel = deviceCapabilityUseCase.getBatteryLevel()
                 val charging = deviceCapabilityUseCase.isCharging()
                 if (batteryLevel in 0..10 && !charging) {
@@ -97,7 +91,6 @@ class TranscriptionManager @Inject constructor(
 
                 val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found. Please try again.")
 
-                // Step 1: Download model if needed
                 if (!model.isDownloaded) {
                     _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
                     
@@ -126,7 +119,6 @@ class TranscriptionManager @Inject constructor(
                     }
                 }
 
-                // Proceed to processing
                 startTranscription(projectId, language, translateToEnglish, isRegenerating, initialPrompt)
 
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -223,7 +215,6 @@ class TranscriptionManager @Inject constructor(
             throw Exception("Could not detect any speech in this video. Make sure the video has clear audio.")
         }
 
-        // Surface the language whisper actually used (relevant when user chose "auto")
         if (language == "auto" || language.isEmpty()) {
             _detectedLanguage.value = whisperEngine.lastDetectedLanguage
         } else {
@@ -293,7 +284,7 @@ class TranscriptionManager @Inject constructor(
         dripJob?.cancel()
         dripJob = managerScope.launch {
             for (segment in _segmentBuffer) {
-                _streamedSegments.value = _streamedSegments.value + segment
+                _streamedSegments.value += segment
                 delay(400L.milliseconds)
             }
         }
@@ -308,7 +299,7 @@ class TranscriptionManager @Inject constructor(
             remaining.add(seg)
         }
         if (remaining.isNotEmpty()) {
-            _streamedSegments.value = _streamedSegments.value + remaining
+            _streamedSegments.value += remaining
         }
     }
 

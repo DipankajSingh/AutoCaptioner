@@ -14,7 +14,6 @@ import java.io.File
 sealed class WhisperException(message: String) : Exception(message) {
     class ModelNotFound(path: String) : WhisperException("Model file not found: $path")
     class ModelLoadFailed : WhisperException("Could not load the AI model")
-    class NotReady : WhisperException("Model is not loaded")
 }
 
 class WhisperEngine(private val context: Context) {
@@ -27,27 +26,17 @@ class WhisperEngine(private val context: Context) {
         }
     }
 
-    // Opaque 64-bit handle returned by loadModel() in jni_bridge.cpp.
-    // 0L means no model is loaded.  Using @Volatile ensures the write is
-    // visible across threads without full synchronisation overhead for reads.
+
     @Volatile private var nativeHandle: Long = 0L
 
-    // Set after transcription when language = "auto".  Read by TranscriptionManager
-    // to surface the detected language to the UI.
+
     @Volatile var lastDetectedLanguage: String? = null
         private set
 
-    // Mutex guards load / unload / transcribe so they never interleave.
-    // This is the Kotlin complement to removing the unprotected static g_ctx.
     private val engineMutex = Mutex()
 
-    // -------------------------------------------------------
-    // JNI function declarations — signatures mirror jni_bridge.cpp exactly.
-    // loadModel now returns a Long (the native pointer cast to jlong).
-    // All other functions that operate on the context now accept that handle.
-    // -------------------------------------------------------
+
     private external fun loadModel(modelPath: String): Long
-    private external fun transcribe(handle: Long, audioData: FloatArray, language: String, translateToEnglish: Boolean, nThreads: Int, initialPrompt: String? = null, listener: ProgressListener? = null): ByteArray?
     private external fun freeModel(handle: Long)
     private external fun getDetectedLanguage(handle: Long): String?
     private external fun transcribeWithTimestamps(
@@ -73,18 +62,6 @@ class WhisperEngine(private val context: Context) {
         fun onSegment(textBytes: ByteArray, startMs: Long, endMs: Long)
     }
 
-    // -------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------
-
-    /**
-     * Call this once before transcribing.
-     * modelFile must be in internal storage (not assets).
-     * Returns true if model loaded successfully.
-     *
-     * If a model is already loaded it is released first, making it safe to
-     * call initialize() again when the user switches models.
-     */
     suspend fun initialize(modelFile: File) {
         withContext(Dispatchers.IO) {
             engineMutex.withLock {
@@ -108,9 +85,7 @@ class WhisperEngine(private val context: Context) {
         }
     }
 
-    /**
-     * Transcribe with per-word timestamps. Returns empty list if model not loaded.
-     */
+
     suspend fun transcribeWithWordTimestamps(
         samples: FloatArray,
         language: String = "en",
@@ -129,7 +104,6 @@ class WhisperEngine(private val context: Context) {
                 val rawBytes = transcribeWithTimestamps(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), initialPrompt, listener, segListener)
                     ?: return@withContext emptyList()
 
-                // Capture the language whisper actually used (matters when language = "auto")
                 lastDetectedLanguage = getDetectedLanguage(handle)
                 
                 val rawString = String(rawBytes, Charsets.UTF_8)
@@ -157,18 +131,9 @@ class WhisperEngine(private val context: Context) {
         val confidence: Float
     )
 
-    /**
-     * Returns true if a model is currently loaded and ready to transcribe.
-     * Uses the Kotlin-side handle so no JNI round-trip is needed.
-     */
+
     fun isReady(): Boolean = nativeHandle != 0L
 
-    /**
-     * Compute optimal thread count based on available cores and current thermal state.
-     * On ARM big.LITTLE chips, scheduling across all cores bottlenecks to the
-     * slowest core and causes thermal throttling.  When the device is already hot,
-     * we reduce threads further to prevent the OS from aggressively throttling.
-     */
     private fun getOptimalThreads(): Int {
         val maxThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return maxThreads
@@ -182,18 +147,12 @@ class WhisperEngine(private val context: Context) {
         }
     }
 
-    /**
-     * Releases the native whisper context and frees model memory (75–466 MB).
-     * Call this immediately after transcription is complete — do not wait for
-     * onDestroy.  The model will be reloaded on the next initialize() call.
-     */
+
     suspend fun release() {
         withContext(Dispatchers.IO) {
             engineMutex.withLock {
                 val handle = nativeHandle
                 if (handle != 0L) {
-                    // Zero out the handle before calling freeModel so any concurrent
-                    // isReady() check sees "not loaded" immediately.
                     nativeHandle = 0L
                     freeModel(handle)
                 }

@@ -38,11 +38,7 @@ class ThumbnailManager(private val context: Context) {
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
     private val cacheSize = maxMemory / 8 // 1/8th of available RAM
 
-    /**
-     * Fix B1: LruCache.entryRemoved is called while the cache holds its internal lock.
-     * Posting updates to StateFlow via Handler.post can deadlock under contention.
-     * We now use a [Channel.trySend] which is non-blocking and safe inside the lock.
-     */
+
     private val evictionChannel = Channel<Long>(Channel.UNLIMITED)
 
     private val memoryCache = object : LruCache<String, Bitmap>(cacheSize) {
@@ -55,21 +51,14 @@ class ThumbnailManager(private val context: Context) {
         }
     }
 
-    // Active loading jobs, keyed by timestamp
     private val activeJobs = ConcurrentHashMap<Long, Job>()
 
-    // UI-facing thumbnail state
     private val _thumbnails = MutableStateFlow<Map<Long, Bitmap>>(emptyMap())
     val thumbnails: StateFlow<Map<Long, Bitmap>> = _thumbnails.asStateFlow()
 
-    // ── Video source state ───────────────────────────────────────────────────
 
     private var currentVideoPath: String = ""
-    /**
-     * Fix B3: stable cache directory ID, computed once per video path.
-     * For file:// paths we hash path + lastModified; for content:// URIs we SHA-256 the URI string,
-     * since content URI hashCode() is not stable across process restarts.
-     */
+
     private var stableVideoId: String = ""
     private var cacheDir: File? = null
 
@@ -77,14 +66,10 @@ class ThumbnailManager(private val context: Context) {
     private var targetThumbWidth: Int = -1
     private val targetThumbHeight: Int = 120
 
-    /**
-     * Fix B4: volatile flag guards against using a retriever that was released during a concurrent
-     * setVideoPath call. Jobs check this flag immediately after polling from the pool.
-     */
+
     @Volatile private var isResetting = false
 
     init {
-        // Fix B1: collect eviction events off the LruCache lock in a dedicated coroutine
         scope.launch {
             evictionChannel.consumeEach { timeMs ->
                 _thumbnails.update { current -> current - timeMs }
@@ -95,7 +80,6 @@ class ThumbnailManager(private val context: Context) {
     fun setVideoPath(videoPath: String) {
         if (currentVideoPath == videoPath) return
 
-        // Fix B4: signal in-flight jobs to discard any polled retrievers
         isResetting = true
 
         clearMemoryCache()
@@ -104,7 +88,6 @@ class ThumbnailManager(private val context: Context) {
 
         currentVideoPath = videoPath
 
-        // Fix B3: compute a stable ID for the disk cache directory
         stableVideoId = computeStableId(videoPath)
         cacheDir = File(context.cacheDir, "thumbnails/$stableVideoId").apply { mkdirs() }
         cleanupOldCacheDirectories()
@@ -139,7 +122,7 @@ class ThumbnailManager(private val context: Context) {
                     }
                     retrieverPool.add(r)
                 } catch (e: Exception) {
-                    try { r.release() } catch (ignored: Exception) {}
+                    try { r.release() } catch (_: Exception) {}
                     throw e
                 }
             }
@@ -148,22 +131,16 @@ class ThumbnailManager(private val context: Context) {
             retrieverPool.forEach { it.release() }
             retrieverPool.clear()
         } finally {
-            // Fix B4: re-enable job processing after pool is ready
             isResetting = false
         }
     }
 
-    /**
-     * Fix B3: Generate a stable, consistent cache directory ID.
-     * - File paths: hash(path) + "_" + lastModified (stable across restarts)
-     * - Content URIs: SHA-256 of the URI string (stable, since URI string doesn't change for same asset)
-     */
+
     private fun computeStableId(videoPath: String): String {
         val file = File(videoPath)
         return if (file.exists()) {
             "${videoPath.hashCode()}_${file.lastModified()}"
         } else {
-            // content:// or other URIs — SHA-256 is stable across restarts
             val digest = MessageDigest.getInstance("SHA-256")
             val hashBytes = digest.digest(videoPath.toByteArray(Charsets.UTF_8))
             hashBytes.joinToString("") { "%02x".format(it) }.take(16)
@@ -184,12 +161,8 @@ class ThumbnailManager(private val context: Context) {
         }
     }
 
-    /**
-     * The UI calls this with the list of exact timestamps it needs right now.
-     * Cancels jobs for timestamps that are no longer needed.
-     */
+
     fun requestThumbnails(timestamps: List<Long>) {
-        // Cancel jobs for timestamps no longer in view
         val unneededJobs = activeJobs.keys - timestamps.toSet()
         for (time in unneededJobs) {
             activeJobs[time]?.cancel()
@@ -207,17 +180,14 @@ class ThumbnailManager(private val context: Context) {
         for (timeMs in timestamps) {
             val key = "${stableVideoId}_$timeMs"
 
-            // L1: Memory cache hit
             val cached = memoryCache.get(key)
             if (cached != null) {
                 updateState(timeMs, cached)
                 continue
             }
 
-            // Skip if already loading
             if (activeJobs.containsKey(timeMs)) continue
 
-            // Launch extraction job
             activeJobs[timeMs] = scope.launch {
                 val bitmap = loadOrExtractFrame(timeMs)
                 if (bitmap != null) {
@@ -230,10 +200,8 @@ class ThumbnailManager(private val context: Context) {
     }
 
     private suspend fun loadOrExtractFrame(timeMs: Long): Bitmap? = withContext(Dispatchers.IO) {
-        // Fix B3: disk filename uses stableVideoId prefix, stable across process restarts
         val file = File(cacheDir, "${stableVideoId}_${timeMs}.jpg")
 
-        // L2: Disk cache hit
         if (file.exists()) {
             try {
                 val bitmap = BitmapFactory.decodeFile(file.absolutePath)
@@ -243,22 +211,16 @@ class ThumbnailManager(private val context: Context) {
             }
         }
 
-        // L3: Decode from video
         poolSemaphore.withPermit {
             val r = retrieverPool.poll() ?: return@withContext null
 
-            // Fix B4: discard retrievers polled during a reset cycle
             if (isResetting) {
                 retrieverPool.offer(r)
                 return@withContext null
             }
 
             try {
-                /**
-                 * Fix B2: OPTION_CLOSEST_SYNC returns the nearest keyframe, avoiding the
-                 * costly multi-frame decode path that OPTION_CLOSEST requires. For thumbnails
-                 * (preview accuracy is unimportant) this is the correct trade-off.
-                 */
+
                 val raw = r.getFrameAtTime(
                     timeMs * 1000,
                     MediaMetadataRetriever.OPTION_CLOSEST_SYNC
@@ -301,7 +263,7 @@ class ThumbnailManager(private val context: Context) {
         clearMemoryCache()
         retrieverPool.forEach { it.release() }
         retrieverPool.clear()
-        evictionChannel.close()   // Fix B1: shut down the eviction consumer coroutine cleanly
+        evictionChannel.close()
         scope.cancel()
     }
 }

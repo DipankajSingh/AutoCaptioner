@@ -63,34 +63,6 @@ import com.dipdev.aiautocaptioner.ui.components.MascotRobot
 import com.dipdev.aiautocaptioner.ui.processing.ProcessingStep
 import java.util.Locale
 
-private val languageDisplayNames = mapOf(
-    "auto" to "Auto",
-    "en" to "English",
-    "hi" to "Hindi",
-    "hinglish" to "Hinglish",
-    "es" to "Spanish",
-    "fr" to "French",
-    "de" to "German",
-    "zh" to "Chinese (Simplified)",
-    "zh-TW" to "Chinese (Traditional)",
-    "yue" to "Cantonese",
-    "ja" to "Japanese",
-    "ko" to "Korean",
-    "it" to "Italian",
-    "ar" to "Arabic",
-    "ru" to "Russian",
-    "pt" to "Portuguese",
-    "ta" to "Tamil",
-    "te" to "Telugu",
-    "nl" to "Dutch",
-    "tr" to "Turkish",
-    "pl" to "Polish",
-    "vi" to "Vietnamese",
-    "th" to "Thai",
-    "id" to "Indonesian",
-    "ms" to "Malay"
-)
-
 private fun orderedLanguageCodes(): List<String> =
     WhisperLanguages.orderedCodes(Locale.getDefault().country, Locale.getDefault().language)
 
@@ -160,7 +132,7 @@ fun TranscriptionBottomSheet(
                 val languagesToShow = if (showAllLanguages) allLanguages else quickLanguages
                 items(languagesToShow) { lang ->
                     val isSelected = lang == selectedLanguage
-                    val label = languageDisplayNames[lang] ?: lang.uppercase()
+                    val label = WhisperLanguages.getDisplayName(lang)
 
                     Surface(
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,

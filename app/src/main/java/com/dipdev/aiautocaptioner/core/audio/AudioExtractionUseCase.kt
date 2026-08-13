@@ -14,7 +14,6 @@ class AudioExtractionUseCase @Inject constructor(
     private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) {
 
-    @Suppress("DEPRECATION")
     suspend fun extractAudioFloatArray(videoPath: String): FloatArray {
         return withContext(Dispatchers.IO) {
             val extractor = MediaExtractor()
@@ -43,7 +42,7 @@ class AudioExtractionUseCase @Inject constructor(
                 extractor.selectTrack(audioTrackIndex)
 
                 val mime = audioFormat.getString(MediaFormat.KEY_MIME)
-                    ?: throw IllegalStateException("Audio MIME type is null")
+                    ?: throw IllegalStateException("Unexpected Error, please report this!")
                 codec = MediaCodec.createDecoderByType(mime)
                 codec.configure(audioFormat, null, null, 0)
                 codec.start()
@@ -63,7 +62,7 @@ class AudioExtractionUseCase @Inject constructor(
                         val inputBufferId = codec.dequeueInputBuffer(10000)
                         if (inputBufferId >= 0) {
                             val inputBuffer = codec.getInputBuffer(inputBufferId)
-                                ?: throw IllegalStateException("Input buffer is null")
+                                ?: throw IllegalStateException("Unexpected Error, please report this!")
                             val sampleSize = extractor.readSampleData(inputBuffer, 0)
                             if (sampleSize < 0) {
                                 codec.queueInputBuffer(inputBufferId, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
@@ -81,7 +80,7 @@ class AudioExtractionUseCase @Inject constructor(
                     } else if (outputBufferId >= 0) {
                         if (info.size > 0) {
                             val outputBuffer = codec.getOutputBuffer(outputBufferId)
-                                ?: throw IllegalStateException("Output buffer is null")
+                                ?: throw IllegalStateException("Unexpected Error, please report this!")
                             if (pcmBytes.size < info.size) {
                                 pcmBytes = ByteArray(info.size)
                             }
@@ -152,7 +151,7 @@ class AudioExtractionUseCase @Inject constructor(
                 crashReporter.recordException(e)
                 throw when (e) {
                     is IllegalStateException -> e
-                    else -> IllegalStateException("Could not extract audio from this video. The file may be corrupted.")
+                    else -> IllegalStateException("Your video has no audio!")
                 }
             } finally {
                 try { codec?.stop() } catch (_: Exception) {}

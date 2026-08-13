@@ -64,7 +64,6 @@ class MediaManager @Inject constructor(
                 val destFile = File(destDir, fileName)
                 sourceFile.copyTo(destFile, overwrite = true)
                 
-                // Use MediaScannerConnection instead of broadcast for reliability
                 MediaScannerConnection.scanFile(
                     context,
                     arrayOf(destFile.absolutePath),
