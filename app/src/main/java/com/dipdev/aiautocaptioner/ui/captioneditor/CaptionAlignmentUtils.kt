@@ -71,7 +71,7 @@ object CaptionAlignmentUtils {
                 val oldWord = oldWords[oldIndex]
                 result.add(
                     oldWord.copy(
-                        id = UUID.randomUUID().toString(), // Use new ID since replaceWordsForSegment probably deletes all previous by segmentId
+                        id = UUID.randomUUID().toString(),
                         word = newWordsList[k],
                         index = k
                     )

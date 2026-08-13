@@ -188,9 +188,6 @@ fun NavGraph(
                     fromEditor = fromEditor,
                     sharedPlayerViewModel = sharedPlayerViewModel,
                     onNavigateBack = { safePopBackStack() },
-                    onNavigateToProcessing = { pid ->
-                        navController.navigate(Screen.Processing(pid, forceModelPicker = true, isRegenerating = true))
-                    },
                     onNavigateToExport = { pid ->
                         navController.navigate(Screen.Export(pid))
                     }
