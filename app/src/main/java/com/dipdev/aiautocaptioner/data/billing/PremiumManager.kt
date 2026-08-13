@@ -27,7 +27,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import com.dipdev.aiautocaptioner.BuildConfig
@@ -59,7 +58,7 @@ class PremiumManager @Inject constructor(
                 try {
                     val initialInfo = Purchases.sharedInstance.awaitCustomerInfo()
                     _customerInfoFlow.tryEmit(initialInfo)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Ignore initial error
                 }
             }
