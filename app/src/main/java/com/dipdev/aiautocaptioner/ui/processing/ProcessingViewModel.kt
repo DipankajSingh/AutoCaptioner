@@ -1,38 +1,24 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
 import android.content.Context
-import android.content.Intent
-import android.util.Log
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
-import com.dipdev.aiautocaptioner.core.whisper.CaptionSegmenter
-import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
-import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
-
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Duration.Companion.milliseconds
 
 // ════════════════════════════════════════════════════════════════════════════════
 // Processing Steps — represents the current state of the processing pipeline
@@ -148,9 +134,7 @@ class ProcessingViewModel @Inject constructor(
     private val transcriptionManager: com.dipdev.aiautocaptioner.core.whisper.TranscriptionManager
 ) : BaseViewModel<ProcessingUiState, ProcessingUiEvent, ProcessingUiEffect>(ProcessingUiState()) {
 
-    companion object {
-        private const val TAG = "ProcessingVM"
-    }
+
 
     private var pendingProjectId: String? = null
 

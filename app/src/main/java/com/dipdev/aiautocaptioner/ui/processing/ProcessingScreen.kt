@@ -30,18 +30,14 @@ import androidx.compose.foundation.shape.CircleShape
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.X
 import compose.icons.feathericons.Edit2
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,14 +49,11 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.processing.components.CancelProcessDialog
 import com.dipdev.aiautocaptioner.ui.processing.components.CancelledView
-import com.dipdev.aiautocaptioner.ui.processing.components.CancellingView
 import com.dipdev.aiautocaptioner.ui.processing.components.ErrorView
 import com.dipdev.aiautocaptioner.ui.processing.components.ModelPickerCard
 import com.dipdev.aiautocaptioner.ui.processing.components.SafetyCheckDialogs
@@ -72,7 +65,6 @@ import android.Manifest
 import android.os.Build
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -97,7 +89,6 @@ fun ProcessingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val step = uiState.step
-    val streamedSegments = uiState.streamedSegments
     val safetyCheck = uiState.safetyCheck
 
     LaunchedEffect(projectId, forceModelPicker, isRegenerating) {
@@ -133,7 +124,7 @@ fun ProcessingScreen(
     var pendingModelIdToDownload by remember { mutableStateOf<String?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
+    ) { _ ->
         pendingModelIdToDownload?.let { 
             viewModel.setEvent(ProcessingUiEvent.DownloadAndProcess(it, projectId))
             pendingModelIdToDownload = null
@@ -156,7 +147,7 @@ fun ProcessingScreen(
         val videoUri = uiState.workingVideoPath
         if (videoUri != null) {
             coil3.compose.AsyncImage(
-                model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                model = coil3.request.ImageRequest.Builder(LocalContext.current)
                     .data(videoUri)
                     .decoderFactory(coil3.video.VideoFrameDecoder.Factory())
                     .build(),
@@ -407,21 +398,21 @@ fun ProcessingScreen(
                             } else {
                                 // ── Full Setup (Advanced / Re-pick) ──
                                 Text(
-                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_title),
+                                    text = stringResource(R.string.model_picker_title),
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                                 Text(
-                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_subtitle),
+                                    text = stringResource(R.string.model_picker_subtitle),
                                     fontSize = 14.sp,
                                     color = Color.White.copy(alpha = 0.7f),
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 )
 
                                 Text(
-                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.setupai_language_label),
+                                    text = stringResource(R.string.setupai_language_label),
                                     fontSize = 13.sp,
                                     color = Color.White.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(bottom = 8.dp)
@@ -541,14 +532,14 @@ fun ProcessingScreen(
                                             Spacer(modifier = Modifier.width(10.dp))
                                             Column {
                                                 Text(
-                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_title),
+                                                    text = stringResource(R.string.auto_detect_info_title),
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = MaterialTheme.colorScheme.onSurface
                                                 )
                                                 Spacer(modifier = Modifier.height(4.dp))
                                                 Text(
-                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_info_body),
+                                                    text = stringResource(R.string.auto_detect_info_body),
                                                     fontSize = 12.sp,
                                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                                     lineHeight = 17.sp
@@ -569,7 +560,7 @@ fun ProcessingScreen(
                                         if (multilingualModels.isNotEmpty()) {
                                             item {
                                                 Text(
-                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_any_language),
+                                                    text = stringResource(R.string.auto_detect_tier_any_language),
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = Color.White.copy(alpha = 0.8f),
@@ -592,7 +583,7 @@ fun ProcessingScreen(
                                             item {
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
-                                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.auto_detect_tier_specialized),
+                                                    text = stringResource(R.string.auto_detect_tier_specialized),
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = Color.White.copy(alpha = 0.8f),
@@ -636,8 +627,8 @@ fun ProcessingScreen(
 
                                 GradientPrimaryButton(
                                     text = stringResource(
-                                        if (isDownloaded) com.dipdev.aiautocaptioner.R.string.model_picker_generate_button
-                                        else com.dipdev.aiautocaptioner.R.string.model_picker_download_button
+                                        if (isDownloaded) R.string.model_picker_generate_button
+                                        else R.string.model_picker_download_button
                                     ),
                                     onClick = { 
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -659,7 +650,7 @@ fun ProcessingScreen(
                                 )
                                 
                                 Text(
-                                    text = stringResource(com.dipdev.aiautocaptioner.R.string.model_picker_battery_note),
+                                    text = stringResource(R.string.model_picker_battery_note),
                                     fontSize = 12.sp,
                                     color = Color.White.copy(alpha = 0.5f),
                                     textAlign = TextAlign.Center,

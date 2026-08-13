@@ -1,12 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.processing.components
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.processing.ModelSafetyCheck
 
@@ -33,13 +28,13 @@ fun SafetyCheckDialogs(
     onDismiss: () -> Unit,
     onProceed: (String) -> Unit
 ) {
-    when (val check = safetyCheck) {
+    when (safetyCheck) {
         is ModelSafetyCheck.StorageError -> {
             com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
                 type = com.dipdev.aiautocaptioner.ui.components.DialogType.ERROR,
                 onDismissRequest = onDismiss,
                 title = stringResource(R.string.dialog_storage_title),
-                body = stringResource(R.string.dialog_storage_body, check.requiredMb),
+                body = stringResource(R.string.dialog_storage_body, safetyCheck.requiredMb),
                 confirmText = stringResource(R.string.dialog_okay),
                 onConfirm = onDismiss
             )
@@ -49,9 +44,9 @@ fun SafetyCheckDialogs(
                 type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
                 onDismissRequest = onDismiss,
                 title = stringResource(R.string.dialog_cellular_title),
-                body = stringResource(R.string.dialog_cellular_body, check.sizeMb),
+                body = stringResource(R.string.dialog_cellular_body, safetyCheck.sizeMb),
                 confirmText = stringResource(R.string.dialog_download_anyway),
-                onConfirm = { onProceed(check.modelId) },
+                onConfirm = { onProceed(safetyCheck.modelId) },
                 dismissText = stringResource(R.string.processing_cancel),
                 onDismiss = onDismiss
             )
