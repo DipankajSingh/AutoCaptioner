@@ -1,25 +1,22 @@
 package com.dipdev.aiautocaptioner.ui.recorder
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.net.Uri
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
+import com.dipdev.aiautocaptioner.engine.FacelessVideoRecorder
+import com.dipdev.aiautocaptioner.engine.effects.CameraEffectManager
+import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
-import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
-import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
-import com.dipdev.aiautocaptioner.engine.FacelessVideoRecorder
 import com.dipdev.aiautocaptioner.ui.recorder.model.AspectRatio
 import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingQuality
 import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingSegment
-import com.dipdev.aiautocaptioner.engine.effects.CameraEffectManager
-import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import dagger.hilt.android.lifecycle.HiltViewModel
-import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -27,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class RecordingMode {
     CAMERA, FACELESS
@@ -170,16 +168,12 @@ class SmartRecorderViewModel @Inject constructor(
         }
     }
 
-    fun updateImageTransform(scale: Float, offsetX: Float, offsetY: Float) {
+    fun updateImageTransform() {
         // No-op since video background was removed
     }
 
     fun setSelectedBackground(bg: BackgroundState) {
         setState { copy(selectedBackground = bg) }
-    }
-
-    fun toggleAudioMuted() {
-        setState { copy(isAudioMuted = !currentState.isAudioMuted) }
     }
 
     fun toggleGrid() { setState { copy(showGrid = !currentState.showGrid) } }
@@ -196,7 +190,7 @@ class SmartRecorderViewModel @Inject constructor(
         }
         filterBadgeTimerJob?.cancel()
         filterBadgeTimerJob = viewModelScope.launch {
-            delay(1800)
+            delay(1800.milliseconds)
             setState { copy(recentlySelectedFilterName = null) }
         }
     }
@@ -207,7 +201,7 @@ class SmartRecorderViewModel @Inject constructor(
         setState { copy(smoothnessIntensity = clamped) }
         debounceSaveSmoothnessJob?.cancel()
         debounceSaveSmoothnessJob = viewModelScope.launch {
-            delay(500)
+            delay(500.milliseconds)
             settingsRepository.setSkinSmoothnessIntensity(clamped)
         }
     }
@@ -279,7 +273,7 @@ class SmartRecorderViewModel @Inject constructor(
         }
     }
 
-    fun requestStartRecording(forceCountdown: Int = 0, context: Context? = null, onProceedToCameraX: () -> Unit) {
+    fun requestStartRecording(forceCountdown: Int = 0, onProceedToCameraX: () -> Unit) {
         if (currentState.recordingState != RecordingState.IDLE || currentState.isCountdownActive) return
 
         val timer = maxOf(currentState.countdownTimer, forceCountdown)
@@ -288,25 +282,25 @@ class SmartRecorderViewModel @Inject constructor(
             viewModelScope.launch {
                 for (i in timer downTo 1) {
                     setState { copy(countdownRemaining = i) }
-                    delay(1000)
+                    delay(1000.milliseconds)
                 }
                 setState { copy(isCountdownActive = false) }
                 if (currentState.recordingMode == RecordingMode.FACELESS) {
-                    startFacelessRecordingInternal(context)
+                    startFacelessRecordingInternal()
                 } else {
                     onProceedToCameraX()
                 }
             }
         } else {
             if (currentState.recordingMode == RecordingMode.FACELESS) {
-                startFacelessRecordingInternal(context)
+                startFacelessRecordingInternal()
             } else {
                 onProceedToCameraX()
             }
         }
     }
 
-    private fun startFacelessRecordingInternal(context: Context? = null) {
+    private fun startFacelessRecordingInternal() {
         if (currentState.recordingState != RecordingState.IDLE) return
 
         viewModelScope.launch {
@@ -524,7 +518,7 @@ class SmartRecorderViewModel @Inject constructor(
         val startElapsed = currentState.elapsedSeconds
         timerJob = viewModelScope.launch {
             while (true) {
-                delay(500)
+                delay(500.milliseconds)
                 val wallElapsed = ((System.currentTimeMillis() - recordingStartTimeMs) / 1000).toInt()
                 setState { copy(elapsedSeconds = startElapsed + wallElapsed) }
             }

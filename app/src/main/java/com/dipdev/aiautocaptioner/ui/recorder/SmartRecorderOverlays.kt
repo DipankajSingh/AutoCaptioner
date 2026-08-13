@@ -3,37 +3,25 @@ package com.dipdev.aiautocaptioner.ui.recorder
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.res.stringResource
-import com.dipdev.aiautocaptioner.R
-import kotlin.random.Random
-import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
 import com.dipdev.aiautocaptioner.ui.recorder.model.AspectRatio
 import kotlinx.coroutines.launch
 
@@ -61,31 +49,28 @@ fun GridOverlay(aspectRatio: AspectRatio = AspectRatio.PORTRAIT_9_16) {
         val topBottomPadding = ((canvasHeight - activeHeight) / 2f).coerceAtLeast(0f)
         val leftRightPadding = ((canvasWidth - activeWidth) / 2f).coerceAtLeast(0f)
 
-        val startX = leftRightPadding
-        val startY = topBottomPadding
-
         drawLine(
             Color.White.copy(alpha = 0.5f),
-            Offset(startX + activeWidth / 3f, startY),
-            Offset(startX + activeWidth / 3f, startY + activeHeight),
+            Offset(leftRightPadding + activeWidth / 3f, topBottomPadding),
+            Offset(leftRightPadding + activeWidth / 3f, topBottomPadding + activeHeight),
             strokeWidth = 2f
         )
         drawLine(
             Color.White.copy(alpha = 0.5f),
-            Offset(startX + activeWidth * 2 / 3f, startY),
-            Offset(startX + activeWidth * 2 / 3f, startY + activeHeight),
+            Offset(leftRightPadding + activeWidth * 2 / 3f, topBottomPadding),
+            Offset(leftRightPadding + activeWidth * 2 / 3f, topBottomPadding + activeHeight),
             strokeWidth = 2f
         )
         drawLine(
             Color.White.copy(alpha = 0.5f),
-            Offset(startX, startY + activeHeight / 3f),
-            Offset(startX + activeWidth, startY + activeHeight / 3f),
+            Offset(leftRightPadding, topBottomPadding + activeHeight / 3f),
+            Offset(leftRightPadding + activeWidth, topBottomPadding + activeHeight / 3f),
             strokeWidth = 2f
         )
         drawLine(
             Color.White.copy(alpha = 0.5f),
-            Offset(startX, startY + activeHeight * 2 / 3f),
-            Offset(startX + activeWidth, startY + activeHeight * 2 / 3f),
+            Offset(leftRightPadding, topBottomPadding + activeHeight * 2 / 3f),
+            Offset(leftRightPadding + activeWidth, topBottomPadding + activeHeight * 2 / 3f),
             strokeWidth = 2f
         )
     }
@@ -101,8 +86,8 @@ fun AspectRatioMaskOverlay(aspectRatio: AspectRatio) {
         val canvasHeight = size.height
         val canvasRatio = canvasWidth / canvasHeight
 
-        var activeWidth = canvasWidth
-        var activeHeight = canvasHeight
+        var activeWidth: Float
+        var activeHeight: Float
 
         if (targetRatio > canvasRatio) {
             activeWidth = canvasWidth

@@ -14,13 +14,12 @@ import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizerResu
 
 class GestureDetectorHelper(
     val context: Context,
-    gestureListener: GestureListener?
+    private val gestureListener: GestureListener?
 ) : ImageAnalysis.Analyzer {
 
     private var gestureRecognizer: GestureRecognizer? = null
     private var lastPalmDetectionTime = 0L
     @Volatile private var isProcessing = false
-    private val gestureListener: GestureListener? = gestureListener
 
     init {
         setupGestureRecognizer()

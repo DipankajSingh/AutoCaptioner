@@ -184,15 +184,12 @@ fun SmartRecorderContent(
     val countdownTimer = uiState.countdownTimer
     val showTeleprompter = uiState.showTeleprompter
     val teleprompterText = uiState.teleprompterText
-    val audioAmplitude = uiState.audioAmplitude
     val isCountdownActive = uiState.isCountdownActive
     val countdownRemaining = uiState.countdownRemaining
     val isGestureDetectionEnabled = uiState.isGestureDetectionEnabled
     val aspectRatio = uiState.aspectRatio
     val recordingQuality = uiState.recordingQuality
     val showExitDialog = uiState.showExitDialog
-    val segments = uiState.segments
-    val currentSegmentStartMs = uiState.currentSegmentStartMs
 
     var showBgPicker by remember { mutableStateOf(false) }
     var flashEnabled by remember { mutableStateOf(false) }
@@ -230,7 +227,7 @@ fun SmartRecorderContent(
             if (isPermissionBlocked) {
                 onRequestPermissions()
             } else {
-                viewModel.requestStartRecording(forceCountdown = forceCountdown, context = context) {
+                viewModel.requestStartRecording(forceCountdown = forceCountdown) {
                     viewModel.prepareCameraRecordingFile { file ->
                         if (activeRecording != null || cameraController.isRecording) {
                             return@prepareCameraRecordingFile
@@ -310,14 +307,14 @@ fun SmartRecorderContent(
 
     LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
         if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA) {
-            val helper = withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val helper = withContext(Dispatchers.IO) {
                 GestureDetectorHelper(context, gestureListener)
             }
             gestureHelper = helper
             cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
         } else {
             cameraController.clearImageAnalysisAnalyzer()
-            withContext(kotlinx.coroutines.Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 gestureHelper?.close()
             }
             gestureHelper = null
@@ -359,10 +356,8 @@ fun SmartRecorderContent(
         }
     }
 
-    // Navigation is handled by QuickShareBar's Edit button, not auto-navigation
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // --- 1. Constant High-Def Background / Preview Area (Never reallocates surface texture) ---
         if (recordingState == RecordingState.DONE && finishedVideoFile != null && finishedVideoFile.exists()) {
             com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard(
                 path = finishedVideoFile.absolutePath,
@@ -372,7 +367,6 @@ fun SmartRecorderContent(
                 showControls = false
             )
         } else {
-            // Intelligent Sensor Lifecycle: Unbind sensor immediately in Faceless mode to save 100% camera GPU & battery resources
             if (cameraGranted) {
                 val shouldBindCamera = mode == RecordingMode.CAMERA && recordingState != RecordingState.DONE
                 LaunchedEffect(shouldBindCamera, cameraController, lifecycleOwner) {
@@ -407,7 +401,6 @@ fun SmartRecorderContent(
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF101010)))
             }
 
-            // Smoothly transition Faceless preview over dark backdrop with zero camera hardware active underneath
             AnimatedVisibility(
                 visible = mode == RecordingMode.FACELESS,
                 enter = fadeIn(tween(250)),
@@ -415,16 +408,11 @@ fun SmartRecorderContent(
                 modifier = Modifier.fillMaxSize()
             ) {
                 SmartRecorderFacelessPreview(
-                    selectedBackground = selectedBackground,
-                    isRecording = recordingState == RecordingState.RECORDING,
-                    onTransformUpdate = { scale, offsetX, offsetY ->
-                        viewModel.updateImageTransform(scale, offsetX, offsetY)
-                    }
+                    selectedBackground = selectedBackground
                 )
             }
         }
 
-        // --- 2. Zero-Flicker Instant Aspect Ratio Masking & Grid Overlays ---
         if (recordingState != RecordingState.DONE) {
             AspectRatioMaskOverlay(aspectRatio = aspectRatio)
         }
@@ -460,12 +448,16 @@ fun SmartRecorderContent(
             // Far Left: Close Button in a subtle dark circular glass badge
             IconButton(
                 onClick = {
-                    if (recordingState == RecordingState.IDLE) {
-                        onNavigateBack()
-                    } else if (recordingState == RecordingState.DONE) {
-                        onNavigateBack()
-                    } else {
-                        viewModel.requestExitRecording()
+                    when (recordingState) {
+                        RecordingState.IDLE -> {
+                            onNavigateBack()
+                        }
+                        RecordingState.DONE -> {
+                            onNavigateBack()
+                        }
+                        else -> {
+                            viewModel.requestExitRecording()
+                        }
                     }
                 },
                 modifier = Modifier
@@ -489,15 +481,15 @@ fun SmartRecorderContent(
                     },
                     modifier = Modifier.size(40.dp)
                 ) {
-                    androidx.compose.material3.Icon(
-                        imageVector = if (flashEnabled) compose.icons.FeatherIcons.Zap else compose.icons.FeatherIcons.ZapOff,
+                    Icon(
+                        imageVector = if (flashEnabled) FeatherIcons.Zap else FeatherIcons.ZapOff,
                         contentDescription = "Flash",
-                        tint = androidx.compose.ui.graphics.Color.White,
+                        tint = Color.White,
                         modifier = Modifier.scale(1.25f)
                     )
                 }
             } else {
-                androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.size(40.dp))
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(40.dp))
             }
 
             // Far Right: Top Header Bar (Aspect Ratio & Quality pills) when IDLE
@@ -509,7 +501,7 @@ fun SmartRecorderContent(
                     onQualityClick = { viewModel.cycleRecordingQuality() }
                 )
             } else {
-                androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.size(40.dp))
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(40.dp))
             }
         }
 
