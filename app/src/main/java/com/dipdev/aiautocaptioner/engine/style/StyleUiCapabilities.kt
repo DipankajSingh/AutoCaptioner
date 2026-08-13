@@ -6,11 +6,7 @@ import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
 import com.dipdev.aiautocaptioner.data.db.entity.GradientDirection
 import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
 
-/**
- * Encapsulates UI control capabilities for a given caption style.
- * Resolves which sliders, pickers, and layout controls are meaningful to show
- * based on the active preset's operational mode.
- */
+
 data class StyleUiCapabilities(
     val showBackgroundStyleControl: Boolean,
     val showBackgroundDetailSliders: Boolean,

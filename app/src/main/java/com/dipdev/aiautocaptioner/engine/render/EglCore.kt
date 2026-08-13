@@ -6,12 +6,15 @@ import android.opengl.EGLContext
 import android.opengl.EGLDisplay
 import android.opengl.EGLExt
 import android.opengl.EGLSurface
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 
 /**
  * Core EGL state (display, context, config).
  * The EGLContext must only be attached to one thread at a time.
  */
+@RequiresApi(Build.VERSION_CODES.O)
 class EglCore {
     private var eglDisplay: EGLDisplay = EGL14.EGL_NO_DISPLAY
     private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
@@ -82,15 +85,6 @@ class EglCore {
             Log.d(TAG, "NOTE: makeCurrent w/o display")
         }
         if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
-            throw RuntimeException("eglMakeCurrent failed")
-        }
-    }
-
-    /**
-     * Makes no context current.
-     */
-    fun makeNothingCurrent() {
-        if (!EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)) {
             throw RuntimeException("eglMakeCurrent failed")
         }
     }

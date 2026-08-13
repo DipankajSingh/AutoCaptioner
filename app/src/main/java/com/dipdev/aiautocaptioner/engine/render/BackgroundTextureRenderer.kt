@@ -7,9 +7,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
-/**
- * Handles rendering solid color or gradient backgrounds using OpenGL ES 2.0.
- */
 class BackgroundTextureRenderer {
 
     private val vertexShaderCode = """

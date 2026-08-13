@@ -2,7 +2,6 @@ package com.dipdev.aiautocaptioner.engine.effects
 
 import android.content.Context
 import android.util.Log
-import android.view.Surface
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraEffect
 import androidx.camera.core.SurfaceOutput
@@ -65,7 +64,7 @@ class CameraEffectManager @Inject constructor() {
         context: Context,
         targets: Int = CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE
     ): Set<CameraEffect> {
-        activeProcessors.forEach { try { it.release() } catch (e: Exception) {} }
+        activeProcessors.forEach { try { it.release() } catch (_: Exception) {} }
         activeProcessors.clear()
         activeEffects.clear()
         activeSkinEffects.clear()
@@ -90,9 +89,14 @@ class CameraEffectManager @Inject constructor() {
             val previewEffect = StudioGpuCameraEffect(
                 CameraEffect.PREVIEW,
                 effectExecutor,
-                previewProcessor,
-                Consumer { error -> Log.e(TAG, "Preview GPU effect processing exception observed: ${error.message}", error) }
-            )
+                previewProcessor
+            ) { error ->
+                Log.e(
+                    TAG,
+                    "Preview GPU effect processing exception observed: ${error.message}",
+                    error
+                )
+            }
             result.add(previewEffect)
             activeEffects.add(previewEffect)
         }
@@ -114,9 +118,14 @@ class CameraEffectManager @Inject constructor() {
             val videoEffect = StudioGpuCameraEffect(
                 CameraEffect.VIDEO_CAPTURE,
                 effectExecutor,
-                videoProcessor,
-                Consumer { error -> Log.e(TAG, "Video Capture GPU effect processing exception observed: ${error.message}", error) }
-            )
+                videoProcessor
+            ) { error ->
+                Log.e(
+                    TAG,
+                    "Video Capture GPU effect processing exception observed: ${error.message}",
+                    error
+                )
+            }
             result.add(videoEffect)
             activeEffects.add(videoEffect)
         }

@@ -8,11 +8,7 @@ import com.dipdev.aiautocaptioner.engine.render.FrameData
 import com.dipdev.aiautocaptioner.engine.render.RenderPass
 import kotlin.math.roundToInt
 
-/**
- * Draws backgrounds: BOX, PILL, FULL_LINE, PER_WORD.
- *
- * This is the first pass (lowest zIndex) — backgrounds go behind everything.
- */
+
 class BackgroundPass : RenderPass {
     override val zIndex = 0
 
@@ -52,12 +48,9 @@ class BackgroundPass : RenderPass {
                     canvas.drawRect(0f, tempRect.top, frame.videoWidth.toFloat(), tempRect.bottom, CaptionPaints.bg)
                 }
                 BackgroundType.PER_WORD -> {
-                    // Per-word backgrounds drawn below in the word loop
                 }
-                BackgroundType.NONE -> {}
             }
 
-            // Per-word backgrounds
             if (style.backgroundType == BackgroundType.PER_WORD) {
                 var x = if (frame.isRtl) line.startX + line.lineWidth else line.startX
                 val spaceW = CaptionPaints.text.measureText(" ")

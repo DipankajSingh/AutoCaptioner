@@ -11,14 +11,6 @@ import com.dipdev.aiautocaptioner.engine.timing.WordState
 import com.dipdev.aiautocaptioner.engine.animation.animators.*
 import kotlin.math.PI
 
-/**
- * Registry + computation engine for per-word animations.
- *
- * Maps AnimationType enum values to WordAnimator implementations.
- * New animations are added by:
- *   1. Creating a WordAnimator implementation
- *   2. Registering it in the init block below
- */
 object AnimationEngine {
 
     private val registry = mutableMapOf<String, WordAnimator>()
@@ -61,15 +53,7 @@ object AnimationEngine {
         AnimationType.FLIP       -> get("flip")
     }
 
-    /**
-     * Compute the final WordTransform for a word at the current playback position.
-     *
-     * Combines:
-     *  1. Enter animation (progress 0→1 as word appears)
-     *  2. Exit animation (progress 0→1 as word disappears, WORD_BY_WORD only)
-     *  3. Karaoke scale-up for active word (SCALE_UP highlight mode)
-     *  4. Emphasis oscillations (BOUNCE, SCALE, SHAKE, COLOR_POP)
-     */
+
     fun computeWordTransform(
         posMs: Long,
         word: WordState,
@@ -80,19 +64,14 @@ object AnimationEngine {
         val wordDurationMs = word.endTimeMs - word.startTimeMs
         val effectiveExitOverlap = TimingEngine.calculateExitOverlap(wordDurationMs, animMs)
 
-        // Enter progress: 0→1 over [startTimeMs, startTimeMs + effectiveEnterMs].
-        // Scale the enter window to the word's own duration so short words
-        // finish entering before they flip to EXITING — no snap.
+
         val effectiveEnterMs = animMs.coerceAtMost(wordDurationMs.coerceAtLeast(1L))
         val enterRaw = ((posMs - word.startTimeMs).toFloat() / effectiveEnterMs).coerceIn(0f, 1f)
-        // Exit progress: 0→1 over [endTimeMs, endTimeMs + effectiveExitOverlap]
         val exitRaw = ((posMs - word.endTimeMs).toFloat() / effectiveExitOverlap).coerceIn(0f, 1f)
 
         val isEntering = word.lifecycle == WordLifecycle.ENTERING || word.lifecycle == WordLifecycle.UPCOMING
         val isExiting = word.lifecycle == WordLifecycle.EXITING
 
-        // KARAOKE_FILL locks the whole sentence onto a static grid — words never
-        // animate in individually, so the reader keeps a stable anchor to read ahead.
         val enter = when {
             style.displayMode == DisplayMode.KARAOKE_FILL -> 1f
             isEntering || word.lifecycle == WordLifecycle.ACTIVE -> enterRaw
@@ -100,11 +79,9 @@ object AnimationEngine {
         }
         val exit = if (isExiting) exitRaw else 0f
 
-        // Compute enter transform
         val enterAnimator = resolve(style.wordEnterAnimation)
         val et = enterAnimator.computeTransform(enter, WordLifecycle.ENTERING, baseScale)
 
-        // Compute exit transform (only for WORD_BY_WORD mode)
         val xt = if (isExiting) {
             val exitAnimator = resolve(style.wordExitAnimation)
             exitAnimator.computeTransform(1f - exit, WordLifecycle.EXITING, baseScale)
@@ -112,7 +89,6 @@ object AnimationEngine {
             WordTransform()
         }
 
-        // Combine enter + exit
         val alpha = et.alpha * (if (isExiting) {
             if (style.wordExitAnimation == AnimationType.NONE) {
                 (1f - AnimationUtils.easeInCubic(exit)).coerceIn(0f, 1f)
@@ -127,8 +103,7 @@ object AnimationEngine {
         var ty = et.translateY + (if (isExiting) xt.translateY else 0f)
         var clip = et.clipFraction
 
-        // Typewriter: override clipFraction for ACTIVE lifecycle
-        // to reveal letters progressively over the word's speaking duration
+
         if (word.lifecycle == WordLifecycle.ACTIVE &&
             (style.displayMode == DisplayMode.TYPEWRITER || style.wordEnterAnimation == AnimationType.TYPEWRITER)
         ) {
@@ -136,10 +111,7 @@ object AnimationEngine {
             clip = ((posMs - word.startTimeMs).toFloat() / wordDur).coerceIn(0f, 1f)
         }
 
-        // Karaoke / line-highlight emphasis (TikTok / CapCut kinetic pop style).
-        // Strictly guarded to karaoke and line highlight modes so other presets are 100% untouched.
-        // For FILL_LEFT_RIGHT the fill sweep in TextFillPass is the highlight — deliberately no
-        // scale pop, so the locked sentence stays stationary while the sweep progresses.
+
         if (word.lifecycle == WordLifecycle.ACTIVE &&
             (style.displayMode == DisplayMode.KARAOKE_FILL || style.displayMode == DisplayMode.LINE_HIGHLIGHT)
         ) {
@@ -152,7 +124,6 @@ object AnimationEngine {
             }
         }
 
-        // Emphasis oscillations
         var colorOverride: Int? = null
         if (word.lifecycle == WordLifecycle.ACTIVE && word.isEmphasized) {
             val phase = (posMs % 600L).toFloat() / 600f * 2f * PI.toFloat()

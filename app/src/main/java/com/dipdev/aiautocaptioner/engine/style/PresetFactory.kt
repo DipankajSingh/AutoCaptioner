@@ -3,7 +3,6 @@ package com.dipdev.aiautocaptioner.engine.style
 import com.dipdev.aiautocaptioner.data.db.entity.*
 object PresetFactory {
 
-    /** Stable deterministic ID for a preset — never changes across app launches. */
     fun presetId(name: String): String = "preset_" + name.lowercase().replace(" ", "_")
 
     private fun defaultId(name: String): String =

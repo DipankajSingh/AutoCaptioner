@@ -64,6 +64,7 @@ class FacelessVideoRecorder {
     private var onAmplitudeCallback: ((Float) -> Unit)? = null
     private var outputFile: File? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingPermission")
     fun start(
         width: Int = 1080,
@@ -219,6 +220,7 @@ class FacelessVideoRecorder {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun videoDrawLoop(
         color: Int?,
         gradientColors: List<Int>?

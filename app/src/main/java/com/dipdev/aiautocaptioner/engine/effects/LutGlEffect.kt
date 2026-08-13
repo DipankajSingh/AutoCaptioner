@@ -41,10 +41,8 @@ class LutGlEffect(
         activeShaderProgram?.setFilterUniform(filter.shaderIndex)
     }
 
-    fun getActiveFilter(): CreatorFilter = currentFilter
-
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
-        val program = LutShaderProgram(context, useHdr, currentFilter.shaderIndex)
+        val program = LutShaderProgram(useHdr, currentFilter.shaderIndex)
         activeShaderProgram = program
         return program
     }
@@ -55,7 +53,6 @@ class LutGlEffect(
  */
 @OptIn(UnstableApi::class)
 internal class LutShaderProgram(
-    context: Context,
     useHdr: Boolean,
     initialFilterIndex: Int
 ) : BaseGlShaderProgram(useHdr, 1) {
@@ -116,7 +113,7 @@ internal class LutShaderProgram(
         super.release()
         try {
             glProgram.delete()
-        } catch (e: GlUtil.GlException) {
+        } catch (_: GlUtil.GlException) {
             // Suppress cleanly during teardown
         }
     }

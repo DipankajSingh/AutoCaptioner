@@ -44,10 +44,8 @@ class SkinSmoothGlEffect(
         activeShaderProgram?.setSmoothnessUniform(clamped)
     }
 
-    fun getSmoothness(): Float = currentSmoothness
-
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
-        val program = SkinSmoothShaderProgram(context, useHdr, currentSmoothness)
+        val program = SkinSmoothShaderProgram(useHdr, currentSmoothness)
         activeShaderProgram = program
         return program
     }
@@ -58,7 +56,6 @@ class SkinSmoothGlEffect(
  */
 @OptIn(UnstableApi::class)
 internal class SkinSmoothShaderProgram(
-    context: Context,
     useHdr: Boolean,
     initialSmoothness: Float
 ) : BaseGlShaderProgram(useHdr, 1) {
@@ -127,7 +124,7 @@ internal class SkinSmoothShaderProgram(
         super.release()
         try {
             glProgram.delete()
-        } catch (e: GlUtil.GlException) {
+        } catch (_: GlUtil.GlException) {
             // Log or silence cleanly on teardown
         }
     }

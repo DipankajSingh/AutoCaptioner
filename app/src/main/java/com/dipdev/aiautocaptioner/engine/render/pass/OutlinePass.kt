@@ -1,7 +1,6 @@
 package com.dipdev.aiautocaptioner.engine.render.pass
 
 import android.graphics.Canvas
-import android.graphics.Paint
 import androidx.core.graphics.withTranslation
 import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
 import com.dipdev.aiautocaptioner.engine.CaptionPaints
@@ -9,19 +8,13 @@ import com.dipdev.aiautocaptioner.engine.render.FrameData
 import com.dipdev.aiautocaptioner.engine.render.RenderPass
 import kotlin.math.roundToInt
 
-/**
- * Draws text outlines and drop shadows.
- *
- * Second pass (zIndex = 10) — outlines go behind text fills but in front of backgrounds.
- * Shadow is set on the outline paint by CaptionPaints.configure().
- */
+
 class OutlinePass : RenderPass {
     override val zIndex = 10
 
     override fun render(canvas: Canvas, frame: FrameData) {
         val style = frame.style
         val fm = CaptionPaints.text.fontMetrics
-        val baseScale = frame.baseScale
 
         var lineY = frame.layout.startY
 

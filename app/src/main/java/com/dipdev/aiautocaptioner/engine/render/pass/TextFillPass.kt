@@ -1,15 +1,11 @@
 package com.dipdev.aiautocaptioner.engine.render.pass
 
 import android.graphics.Canvas
-import android.graphics.LinearGradient
 import android.graphics.RectF
-import android.graphics.Shader
-import androidx.core.graphics.withClip
 import androidx.core.graphics.withTranslation
-import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
-import com.dipdev.aiautocaptioner.data.db.entity.GradientDirection
-import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
 import com.dipdev.aiautocaptioner.data.db.entity.AnimationType
+import com.dipdev.aiautocaptioner.data.db.entity.DisplayMode
+import com.dipdev.aiautocaptioner.data.db.entity.KaraokeHighlightMode
 import com.dipdev.aiautocaptioner.engine.CaptionPaints
 import com.dipdev.aiautocaptioner.engine.render.FrameData
 import com.dipdev.aiautocaptioner.engine.render.RenderPass
@@ -108,7 +104,7 @@ class TextFillPass : RenderPass {
                             frame.timing.activeWordIndex >= 0 &&
                             wl.word.index <= frame.timing.activeWordIndex)
                     if (shouldShowOverlay) {
-                        renderKaraokeHighlight(canvas, wl, x, lineY, lineTop, lineBot, style, frame)
+                        renderKaraokeHighlight(canvas, wl, x, lineY, lineBot, style, frame)
                     }
                 }
 
@@ -123,21 +119,16 @@ class TextFillPass : RenderPass {
     private fun renderKaraokeHighlight(
         canvas: Canvas,
         wl: com.dipdev.aiautocaptioner.engine.layout.WordLayout,
-        x: Float, y: Float, lineTop: Float, lineBot: Float,
+        x: Float, y: Float, lineBot: Float,
         style: com.dipdev.aiautocaptioner.data.db.entity.CaptionStyleEntity,
         frame: FrameData
     ) {
         val xfm = frame.transforms[wl.word.index] ?: return
         val baseScale = frame.baseScale
-        val padX = style.backgroundPaddingH * baseScale
-        val padY = style.backgroundPaddingV * baseScale
-        val corner = style.backgroundCornerRadius * baseScale
 
         when (style.karaokeHighlightMode) {
             KaraokeHighlightMode.FILL_LEFT_RIGHT -> {
                 if (style.displayMode == DisplayMode.KARAOKE_FILL) {
-                    // Instant fill: the active word turns solid the moment it
-                    // starts — no left-to-right sweep.
                     CaptionPaints.highlight.alpha = (255 * xfm.alpha * frame.pageAlpha).roundToInt().coerceIn(0, 255)
                     canvas.drawText(wl.displayText, 0, wl.displayText.length, x, y, CaptionPaints.highlight)
                     CaptionPaints.highlight.alpha = 255
@@ -152,7 +143,6 @@ class TextFillPass : RenderPass {
                 CaptionPaints.bg.alpha = (style.backgroundOpacity * 255).roundToInt().coerceIn(0, 255)
             }
             KaraokeHighlightMode.BACKGROUND_HIGHLIGHT -> {
-                // Handled before text glyph rendering above as solid substrate
             }
             KaraokeHighlightMode.SCALE_UP -> { /* handled in AnimationEngine */ }
             KaraokeHighlightMode.COLOR_CHANGE -> { /* handled via fillColor resolution above */ }
