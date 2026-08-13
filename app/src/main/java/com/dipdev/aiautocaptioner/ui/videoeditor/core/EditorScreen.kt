@@ -648,12 +648,6 @@ fun EditorScreen(
                                 },
                                 currentMode = currentMode,
                                 onModeChange = { currentMode = it },
-                                selectedLanguage = selectedLanguage,
-                                translateToEnglish = translateToEnglish,
-                                onLanguageSelected = { lang, trans ->
-                                    viewModel.setEvent(VideoEditorUiEvent.SaveLanguage(lang, trans))
-                                },
-                                allowedLanguages = allowedLanguages,
                                 modifier = Modifier.fillMaxWidth()
                             )
                             }

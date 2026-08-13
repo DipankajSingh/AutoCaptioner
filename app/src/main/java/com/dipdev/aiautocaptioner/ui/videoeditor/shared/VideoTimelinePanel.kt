@@ -2,13 +2,13 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.shared
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,14 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
-import compose.icons.FeatherIcons
-import compose.icons.feathericons.Copy
-import compose.icons.feathericons.Copy
-import compose.icons.feathericons.Minus
-import compose.icons.feathericons.Plus
-import compose.icons.feathericons.Scissors
-import compose.icons.feathericons.Trash2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,23 +24,30 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.data.model.Clip
 import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineView
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Copy
+import compose.icons.feathericons.Minus
+import compose.icons.feathericons.Plus
+import compose.icons.feathericons.Scissors
+import compose.icons.feathericons.Trash2
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun VideoTimelinePanel(
+    modifier: Modifier = Modifier,
     timelineHeight: Dp,
     maxTimelineHeight: Dp,
     onTimelineHeightChanged: (Dp) -> Unit,
@@ -66,8 +65,6 @@ fun VideoTimelinePanel(
     textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
     onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
     onCaptionTap: () -> Unit,
-    modifier: Modifier = Modifier,
-    onAddImage: () -> Unit = {},
     onDragStateChange: (Boolean) -> Unit,
     zoomLevel: Float,
     player: Player,
@@ -83,7 +80,6 @@ fun VideoTimelinePanel(
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
-    // Fix 6: pinch-to-zoom callback — called with the cumulative pinch scale factor
     onPinchZoom: (scale: Float) -> Unit = {
 },
     segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
@@ -91,7 +87,7 @@ fun VideoTimelinePanel(
     onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
 ) {
     val density = LocalDensity.current
-    val currentTimelineHeight by androidx.compose.runtime.rememberUpdatedState(timelineHeight)
+    val currentTimelineHeight by rememberUpdatedState(timelineHeight)
     val updatedOverlays by rememberUpdatedState(overlays)
     val updatedTextOverlays by rememberUpdatedState(textOverlays)
 
@@ -99,7 +95,6 @@ fun VideoTimelinePanel(
         modifier = modifier
             .fillMaxWidth()
             .height(timelineHeight)
-            // Fix 6: pinch-to-zoom using detectTransformGestures (compatible with horizontal scroll)
             .pointerInput(Unit) {
                 detectTransformGestures { _, _, zoom, _ ->
                     onPinchZoom(zoom)
@@ -202,7 +197,7 @@ fun VideoTimelinePanel(
                             if (hasOverlaySelection) selectedOverlayId.let { 
                                 if (textOverlays.any { t -> t.id == it }) onDuplicateTextOverlay(it) else onDuplicateOverlay(it) 
                             }
-                            else if (hasClipSelection) selectedClipId.let { onDuplicate(it) }
+                            else if (hasClipSelection) onDuplicate(selectedClipId)
                         }
                     )
                     Icon(
@@ -213,7 +208,7 @@ fun VideoTimelinePanel(
                             if (hasOverlaySelection) selectedOverlayId.let { 
                                 if (textOverlays.any { t -> t.id == it }) onDeleteTextOverlay(it) else onDeleteOverlay(it) 
                             }
-                            else if (hasClipSelection) selectedClipId.let { onDelete(it) }
+                            else if (hasClipSelection) onDelete(selectedClipId)
                         }
                     )
                 }

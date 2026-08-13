@@ -19,7 +19,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -55,6 +54,7 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
 
 @Composable
 fun EditorBottomDock(
+    modifier: Modifier = Modifier,
     maxHeight: Dp,
     clips: ImmutableList<Clip>,
     thumbnails: Map<Long, Bitmap>,
@@ -85,18 +85,12 @@ fun EditorBottomDock(
     onDelete: (String) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
-    modifier: Modifier = Modifier,
-    // Fix 6: pinch-to-zoom scale factor from VideoTimelinePanel
     onPinchZoom: (scale: Float) -> Unit = {},
     segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
     selectedCaptionSegmentId: String? = null,
     onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
     onGenerateCaptions: () -> Unit = {},
     onAddImage: () -> Unit = {},
-    selectedLanguage: String = "en",
-    translateToEnglish: Boolean = false,
-    onLanguageSelected: (String, Boolean) -> Unit = { _, _ -> },
-    allowedLanguages: List<String> = listOf("multilingual"),
     currentMode: EditorMode = EditorMode.VIDEO,
     onModeChange: (EditorMode) -> Unit = {}
 ) {
@@ -137,7 +131,6 @@ fun EditorBottomDock(
                     textOverlays = textOverlays,
                     onUpdateTextOverlay = onUpdateTextOverlay,
                     onCaptionTap = { onModeChange(EditorMode.CAPTIONS) },
-                    onAddImage = onAddImage,
                     onDragStateChange = onDragStateChange,
                     zoomLevel = zoomLevel,
                     player = player,

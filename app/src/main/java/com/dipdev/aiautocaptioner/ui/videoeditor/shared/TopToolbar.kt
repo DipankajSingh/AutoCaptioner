@@ -18,10 +18,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Redo
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Redo
-import androidx.compose.material.icons.rounded.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.theme.LocalAccentColor
 
-@Suppress("DEPRECATION")
 @Composable
 fun EditorTopOverlay(
     canUndo: Boolean,
@@ -98,7 +97,7 @@ fun EditorTopOverlay(
                         .padding(2.dp)
                 )
                 Icon(
-                    imageVector = Icons.Rounded.Undo,
+                    imageVector = Icons.AutoMirrored.Rounded.Undo,
                     contentDescription = stringResource(R.string.side_undo),
                     tint = if (canUndo) Color.White else Color.White.copy(alpha = 0.38f),
                     modifier = Modifier
@@ -109,7 +108,7 @@ fun EditorTopOverlay(
                         .padding(2.dp)
                 )
                 Icon(
-                    imageVector = Icons.Rounded.Redo,
+                    imageVector = Icons.AutoMirrored.Rounded.Redo,
                     contentDescription = stringResource(R.string.side_redo),
                     tint = if (canRedo) Color.White else Color.White.copy(alpha = 0.38f),
                     modifier = Modifier
