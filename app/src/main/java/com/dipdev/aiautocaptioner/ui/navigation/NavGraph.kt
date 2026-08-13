@@ -20,7 +20,6 @@ import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
 import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
-import kotlin.reflect.typeOf
 
 @Composable
 fun NavGraph(
@@ -204,17 +203,11 @@ fun NavGraph(
             
             com.dipdev.aiautocaptioner.ui.export.ExportScreen(
                 projectId = args.projectId,
-                onNavigateBack = { safePopBackStack() },
-                onNavigateToHome = {
-                    navController.navigate(Screen.Home) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
-        composable<Screen.SmartRecorder> { backStackEntry ->
-            val args = backStackEntry.toRoute<Screen.SmartRecorder>()
+        composable<Screen.SmartRecorder> { _ ->
             SmartRecorderScreen(
                 onNavigateBack = { safePopBackStack() },
                 onVideoReady = { projectId ->

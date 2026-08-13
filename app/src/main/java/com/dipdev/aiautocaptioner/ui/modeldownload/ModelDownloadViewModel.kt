@@ -1,20 +1,15 @@
 package com.dipdev.aiautocaptioner.ui.modeldownload
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class ModelDownloadUiState(
     val downloadState: DownloadState = DownloadState.Starting,

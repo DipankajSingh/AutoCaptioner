@@ -1,11 +1,12 @@
 package com.dipdev.aiautocaptioner.ui.home
 
+import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
+import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectWithExportedFiles
-import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
@@ -14,13 +15,7 @@ import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.google.firebase.Firebase
 import com.google.firebase.remoteconfig.remoteConfig
-import android.app.Application
 import dagger.hilt.android.lifecycle.HiltViewModel
-import com.dipdev.aiautocaptioner.R
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -72,7 +67,7 @@ class HomeViewModel @Inject constructor(
                         setState { copy(announcementMessage = config.getString("home_announcement_message")) }
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore errors
             }
         }

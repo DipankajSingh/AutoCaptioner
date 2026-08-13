@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun EmptyProjectView(
@@ -73,19 +74,19 @@ internal fun EmptyProjectView(
     LaunchedEffect(Unit) {
         launch { animateIllustration.animateTo(1f, tween(900, easing = EaseOutBack)) }
         launch { 
-            delay(40)
+            delay(40.milliseconds)
             animateText.animateTo(1f, tween(800, easing = EaseOutQuint)) 
         }
         launch { 
-            delay(80)
+            delay(80.milliseconds)
             animatePrimary.animateTo(1f, tween(900, easing = EaseOutBack)) 
         }
         launch { 
-            delay(120)
+            delay(120.milliseconds)
             animateSecondary1.animateTo(1f, tween(800, easing = EaseOutQuint)) 
         }
         launch { 
-            delay(160)
+            delay(160.milliseconds)
             animateSecondary2.animateTo(1f, tween(800, easing = EaseOutQuint)) 
         }
     }

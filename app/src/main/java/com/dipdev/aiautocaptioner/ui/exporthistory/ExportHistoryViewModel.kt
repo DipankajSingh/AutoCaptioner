@@ -8,7 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewModelScope
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
+import com.dipdev.aiautocaptioner.core.utils.MediaManager
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
@@ -19,14 +19,11 @@ import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import javax.inject.Inject
-import com.dipdev.aiautocaptioner.core.utils.MediaManager
 
 data class ExportHistoryState(
     val exports: List<ExportedFileEntity> = emptyList()

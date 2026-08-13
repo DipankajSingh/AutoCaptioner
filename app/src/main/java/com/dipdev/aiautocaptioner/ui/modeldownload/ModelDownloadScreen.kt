@@ -74,7 +74,7 @@ fun ModelDownloadScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            when (val state = downloadState) {
+            when (downloadState) {
 
                 is DownloadState.Starting -> {
                     // Manual progress bar to avoid LinearProgressIndicator constraint crash
@@ -92,7 +92,7 @@ fun ModelDownloadScreen(
                 is DownloadState.Downloading -> {
                     DownloadingContent(
                         modelName = modelName,
-                        state = state
+                        state = downloadState
                     )
                 }
 
@@ -118,7 +118,7 @@ fun ModelDownloadScreen(
 
                 is DownloadState.Error -> {
                     ErrorContent(
-                        message = state.message,
+                        message = downloadState.message,
                         onRetry = { viewModel.setEvent(ModelDownloadUiEvent.Retry(modelId)) }
                     )
                 }

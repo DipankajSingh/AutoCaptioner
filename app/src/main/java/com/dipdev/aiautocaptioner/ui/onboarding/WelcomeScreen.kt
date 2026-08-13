@@ -173,7 +173,6 @@ fun WelcomeScreen(
 
             // 4. High Velocity Action Button
             ShimmerButton(
-                text = "Get started",
                 onClick = onGetStartedClick
             )
 
@@ -358,7 +357,6 @@ private fun LoopingVideoPlayer(
 
 @Composable
 private fun ShimmerButton(
-    text: String,
     onClick: () -> Unit
 ) {
     val inf = rememberInfiniteTransition(label = "sh")
@@ -397,7 +395,7 @@ private fun ShimmerButton(
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = text,
+                text = stringResource(R.string.get_started),
                 color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Black,
                 fontSize = 18.sp,

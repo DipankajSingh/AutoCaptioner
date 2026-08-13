@@ -5,33 +5,32 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
-import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
-import androidx.annotation.OptIn
-import androidx.media3.effect.OverlayEffect
-import androidx.media3.effect.TextureOverlay
-import androidx.media3.effect.Presentation
 import androidx.media3.effect.DefaultVideoFrameProcessor
+import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.Presentation
+import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
-import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.R
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
@@ -57,7 +56,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 object ExportServiceManager {
     val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
-    val progress = MutableStateFlow<Float>(0f)
+    val progress = MutableStateFlow(0f)
     val etaMs = MutableStateFlow<Long?>(null)
     val outputPath = MutableStateFlow<String?>(null)
 
@@ -99,6 +98,7 @@ class ExportForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_CANCEL) {
             Log.d(TAG, "Cancel received")
@@ -161,16 +161,15 @@ class ExportForegroundService : Service() {
         return PendingIntent.getService(this, 0, cancelIntent, flags)
     }
 
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun startForegroundService() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.export_channel_name),
-                NotificationManager.IMPORTANCE_LOW
-            )
-            notificationManager.createNotificationChannel(channel)
-        }
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.export_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        )
+        notificationManager.createNotificationChannel(channel)
 
         val notification = buildExportNotification(
             title = getString(R.string.export_notif_title),
@@ -178,16 +177,12 @@ class ExportForegroundService : Service() {
             isIndeterminate = true
         )
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceCompat.startForeground(
-                this,
-                NOTIFICATION_ID,
-                notification,
-                if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING else 0
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+        )
     }
 
     private fun buildExportNotification(
@@ -201,8 +196,8 @@ class ExportForegroundService : Service() {
         showCancel: Boolean = true
     ): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(com.dipdev.aiautocaptioner.R.mipmap.ic_launcher)
-            .setLargeIcon(BitmapFactory.decodeResource(resources, com.dipdev.aiautocaptioner.R.mipmap.ic_launcher))
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
             .setContentTitle(title)
             .setContentText(contentText)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -212,7 +207,7 @@ class ExportForegroundService : Service() {
 
         if (showCancel) {
             builder.addAction(
-                com.dipdev.aiautocaptioner.R.drawable.ic_logo_ui,
+                R.drawable.ic_logo_ui,
                 getString(R.string.notif_action_open),
                 getOpenAppPendingIntent()
             )
@@ -250,7 +245,7 @@ class ExportForegroundService : Service() {
 
     private fun updateNotificationProgress(progress: Int, etaMs: Long?) {
         if (isFinishing) return
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val etaText = etaMs?.let { ", ETA ${formatEta(it)}" } ?: ""
         val notification = buildExportNotification(
             title = getString(R.string.export_notif_title),
@@ -449,7 +444,7 @@ class ExportForegroundService : Service() {
                                             updatedAt = timestamp
                                         )
                                     )
-                                    val srtContent = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    val srtContent = kotlinx.coroutines.withContext(Dispatchers.IO) {
                                         captionRepository.buildSrtContent(projectId)
                                     }
                                     val srtFile = File(outDir, outFile.nameWithoutExtension + ".srt")
@@ -553,7 +548,7 @@ class ExportForegroundService : Service() {
         activeTransformer?.cancel()
         activeTransformer = null
         if (!isFinishing) {
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(NOTIFICATION_ID)
         }
     }

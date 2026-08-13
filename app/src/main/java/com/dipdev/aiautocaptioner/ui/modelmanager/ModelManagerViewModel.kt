@@ -1,20 +1,16 @@
 package com.dipdev.aiautocaptioner.ui.modelmanager
 
-import androidx.lifecycle.ViewModel
-import com.dipdev.aiautocaptioner.core.extensions.stateInDefault
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.DownloadState
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class ModelManagerUiState(
     val availableModels: List<WhisperModel> = emptyList(),

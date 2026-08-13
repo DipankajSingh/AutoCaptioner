@@ -136,7 +136,7 @@ class ExportViewModel @Inject constructor(
             try {
                 val segments = captionRepository.getSegmentsOnce(projectId)
                 setState { copy(hasCaptions = segments.isNotEmpty()) }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 setState { copy(hasCaptions = false) }
             }
             
