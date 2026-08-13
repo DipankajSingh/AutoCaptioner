@@ -42,15 +42,15 @@ internal class DialogArchShape : Shape {
         val sx = w / 348.93945f
 
         val cr = 27.323349f * sx   // corner radius (all four corners)
-        val ah = 54.822262f * sx   // flat top edge y — how far the dome rises above it
+        val ah = 54.82226f * sx   // flat top edge y — how far the dome rises above it
 
         // Dome control points, relative to the peak (0,0), straight from the SVG.
         // L6 is the point where the dome meets the flat top edge.
         val l1x = -25.82779f;  val l1y = 0.000723f
         val l2x = -48.8123f;   val l2y = 15.129802f
-        val l3x = -60.10045f;  val l3y = 38.021972f
-        val l4x = -64.44129f;  val l4y = 46.825112f
-        val l5x = -73.87413f;  val l5y = 54.822262f
+        val l3x = -60.10045f;  val l3y = 38.021973f
+        val l4x = -64.44129f;  val l4y = 46.82511f
+        val l5x = -73.87413f
         val l6x = -83.71507f   // l6y == l5y == the flat-edge height
 
         val aw = -l6x * sx   // dome half-width at the flat edge

@@ -2,10 +2,13 @@ package com.dipdev.aiautocaptioner.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import com.dipdev.aiautocaptioner.ui.components.AppOutlinedButton
-import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -33,8 +36,8 @@ fun RenameDialog(
     val resolvedLabel = label ?: stringResource(R.string.rename_name_label)
     var text by remember(initialValue) { mutableStateOf(initialValue) }
 
-    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
-        type = com.dipdev.aiautocaptioner.ui.components.DialogType.INFO,
+    UniversalDialog(
+        type = DialogType.INFO,
         onDismissRequest = onDismiss,
         title = resolvedTitle,
         content = {
