@@ -1,5 +1,8 @@
 package com.dipdev.aiautocaptioner.data.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class WhisperModel(
     val id: String,
     val displayName: String,

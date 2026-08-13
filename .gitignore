@@ -1,6 +1,7 @@
 *.iml
 .gradle
 .agents
+.artifacts
 /local.properties
 /.idea/caches
 /.idea/libraries
