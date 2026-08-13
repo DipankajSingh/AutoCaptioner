@@ -272,7 +272,6 @@ fun TimelineView(
                                                     totalEditedMs = state.totalEditedMs,
                                                     primaryColor = primaryColor,
                                                     scrollStateValue = state.scrollOffset,
-                                                    timelineWidthPx = state.boxWidthPx,
                                                     trackContentOffsetPx = halfWidthPx,
                                                     onOverlaySelected = onOverlaySelected,
                                                     onDragStateChange = { 

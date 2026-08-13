@@ -24,6 +24,6 @@ object AppLinks {
             .takeIf { it.isNotBlank() } ?: "https://autocaptioner-app.vercel.app"
 
     // ── Support ──────────────────────────────────────────────────────────────
-    const val SUPPORT_EMAIL = "support@autocaptioner.com"
+    const val SUPPORT_EMAIL = "dipankajsingh25@gmail.com"
     const val BUG_REPORT = "https://github.com/dipdevlabs/autocaptioner/issues"
 }

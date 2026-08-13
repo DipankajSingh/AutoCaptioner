@@ -9,11 +9,11 @@
     <string name="export_quality_high">High</string>
     
     <string name="home_1_tap_captions">1-Tap Captions</string>
-    <string name="home_1_tap_desc">Select a video and generate viral captions instantly. No setup needed.</string>
-    <string name="home_advanced_studio">Trim &amp; Custom Setup</string>
-    <string name="home_advanced_desc">Manually trim timestamps before generating subtitles.</string>
+    <string name="home_1_tap_desc">Select a video and generate viral captions instantly.</string>
+    <string name="home_advanced_studio">Trim &amp; Edit</string>
+    <string name="home_advanced_desc"> Trim and edit video before generating subtitles.</string>
     <string name="home_record_video">Record Video</string>
-    <string name="home_record_desc">Shoot new footage with camera or record faceless audio.</string>
+    <string name="home_record_desc">Record new video or record faceless audio.</string>
     <string name="home_importing_video">Importing video…</string>
     <string name="home_import_failed">Import failed: %s</string>
     

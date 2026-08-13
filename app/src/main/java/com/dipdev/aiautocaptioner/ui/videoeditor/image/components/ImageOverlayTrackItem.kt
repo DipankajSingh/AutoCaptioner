@@ -33,7 +33,6 @@ fun ImageOverlayTrackItem(
     totalEditedMs: Long,
     primaryColor: Color,
     scrollStateValue: Int,
-    timelineWidthPx: Int,
     trackContentOffsetPx: Float,
     onOverlaySelected: (String) -> Unit,
     onDragStateChange: (Boolean) -> Unit,

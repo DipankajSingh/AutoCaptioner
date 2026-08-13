@@ -10,7 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -116,10 +116,10 @@ fun ImageCropOverlay(
 
 @Composable
 private fun CropWorkspace(bitmap: Bitmap, onApply: (RectF) -> Unit) {
-    var left by remember { mutableStateOf(0.1f) }
-    var top by remember { mutableStateOf(0.1f) }
-    var right by remember { mutableStateOf(0.9f) }
-    var bottom by remember { mutableStateOf(0.9f) }
+    var left by remember { mutableFloatStateOf(0.1f) }
+    var top by remember { mutableFloatStateOf(0.1f) }
+    var right by remember { mutableFloatStateOf(0.9f) }
+    var bottom by remember { mutableFloatStateOf(0.9f) }
     val density = LocalDensity.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(top = 76.dp, bottom = 84.dp, start = 16.dp, end = 16.dp)) {

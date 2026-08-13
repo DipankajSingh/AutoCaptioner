@@ -43,7 +43,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.MascotRobot
@@ -182,7 +181,7 @@ fun WelcomeScreen(
 
             // 5. Footer & Legal
             Text(
-                text = stringResource(R.string.welcome_company),
+                text = stringResource(R.string.settings_from_dipdev),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
             )

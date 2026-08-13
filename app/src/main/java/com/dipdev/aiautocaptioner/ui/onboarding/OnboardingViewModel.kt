@@ -1,6 +1,5 @@
 package com.dipdev.aiautocaptioner.ui.onboarding
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

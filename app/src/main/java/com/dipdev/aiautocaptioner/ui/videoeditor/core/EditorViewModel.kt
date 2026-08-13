@@ -6,6 +6,7 @@ import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.core.video.ThumbnailManager
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
@@ -17,29 +18,22 @@ import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
-import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.EditorSnapshot
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.HistoryManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.managers.OverlayManager
 import com.dipdev.aiautocaptioner.ui.videoeditor.export.ExportService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class VideoEditorUiStep {
     data object Idle : VideoEditorUiStep()
@@ -107,7 +101,7 @@ sealed class VideoEditorUiEffect : UiEffect {
 }
 
 @HiltViewModel
-@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(UnstableApi::class)
 class EditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
@@ -276,7 +270,7 @@ class EditorViewModel @Inject constructor(
                 val maxTextZ = currentState.textOverlays.maxOfOrNull { it.zOrder } ?: -1
                 val maxZ = maxOf(maxImageZ, maxTextZ)
 
-                val overlay = com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity(
+                val overlay = TextOverlayEntity(
                     id = java.util.UUID.randomUUID().toString(),
                     projectId = projectId,
                     text = "",
@@ -478,8 +472,4 @@ class EditorViewModel @Inject constructor(
         }
     }
 
-    @OptIn(UnstableApi::class)
-    fun cleanup() {
-        videoExporter.cancel()
-    }
 }

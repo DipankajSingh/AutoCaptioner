@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -40,6 +39,10 @@ import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.engine.BundledFonts
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun InlineTextEditor(
@@ -84,7 +87,7 @@ fun InlineTextEditor(
     }
 
     LaunchedEffect(overlay.id) {
-        delay(100)
+        delay(100.milliseconds)
         focusRequester.requestFocus()
         keyboardController?.show()
     }
@@ -162,7 +165,7 @@ fun InlineTextEditor(
                     }
                 ) {
                     if (overlay.text.isEmpty()) {
-                        androidx.compose.material3.Text(
+                        Text(
                             text = "Type something...",
                             color = Color.White.copy(alpha = 0.5f),
                             fontSize = fontSize,
@@ -184,28 +187,23 @@ fun FontStyleCarousel(
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .background(Color(0xF216171B), RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-            .padding(top = 8.dp, bottom = 10.dp),
+            .width(120.dp)
+            .heightIn(max = 260.dp)
+            .background(Color(0xF216171B), RoundedCornerShape(18.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier
-                .width(32.dp)
-                .height(3.dp)
-                .background(Color.White.copy(alpha = 0.28f), RoundedCornerShape(2.dp))
-        )
         Text(
             text = "Fonts",
             color = Color.White.copy(alpha = 0.65f),
             style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(top = 5.dp, bottom = 7.dp)
+            modifier = Modifier.padding(bottom = 6.dp)
         )
-        LazyRow(
+        LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             items(BundledFonts.all, key = { it.assetPath + it.displayName }) { font ->
                 FontStyleChip(
@@ -232,17 +230,33 @@ private fun FontStyleChip(
         else BundledFonts.getAssetTypeface(context, assetPath) ?: android.graphics.Typeface.DEFAULT
     }
     val fontFamily = remember(typeface) { FontFamily(androidx.compose.ui.text.font.Typeface(typeface)) }
-    val accent = if (isSelected) AccentRose else Color.Transparent
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .width(76.dp)
-            .background(if (isSelected) AccentRose.copy(alpha = 0.2f) else Color.Transparent, RoundedCornerShape(12.dp))
+            .fillMaxWidth()
+            .height(44.dp)
+            .background(
+                if (isSelected) AccentRose.copy(alpha = 0.2f) else Color.Transparent,
+                RoundedCornerShape(10.dp)
+            )
             .clickable(onClick = onClick)
-            .padding(vertical = 7.dp, horizontal = 4.dp)
+            .padding(horizontal = 8.dp)
     ) {
-        Text("Aa", color = Color.White, fontFamily = fontFamily, style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
-        Text(name, color = if (isSelected) Color.White else Color.White.copy(alpha = 0.68f), fontFamily = fontFamily, maxLines = 1, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
-        Box(Modifier.padding(top = 5.dp).width(24.dp).height(2.dp).background(accent, RoundedCornerShape(1.dp)))
+        Text(
+            "Aa",
+            color = Color.White,
+            fontFamily = fontFamily,
+            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Text(
+            name,
+            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.68f),
+            fontFamily = fontFamily,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            style = androidx.compose.material3.MaterialTheme.typography.labelSmall
+        )
     }
 }

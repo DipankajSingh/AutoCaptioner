@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -48,9 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,7 +64,6 @@ import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
-import com.dipdev.aiautocaptioner.ui.videoeditor.style.VerticalPremiumSlider
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.MiniScrubber
 import com.dipdev.aiautocaptioner.ui.videoeditor.player.PreviewSection
@@ -75,12 +72,14 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorBottomDock
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorTopOverlay
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
+import com.dipdev.aiautocaptioner.ui.videoeditor.style.VerticalPremiumSlider
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+
 
 private val CaptionSegmentSaver = Saver<CaptionSegmentEntity?, Any>(
     save = { segment ->
@@ -112,7 +111,6 @@ fun EditorScreen(
     onNavigateToExport: () -> Unit,
     onNavigateToProcessing: () -> Unit,
     onNavigateToCaptionEditor: () -> Unit,
-    // Fix A: received from NavGraph — navigation-graph-scoped shared player
     sharedPlayerViewModel: SharedPlayerViewModel,
     viewModel: EditorViewModel = hiltViewModel(),
     styleViewModel: StyleViewModel = hiltViewModel(),
@@ -155,15 +153,14 @@ fun EditorScreen(
             styleViewModel.uiState.map { it.wordsMap }.distinctUntilChanged()
         }.collectAsStateWithLifecycle(initialValue = persistentMapOf())
 
-        // Fix A: collect the shared player
         val player by sharedPlayerViewModel.player.collectAsStateWithLifecycle()
 
         var selectedClipId by rememberSaveable { mutableStateOf<String?>(null) }
         var zoomLevel by rememberSaveable { mutableFloatStateOf(1f) }
-        var currentMode by rememberSaveable { mutableStateOf(com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO) }
+        var currentMode by rememberSaveable { mutableStateOf(EditorMode.VIDEO) }
 
         var showDiscardDialog by remember { mutableStateOf(false) }
-        var selectedCaptionSegment by rememberSaveable(stateSaver = CaptionSegmentSaver) { mutableStateOf<CaptionSegmentEntity?>(null) }
+        var selectedCaptionSegment by rememberSaveable(stateSaver = CaptionSegmentSaver) { mutableStateOf(null) }
         var inlineEditText by rememberSaveable { mutableStateOf("") }
         var showTextColorMenu by remember { mutableStateOf(false) }
         var showTextSizeSlider by remember { mutableStateOf(false) }
@@ -179,7 +176,6 @@ fun EditorScreen(
             uri?.let { viewModel.setEvent(VideoEditorUiEvent.AddOverlay(it.toString(), pendingImagePlayheadMs)) }
         }
 
-        // Fix A: pause when app goes to background — shared player, shared responsibility
         val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner) {
             val observer = LifecycleEventObserver { _, event ->
@@ -240,9 +236,7 @@ fun EditorScreen(
         
         LaunchedEffect(processingStep) {
             if (processingStep is com.dipdev.aiautocaptioner.ui.processing.ProcessingStep.Done) {
-                // Transcription finished! Reset state to hide overlay.
                 processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.ResetToIdle)
-                // We reload styles to immediately show the new captions on screen
                 styleViewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
             }
         }
@@ -259,15 +253,12 @@ fun EditorScreen(
         }
 
 
-        // Pause playback when entering text-edit mode so the video doesn't keep
-        // rolling under the keyboard while the user types.
         LaunchedEffect(uiState.editingTextOverlayId) {
             if (uiState.editingTextOverlayId != null) {
                 player?.pause()
             }
         }
 
-        // Fix A: initialise the shared player once the video path is known
         val originalVideoPath = (step as? VideoEditorUiStep.Ready)?.originalPath ?: ""
         LaunchedEffect(originalVideoPath) {
             if (originalVideoPath.isNotEmpty()) {
@@ -356,14 +347,10 @@ fun EditorScreen(
                         }
 
                         val totalEditedMs = remember(clips) { clips.sumOf { it.endTrimMs - it.startTrimMs } }
-                        val density = LocalDensity.current
                         // This editor draws edge-to-edge, so imePadding alone is
                         // laid out behind the IME on some devices. Offset the tray
                         // by the real keyboard inset, excluding the nav-bar inset.
-                        val keyboardInsetPx = (
-                            WindowInsets.ime.getBottom(density) -
-                                WindowInsets.navigationBars.getBottom(density)
-                            ).coerceAtLeast(0)
+
 
                         // Fix A: pass injected player into EditorState (no longer creates its own)
                         val editorState = rememberEditorState(
@@ -509,7 +496,7 @@ fun EditorScreen(
                                         }
                                     },
                                     rightContent = {
-                                        val isVisible = currentMode == com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorMode.VIDEO
+                                        val isVisible = currentMode == EditorMode.VIDEO
                                         
                                         androidx.compose.animation.AnimatedVisibility(
                                             visible = isVisible,
@@ -552,8 +539,6 @@ fun EditorScreen(
                                     }
                                 )
 
-                                // Fix 11: Inline caption editor extracted to CaptionInlineEditor composable
-                                // Fix 8: imePadding is applied inside CaptionInlineEditor
                             if (selectedCaptionSegment != null) {
                                 CaptionInlineEditor(
                                     segment = selectedCaptionSegment!!,
@@ -573,10 +558,6 @@ fun EditorScreen(
                                     modifier = Modifier.align(Alignment.BottomCenter)
                                 )
                             }
-                            
-
-
-                                                   // Old GlobalActionButtons deleted because they are now inside rightContent slot of EditorTopOverlay     }
                             } // end preview Box
 
                             cropOverlay?.let { overlayToCrop ->
@@ -652,7 +633,6 @@ fun EditorScreen(
                                 onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
                                 onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
                                 onPinchZoom = { scale ->
-                                    // Fix 6: Pinch-to-zoom from timeline passed through here
                                     zoomLevel = (zoomLevel * scale).coerceIn(0.2f, 5f)
                                 },
                                 segments = segments,
@@ -692,8 +672,9 @@ fun EditorScreen(
                                         )
                                     },
                                     modifier = Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .offset { IntOffset(0, -keyboardInsetPx) }
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 16.dp, bottom = 16.dp)
+                                        .imePadding()
                                 )
                             }
                         }

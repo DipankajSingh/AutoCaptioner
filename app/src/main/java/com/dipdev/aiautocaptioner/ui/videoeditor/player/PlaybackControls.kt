@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -41,12 +40,13 @@ import compose.icons.FeatherIcons
 import compose.icons.feathericons.Pause
 import compose.icons.feathericons.Play
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun PlayPauseTapOverlay(
+    modifier: Modifier = Modifier,
     player: Player,
-    onTap: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onTap: () -> Unit = {}
 ) {
     var showPlayPauseIcon by remember { mutableStateOf(false) }
 
@@ -65,7 +65,7 @@ fun PlayPauseTapOverlay(
     ) {
         LaunchedEffect(showPlayPauseIcon) {
             if (showPlayPauseIcon) {
-                delay(1500)
+                delay(1500.milliseconds)
                 showPlayPauseIcon = false
             }
         }
@@ -114,16 +114,7 @@ fun TimerPill(
     }
 }
 
-/**
- * Mini scrubber bar shown between the preview and the timeline.
- *
- * Fix 2 — Recomposition: [currentTimelineMs] is no longer read in the composable body.
- * It is read inside the [Canvas] DrawScope, deferring the read to the Drawing phase and
- * skipping Composition + Layout on every frame.
- *
- * Fix 7 — Touch target: The outer [Box] is 48 dp tall (Android's recommended minimum)
- * while the visual track (2 dp line + 4 dp thumb) remains visually compact inside it.
- */
+
 @Composable
 fun MiniScrubber(
     currentTimelineMs: () -> Long,
@@ -135,11 +126,10 @@ fun MiniScrubber(
     val primaryColor = MaterialTheme.colorScheme.primary
     val trackColor = AccentAmber.copy(alpha = 0.3f)
 
-    // Outer touch target; visual content drawn at actual size inside Canvas
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(22.dp)
             .padding(horizontal = 16.dp)
             .pointerInput(totalEditedMs) {
                 detectTapGestures { offset ->
@@ -191,13 +181,6 @@ fun MiniScrubber(
     }
 }
 
-/**
- * Seeks the player to the given scrub fraction of the total edited timeline.
- *
- * Fix 5: Uses [resolveTimelinePosition] instead of the hand-rolled loop,
- * eliminating the IndexOutOfBoundsException race condition when clips are
- * concurrently modified.
- */
 private fun seekPlayer(
     fraction: Float,
     totalEditedMs: Long,

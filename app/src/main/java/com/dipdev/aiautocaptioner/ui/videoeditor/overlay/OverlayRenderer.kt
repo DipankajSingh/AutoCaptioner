@@ -3,12 +3,9 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.overlay
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -16,8 +13,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
@@ -39,16 +37,17 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size
-import androidx.compose.ui.platform.LocalContext
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import com.dipdev.aiautocaptioner.ui.videoeditor.text.DEFAULT_TEXT_WIDTH_FRACTION
 import com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayContent
-import androidx.compose.foundation.gestures.detectTransformGestures
 import kotlinx.coroutines.delay
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val AUTO_FIT_SCALE = 0.35f
 private const val MIN_SCALE = 0.05f
@@ -65,18 +64,17 @@ private fun computeVideoDisplayRect(
     val videoAspect = videoW.toFloat() / videoH.toFloat()
     val containerAspect = containerW / containerH
     return if (videoAspect > containerAspect) {
-        val dw = containerW
         val dh = containerW / videoAspect
-        Triple(0f, (containerH - dh) / 2f, dw to dh)
+        Triple(0f, (containerH - dh) / 2f, containerW to dh)
     } else {
-        val dh = containerH
         val dw = containerH * videoAspect
-        Triple((containerW - dw) / 2f, 0f, dw to dh)
+        Triple((containerW - dw) / 2f, 0f, dw to containerH)
     }
 }
 
 @Composable
 fun OverlayRenderer(
+    modifier: Modifier = Modifier,
     overlays: List<ImageOverlayEntity>,
     textOverlays: List<TextOverlayEntity> = emptyList(),
     currentTimelineMs: () -> Long,
@@ -87,10 +85,9 @@ fun OverlayRenderer(
     editingTextOverlayId: String? = null,
     onStopEditingTextOverlay: () -> Unit = {},
     onStartEditingTextOverlay: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
     videoWidth: Int = 0,
     videoHeight: Int = 0,
-    player: Player? = null,
+    player: Player? = null
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val containerW = constraints.maxWidth.toFloat()
@@ -151,7 +148,6 @@ fun OverlayRenderer(
                                 canvasHeight = canvasHeight,
                                 isSelected = selectedOverlayId == overlayItem.id,
                                 isEditing = editingTextOverlayId == overlayItem.id,
-                                onStopEditing = onStopEditingTextOverlay,
                                 onStartEditing = { onStartEditingTextOverlay(overlayItem.id) },
                                 currentTimelineMs = currentTimelineMs,
                                 onUpdateOverlay = onUpdateTextOverlay,
@@ -167,7 +163,7 @@ fun OverlayRenderer(
 }
 
 @Composable
-private fun BoxScope.OverlayItem(
+private fun OverlayItem(
     overlay: ImageOverlayEntity,
     canvasWidth: Float,
     canvasHeight: Float,
@@ -186,7 +182,6 @@ private fun BoxScope.OverlayItem(
     var localPosY by remember(overlay.id) { mutableFloatStateOf(overlay.positionY) }
     var lastTransformTime by remember(overlay.id) { mutableLongStateOf(0L) }
     var hasPendingTransform by remember(overlay.id) { mutableStateOf(false) }
-    var wasPlaying by remember(overlay.id) { mutableStateOf(false) }
 
     var imgAspectRatio by remember { mutableFloatStateOf(1f) }
     var isLoaded by remember { mutableStateOf(false) }
@@ -227,7 +222,7 @@ private fun BoxScope.OverlayItem(
 
     LaunchedEffect(lastTransformTime) {
         if (lastTransformTime > 0) {
-            delay(DEBOUNCE_MS)
+            delay(DEBOUNCE_MS.milliseconds)
             onUpdateOverlay(
                 overlay.copy(
                     scaleX = localScaleX,
@@ -377,13 +372,12 @@ private fun BoxScope.OverlayItem(
 }
 
 @Composable
-private fun BoxScope.TextOverlayItem(
+private fun TextOverlayItem(
     overlay: TextOverlayEntity,
     canvasWidth: Float,
     canvasHeight: Float,
     isSelected: Boolean,
     isEditing: Boolean,
-    onStopEditing: () -> Unit,
     onStartEditing: () -> Unit,
     currentTimelineMs: () -> Long,
     onUpdateOverlay: (TextOverlayEntity) -> Unit,
@@ -423,7 +417,7 @@ private fun BoxScope.TextOverlayItem(
 
     LaunchedEffect(lastTransformTime) {
         if (lastTransformTime > 0) {
-            kotlinx.coroutines.delay(DEBOUNCE_MS)
+            delay(DEBOUNCE_MS.milliseconds)
             onUpdateOverlay(
                 overlay.copy(
                     scaleX = localScaleX,
@@ -472,8 +466,12 @@ private fun BoxScope.TextOverlayItem(
                 .pointerInput(overlay.id + "_transform") {
                     detectTransformGestures { _, pan, zoom, rotation ->
                         val angleRad = localRotation * Math.PI / 180.0
-                        val parentPanX = (pan.x * localScaleX) * Math.cos(angleRad) - (pan.y * localScaleY) * Math.sin(angleRad)
-                        val parentPanY = (pan.x * localScaleX) * Math.sin(angleRad) + (pan.y * localScaleY) * Math.cos(angleRad)
+                        val parentPanX = (pan.x * localScaleX) * cos(angleRad) - (pan.y * localScaleY) * sin(
+                            angleRad
+                        )
+                        val parentPanY = (pan.x * localScaleX) * sin(angleRad) + (pan.y * localScaleY) * cos(
+                            angleRad
+                        )
 
                         localPosX += parentPanX.toFloat() / canvasWidth
                         localPosY += parentPanY.toFloat() / canvasHeight
