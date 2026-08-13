@@ -46,7 +46,7 @@ object BundledFonts {
         return assetCache.getOrPut(assetPath) {
             try {
                 Typeface.createFromAsset(context.assets, assetPath)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 Typeface.DEFAULT
             }
         }
@@ -202,7 +202,7 @@ object CaptionPaints {
             this.style    = Paint.Style.FILL
         }
 
-        val highlightCol = if (style.displayMode == com.dipdev.aiautocaptioner.data.db.entity.DisplayMode.KARAOKE_FILL) {
+        val highlightCol = if (style.displayMode == DisplayMode.KARAOKE_FILL) {
             style.karaokeFillColor.toInt()
         } else {
             style.highlightColor.toInt()
@@ -231,13 +231,7 @@ object CaptionPaints {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Stroke width (px) for synthetic emboldening. Scales with [baseScale] so the
-     * visual thickness matches between preview and export regardless of resolution.
-     * Shared with [LayoutEngine] so layout reserves the same ink width it draws.
-     */
     fun thicknessStrokeWidth(textThickness: Float, baseScale: Float): Float =
         textThickness.coerceIn(0f, 1f) * 6f * baseScale
 
@@ -308,10 +302,7 @@ object CaptionPaints {
         else                         -> Typeface.NORMAL
     }
 
-    /**
-     * Resolve the fill color for a word based on style, display mode, and timing.
-     * Shared between [OutlinePass] and [TextFillPass] to keep color logic in one place.
-     */
+
     fun resolveFillColor(
         wl: WordLayout,
         style: CaptionStyleEntity,

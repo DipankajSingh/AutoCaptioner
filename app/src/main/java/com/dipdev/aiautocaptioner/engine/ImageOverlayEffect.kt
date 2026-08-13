@@ -9,6 +9,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.common.OverlaySettings
 import androidx.media3.effect.StaticOverlaySettings
+import androidx.core.graphics.createBitmap
 
 @UnstableApi
 class ImageOverlayEffect(
@@ -19,8 +20,8 @@ class ImageOverlayEffect(
     private val scaleY: Float,
     private val startTimeMs: Long,
     private val endTimeMs: Long,
-    private val videoWidth: Int,
-    private val videoHeight: Int,
+    videoWidth: Int,
+    videoHeight: Int,
     private val rotationDegrees: Int = 0
     ,private val opacity: Float = 1f
     ,private val filterName: String? = null
@@ -55,7 +56,7 @@ class ImageOverlayEffect(
             else -> null
         } ?: return@lazy bitmap
 
-        Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888).also { filtered ->
+        createBitmap(bitmap.width, bitmap.height).also { filtered ->
             Canvas(filtered).drawBitmap(bitmap, 0f, 0f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 colorFilter = ColorMatrixColorFilter(matrix)
             })

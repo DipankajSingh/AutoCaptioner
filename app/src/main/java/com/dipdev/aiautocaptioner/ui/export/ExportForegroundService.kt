@@ -289,8 +289,6 @@ class ExportForegroundService : Service() {
                         segments = segments,
                         wordsMap = wordsMap,
                         style = activeStyle,
-                        videoWidth = project.videoWidth,
-                        videoHeight = project.videoHeight,
                         rotationDegrees = project.videoRotation
                     )
                     textureOverlays.add(captionOverlayEffect)

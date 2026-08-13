@@ -1,11 +1,7 @@
 package com.dipdev.aiautocaptioner.engine
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Rect
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaCodec
@@ -13,14 +9,12 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.media.MediaRecorder
-import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Surface
+import androidx.annotation.RequiresApi
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import java.io.File
-import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,6 +22,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.sqrt
+import kotlin.time.Duration.Companion.milliseconds
 
 class FacelessVideoRecorder {
 
@@ -65,8 +63,6 @@ class FacelessVideoRecorder {
     private var onErrorCallback: ((Exception) -> Unit)? = null
     private var onAmplitudeCallback: ((Float) -> Unit)? = null
     private var outputFile: File? = null
-
-    fun isPaused(): Boolean = isPaused.get()
 
     @SuppressLint("MissingPermission")
     fun start(
@@ -173,6 +169,7 @@ class FacelessVideoRecorder {
         })
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     fun resume() {
         if (!isRecording.get() || !isPaused.get()) return
         isPaused.set(false)
@@ -182,6 +179,7 @@ class FacelessVideoRecorder {
         })
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     fun stop() {
         if (!isRecording.getAndSet(false)) return
         val wasPaused = isPaused.get()
@@ -193,17 +191,17 @@ class FacelessVideoRecorder {
                     putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
                     putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
                 })
-                delay(50)
+                delay(50.milliseconds)
             }
 
-            withTimeoutOrNull(1000) { videoJob?.join() }
+            withTimeoutOrNull(1000.milliseconds) { videoJob?.join() }
             // Signal the encoder that no more input will arrive so it can drain to EOS
             // (instead of being cut off by codec.stop(), which truncates the tail frames).
             try {
                 videoCodec?.signalEndOfInputStream()
             } catch (_: Exception) {}
-            withTimeoutOrNull(3000) { videoEncoderJob?.join() }
-            withTimeoutOrNull(3000) { audioJob?.join() }
+            withTimeoutOrNull(3000.milliseconds) { videoEncoderJob?.join() }
+            withTimeoutOrNull(3000.milliseconds) { audioJob?.join() }
 
             videoJob?.cancel()
             videoEncoderJob?.cancel()
@@ -237,7 +235,7 @@ class FacelessVideoRecorder {
         val bgRenderer = com.dipdev.aiautocaptioner.engine.render.BackgroundTextureRenderer()
 
         try {
-            var startRecordTime = System.nanoTime()
+            val startRecordTime = System.nanoTime()
             var totalPauseTimeNs = 0L
             var lastPauseStartTime = 0L
 
@@ -246,7 +244,7 @@ class FacelessVideoRecorder {
                     if (lastPauseStartTime == 0L) {
                         lastPauseStartTime = System.nanoTime()
                     }
-                    delay(16)
+                    delay(16.milliseconds)
                     lastFrameTime = System.currentTimeMillis()
                     continue
                 } else if (lastPauseStartTime != 0L) {
@@ -269,7 +267,7 @@ class FacelessVideoRecorder {
                 val elapsed = System.currentTimeMillis() - lastFrameTime
                 val sleepTime = frameDurationMs - elapsed
                 if (sleepTime > 0) {
-                    delay(sleepTime)
+                    delay(sleepTime.milliseconds)
                 }
                 lastFrameTime = System.currentTimeMillis()
             }
@@ -286,10 +284,9 @@ class FacelessVideoRecorder {
     private fun videoEncodeLoop() {
         val bufferInfo = MediaCodec.BufferInfo()
         try {
-            var eosReceived = false
             var stopTimeOut = 0
             var firstVideoPts = -1L
-            while (!eosReceived) {
+            while (true) {
                 val encoderStatus = videoCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: break
                 if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     val newFormat = videoCodec?.outputFormat ?: break
@@ -319,7 +316,6 @@ class FacelessVideoRecorder {
                     }
                     videoCodec?.releaseOutputBuffer(encoderStatus, false)
                     if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                        eosReceived = true
                         break
                     }
                 } else if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
@@ -344,10 +340,9 @@ class FacelessVideoRecorder {
         val bytesPerFrame = sampleRate * 2L
 
         try {
-            var eosReceived = false
             var isEosSent = false
             var stopTimeOut = 0
-            while (!eosReceived) {
+            while (true) {
                 if (!isEosSent) {
                     val inputBufferIndex = audioCodec?.dequeueInputBuffer(TIMEOUT_USEC) ?: -1
                     if (inputBufferIndex >= 0) {
@@ -379,7 +374,7 @@ class FacelessVideoRecorder {
                                     val shortSample = sample.toShort()
                                     sum += shortSample * shortSample
                                 }
-                                val rms = Math.sqrt(sum / (readBytes / 2.0))
+                                val rms = sqrt(sum / (readBytes / 2.0))
                                 val amplitude = if (rms.isNaN()) 0f else (rms / 32768.0).toFloat().coerceIn(0f, 1f)
                                 val now = System.currentTimeMillis()
                                 if (now - lastAmplitudeEmitMs >= 100) {
@@ -415,7 +410,7 @@ class FacelessVideoRecorder {
                             audioTrackIndex = muxer?.addTrack(newFormat) ?: -1
                             checkMuxerStart()
                         }
-                    } else if (encoderStatus >= 0) {
+                    } else {
                         val encodedData = audioCodec?.getOutputBuffer(encoderStatus)
                         if (encodedData != null && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
                             if (bufferInfo.size != 0) {
@@ -430,7 +425,6 @@ class FacelessVideoRecorder {
                         }
                         audioCodec?.releaseOutputBuffer(encoderStatus, false)
                         if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            eosReceived = true
                             return
                         }
                     }

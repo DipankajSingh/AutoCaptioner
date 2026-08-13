@@ -3,7 +3,6 @@ package com.dipdev.aiautocaptioner.engine
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.text.Layout
@@ -14,6 +13,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.StaticOverlaySettings
 import com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withTranslation
 
 private const val TEXT_BASE_WIDTH = 1080f
 private const val QUALITY_SCALE = 2f
@@ -23,7 +24,7 @@ class TextOverlayEffect(
     private val context: Context,
     private val overlay: TextOverlayEntity,
     private val videoWidth: Int,
-    private val videoHeight: Int,
+    videoHeight: Int,
     private val rotationDegrees: Int = 0
 ) : BitmapOverlay() {
 
@@ -40,14 +41,14 @@ class TextOverlayEffect(
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = overlay.textColorArgb
             textSize = fontPx * QUALITY_SCALE
-            try {
+            typeface = try {
                 if (overlay.fontAssetPath.isNotEmpty()) {
-                    typeface = Typeface.createFromAsset(context.assets, overlay.fontAssetPath)
+                    Typeface.createFromAsset(context.assets, overlay.fontAssetPath)
                 } else {
-                    typeface = Typeface.DEFAULT
+                    Typeface.DEFAULT
                 }
-            } catch (e: Exception) {
-                typeface = Typeface.DEFAULT
+            } catch (_: Exception) {
+                Typeface.DEFAULT
             }
         }
 
@@ -69,24 +70,16 @@ class TextOverlayEffect(
             else -> Layout.Alignment.ALIGN_CENTER
         }
 
-        val staticLayout = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+        val staticLayout =
             StaticLayout.Builder.obtain(overlay.text, 0, overlay.text.length, textPaint, textWidth)
                 .setAlignment(alignment)
                 .setLineSpacing(0f, 1f)
                 .setIncludePad(false)
                 .build()
-        } else {
-            @Suppress("DEPRECATION")
-            StaticLayout(
-                overlay.text, textPaint, textWidth,
-                alignment, 1.0f, 0.0f, false
-            )
-        }
 
-        val bitmapWidth = boxWidth
         val bitmapHeight = (staticLayout.height + verticalPadding * 2f).toInt().coerceAtLeast(1)
 
-        val bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(boxWidth, bitmapHeight)
         val canvas = Canvas(bitmap)
 
         if (overlay.backgroundStyle != "NONE" && overlay.backgroundOpacity > 0f) {
@@ -96,13 +89,13 @@ class TextOverlayEffect(
                 style = Paint.Style.FILL
             }
             val cornerRadius = fontPx * 0.5f * QUALITY_SCALE
-            canvas.drawRoundRect(0f, 0f, bitmapWidth.toFloat(), bitmapHeight.toFloat(), cornerRadius, cornerRadius, bgPaint)
+            canvas.drawRoundRect(0f, 0f,
+                boxWidth.toFloat(), bitmapHeight.toFloat(), cornerRadius, cornerRadius, bgPaint)
         }
 
-        canvas.save()
-        canvas.translate(horizontalPadding, verticalPadding)
-        staticLayout.draw(canvas)
-        canvas.restore()
+        canvas.withTranslation(horizontalPadding, verticalPadding) {
+            staticLayout.draw(this)
+        }
         return bitmap
     }
 
@@ -156,7 +149,6 @@ class TextOverlayEffect(
     override fun release() {
         if (!released) {
             released = true
-            // cachedBitmap.recycle() // TextureOverlay handles bitmap lifecycle often, wait no BitmapOverlay recycles it? Actually, we can recycle it if we want, but let's let GC or Media3 handle it.
             super.release()
         }
     }

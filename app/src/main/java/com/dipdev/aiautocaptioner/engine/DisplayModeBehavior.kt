@@ -20,26 +20,11 @@ object DisplayModeBehavior {
     // ── UI Control Visibility ──────────────────────────────────────────────
 
     enum class StyleControl {
-        FONT_FAMILY,
-        FONT_SIZE,
-        FONT_WEIGHT,
-        IS_ITALIC,
-        LETTER_SPACING,
         MAX_WORDS_PER_LINE,
         MAX_LINES,
         ALIGNMENT,
         LINE_HEIGHT,
         POSITION_X,
-        POSITION_Y,
-        TEXT_COLOR,
-        HIGHLIGHT_COLOR,
-        SECONDARY_COLOR,
-        OUTLINE_COLOR,
-        OUTLINE_WIDTH,
-        OUTLINE_ONLY,
-        SHADOW,
-        GRADIENT,
-        GLOW,
         BACKGROUND_TYPE,
         BACKGROUND_COLOR,
         BACKGROUND_PADDING,
@@ -47,10 +32,6 @@ object DisplayModeBehavior {
         KARAOKE_HIGHLIGHT_MODE,
         WORD_ENTER_ANIMATION,
         WORD_EXIT_ANIMATION,
-        ANIMATION_SPEED,
-        TEXT_TRANSFORM,
-        REMOVE_PUNCTUATION,
-        TEXT_OPACITY
     }
 
     /**
@@ -96,8 +77,6 @@ object DisplayModeBehavior {
         StyleControl.BACKGROUND_PADDING -> mode != DisplayMode.WORD_BY_WORD
         StyleControl.BACKGROUND_OPACITY -> mode != DisplayMode.WORD_BY_WORD
 
-        // ── Everything else is always visible ──────────────────────────────
-        else -> true
     }
 
     // ── Animation Rules ────────────────────────────────────────────────────
@@ -125,42 +104,4 @@ object DisplayModeBehavior {
         else                     -> null
     }
 
-    /**
-     * Whether words in this mode have per-word animation applied.
-     * false for modes where the entire block appears/disappears as a unit.
-     */
-    fun hasWordAnimations(mode: DisplayMode): Boolean = when (mode) {
-        DisplayMode.WORD_BY_WORD -> true
-        DisplayMode.TYPEWRITER   -> true
-        else                     -> false
-    }
-
-    /**
-     * Opacity multiplier for past (spoken) words in [mode].
-     *
-     *  - PHRASE: CapCut dims past words to ~60% opacity within the visible block
-     *  - LINE_HIGHLIGHT / KARAOKE_FILL: past words stay at full opacity (highlight moves forward)
-     *  - WORD_BY_WORD: past words are REMOVED (not visible at all)
-     *  - TYPEWRITER: past words stay at full opacity (they accumulate)
-     */
-    fun pastWordOpacity(mode: DisplayMode): Float = when (mode) {
-        DisplayMode.PHRASE         -> 0.6f
-        DisplayMode.LINE_HIGHLIGHT -> 1.0f
-        DisplayMode.KARAOKE_FILL   -> 1.0f
-        DisplayMode.WORD_BY_WORD   -> 0f  // not rendered at all
-        DisplayMode.TYPEWRITER     -> 1.0f
-    }
-
-    /**
-     * Default animation duration (ms) for each mode.
-     * Faster modes (WORD_BY_WORD pop) need snappy animations.
-     * Slower modes (PHRASE fade) can use longer durations.
-     */
-    fun defaultAnimationDuration(mode: DisplayMode): Int = when (mode) {
-        DisplayMode.WORD_BY_WORD -> 150
-        DisplayMode.TYPEWRITER   -> 80
-        DisplayMode.LINE_HIGHLIGHT -> 200
-        DisplayMode.KARAOKE_FILL   -> 200
-        DisplayMode.PHRASE         -> 200
-    }
 }

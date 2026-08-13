@@ -126,7 +126,6 @@ data class CaptionStyleEntity(
     // Direction of the gradient from textColor to secondaryColor
     val gradientDirection: GradientDirection = GradientDirection.NONE,
 
-    // ---- GLOW / NEON ----
     val glowEnabled: Boolean = false,
     val glowColor: Long = 0xFFFFD700,   // gold glow by default
     val glowRadius: Float = 8f,

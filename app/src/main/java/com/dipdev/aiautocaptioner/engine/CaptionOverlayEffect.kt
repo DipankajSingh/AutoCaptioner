@@ -8,7 +8,6 @@ import android.graphics.PorterDuff
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.core.graphics.withSave
-import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.CanvasOverlay
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
@@ -22,8 +21,6 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
     private val segments: List<CaptionSegmentEntity>,
     private val wordsMap: Map<String, List<CaptionWordEntity>>,
     private val style: CaptionStyleEntity,
-    videoWidth: Int,
-    videoHeight: Int,
     private val rotationDegrees: Int = 0
 ) : CanvasOverlay(/* useInputFrameSize = */ true) {
 
