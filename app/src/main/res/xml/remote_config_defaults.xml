@@ -2,15 +2,15 @@
 <defaultsMap>
     <entry>
         <key>privacy_policy_url</key>
-        <value>https://dipdevlabs.example.com/privacy</value>
+        <value>https://autocaptioner-app.vercel.app/privacy.html</value>
     </entry>
     <entry>
         <key>terms_of_service_url</key>
-        <value>https://dipdevlabs.example.com/terms</value>
+        <value>https://autocaptioner-app.vercel.app/terms.html</value>
     </entry>
     <entry>
         <key>developer_website_url</key>
-        <value>https://dipdevlabs.example.com</value>
+        <value>https://autocaptioner-app.vercel.app</value>
     </entry>
     <entry>
         <key>revenuecat_api_key</key>
