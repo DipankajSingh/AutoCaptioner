@@ -134,8 +134,9 @@ class CameraEffectManager @Inject constructor() {
     }
 
     fun setSmoothnessIntensity(intensity: Float) {
-        smoothnessIntensity = intensity
-        activeSkinEffects.forEach { it.setSmoothness(intensity) }
+        val clamped = intensity.coerceIn(0.0f, 1.0f)
+        smoothnessIntensity = clamped
+        activeSkinEffects.forEach { it.setSmoothness(clamped) }
     }
 
     fun getSmoothnessIntensity(): Float = smoothnessIntensity
@@ -171,6 +172,12 @@ class CameraEffectManager @Inject constructor() {
 
 /**
  * Custom hardware SurfaceProcessor bridging CameraX sensor streams with Media3 GPU effects.
+ *
+ * Mirrors the lifecycle of the official CameraX `Media3SurfaceProcessor` adapter: a Media3
+ * [VideoFrameProcessor] is only created once BOTH an input surface (from CameraX) and an output
+ * surface (from the downstream consumer) are available. Creating the processor with an input but
+ * no output surface makes the camera keep feeding frames that can never be rendered, which fills
+ * the processor queue and stalls the whole camera pipeline (frozen preview, failed recordings).
  */
 @OptIn(UnstableApi::class)
 internal class StudioEffectSurfaceProcessor(
@@ -180,115 +187,158 @@ internal class StudioEffectSurfaceProcessor(
     private val executor: Executor
 ) : SurfaceProcessor {
 
-    private var videoFrameProcessor: VideoFrameProcessor? = null
-    private var pendingSurfaceInfo: SurfaceInfo? = null
+    // Pending surfaces that have not been connected to a processor yet.
+    private var pendingInput: SurfaceRequest? = null
+    private var pendingOutput: SurfaceOutput? = null
+
+    // Surfaces that are currently wired into the active processor.
+    private var connectedInput: SurfaceRequest? = null
+    private var connectedOutput: SurfaceOutput? = null
+    private var connectedProcessor: VideoFrameProcessor? = null
+
+    // Processors that must stay alive until their surfaces are closed.
+    private val activeProcessors = mutableSetOf<VideoFrameProcessor>()
+    private var isReleased = false
 
     override fun onInputSurface(request: SurfaceRequest) {
-        Log.w("CameraEffectFix", "onInputSurface called for resolution: ${request.resolution}")
+        if (isReleased) {
+            request.willNotProvideSurface()
+            return
+        }
         executor.execute {
-            try {
-                // CameraX may call onInputSurface multiple times on the same processor across
-                // the pipeline's lifetime (PreviewView re-attach, mode switches, recording
-                // start/stop). Tear down any leftover processor from the previous cycle so the
-                // surface request can always be satisfied.
-                videoFrameProcessor?.release()
-                videoFrameProcessor = null
-                pendingSurfaceInfo = null
-
-                val effects: List<Effect> = listOf(skinSmoothEffect, lutEffect)
-                val colorInfo = ColorInfo.SDR_BT709_LIMITED
-                
-                val factory = DefaultVideoFrameProcessor.Factory.Builder().build()
-                val processor = factory.create(
-                    context,
-                    DebugViewProvider.NONE,
-                    colorInfo,
-                    true,
-                    executor,
-                    object : VideoFrameProcessor.Listener {
-                        override fun onError(exception: VideoFrameProcessingException) {
-                            Log.e("StudioEffectProcessor", "Frame processing exception: ${exception.message}", exception)
-                        }
-                        override fun onEnded() {
-                            Log.i("StudioEffectProcessor", "Video frame processing ended cleanly.")
-                        }
-                    }
-                )
-                
-                this.videoFrameProcessor = processor
-                pendingSurfaceInfo?.let {
-                    processor.setOutputSurfaceInfo(it)
-                    pendingSurfaceInfo = null
-                }
-                
-                // Register input stream with valid Media3 Format
-                val resolution = request.resolution
-                val format = Format.Builder()
-                    .setWidth(resolution.width)
-                    .setHeight(resolution.height)
-                    .setColorInfo(colorInfo)
-                    .build()
-
-                processor.setOnInputSurfaceReadyListener {
-                    val inputSurface = processor.inputSurface
-                    request.provideSurface(inputSurface, executor) { result ->
-                        Log.d("StudioEffectProcessor", "Input surface released: ${result.resultCode}")
-                        release()
-                    }
-                }
-
-                processor.registerInputStream(
-                    VideoFrameProcessor.INPUT_TYPE_SURFACE_AUTOMATIC_FRAME_REGISTRATION,
-                    format,
-                    effects,
-                    0L
-                )
-            } catch (e: Exception) {
-                Log.e("StudioEffectProcessor", "Failed to initialize Media3 VideoFrameProcessor", e)
+            if (isReleased) {
                 request.willNotProvideSurface()
+                return@execute
             }
+            pendingInput?.willNotProvideSurface()
+            pendingInput = request
+            disconnectProcessor(connectedProcessor)
+            tryConnect()
         }
     }
 
     override fun onOutputSurface(surfaceOutput: SurfaceOutput) {
-        Log.w("CameraEffectFix", "onOutputSurface called for size: ${surfaceOutput.size}")
+        if (isReleased) return
         executor.execute {
-            val processor = videoFrameProcessor
-            val resolution = surfaceOutput.size
+            if (isReleased) return@execute
+            connectedInput?.invalidate()
+            pendingOutput = surfaceOutput
+            disconnectProcessor(connectedProcessor)
+            tryConnect()
+        }
+    }
 
-            val surface = surfaceOutput.getSurface(executor) { event ->
-                Log.d("StudioEffectProcessor", "Output surface close event observed: $event")
-                videoFrameProcessor?.setOutputSurfaceInfo(null)
+    /**
+     * Connects the pending input/output pair to a fresh processor once both are available.
+     * A pre-existing connected output can be reused while we wait for a new input request.
+     */
+    private fun tryConnect() {
+        val input = pendingInput
+        val output = pendingOutput ?: connectedOutput
+        if (input != null && output != null) {
+            connectInputAndOutput(input, output)
+        }
+    }
+
+    private fun disconnectProcessor(processor: VideoFrameProcessor?) {
+        if (processor != null && activeProcessors.contains(processor)) {
+            activeProcessors.remove(processor)
+            try {
+                processor.release()
+            } catch (e: Exception) {
+                Log.w("StudioEffectProcessor", "Error releasing VideoFrameProcessor: ${e.message}")
             }
-            
-            val identityMatrix = FloatArray(16).apply { android.opengl.Matrix.setIdentityM(this, 0) }
-            surfaceOutput.updateTransformMatrix(identityMatrix, identityMatrix)
+        }
+    }
 
-            val surfaceInfo = SurfaceInfo(
-                surface,
-                resolution.width,
-                resolution.height,
-                0 // orientationDegrees
+    private fun connectInputAndOutput(input: SurfaceRequest, output: SurfaceOutput) {
+        try {
+            val identityMatrix = FloatArray(16).apply { android.opengl.Matrix.setIdentityM(this, 0) }
+            output.updateTransformMatrix(identityMatrix, identityMatrix)
+
+            val colorInfo = ColorInfo.SDR_BT709_LIMITED
+            val processor = DefaultVideoFrameProcessor.Factory.Builder().build().create(
+                context,
+                DebugViewProvider.NONE,
+                colorInfo,
+                /* renderFramesAutomatically= */ true,
+                executor,
+                object : VideoFrameProcessor.Listener {
+                    override fun onError(exception: VideoFrameProcessingException) {
+                        Log.e("StudioEffectProcessor", "Frame processing exception: ${exception.message}", exception)
+                    }
+                    override fun onEnded() {
+                        Log.i("StudioEffectProcessor", "Video frame processing ended cleanly.")
+                    }
+                }
             )
 
-            if (processor != null) {
-                processor.setOutputSurfaceInfo(surfaceInfo)
-            } else {
-                pendingSurfaceInfo = surfaceInfo
+            val effects: List<Effect> = listOf(skinSmoothEffect, lutEffect)
+
+            val resolution = input.resolution
+            val format = Format.Builder()
+                .setWidth(resolution.width)
+                .setHeight(resolution.height)
+                .setColorInfo(colorInfo)
+                .build()
+
+            processor.registerInputStream(
+                VideoFrameProcessor.INPUT_TYPE_SURFACE_AUTOMATIC_FRAME_REGISTRATION,
+                format,
+                effects,
+                0L
+            )
+            activeProcessors.add(processor)
+
+            processor.setOnInputSurfaceReadyListener {
+                val inputSurface = processor.inputSurface
+                input.provideSurface(inputSurface, executor) {
+                    disconnectProcessor(processor)
+                    if (connectedInput == input) {
+                        connectedInput = null
+                    }
+                }
             }
+            connectedInput = input
+
+            val outputSurface = output.getSurface(executor) {
+                disconnectProcessor(processor)
+                output.close()
+                if (connectedOutput == output) {
+                    connectedOutput = null
+                }
+            }
+            processor.setOutputSurfaceInfo(
+                SurfaceInfo(
+                    outputSurface,
+                    output.size.width,
+                    output.size.height,
+                    0 // orientationDegrees
+                )
+            )
+            connectedOutput = output
+
+            pendingInput = null
+            pendingOutput = null
+            connectedProcessor = processor
+        } catch (e: Exception) {
+            Log.e("StudioEffectProcessor", "Failed to initialize Media3 VideoFrameProcessor", e)
+            pendingInput?.willNotProvideSurface()
+            pendingInput = null
+            pendingOutput = null
         }
     }
 
     fun release() {
         executor.execute {
-            try {
-                videoFrameProcessor?.release()
-            } catch (e: Exception) {
-                Log.w("StudioEffectProcessor", "Error releasing VideoFrameProcessor: ${e.message}")
-            } finally {
-                videoFrameProcessor = null
-                pendingSurfaceInfo = null
-            }
+            if (isReleased) return@execute
+            isReleased = true
+            pendingInput?.willNotProvideSurface()
+            pendingInput = null
+            pendingOutput = null
+            disconnectProcessor(connectedProcessor)
+            connectedInput = null
+            connectedOutput = null
         }
     }
 }
