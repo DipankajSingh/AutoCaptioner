@@ -115,7 +115,7 @@ class DeviceCapabilityUseCase @Inject constructor(
         val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
         val isCellular = networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
 
-        if (isCellular) {
+        if (isCellular && modelSizeMb > 100) {
             return ModelSafetyCheckState.CellularWarning(modelSizeMb)
         }
 

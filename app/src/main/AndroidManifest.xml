@@ -75,6 +75,11 @@
             android:foregroundServiceType="dataSync|mediaProcessing"
             android:exported="false" />
 
+        <service
+            android:name=".core.whisper.ModelDownloadForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
     </application>
 
 </manifest>

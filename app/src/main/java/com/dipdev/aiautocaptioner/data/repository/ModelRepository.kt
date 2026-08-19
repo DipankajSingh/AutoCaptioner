@@ -142,7 +142,12 @@ class ModelRepository @Inject constructor(
 
     // Download a model with real-time progress reporting
     // Returns a Flow of DownloadState — the UI collects this
-    // to show the progress bar and status messages
+    // to show the progress bar and status messages.
+    //
+    // KNOWN CONSTRAINT: TranscriptionManager.startProcess and ModelDownloadForegroundService 
+    // should not call this concurrently for the same modelId. 
+    // Since onboarding blocks until download completion, this isn't reachable in Phase 1, 
+    // but future changes must avoid silently reintroducing a race condition here.
     fun downloadModel(modelId: String): Flow<DownloadState> = flow {
         val model = getModelById(modelId)
             ?: run {

@@ -71,6 +71,27 @@
     <string name="recommend_reason_low_end">Fastest option — your device works best with lighter models</string>
     <string name="recommend_reason_low_end_english">Fastest option — best for English content on your device</string>
 
+    <!-- Onboarding specific strings -->
+    <string name="onboarding_quality_title">Choose your caption quality</string>
+    <string name="onboarding_quality_subtitle">Choose the quality level that fits your device. Larger models use a bit more storage but provide the sharpest, most accurate captions!</string>
+    <string name="onboarding_quality_recommended">Recommended</string>
+    <string name="onboarding_quality_recommended_reason">Recommended • %s</string>
+    <string name="onboarding_quality_download_btn">Finalize Setup</string>
+    
+    <string name="onboarding_language_title">What language do you speak?</string>
+    <string name="onboarding_language_subtitle">Select the primary language for your videos.</string>
+    <string name="onboarding_language_search_placeholder">Search languages…</string>
+    <string name="onboarding_language_not_found">We couldn\'t find \"%1$s\"</string>
+    <string name="onboarding_language_request_btn">Request this language</string>
+    <string name="onboarding_language_request_sent">Request sent! We\'ll look into adding it.</string>
+    <string name="onboarding_language_show_all">Show all languages</string>
+    <string name="onboarding_continue_btn">Continue</string>
+    <string name="navigation_go_back">Go back</string>
+    
+    <string name="model_tier_fast">Fast &amp; Light</string>
+    <string name="model_tier_standard">Standard</string>
+    <string name="model_tier_pro">Pro Quality</string>
+
     <!-- Model Picker bottom sheet -->
     <string name="model_sheet_title">Generate Captions</string>
     <string name="model_sheet_language_label">Language</string>
@@ -141,6 +162,7 @@
     <string name="dialog_cellular_title">Using mobile data.</string>
     <string name="dialog_cellular_body">This is %1$d MB over cellular. It\'ll use your data.</string>
     <string name="dialog_download_anyway">Download anyway</string>
+    <string name="dialog_wait_wifi">Wait for Wi-Fi</string>
 
     <!-- ModelPickerCard -->
     <string name="model_badge_recommended">Recommended</string>

@@ -7,6 +7,12 @@ sealed class Screen {
     data object Onboarding : Screen()
 
     @Serializable
+    data object SetupLanguage : Screen()
+
+    @Serializable
+    data class SetupQuality(val languageCode: String) : Screen()
+
+    @Serializable
     data object DeviceCheck : Screen()
 
     @Serializable

@@ -12,7 +12,6 @@ fun OnboardingScreen(
 ) {
     WelcomeScreen(
         onGetStartedClick = {
-            viewModel.setEvent(OnboardingUiEvent.CompleteOnboarding)
             onFinish()
         },
         modifier = modifier

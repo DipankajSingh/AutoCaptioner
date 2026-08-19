@@ -28,9 +28,7 @@ fun NavGraph(
     startDestination: Screen = Screen.Onboarding
 ) {
     val safePopBackStack: () -> Unit = {
-        if (navController.currentBackStackEntry?.lifecycle?.currentState == androidx.lifecycle.Lifecycle.State.RESUMED) {
-            navController.popBackStack()
-        }
+        navController.popBackStack()
     }
 
     NavHost(
@@ -42,8 +40,30 @@ fun NavGraph(
         composable<Screen.Onboarding> {
             OnboardingScreen(
                 onFinish = {
-                    navController.navigate(Screen.Home) {
+                    navController.navigate(Screen.SetupLanguage) {
                         popUpTo<Screen.Onboarding> { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable<Screen.SetupLanguage> {
+            com.dipdev.aiautocaptioner.ui.onboarding.SetupLanguageScreen(
+                onNavigateBack = { safePopBackStack() },
+                onContinue = { langCode ->
+                    navController.navigate(Screen.SetupQuality(langCode)) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable<Screen.SetupQuality> {
+            com.dipdev.aiautocaptioner.ui.onboarding.SetupQualityScreen(
+                onNavigateBack = { safePopBackStack() },
+                onDownloadComplete = {
+                    navController.navigate(Screen.Home) {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
