@@ -78,15 +78,258 @@ fun TranscriptionBottomSheet(
     initialLanguage: String,
     initialTranslate: Boolean,
     initialPrompt: String = "",
+    skipUi: Boolean = false,
     onStart: (modelId: String, language: String, translate: Boolean, prompt: String) -> Unit
 ) {
-    val modelToUse = initialModelId ?: availableModels.firstOrNull()?.id ?: ""
-    
-    LaunchedEffect(Unit) {
-        if (modelToUse.isNotEmpty()) {
-            onStart(modelToUse, initialLanguage, initialTranslate, initialPrompt)
+    val modelToUse = remember(initialModelId, availableModels) { 
+        availableModels.find { it.id == initialModelId } ?: availableModels.firstOrNull()
+    }
+    val isDownloaded = modelToUse?.isDownloaded == true
+    val shouldSkipUi = skipUi && isDownloaded
+
+    LaunchedEffect(shouldSkipUi) {
+        if (shouldSkipUi) {
+            onStart(modelToUse.id, initialLanguage, initialTranslate, initialPrompt)
+            onDismiss()
         }
-        onDismiss()
+    }
+    
+    if (shouldSkipUi) return
+
+    var selectedModelId by remember { mutableStateOf(initialModelId ?: availableModels.firstOrNull()?.id ?: "") }
+    var selectedLanguage by remember { mutableStateOf(initialLanguage) }
+    var translateToEnglish by remember { mutableStateOf(initialTranslate) }
+    var prompt by remember { mutableStateOf(initialPrompt) }
+    var showAllLanguages by remember { mutableStateOf(false) }
+    var showModelDropdown by remember { mutableStateOf(false) }
+
+    val filteredModels = remember(availableModels, selectedLanguage) {
+        WhisperModel.filterAndSortForLanguage(availableModels, selectedLanguage)
+    }
+
+    LaunchedEffect(initialModelId) {
+        if (initialModelId != null && initialModelId != selectedModelId) {
+            selectedModelId = initialModelId
+        }
+    }
+
+    LaunchedEffect(filteredModels) {
+        if (filteredModels.isNotEmpty() && filteredModels.none { it.id == selectedModelId }) {
+            selectedModelId = filteredModels.first().id
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.model_sheet_title),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // Language Selection
+            Text(
+                text = stringResource(R.string.model_sheet_language_label),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val languagesToShow = if (showAllLanguages) allLanguages else quickLanguages
+                items(languagesToShow) { lang ->
+                    val isSelected = lang == selectedLanguage
+                    val label = WhisperLanguages.getDisplayName(lang)
+
+                    Surface(
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = CircleShape,
+                        modifier = Modifier.clickable {
+                            selectedLanguage = lang
+                            if (lang == "en") translateToEnglish = false
+                        }
+                    ) {
+                        Text(
+                            text = label,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                if (!showAllLanguages) {
+                    item {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = CircleShape,
+                            modifier = Modifier.clickable { showAllLanguages = true }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.lang_more),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Quality Selection
+            Text(
+                text = stringResource(R.string.model_sheet_quality_label),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            val selectedModel = filteredModels.find { it.id == selectedModelId } ?: availableModels.find { it.id == selectedModelId }
+            ExposedDropdownMenuBox(
+                expanded = showModelDropdown,
+                onExpandedChange = { showModelDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedModel?.displayName ?: stringResource(R.string.model_sheet_select_model),
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = showModelDropdown,
+                    onDismissRequest = { showModelDropdown = false }
+                ) {
+                    filteredModels.forEach { model ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(model.displayName, fontWeight = FontWeight.Bold)
+                                    Text(model.description, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f))
+                                    val size = "${model.sizeMb} MB"
+                                    val downloaded = if (model.isDownloaded) stringResource(R.string.model_sheet_downloaded) else stringResource(R.string.model_sheet_tap_to_download)
+                                    Text("$size • $downloaded", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            },
+                            trailingIcon = {
+                                if (model.id == selectedModelId) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            },
+                            onClick = {
+                                selectedModelId = model.id
+                                showModelDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (selectedLanguage == "auto") {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.model_sheet_auto_detect_hint),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Translate Toggle
+            val isMultilingualSelected = selectedModel?.isMultilingual == true
+            
+            LaunchedEffect(isMultilingualSelected) {
+                if (!isMultilingualSelected && translateToEnglish) {
+                    translateToEnglish = false
+                }
+            }
+            
+            if (selectedLanguage != "en" && isMultilingualSelected) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.model_sheet_translate_label),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Switch(
+                        checked = translateToEnglish,
+                        onCheckedChange = { translateToEnglish = it }
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Special Words Hint
+            Text(
+                text = stringResource(R.string.sheet_prompt_label),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            OutlinedTextField(
+                value = prompt,
+                onValueChange = { prompt = it },
+                placeholder = {
+                    Text(stringResource(R.string.sheet_prompt_placeholder),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                              },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                singleLine = false,
+                maxLines = 3
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            val isSelectedModelDownloaded = selectedModel?.isDownloaded == true
+            val buttonText = if (isSelectedModelDownloaded) stringResource(R.string.sheet_start_button) else stringResource(R.string.sheet_download_button)
+
+            GradientPrimaryButton(
+                text = buttonText,
+                onClick = {
+                    if (selectedModelId.isNotEmpty()) {
+                        onStart(selectedModelId, selectedLanguage, translateToEnglish, prompt)
+                        onDismiss()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .height(56.dp),
+                enabled = selectedModelId.isNotEmpty()
+            )
+        }
     }
 }
 

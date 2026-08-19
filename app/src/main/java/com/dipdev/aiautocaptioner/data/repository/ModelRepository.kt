@@ -12,6 +12,7 @@ import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -132,6 +133,13 @@ class ModelRepository @Inject constructor(
             if (tempFile.exists()) {
                 tempFile.delete()
                 Log.i(TAG, "Deleted temp file for model: $modelId")
+            }
+            
+            // Check if this was the active model and clear it if so
+            val prefs = dataStore.data.first()
+            if (prefs[ACTIVE_MODEL_KEY] == modelId) {
+                dataStore.edit { it.remove(ACTIVE_MODEL_KEY) }
+                Log.i(TAG, "Cleared active model preference as it was deleted")
             }
         }
     }

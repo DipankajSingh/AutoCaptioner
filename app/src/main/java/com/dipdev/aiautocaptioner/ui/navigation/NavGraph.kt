@@ -107,7 +107,9 @@ fun NavGraph(
                     navController.navigate(Screen.CaptionEditor(projectId))
                 },
                 onNavigateToSettings = {
-                    navController.navigate(Screen.Settings)
+                    navController.navigate(Screen.Settings) {
+                        launchSingleTop = true
+                    }
                 },
                 onNavigateToHistory = { projectId ->
                     navController.navigate(Screen.ExportHistory(projectId))
@@ -119,7 +121,11 @@ fun NavGraph(
         composable<Screen.Settings> {
             SettingsScreen(
                 onNavigateBack = { safePopBackStack() },
-                onNavigateToModelManager = { navController.navigate(Screen.ModelManager) }
+                onNavigateToModelManager = { 
+                    navController.navigate(Screen.ModelManager) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 

@@ -381,6 +381,7 @@ fun CaptionEditorScreen(
             initialLanguage = processingUiState.selectedLanguage,
             initialTranslate = processingUiState.translateToEnglish,
             initialPrompt = processingUiState.initialPrompt,
+            skipUi = false,
             onStart = { modelId, lang, translate, prompt ->
                 showTranscriptionBottomSheet = false
                 processingViewModel.setEvent(

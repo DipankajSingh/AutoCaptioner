@@ -135,11 +135,8 @@ fun EditorScreen(
         val canUndo = uiState.canUndo
         val canRedo = uiState.canRedo
         val originalDurationMs = uiState.originalDurationMs
-        val selectedLanguage = uiState.selectedLanguage
-        val translateToEnglish = uiState.translateToEnglish
         val videoWidth = uiState.videoWidth
         val videoHeight = uiState.videoHeight
-        val allowedLanguages = processingUiState.activeModel?.languages ?: listOf("multilingual")
 
         val activeStyle by remember(styleViewModel) {
             styleViewModel.uiState.map { it.activeStyle }.distinctUntilChanged()
@@ -701,6 +698,7 @@ fun EditorScreen(
                 initialLanguage = processingUiState.selectedLanguage,
                 initialTranslate = processingUiState.translateToEnglish,
                 initialPrompt = processingUiState.initialPrompt,
+                skipUi = segments.isEmpty(),
                 onStart = { modelId, lang, translate, prompt ->
                     showTranscriptionBottomSheet = false
                     pendingTranscriptionParams = PendingTranscriptionParams(modelId, lang, translate, prompt)

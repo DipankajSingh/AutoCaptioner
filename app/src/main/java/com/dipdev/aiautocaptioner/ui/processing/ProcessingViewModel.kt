@@ -1,12 +1,9 @@
 package com.dipdev.aiautocaptioner.ui.processing
 
-import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
-import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
 import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
@@ -15,7 +12,6 @@ import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -123,12 +119,9 @@ sealed class ProcessingUiEffect : UiEffect {
 @HiltViewModel
 class ProcessingViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
-    @ApplicationContext private val context: Context,
     private val projectRepository: ProjectRepository,
-    private val captionRepository: CaptionRepository,
     private val modelRepository: ModelRepository,
     private val settingsRepository: SettingsRepository,
-    private val crashReporter: CrashReporter,
     private val deviceCapabilityUseCase: com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase,
     private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase,
     private val transcriptionManager: com.dipdev.aiautocaptioner.core.whisper.TranscriptionManager
@@ -254,7 +247,7 @@ class ProcessingViewModel @Inject constructor(
             }
 
             val activeModel = modelRepository.getActiveModel().first()
-            if (activeModel != null) {
+            if (activeModel != null && activeModel.isDownloaded) {
                 // Model ready — start immediately with saved language and prompt
                 startProcessing(projectId)
             } else {

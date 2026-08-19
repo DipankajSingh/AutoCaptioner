@@ -9,7 +9,6 @@ import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,15 +43,27 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.telemetryEnabledFlow,
                 settingsRepository.previewFpsFlow
             ) { glass, thumb, telemetry, previewFps ->
-                SettingsUiState(glass, thumb, telemetry, previewFps)
-            }.distinctUntilChanged().collect { state ->
-                setState { state }
+                { state: SettingsUiState ->
+                    state.copy(
+                        glassmorphism = glass,
+                        showTimelineThumbnails = thumb,
+                        telemetryEnabled = telemetry,
+                        previewFps = previewFps
+                    )
+                }
+            }.collect { updateFn ->
+                setState { updateFn(this) }
             }
         }
         // Collect active model name independently
         viewModelScope.launch {
             modelRepository.getActiveModel().collect { model ->
-                setState { copy(activeModelName = model?.displayName?.split("\u2014")?.first()?.trim()) }
+                val name = if (model != null && model.isDownloaded) {
+                    model.displayName.split("\u2014").first().trim()
+                } else {
+                    null
+                }
+                setState { copy(activeModelName = name) }
             }
         }
     }

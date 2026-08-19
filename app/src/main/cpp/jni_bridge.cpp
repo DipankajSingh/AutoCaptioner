@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <android/log.h>
 #include "whisper.h"
 
@@ -90,7 +91,7 @@ struct SegmentCallbackContext {
 
 static void android_whisper_progress_callback(struct whisper_context * /*ctx*/, struct whisper_state * /*state*/, int progress, void * user_data) {
     if (!user_data) return;
-    ProgressCallbackContext* cb = static_cast<ProgressCallbackContext*>(user_data);
+    auto* cb = static_cast<ProgressCallbackContext*>(user_data);
     if (!cb->listener || !cb->onProgress) return;
 
     JNIEnv * env = nullptr;
@@ -102,7 +103,7 @@ static void android_whisper_progress_callback(struct whisper_context * /*ctx*/, 
 
 static void android_whisper_new_segment_callback(struct whisper_context * /*ctx*/, struct whisper_state * state, int n_new, void * user_data) {
     if (!user_data) return;
-    SegmentCallbackContext* cb = static_cast<SegmentCallbackContext*>(user_data);
+    auto* cb = static_cast<SegmentCallbackContext*>(user_data);
     if (!cb->listener || !cb->onSegment) return;
 
     JNIEnv * env = nullptr;
@@ -118,7 +119,7 @@ static void android_whisper_new_segment_callback(struct whisper_context * /*ctx*
         int64_t t0 = whisper_full_get_segment_t0_from_state(state, i);
         int64_t t1 = whisper_full_get_segment_t1_from_state(state, i);
 
-        int len = strlen(text);
+        auto len = static_cast<jsize>(strlen(text));
         jbyteArray jtext = env->NewByteArray(len);
         if (jtext != nullptr) {
             env->SetByteArrayRegion(jtext, 0, len, reinterpret_cast<const jbyte*>(text));
@@ -160,100 +161,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
 
 // ---------------------------------------------------------------------------
 // transcribe — plain text transcription (no timestamps).
-// ---------------------------------------------------------------------------
-JNIEXPORT jbyteArray JNICALL
-Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribe(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jstring initial_prompt, jobject listener) {
 
-    whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
-    if (ctx == nullptr) {
-        LOGE("transcribe called with null handle!");
-        return nullptr;
-    }
-
-    const char * lang = nullptr;
-    if (lang_str != nullptr) {
-        lang = env->GetStringUTFChars(lang_str, nullptr);
-    }
-
-    const char * prompt = nullptr;
-    if (initial_prompt != nullptr) {
-        prompt = env->GetStringUTFChars(initial_prompt, nullptr);
-    }
-    
-    jsize n_samples   = env->GetArrayLength(audio_data);
-    jfloat * samples  = env->GetFloatArrayElements(audio_data, nullptr);
-    if (samples == nullptr) {
-        if (lang != nullptr) env->ReleaseStringUTFChars(lang_str, lang);
-        if (prompt != nullptr) env->ReleaseStringUTFChars(initial_prompt, prompt);
-        return nullptr;
-    }
-
-    whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-    params.n_threads        = (int) n_threads;
-    params.language         = lang;
-    params.translate        = translate_to_english == JNI_TRUE;
-    params.print_special    = false;
-    params.print_progress   = false;
-    params.print_realtime   = false;
-    params.print_timestamps = false;
-    params.greedy.best_of   = 1;
-
-    if (prompt != nullptr) {
-        params.initial_prompt       = prompt;
-        params.carry_initial_prompt = true;
-    }
-
-    ProgressCallbackContext* cb_ctx = nullptr;
-    try {
-        if (listener != nullptr) {
-            cb_ctx = new ProgressCallbackContext(env, listener);
-            params.progress_callback = android_whisper_progress_callback;
-            params.progress_callback_user_data = cb_ctx;
-        }
-    } catch (...) {
-        LOGE("Failed to allocate ProgressCallbackContext");
-    }
-
-    int result = whisper_full(ctx, params, samples, (int) n_samples);
-
-    if (cb_ctx != nullptr) {
-        delete cb_ctx;
-    }
-
-    env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);
-    if (lang != nullptr) {
-        env->ReleaseStringUTFChars(lang_str, lang);
-    }
-    if (prompt != nullptr) {
-        env->ReleaseStringUTFChars(initial_prompt, prompt);
-    }
-
-    if (result != 0) {
-        LOGE("Transcription failed with code: %d", result);
-        return nullptr;
-    }
-
-    std::string text;
-    int n_segments = whisper_full_n_segments(ctx);
-    for (int i = 0; i < n_segments; i++) {
-        const char * segment = whisper_full_get_segment_text(ctx, i);
-        if (segment != nullptr) {
-            text += segment;
-        }
-    }
-
-    LOGI("Transcription done: %zu chars", text.size());
-    
-    int len = text.size();
-    jbyteArray jBytes = env->NewByteArray(len);
-    if (jBytes != nullptr) {
-        env->SetByteArrayRegion(jBytes, 0, len, reinterpret_cast<const jbyte*>(text.data()));
-    }
-    return jBytes;
-}
-
-// ---------------------------------------------------------------------------
 // transcribeWithTimestamps — returns word|startMs|endMs|confidence entries.
 //
 // FIX: Each NewStringUTF() call consumes a JNI local reference slot.
@@ -266,7 +174,7 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
         JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jstring initial_prompt, jobject listener, jobject segmentListener) {
 
-    whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
+    auto * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
         LOGE("transcribeWithTimestamps called with null handle!");
         return nullptr;
@@ -329,12 +237,8 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
 
     int result = whisper_full(ctx, params, samples, (int) n_samples);
 
-    if (cb_ctx != nullptr) {
-        delete cb_ctx;
-    }
-    if (seg_ctx != nullptr) {
-        delete seg_ctx;
-    }
+    delete cb_ctx;
+    delete seg_ctx;
 
     env->ReleaseFloatArrayElements(audio_data, samples, JNI_ABORT);
     if (lang != nullptr) {
@@ -369,10 +273,14 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
         size_t e = trimmed.find_last_not_of(" \t\n\r");
         if (e != std::string::npos) trimmed = trimmed.substr(0, e + 1);
 
+        // Replace any newlines or tabs with spaces to prevent breaking the IPC format
+        std::replace(trimmed.begin(), trimmed.end(), '\n', ' ');
+        std::replace(trimmed.begin(), trimmed.end(), '\t', ' ');
+
         if (trimmed.empty()) return;
         if (trimmed.front() == '[' && trimmed.back() == ']') return;
 
-        float avg_conf = word_tok_cnt > 0 ? word_conf_sum / word_tok_cnt : 1.0f;
+        float avg_conf = word_tok_cnt > 0 ? word_conf_sum / static_cast<float>(word_tok_cnt) : 1.0f;
         text_result += trimmed + "\t" + std::to_string(word_t0_ms) + "\t"
                      + std::to_string(word_t1_ms) + "\t" + std::to_string(avg_conf) + "\n";
     };
@@ -391,8 +299,11 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
             std::string tok(tok_text);
             if (tok.empty()) continue;
 
-            // A leading space or tab signals a new word boundary in BPE tokenisation.
-            if (!cur_word.empty() && (tok[0] == ' ' || tok[0] == '\t')) {
+            // A space or tab at the boundary signals a new word.
+            bool starts_with_space = !tok.empty() && (tok.front() == ' ' || tok.front() == '\t' || tok.front() == '\n');
+            bool prev_ends_with_space = !cur_word.empty() && (cur_word.back() == ' ' || cur_word.back() == '\t' || cur_word.back() == '\n');
+
+            if (!cur_word.empty() && (starts_with_space || prev_ends_with_space)) {
                 flush_word();
                 cur_word.clear();
                 word_t0_ms = word_t1_ms = -1;
@@ -401,31 +312,38 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
             }
 
             cur_word += tok;
-            if (word_t0_ms < 0) word_t0_ms = static_cast<long>(td.t0 * 10);
-            word_t1_ms   = static_cast<long>(td.t1 * 10);
+            if (word_t0_ms < 0) {
+                if (td.t0 >= 0) {
+                    word_t0_ms = static_cast<long>(td.t0 * 10);
+                } else {
+                    word_t0_ms = static_cast<long>(whisper_full_get_segment_t0(ctx, i) * 10);
+                }
+            }
+            if (td.t1 >= 0) {
+                word_t1_ms = static_cast<long>(td.t1 * 10);
+            } else {
+                word_t1_ms = static_cast<long>(whisper_full_get_segment_t1(ctx, i) * 10);
+            }
             word_conf_sum += td.p;
             word_tok_cnt++;
         }
+        
+        // Flush at the end of each segment to prevent cross-segment word merging
+        flush_word();
+        cur_word.clear();
+        word_t0_ms = word_t1_ms = -1;
+        word_conf_sum = 0.0f;
+        word_tok_cnt  = 0;
     }
-    flush_word();
 
     LOGI("Total segments: %d", n_segments);
 
-    int len = text_result.size();
+    auto len = static_cast<jsize>(text_result.size());
     jbyteArray jBytes = env->NewByteArray(len);
     if (jBytes != nullptr) {
         env->SetByteArrayRegion(jBytes, 0, len, reinterpret_cast<const jbyte*>(text_result.data()));
     }
     return jBytes;
-}
-
-// ---------------------------------------------------------------------------
-// isModelLoaded — handle-aware null check (no global state needed).
-// ---------------------------------------------------------------------------
-JNIEXPORT jboolean JNICALL
-Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_isModelLoaded(
-        JNIEnv *, jobject, jlong handle) {
-    return handle != 0L ? JNI_TRUE : JNI_FALSE;
 }
 
 // ---------------------------------------------------------------------------
@@ -436,7 +354,7 @@ JNIEXPORT jstring JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getDetectedLanguage(
         JNIEnv * env, jobject, jlong handle) {
 
-    whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
+    auto * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) return nullptr;
 
     int lang_id = whisper_full_lang_id(ctx);
@@ -455,7 +373,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getDetectedLanguage(
 JNIEXPORT void JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_freeModel(
         JNIEnv *, jobject, jlong handle) {
-    whisper_context * ctx = reinterpret_cast<whisper_context *>(handle);
+    auto * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx != nullptr) {
         whisper_free(ctx);
         LOGI("Model freed");
