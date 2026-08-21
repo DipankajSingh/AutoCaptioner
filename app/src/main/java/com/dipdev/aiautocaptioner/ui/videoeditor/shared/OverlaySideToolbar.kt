@@ -25,12 +25,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 
 @Composable
 fun OverlaySideToolbar(
     selectedOverlayId: String?,
     isTextOverlay: Boolean,
     onFontSize: () -> Unit = {},
+    onFontList: () -> Unit = {},
     onEdit: () -> Unit = {},
     onColorMenuClicked: () -> Unit = {},
     onDuplicate: () -> Unit = {},
@@ -46,6 +50,7 @@ fun OverlaySideToolbar(
     ) {
         if (isTextOverlay) {
             ToolbarIcon(icon = Icons.Rounded.FormatSize, contentDescription = "Text size", onClick = onFontSize, visible = visible)
+            ToolbarTextIcon(text = "Aa", onClick = onFontList, visible = visible)
             ToolbarIcon(icon = Icons.Rounded.Edit, contentDescription = "Edit", onClick = onEdit, visible = visible)
             ToolbarIcon(icon = Icons.Rounded.ColorLens, contentDescription = "Color", onClick = onColorMenuClicked, visible = visible)
         } else {
@@ -61,6 +66,38 @@ fun OverlaySideToolbar(
             tint = Color(0xFFE84855),
             visible = visible
         )
+    }
+}
+
+@Composable
+private fun ToolbarTextIcon(
+    text: String,
+    onClick: () -> Unit,
+    tint: Color = Color.White,
+    enabled: Boolean = true,
+    visible: Boolean = true
+) {
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .shadow(4.dp, CircleShape)
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(Color.Transparent)
+                .clickable(enabled = enabled, onClick = onClick)
+        ) {
+            androidx.compose.material3.Text(
+                text = text,
+                color = if (enabled) tint else tint.copy(alpha = 0.5f),
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
     }
 }
 

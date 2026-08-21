@@ -16,12 +16,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Title
@@ -35,13 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +50,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
 import com.dipdev.aiautocaptioner.ui.components.AiProcessingAnimation
 import com.dipdev.aiautocaptioner.ui.components.AppPrimaryButton
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
@@ -72,7 +63,6 @@ import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorBottomDock
 import com.dipdev.aiautocaptioner.ui.videoeditor.shared.EditorTopOverlay
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleEditorUiEvent
 import com.dipdev.aiautocaptioner.ui.videoeditor.style.StyleViewModel
-import com.dipdev.aiautocaptioner.ui.videoeditor.style.VerticalPremiumSlider
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -80,29 +70,6 @@ import kotlinx.coroutines.flow.map
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-
-private val CaptionSegmentSaver = Saver<CaptionSegmentEntity?, Any>(
-    save = { segment ->
-        segment?.let {
-            listOf(it.id, it.projectId, it.index, it.startTimeMs, it.endTimeMs, it.text, it.isEdited)
-        }
-    },
-    restore = { value ->
-        (value as? List<*>)?.let { list ->
-            if (list.size == 7) {
-                CaptionSegmentEntity(
-                    id = list[0]?.toString() ?: return@let null,
-                    projectId = list[1]?.toString() ?: return@let null,
-                    index = (list[2] as? Int) ?: (list[2] as? Long)?.toInt() ?: 0,
-                    startTimeMs = (list[3] as? Long) ?: (list[3] as? Int)?.toLong() ?: 0L,
-                    endTimeMs = (list[4] as? Long) ?: (list[4] as? Int)?.toLong() ?: 0L,
-                    text = list[5]?.toString() ?: "",
-                    isEdited = list[6] as? Boolean ?: false
-                )
-            } else null
-        }
-    }
-)
 
 @Composable
 fun EditorScreen(
@@ -121,8 +88,7 @@ fun EditorScreen(
         val thumbnails by viewModel.thumbnailManager.thumbnails.collectAsStateWithLifecycle()
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
         val isTextOverlaySelected by viewModel.isTextOverlaySelected.collectAsStateWithLifecycle()
-        val isImageOverlaySelected by viewModel.isImageOverlaySelected.collectAsStateWithLifecycle()
-        
+
         val overlays = uiState.imageOverlays
         val textOverlays = uiState.textOverlays
         
@@ -382,7 +348,19 @@ fun EditorScreen(
                                 EditorTopOverlay(
                                     canUndo = canUndo,
                                     canRedo = canRedo,
-                                    onNavigateBack = onNavigateBack,
+                                    onNavigateBack = {
+                                        when {
+                                            uiState.editingTextOverlayId != null -> viewModel.setEvent(VideoEditorUiEvent.StopEditingText)
+                                            showExportWarning -> showExportWarning = false
+                                            showDiscardDialog -> showDiscardDialog = false
+                                            showTranscriptionBottomSheet -> showTranscriptionBottomSheet = false
+                                            showTextColorMenu -> showTextColorMenu = false
+                                            showTextSizeSlider -> showTextSizeSlider = false
+                                            showFontList -> showFontList = false
+                                            hasEdits -> showDiscardDialog = true
+                                            else -> onNavigateBack()
+                                        }
+                                    },
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
                                     onNavigateToExport = { 
@@ -402,7 +380,15 @@ fun EditorScreen(
                                             currentImageOverlay = currentImageOverlay,
                                             currentTextOverlay = currentTextOverlay,
                                             showTextSizeSlider = showTextSizeSlider,
-                                            onToggleTextSizeSlider = { showTextSizeSlider = !showTextSizeSlider },
+                                            onToggleTextSizeSlider = { 
+                                                showTextSizeSlider = !showTextSizeSlider
+                                                if (showTextSizeSlider) showFontList = false
+                                            },
+                                            showFontList = showFontList,
+                                            onToggleFontList = { 
+                                                showFontList = !showFontList
+                                                if (showFontList) showTextSizeSlider = false
+                                            },
                                             onStartEditingText = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) },
                                             onShowTextColorMenu = { showTextColorMenu = true },
                                             onDuplicateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(it)) },

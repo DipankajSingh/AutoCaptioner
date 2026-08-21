@@ -6,14 +6,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
-import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
-
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
+import com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity
 
 @Stable
 class EditorScreenState(
@@ -31,6 +29,7 @@ class EditorScreenState(
     var inlineEditText by mutableStateOf(initialInlineEditText)
     var showTextColorMenu by mutableStateOf(false)
     var showTextSizeSlider by mutableStateOf(false)
+    var showFontList by mutableStateOf(false)
     var cropOverlay by mutableStateOf<ImageOverlayEntity?>(null)
     
     var showTranscriptionBottomSheet by mutableStateOf(false)
