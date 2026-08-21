@@ -53,6 +53,10 @@ class ModelDownloadForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // startForeground MUST be called before any early returns or async work
+        // to satisfy the system's 5-second window after startForegroundService().
+        startForegroundServiceGracefully()
+
         if (intent?.action == ACTION_CANCEL_DOWNLOAD) {
             downloadJob?.cancel()
             ModelDownloadServiceManager.downloadState.value = null
@@ -69,14 +73,12 @@ class ModelDownloadForegroundService : Service() {
 
         ModelDownloadServiceManager.downloadState.value = DownloadState.Starting
 
-        startForegroundServiceGracefully()
-
         downloadJob?.cancel()
         downloadJob = serviceScope.launch {
             modelRepository.downloadModel(modelId).collect { state ->
                 ModelDownloadServiceManager.downloadState.value = state
                 updateNotificationProgress(state)
-                
+
                 if (state is DownloadState.Complete || state is DownloadState.Error) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()

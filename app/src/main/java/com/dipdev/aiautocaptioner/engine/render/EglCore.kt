@@ -6,15 +6,15 @@ import android.opengl.EGLContext
 import android.opengl.EGLDisplay
 import android.opengl.EGLExt
 import android.opengl.EGLSurface
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 
 /**
  * Core EGL state (display, context, config).
  * The EGLContext must only be attached to one thread at a time.
+ *
+ * EGL14 and EGLExt.eglPresentationTimeANDROID are available from API 18+, so
+ * no @RequiresApi annotation is needed here.
  */
-@RequiresApi(Build.VERSION_CODES.O)
 class EglCore {
     private var eglDisplay: EGLDisplay = EGL14.EGL_NO_DISPLAY
     private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT

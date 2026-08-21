@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Surface
-import androidx.annotation.RequiresApi
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,7 +63,6 @@ class FacelessVideoRecorder {
     private var onAmplitudeCallback: ((Float) -> Unit)? = null
     private var outputFile: File? = null
 
-    @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("MissingPermission")
     fun start(
         width: Int = 1080,
@@ -170,17 +168,20 @@ class FacelessVideoRecorder {
         })
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     fun resume() {
         if (!isRecording.get() || !isPaused.get()) return
         isPaused.set(false)
         videoCodec?.setParameters(Bundle().apply {
             putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
-            putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+            // PARAMETER_KEY_SUSPEND_TIME requires API 29 — omitted on older devices.
+            // Without it, the encoder may have minor timestamp drift on resume, but
+            // won't crash. API 24–28 users get best-effort resume behaviour.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+            }
         })
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     fun stop() {
         if (!isRecording.getAndSet(false)) return
         val wasPaused = isPaused.get()
@@ -190,7 +191,10 @@ class FacelessVideoRecorder {
             if (wasPaused) {
                 videoCodec?.setParameters(Bundle().apply {
                     putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
-                    putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+                    // PARAMETER_KEY_SUSPEND_TIME requires API 29 — omitted on older devices.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+                    }
                 })
                 delay(50.milliseconds)
             }
@@ -220,7 +224,6 @@ class FacelessVideoRecorder {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun videoDrawLoop(
         color: Int?,
         gradientColors: List<Int>?

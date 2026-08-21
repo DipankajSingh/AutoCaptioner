@@ -135,18 +135,20 @@ class AudioExtractionUseCase @Inject constructor(
                 }
 
                 val sampleRate = audioFormat?.getInteger(MediaFormat.KEY_SAMPLE_RATE) ?: 16000
-                var finalFloats = FloatArray(totalFloatsWritten)
+
+                // Write chunks directly into a pre-sized output array — avoids the extra
+                // merged-copy allocation that caused OOM on long videos.
+                val finalFloats = FloatArray(totalFloatsWritten)
                 var offset = 0
                 for (arr in floatArrays) {
-                    System.arraycopy(arr, 0, finalFloats, offset, arr.size)
+                    arr.copyInto(finalFloats, offset)
                     offset += arr.size
                 }
+                // Clear the chunk list immediately so GC can reclaim the per-chunk arrays
+                // before we allocate the resampled output below.
+                floatArrays.clear()
 
-                if (sampleRate != 16000) {
-                    finalFloats = resampleTo16kLinear(finalFloats, sampleRate)
-                }
-
-                finalFloats
+                if (sampleRate != 16000) resampleTo16kLinear(finalFloats, sampleRate) else finalFloats
             } catch (e: Exception) {
                 crashReporter.recordException(e)
                 throw when (e) {

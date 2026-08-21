@@ -307,14 +307,17 @@ fun SmartRecorderContent(
 
     LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
         if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA) {
-            val helper = withContext(Dispatchers.IO) {
+            // MediaPipe GestureRecognizer (LIVE_STREAM mode) requires construction on
+            // the main thread — it validates the call stack for a looper-backed caller.
+            // Using Dispatchers.IO causes "no caller found on the stack" IllegalStateException.
+            val helper = withContext(Dispatchers.Main) {
                 GestureDetectorHelper(context, gestureListener)
             }
             gestureHelper = helper
             cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
         } else {
             cameraController.clearImageAnalysisAnalyzer()
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
                 gestureHelper?.close()
             }
             gestureHelper = null

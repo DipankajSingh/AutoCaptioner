@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.OptIn
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.net.toUri
@@ -98,7 +97,6 @@ class ExportForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_CANCEL) {
             Log.d(TAG, "Cancel received")
@@ -161,15 +159,17 @@ class ExportForegroundService : Service() {
         return PendingIntent.getService(this, 0, cancelIntent, flags)
     }
 
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun startForegroundService() {
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            getString(R.string.export_channel_name),
-            NotificationManager.IMPORTANCE_LOW
-        )
-        notificationManager.createNotificationChannel(channel)
+        // Guard NotificationChannel creation — API 26+ only (minSdk = 24)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                getString(R.string.export_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            )
+            notificationManager.createNotificationChannel(channel)
+        }
 
         val notification = buildExportNotification(
             title = getString(R.string.export_notif_title),
@@ -177,12 +177,30 @@ class ExportForegroundService : Service() {
             isIndeterminate = true
         )
 
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
-        )
+        try {
+            when {
+                // API 35+: mediaProcessing type is available and required
+                Build.VERSION.SDK_INT >= 35 -> {
+                    ServiceCompat.startForeground(
+                        this,
+                        NOTIFICATION_ID,
+                        notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+                    )
+                }
+                // API 26–34: foreground service works but no specialized type needed for this use case
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+                // API < 26: plain foreground service, no type
+                else -> {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start foreground service: ${e.message}")
+            stopSelf()
+        }
     }
 
     private fun buildExportNotification(

@@ -51,13 +51,15 @@ class TranscriptionForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // startForeground MUST be called before any early returns or async work
+        // to satisfy the system's 5-second window after startForegroundService().
+        startForegroundServiceGracefully()
+
         if (intent?.action == ACTION_CANCEL) {
             transcriptionManager.cancel()
             stopSelf()
             return START_NOT_STICKY
         }
-
-        startForegroundServiceGracefully()
 
         observeJob?.cancel()
         observeJob = serviceScope.launch {

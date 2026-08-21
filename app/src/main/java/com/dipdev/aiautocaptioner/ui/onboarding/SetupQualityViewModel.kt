@@ -97,12 +97,12 @@ class SetupQualityViewModel @Inject constructor(
         val intent = Intent(context, ModelDownloadForegroundService::class.java).apply {
             action = ModelDownloadForegroundService.ACTION_CANCEL_DOWNLOAD
         }
-        ContextCompat.startForegroundService(context, intent)
+
+        try { context.startService(intent) } catch (_: Exception) {}
     }
 
     suspend fun finalizeSetup() {
-        // Active model is already set by the repository upon download completion, but we can do it here too just in case.
-        val modelId = _selectedModelId.value ?: return
+         val modelId = _selectedModelId.value ?: return
         modelRepository.setActiveModel(modelId)
         
         settingsRepository.saveLastLanguageSettings(languageCode, translateToEnglish = false)
@@ -118,10 +118,8 @@ class SetupQualityViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
-        // If the user navigates away before download completes, cancel it
         val state = ModelDownloadServiceManager.downloadState.value
-        if (state != null && state !is DownloadState.Complete) {
+        if (state is DownloadState.Starting || state is DownloadState.Downloading) {
             cancelDownload()
         }
     }

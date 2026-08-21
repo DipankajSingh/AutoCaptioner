@@ -1,12 +1,8 @@
 package com.dipdev.aiautocaptioner.engine.render
 
 import android.opengl.EGLSurface
-import android.os.Build
 import android.view.Surface
-import androidx.annotation.RequiresApi
 
-
-@RequiresApi(Build.VERSION_CODES.O)
 class WindowSurface(
     private val eglCore: EglCore,
     private var surface: Surface?,
@@ -18,7 +14,6 @@ class WindowSurface(
         createWindowSurface(surface!!)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun createWindowSurface(surface: Any) {
         check(eglSurface == null) { "surface already created" }
         eglSurface = eglCore.createWindowSurface(surface)
