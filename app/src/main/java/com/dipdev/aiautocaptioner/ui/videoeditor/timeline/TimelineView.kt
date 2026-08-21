@@ -1,5 +1,8 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.timeline
 
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineData
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineSelection
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineCallbacks
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
@@ -56,33 +59,44 @@ data class TextTrackItem(val entity: TextOverlayEntity) : TimelineTrackItem {
     override val id = entity.id
     override val zOrder = entity.zOrder
 }
+
 @SuppressLint("DefaultLocale")
 @Composable
 fun TimelineView(
     modifier: Modifier = Modifier,
-    clips: ImmutableList<Clip>,
-    thumbnails: Map<Long, Bitmap>,
-    onRequestThumbnails: (List<Long>) -> Unit,
-    originalDurationMs: Long,
-    selectedClipId: String?,
-    onClipSelected: (String) -> Unit,
-    onMoveClip: (Int, Int) -> Unit,
-    overlays: ImmutableList<ImageOverlayEntity> = persistentListOf(),
-    selectedOverlayId: String? = null,
-    onOverlaySelected: (String) -> Unit = {},
-    onOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
-    textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
-    onTextOverlayTimingChanged: (id: String, startTimeMs: Long, endTimeMs: Long) -> Unit = {_,_,_ ->},
-    onMoveOverlayZ: (String, Boolean) -> Unit = {_,_ ->},
-    onDragStateChange: (Boolean) -> Unit,
-    zoomLevel: Float,
-    player: Player,
-    currentTimelineMs: () -> Long,
-    onTrimClip: (String, Long, Long) -> Unit = {_,_,_ ->},
-    segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
-    selectedCaptionSegmentId: String? = null,
-    onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {}
+    data: TimelineData,
+    selection: TimelineSelection,
+    callbacks: TimelineCallbacks
 ) {
+    val clips = data.clips
+    val thumbnails = data.thumbnails
+    val originalDurationMs = data.originalDurationMs
+    val overlays = data.overlays
+    val textOverlays = data.textOverlays
+    val segments = data.segments
+    val zoomLevel = data.zoomLevel
+    val player = data.player
+    val currentTimelineMs = data.currentTimelineMs
+    
+    val selectedClipId = selection.selectedClipId
+    val selectedOverlayId = selection.selectedOverlayId
+    val selectedCaptionSegmentId = selection.selectedCaptionSegmentId
+    
+    val onRequestThumbnails = callbacks::onRequestThumbnails
+    val onClipSelected: (String?) -> Unit = { callbacks.onClipSelected(it) }
+    val onMoveClip = callbacks::onMoveClip
+    val onOverlaySelected: (String?) -> Unit = { callbacks.onOverlaySelected(it) }
+    val onOverlayTimingChanged: (String, Long, Long) -> Unit = { id, start, end -> 
+        overlays.find { it.id == id }?.let { callbacks.onUpdateImageOverlay(it.copy(startTimeMs = start, endTimeMs = end)) }
+    }
+    val onTextOverlayTimingChanged: (String, Long, Long) -> Unit = { id, start, end -> 
+        textOverlays.find { it.id == id }?.let { callbacks.onUpdateTextOverlay(it.copy(startTimeMs = start, endTimeMs = end)) }
+    }
+    val onMoveOverlayZ = callbacks::onMoveOverlayZ
+    val onDragStateChange = callbacks::onDragStateChange
+    val onTrimClip = callbacks::onTrimClip
+    val onCaptionSegmentTap = callbacks::onCaptionSegmentTap
+
     val state = rememberTimelineState(
         clips = clips,
         zoomLevel = zoomLevel,

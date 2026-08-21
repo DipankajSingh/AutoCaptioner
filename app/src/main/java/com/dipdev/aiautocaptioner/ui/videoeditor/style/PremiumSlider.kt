@@ -118,8 +118,7 @@ fun VerticalPremiumSlider(
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary
-    val trackBackgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
-    val glowColor = primaryColor.copy(alpha = 0.5f)
+    val trackBackgroundColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
 
     Canvas(
         modifier = modifier
@@ -147,20 +146,11 @@ fun VerticalPremiumSlider(
                 )
             }
     ) {
-        val trackWidth = 3.dp.toPx()
+        val trackWidth = 2.dp.toPx()
         val trackCornerRadius = CornerRadius(trackWidth / 2f)
         val cx = size.width / 2f
         val thumbY = size.height * (1f - internalRatio)
-        val thumbRadius = if (isDragging) 14.dp.toPx() else 12.dp.toPx()
-
-        // Draw glow effect (outer glow)
-        if (isDragging) {
-            drawCircle(
-                color = glowColor,
-                radius = thumbRadius + 8.dp.toPx(),
-                center = Offset(cx, thumbY)
-            )
-        }
+        val thumbRadius = 10.dp.toPx()
 
         // Draw background track
         drawRoundRect(
@@ -178,25 +168,19 @@ fun VerticalPremiumSlider(
             cornerRadius = trackCornerRadius
         )
 
-        // Draw premium thumb with shadow
-        drawCircle(
-            color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
-            radius = thumbRadius + 2.dp.toPx(),
-            center = Offset(cx, thumbY + 3.dp.toPx())
-        )
-
-        // Main thumb
+        // Draw thumb base
         drawCircle(
             color = primaryColor,
             radius = thumbRadius,
             center = Offset(cx, thumbY)
         )
-
-        // Thumb highlight for premium look
+        
+        // Draw inner white dot
         drawCircle(
-            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f),
-            radius = thumbRadius / 2.5f,
-            center = Offset(cx - thumbRadius / 3f, thumbY - thumbRadius / 3f)
+            color = androidx.compose.ui.graphics.Color.White,
+            radius = 4.dp.toPx(),
+            center = Offset(cx, thumbY)
         )
+
     }
 }

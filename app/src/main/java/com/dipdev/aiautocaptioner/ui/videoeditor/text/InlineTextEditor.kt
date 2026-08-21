@@ -187,11 +187,7 @@ fun FontStyleCarousel(
 ) {
     Column(
         modifier = modifier
-            .width(120.dp)
-            .heightIn(max = 260.dp)
-            .background(Color(0xF216171B), RoundedCornerShape(18.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
-            .padding(vertical = 10.dp),
+            .width(120.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -237,7 +233,7 @@ private fun FontStyleChip(
             .fillMaxWidth()
             .height(44.dp)
             .background(
-                if (isSelected) AccentRose.copy(alpha = 0.2f) else Color.Transparent,
+                if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                 RoundedCornerShape(10.dp)
             )
             .clickable(onClick = onClick)
@@ -245,14 +241,14 @@ private fun FontStyleChip(
     ) {
         Text(
             "Aa",
-            color = Color.White,
+            color = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.primary else Color.White,
             fontFamily = fontFamily,
             style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(end = 8.dp)
         )
         Text(
             name,
-            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.68f),
+            color = if (isSelected) androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer else Color.White.copy(alpha = 0.68f),
             fontFamily = fontFamily,
             maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

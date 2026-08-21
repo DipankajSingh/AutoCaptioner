@@ -29,9 +29,13 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -96,11 +100,19 @@ sealed class VideoEditorUiEvent : UiEvent {
     data object StartEditingText : VideoEditorUiEvent()
     data object StopEditingText : VideoEditorUiEvent()
     data object CancelAddingText : VideoEditorUiEvent()
+    data class StartTranscription(val params: PendingTranscriptionParams) : VideoEditorUiEvent()
 }
+
+data class PendingTranscriptionParams(
+    val modelId: String,
+    val language: String,
+    val translate: Boolean,
+    val prompt: String
+)
 
 sealed class VideoEditorUiEffect : UiEffect {
     data object ProjectDeleted : VideoEditorUiEffect()
-    data object NavigateToProcessing : VideoEditorUiEffect()
+    data class NavigateToProcessing(val params: PendingTranscriptionParams? = null) : VideoEditorUiEffect()
     data object NavigateToExport : VideoEditorUiEffect()
     data object ShowExportWithoutCaptionsWarning : VideoEditorUiEffect()
 }
@@ -121,9 +133,18 @@ class EditorViewModel @Inject constructor(
     private val _selectedOverlayId = MutableStateFlow<String?>(null)
     val selectedOverlayId = _selectedOverlayId.asStateFlow()
 
+    val isTextOverlaySelected: StateFlow<Boolean> = combine(uiState, _selectedOverlayId) { state, selectedId ->
+        selectedId != null && state.textOverlays.any { it.id == selectedId }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isImageOverlaySelected: StateFlow<Boolean> = combine(uiState, _selectedOverlayId) { state, selectedId ->
+        selectedId != null && state.imageOverlays.any { it.id == selectedId }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
 
     private var originalDurationMs: Long = 0L
     private var originalVideoPath: String = ""
+    private var pendingTranscriptionParams: PendingTranscriptionParams? = null
 
     // Conflated channel that serializes overlay DB restores for undo/redo so rapid
     // undo/redo can't interleave delete+insert writes out of order.
@@ -223,6 +244,7 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.DuplicateClip -> historyManager.duplicateClip(event.clipId)
             is VideoEditorUiEvent.MoveClip -> historyManager.moveClip(event.fromIndex, event.toIndex, event.saveToHistory)
             is VideoEditorUiEvent.ApplyEdits -> applyEdits(event.navigateToExport, event.hasCaptions, event.forceExport)
+            is VideoEditorUiEvent.StartTranscription -> startTranscription(event.params)
             is VideoEditorUiEvent.Cancel -> cancel()
             is VideoEditorUiEvent.DeleteProject -> deleteProject()
             is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
@@ -408,6 +430,11 @@ class EditorViewModel @Inject constructor(
         }
     }
 
+    private fun startTranscription(params: PendingTranscriptionParams) {
+        pendingTranscriptionParams = params
+        applyEdits(navigateToExport = false, hasCaptions = true, forceExport = false)
+    }
+
     private fun applyEdits(navigateToExport: Boolean, hasCaptions: Boolean, forceExport: Boolean) {
         val projectId = currentProjectId ?: return
         val step = currentState.step as? VideoEditorUiStep.Ready ?: return
@@ -419,7 +446,13 @@ class EditorViewModel @Inject constructor(
             return
         }
 
-        val targetEffect = if (navigateToExport) VideoEditorUiEffect.NavigateToExport else VideoEditorUiEffect.NavigateToProcessing
+        val targetEffect = if (navigateToExport) {
+            VideoEditorUiEffect.NavigateToExport
+        } else {
+            VideoEditorUiEffect.NavigateToProcessing(pendingTranscriptionParams).also {
+                pendingTranscriptionParams = null
+            }
+        }
 
         if (!currentState.hasEdits) {
             // Bypass export since no edits were made

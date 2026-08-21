@@ -120,6 +120,8 @@ fun EditorScreen(
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val thumbnails by viewModel.thumbnailManager.thumbnails.collectAsStateWithLifecycle()
         val selectedOverlayId by viewModel.selectedOverlayId.collectAsStateWithLifecycle()
+        val isTextOverlaySelected by viewModel.isTextOverlaySelected.collectAsStateWithLifecycle()
+        val isImageOverlaySelected by viewModel.isImageOverlaySelected.collectAsStateWithLifecycle()
         
         val overlays = uiState.imageOverlays
         val textOverlays = uiState.textOverlays
@@ -128,8 +130,7 @@ fun EditorScreen(
         val processingUiState by processingViewModel.uiState.collectAsStateWithLifecycle()
         val processingStep = processingUiState.step
 
-        // Fix 12: Direct reads from uiState — derivedStateOf{} wrappers that merely
-        // re-expose fields add overhead without any recomposition benefit.
+
         val clips = uiState.clips
         val hasEdits = uiState.hasEdits
         val canUndo = uiState.canUndo
@@ -152,23 +153,10 @@ fun EditorScreen(
 
         val player by sharedPlayerViewModel.player.collectAsStateWithLifecycle()
 
-        var selectedClipId by rememberSaveable { mutableStateOf<String?>(null) }
-        var zoomLevel by rememberSaveable { mutableFloatStateOf(1f) }
-        var currentMode by rememberSaveable { mutableStateOf(EditorMode.VIDEO) }
-
-        var showDiscardDialog by remember { mutableStateOf(false) }
-        var selectedCaptionSegment by rememberSaveable(stateSaver = CaptionSegmentSaver) { mutableStateOf(null) }
-        var inlineEditText by rememberSaveable { mutableStateOf("") }
-        var showTextColorMenu by remember { mutableStateOf(false) }
-        var showTextSizeSlider by remember { mutableStateOf(false) }
-        var cropOverlay by remember { mutableStateOf<com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity?>(null) }
+        val screenState = rememberEditorScreenState()
         
-        var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
-        var pendingTranscriptionParams by remember { mutableStateOf<PendingTranscriptionParams?>(null) }
-        var showExportWarning by remember { mutableStateOf(false) }
-
-        var pendingImagePlayheadMs by remember { mutableLongStateOf(0L) }
-        val imagePickerLauncher = rememberLauncherForActivityResult(
+        with(screenState) {
+            val imagePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri ->
             uri?.let { viewModel.setEvent(VideoEditorUiEvent.AddOverlay(it.toString(), pendingImagePlayheadMs)) }
@@ -197,8 +185,6 @@ fun EditorScreen(
             showDiscardDialog = true
         }
 
-        // While a text overlay is being edited, Back should commit the edit
-        // (dismissing the keyboard once via the IME) before any destructive back press.
         BackHandler(enabled = uiState.editingTextOverlayId != null && !showTextColorMenu) {
             viewModel.setEvent(VideoEditorUiEvent.StopEditingText)
         }
@@ -208,16 +194,14 @@ fun EditorScreen(
                 when (effect) {
                     is VideoEditorUiEffect.ProjectDeleted -> onNavigateBack()
                     is VideoEditorUiEffect.NavigateToProcessing -> {
-                        if (pendingTranscriptionParams != null) {
-                            val params = pendingTranscriptionParams!!
-                            pendingTranscriptionParams = null
+                        if (effect.params != null) {
                             processingViewModel.setEvent(
                                 com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.StartTranscriptionExplicit(
                                     projectId = projectId,
-                                    modelId = params.modelId,
-                                    language = params.language,
-                                    translateToEnglish = params.translate,
-                                    initialPrompt = params.prompt
+                                    modelId = effect.params.modelId,
+                                    language = effect.params.language,
+                                    translateToEnglish = effect.params.translate,
+                                    initialPrompt = effect.params.prompt
                                 )
                             )
                         } else {
@@ -234,13 +218,7 @@ fun EditorScreen(
                 }
             }
         }
-        
-        LaunchedEffect(processingStep) {
-            if (processingStep is com.dipdev.aiautocaptioner.ui.processing.ProcessingStep.Done) {
-                processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.ResetToIdle)
-                styleViewModel.setEvent(StyleEditorUiEvent.LoadStyles(projectId))
-            }
-        }
+
 
         LaunchedEffect(projectId) {
             viewModel.setEvent(VideoEditorUiEvent.LoadProject(projectId))
@@ -340,20 +318,14 @@ fun EditorScreen(
                         }
                     }
                     is VideoEditorUiStep.Ready -> {
-                        // Wait for shared player to be initialised
-                        val currentPlayer = player
+                         val currentPlayer = player
                         if (currentPlayer == null) {
                             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                             return@BoxWithConstraints
                         }
 
                         val totalEditedMs = remember(clips) { clips.sumOf { it.endTrimMs - it.startTrimMs } }
-                        // This editor draws edge-to-edge, so imePadding alone is
-                        // laid out behind the IME on some devices. Offset the tray
-                        // by the real keyboard inset, excluding the nav-bar inset.
 
-
-                        // Fix A: pass injected player into EditorState (no longer creates its own)
                         val editorState = rememberEditorState(
                             player = currentPlayer,
                             clips = clips,
@@ -420,83 +392,28 @@ fun EditorScreen(
                                         .align(Alignment.TopCenter)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp),
                                     leftContent = {
-                                        var showOpacitySheet by remember { mutableStateOf(false) }
-                                        var showFiltersSheet by remember { mutableStateOf(false) }
                                         val currentImageOverlay = overlays.find { it.id == selectedOverlayId }
+                                        val currentTextOverlay = textOverlays.find { it.id == selectedOverlayId }
 
-                                        com.dipdev.aiautocaptioner.ui.videoeditor.shared.OverlaySideToolbar(
+                                        EditorSideControls(
                                             selectedOverlayId = selectedOverlayId,
-                                            isTextOverlay = textOverlays.any { it.id == selectedOverlayId } || uiState.editingTextOverlayId == selectedOverlayId,
-                                            onFontSize = {
-                                                if (selectedOverlayId != null && textOverlays.any { it.id == selectedOverlayId }) {
-                                                    showTextSizeSlider = !showTextSizeSlider
-                                                }
-                                            },
-                                            onEdit = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) },
-                                            onColorMenuClicked = { showTextColorMenu = true },
-                                            onDuplicate = { 
-                                                if (textOverlays.any { it.id == selectedOverlayId }) {
-                                                    viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(selectedOverlayId!!))
-                                                } else if (selectedOverlayId != null) {
-                                                    viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(selectedOverlayId!!))
-                                                }
-                                            },
-                                            onCrop = { cropOverlay = currentImageOverlay },
-                                            onFilters = { showFiltersSheet = true },
-                                            onOpacity = { showOpacitySheet = true },
-                                            onDelete = {
-                                                if (textOverlays.any { it.id == selectedOverlayId }) {
-                                                    viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(selectedOverlayId!!))
-                                                } else if (selectedOverlayId != null) {
-                                                    viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(selectedOverlayId!!))
-                                                }
-                                                viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
-                                            }
+                                            isTextOverlaySelected = isTextOverlaySelected,
+                                            isEditingTextOverlay = uiState.editingTextOverlayId == selectedOverlayId,
+                                            currentImageOverlay = currentImageOverlay,
+                                            currentTextOverlay = currentTextOverlay,
+                                            showTextSizeSlider = showTextSizeSlider,
+                                            onToggleTextSizeSlider = { showTextSizeSlider = !showTextSizeSlider },
+                                            onStartEditingText = { viewModel.setEvent(VideoEditorUiEvent.StartEditingText) },
+                                            onShowTextColorMenu = { showTextColorMenu = true },
+                                            onDuplicateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(it)) },
+                                            onDuplicateImageOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(it)) },
+                                            onDeleteTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(it)) },
+                                            onDeleteImageOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
+                                            onDeselectOverlay = { viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null)) },
+                                            onUpdateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(it)) },
+                                            onUpdateImageOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
+                                            onCropImage = { cropOverlay = it }
                                         )
-
-                                        if (showTextSizeSlider && selectedOverlayId != null) {
-                                            val currentTextOverlay = textOverlays.find { it.id == selectedOverlayId }
-                                            if (currentTextOverlay != null) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .background(
-                                                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f),
-                                                            shape = RoundedCornerShape(12.dp)
-                                                        )
-                                                        .padding(horizontal = 12.dp, vertical = 16.dp)
-                                                ) {
-                                                    VerticalPremiumSlider(
-                                                        value = currentTextOverlay.fontSize,
-                                                        valueRange = 24f..120f,
-                                                        onValueChange = { newSize: Float ->
-                                                            viewModel.setEvent(
-                                                                VideoEditorUiEvent.UpdateTextOverlay(
-                                                                    currentTextOverlay.copy(fontSize = newSize)
-                                                                )
-                                                            )
-                                                        },
-                                                        modifier = Modifier
-                                                            .height(220.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        if (showOpacitySheet && currentImageOverlay != null) {
-                                            com.dipdev.aiautocaptioner.ui.videoeditor.image.components.OpacityControlSheet(
-                                                overlay = currentImageOverlay,
-                                                onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
-                                                onDismiss = { showOpacitySheet = false }
-                                            )
-                                        }
-
-                                        if (showFiltersSheet && currentImageOverlay != null) {
-                                            com.dipdev.aiautocaptioner.ui.videoeditor.image.components.FilterControlSheet(
-                                                overlay = currentImageOverlay,
-                                                onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
-                                                onDismiss = { showFiltersSheet = false }
-                                            )
-                                        }
                                     },
                                     rightContent = {
                                         val isVisible = currentMode == EditorMode.VIDEO
@@ -590,60 +507,111 @@ fun EditorScreen(
                                 player = editorState.player
                             )
 
+                            val timelineData = remember(
+                                clips, overlays, textOverlays, segments, thumbnails, originalDurationMs, zoomLevel, editorState.player, editorState
+                            ) {
+                                com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineData(
+                                    clips = clips,
+                                    overlays = overlays,
+                                    textOverlays = textOverlays,
+                                    segments = segments,
+                                    thumbnails = thumbnails,
+                                    originalDurationMs = originalDurationMs,
+                                    zoomLevel = zoomLevel,
+                                    player = editorState.player,
+                                    currentTimelineMs = { editorState.currentTimelineMs }
+                                )
+                            }
+                            
+                            val timelineSelection = remember(
+                                selectedClipId, selectedOverlayId, isTextOverlaySelected, selectedCaptionSegment?.id
+                            ) {
+                                com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineSelection(
+                                    selectedClipId = selectedClipId,
+                                    selectedOverlayId = selectedOverlayId,
+                                    isTextOverlaySelected = isTextOverlaySelected,
+                                    selectedCaptionSegmentId = selectedCaptionSegment?.id
+                                )
+                            }
+                            
+                            val timelineCallbacks = remember(viewModel, editorState) {
+                                object : com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineCallbacks {
+                                    override fun onClipSelected(id: String?) {
+                                        selectedClipId = id
+                                        if (id != null) viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
+                                    }
+                                    override fun onMoveClip(from: Int, to: Int) {
+                                        viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to, !editorState.isDragging))
+                                    }
+                                    override fun onTrimClip(id: String, startMs: Long, endMs: Long) {
+                                        viewModel.setEvent(VideoEditorUiEvent.TrimClip(id, startMs, endMs, !editorState.isDragging))
+                                    }
+                                    override fun onOverlaySelected(id: String?) {
+                                        viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(id))
+                                        if (id != null) selectedClipId = null
+                                    }
+                                    override fun onUpdateImageOverlay(overlay: com.dipdev.aiautocaptioner.data.db.entity.ImageOverlayEntity) {
+                                        viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(overlay))
+                                    }
+                                    override fun onUpdateTextOverlay(overlay: com.dipdev.aiautocaptioner.data.db.entity.TextOverlayEntity) {
+                                        viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(overlay))
+                                    }
+                                    override fun onMoveOverlayZ(id: String, bringToFront: Boolean) {
+                                        viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront))
+                                    }
+                                    override fun onDeleteImageOverlay(id: String) {
+                                        viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(id))
+                                    }
+                                    override fun onDeleteTextOverlay(id: String) {
+                                        viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(id))
+                                    }
+                                    override fun onCaptionSegmentTap(segment: com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) {
+                                        selectedCaptionSegment = segment
+                                        inlineEditText = segment.text
+                                    }
+                                    override fun onRequestThumbnails(timestamps: List<Long>) {
+                                        viewModel.thumbnailManager.requestThumbnails(timestamps)
+                                    }
+                                    override fun onDragStateChange(isDragging: Boolean) {
+                                        if (!editorState.isDragging && isDragging) {
+                                            viewModel.setEvent(VideoEditorUiEvent.SaveState)
+                                        }
+                                        editorState.isDragging = isDragging
+                                    }
+                                    override fun onSplit() {
+                                        viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs))
+                                    }
+                                    override fun onDelete(id: String) {
+                                        viewModel.setEvent(VideoEditorUiEvent.DeleteClip(id))
+                                        selectedClipId = null
+                                    }
+                                    override fun onDuplicateClip(id: String) {
+                                        viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(id))
+                                    }
+                                    override fun onDuplicateImageOverlay(id: String) {
+                                        viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(id))
+                                    }
+                                    override fun onDuplicateTextOverlay(id: String) {
+                                        viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(id))
+                                    }
+                                    override fun onZoomIn() {
+                                        zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f)
+                                    }
+                                    override fun onZoomOut() {
+                                        zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f)
+                                    }
+                                    override fun onPinchZoom(scale: Float) {
+                                        zoomLevel = (zoomLevel * scale).coerceIn(0.2f, 5f)
+                                    }
+                                }
+                            }
+
                             EditorBottomDock(
                                 maxHeight = maxH,
-                                clips = clips,
-                                thumbnails = thumbnails,
-                                onRequestThumbnails = { viewModel.thumbnailManager.requestThumbnails(it) },
-                                originalDurationMs = originalDurationMs,
-                                selectedClipId = selectedClipId,
-                                onClipSelected = { 
-                                    selectedClipId = it 
-                                    if (it != null) viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(null))
-                                },
-                                onMoveClip = { from, to -> viewModel.setEvent(VideoEditorUiEvent.MoveClip(from, to, !editorState.isDragging)) },
-                                overlays = overlays,
-                                selectedOverlayId = selectedOverlayId,
-                                onOverlaySelected = { 
-                                    viewModel.setEvent(VideoEditorUiEvent.SelectOverlay(it)) 
-                                    if (it != null) selectedClipId = null
-                                },
-                                onUpdateOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateOverlay(it)) },
-                                textOverlays = textOverlays,
-                                onUpdateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(it)) },
-                                onDragStateChange = { 
-                                    if (!editorState.isDragging && it) {
-                                        viewModel.setEvent(VideoEditorUiEvent.SaveState)
-                                    }
-                                    editorState.isDragging = it 
-                                },
-                                zoomLevel = zoomLevel,
-                                player = editorState.player,
-                                currentTimelineMs = { editorState.currentTimelineMs },
-                                onTrimClip = { id, start, end -> viewModel.setEvent(VideoEditorUiEvent.TrimClip(id, start, end, !editorState.isDragging)) },
-                                onMoveOverlayZ = { id, bringToFront -> viewModel.setEvent(VideoEditorUiEvent.MoveOverlayZ(id, bringToFront)) },
-                                onDeleteOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteOverlay(it)) },
-                                onDeleteTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DeleteTextOverlay(it)) },
+                                data = timelineData,
+                                selection = timelineSelection,
+                                callbacks = timelineCallbacks,
                                 styleViewModel = styleViewModel,
-                                onSplit = { viewModel.setEvent(VideoEditorUiEvent.SplitClipAtAbsoluteTime(editorState.currentTimelineMs)) },
-                                onDuplicate = { viewModel.setEvent(VideoEditorUiEvent.DuplicateClip(it)) },
-                                onDuplicateOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateOverlay(it)) },
-                                onDuplicateTextOverlay = { viewModel.setEvent(VideoEditorUiEvent.DuplicateTextOverlay(it)) },
-                                onDelete = { 
-                                    viewModel.setEvent(VideoEditorUiEvent.DeleteClip(it))
-                                    selectedClipId = null
-                                },
-                                onZoomIn = { zoomLevel = (zoomLevel * 1.5f).coerceAtMost(5f) },
-                                onZoomOut = { zoomLevel = (zoomLevel / 1.5f).coerceAtLeast(0.2f) },
-                                onPinchZoom = { scale ->
-                                    zoomLevel = (zoomLevel * scale).coerceIn(0.2f, 5f)
-                                },
-                                segments = segments,
-                                selectedCaptionSegmentId = selectedCaptionSegment?.id,
-                                onCaptionSegmentTap = { seg ->
-                                    selectedCaptionSegment = seg
-                                    inlineEditText = seg.text
-                                },
                                 onGenerateCaptions = { showTranscriptionBottomSheet = true },
                                 onAddImage = { 
                                     pendingImagePlayheadMs = editorState.currentTimelineMs
@@ -655,113 +623,60 @@ fun EditorScreen(
                             )
                             }
 
-                            // Keep text controls in the screen layer, rather than the
-                            // video canvas. This makes the tray span the editor and
-                            // places it immediately above the real IME.
-                            textOverlays.find { it.id == uiState.editingTextOverlayId }?.let { editingOverlay ->
-                                com.dipdev.aiautocaptioner.ui.videoeditor.text.FontStyleCarousel(
-                                    selectedAssetPath = editingOverlay.fontAssetPath,
-                                    onFontChange = { fontAssetPath ->
-                                        viewModel.setEvent(
-                                            VideoEditorUiEvent.UpdateTextOverlay(
-                                                editingOverlay.copy(fontAssetPath = fontAssetPath)
-                                            )
-                                        )
-                                    },
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(end = 16.dp, bottom = 16.dp)
-                                        .imePadding()
-                                )
-                            }
                         }
                     }
                 }
             }
         }
 
-        // Fix 10: Extracted dialog composables
-        if (showDiscardDialog) {
-            DiscardEditsDialog(
-                onConfirm = {
-                    showDiscardDialog = false
-                    onNavigateBack()
-                },
-                onDismiss = { showDiscardDialog = false }
-            )
-        }
-
-        if (showTranscriptionBottomSheet) {
-            // First time they click it, fetch models if needed
-            LaunchedEffect(Unit) {
-                processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.PrepareForProject(projectId, forceModelPicker = true))
-            }
-            
-            com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionBottomSheet(
-                onDismiss = { showTranscriptionBottomSheet = false },
-                availableModels = processingUiState.availableModels,
-                initialModelId = processingUiState.activeModel?.id,
-                initialLanguage = processingUiState.selectedLanguage,
-                initialTranslate = processingUiState.translateToEnglish,
-                initialPrompt = processingUiState.initialPrompt,
-                skipUi = segments.isEmpty(),
-                onStart = { modelId, lang, translate, prompt ->
-                    showTranscriptionBottomSheet = false
-                    pendingTranscriptionParams = PendingTranscriptionParams(modelId, lang, translate, prompt)
-                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false, hasCaptions = segments.isNotEmpty()))
-                }
-            )
-        }
-
-        com.dipdev.aiautocaptioner.ui.processing.components.TranscriptionOverlay(
-            step = processingStep,
+        EditorDialogs(
+            showDiscardDialog = showDiscardDialog,
+            showTranscriptionBottomSheet = showTranscriptionBottomSheet,
+            showTextColorMenu = showTextColorMenu,
+            showExportWarning = showExportWarning,
+            projectId = projectId,
+            selectedTextOverlay = if (selectedOverlayId != null) textOverlays.find { it.id == selectedOverlayId } else null,
+            processingStep = processingStep,
+            availableModels = processingUiState.availableModels,
+            initialModelId = processingUiState.activeModel?.id,
+            initialLanguage = processingUiState.selectedLanguage,
+            initialTranslate = processingUiState.translateToEnglish,
+            initialPrompt = processingUiState.initialPrompt,
+            segmentsEmpty = segments.isEmpty(),
             streamedSegments = processingUiState.streamedSegments,
-            onCancel = { processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel) }
-        )
-
-        if (showTextColorMenu && selectedOverlayId != null) {
-            val overlay = textOverlays.find { it.id == selectedOverlayId }
-            if (overlay != null) {
-                com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayColorPickerPopup(
-                    textColorArgb = overlay.textColorArgb,
-                    backgroundColorArgb = overlay.backgroundColorArgb,
-                    onColorChanged = { field, color ->
-                        val updated = when (field) {
-                            com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayColorField.TEXT -> overlay.copy(textColorArgb = color)
-                            com.dipdev.aiautocaptioner.ui.videoeditor.text.TextOverlayColorField.BACKGROUND -> overlay.copy(backgroundColorArgb = color, backgroundOpacity = 1f, backgroundStyle = "SOLID")
-                        }
-                        viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(updated))
-                    },
-                    onDismissRequest = { showTextColorMenu = false }
-                )
+            onDismissDiscard = { showDiscardDialog = false },
+            onConfirmDiscard = {
+                showDiscardDialog = false
+                onNavigateBack()
+            },
+            onDismissTranscription = { showTranscriptionBottomSheet = false },
+            onStartTranscription = { modelId, lang, translate, prompt ->
+                showTranscriptionBottomSheet = false
+                val params = PendingTranscriptionParams(modelId, lang, translate, prompt)
+                viewModel.setEvent(VideoEditorUiEvent.StartTranscription(params))
+            },
+            onPrepareTranscription = { id ->
+                processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.PrepareForProject(id, forceModelPicker = true))
+            },
+            onCancelProcessing = {
+                processingViewModel.setEvent(com.dipdev.aiautocaptioner.ui.processing.ProcessingUiEvent.Cancel)
+            },
+            onDismissTextColorMenu = { showTextColorMenu = false },
+            onUpdateTextOverlay = {
+                viewModel.setEvent(VideoEditorUiEvent.UpdateTextOverlay(it))
+            },
+            onDismissExportWarning = { showExportWarning = false },
+            onConfirmExportWarning = {
+                showExportWarning = false
+                viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true, hasCaptions = false, forceExport = true))
             }
-        }
-
-        if (showExportWarning) {
-            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
-                type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
-                title = androidx.compose.ui.res.stringResource(id = R.string.export_no_captions_title),
-                body = androidx.compose.ui.res.stringResource(id = R.string.export_no_captions_body),
-                confirmText = androidx.compose.ui.res.stringResource(id = R.string.export_anyway),
-                onConfirm = {
-                    showExportWarning = false
-                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true, hasCaptions = false, forceExport = true))
-                },
-                dismissText = androidx.compose.ui.res.stringResource(id = android.R.string.cancel),
-                onDismissRequest = { showExportWarning = false }
-            )
+        )
         }
     }
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
 
-private data class PendingTranscriptionParams(
-    val modelId: String,
-    val language: String,
-    val translate: Boolean,
-    val prompt: String
-)
+
 
 private fun formatTime(ms: Long): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(ms)

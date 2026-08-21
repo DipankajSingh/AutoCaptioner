@@ -45,51 +45,24 @@ import compose.icons.feathericons.Trash2
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineData
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineSelection
+import com.dipdev.aiautocaptioner.ui.videoeditor.timeline.TimelineCallbacks
+
 @Composable
 fun VideoTimelinePanel(
     modifier: Modifier = Modifier,
     timelineHeight: Dp,
     maxTimelineHeight: Dp,
     onTimelineHeightChanged: (Dp) -> Unit,
-    clips: ImmutableList<Clip>,
-    thumbnails: Map<Long, Bitmap>,
-    onRequestThumbnails: (List<Long>) -> Unit,
-    originalDurationMs: Long,
-    selectedClipId: String?,
-    onClipSelected: (String?) -> Unit,
-    onMoveClip: (Int, Int) -> Unit,
-    overlays: ImmutableList<ImageOverlayEntity>,
-    selectedOverlayId: String?,
-    onOverlaySelected: (String?) -> Unit,
-    onUpdateOverlay: (ImageOverlayEntity) -> Unit,
-    textOverlays: ImmutableList<TextOverlayEntity> = persistentListOf(),
-    onUpdateTextOverlay: (TextOverlayEntity) -> Unit = {},
-    onCaptionTap: () -> Unit,
-    onDragStateChange: (Boolean) -> Unit,
-    zoomLevel: Float,
-    player: Player,
-    currentTimelineMs: () -> Long,
-    onTrimClip: (String, Long, Long) -> Unit,
-    onMoveOverlayZ: (String, Boolean) -> Unit,
-    onDeleteOverlay: (String) -> Unit,
-    onDeleteTextOverlay: (String) -> Unit = {},
-    onSplit: () -> Unit,
-    onDuplicate: (String) -> Unit,
-    onDuplicateOverlay: (String) -> Unit,
-    onDuplicateTextOverlay: (String) -> Unit = {},
-    onDelete: (String) -> Unit,
-    onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit,
-    onPinchZoom: (scale: Float) -> Unit = {
-},
-    segments: List<com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity> = emptyList(),
-    selectedCaptionSegmentId: String? = null,
-    onCaptionSegmentTap: (com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity) -> Unit = {},
+    data: TimelineData,
+    selection: TimelineSelection,
+    callbacks: TimelineCallbacks
 ) {
     val density = LocalDensity.current
     val currentTimelineHeight by rememberUpdatedState(timelineHeight)
-    val updatedOverlays by rememberUpdatedState(overlays)
-    val updatedTextOverlays by rememberUpdatedState(textOverlays)
+    val updatedOverlays by rememberUpdatedState(data.overlays)
+    val updatedTextOverlays by rememberUpdatedState(data.textOverlays)
 
     Box(
         modifier = modifier
@@ -97,7 +70,7 @@ fun VideoTimelinePanel(
             .height(timelineHeight)
             .pointerInput(Unit) {
                 detectTransformGestures { _, _, zoom, _ ->
-                    onPinchZoom(zoom)
+                    callbacks.onPinchZoom(zoom)
                 }
             }
     ) {
@@ -128,34 +101,9 @@ fun VideoTimelinePanel(
             // Timeline takes remaining space
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 TimelineView(
-                    clips = clips,
-                    thumbnails = thumbnails,
-                    onRequestThumbnails = onRequestThumbnails,
-                    originalDurationMs = originalDurationMs,
-                    selectedClipId = selectedClipId,
-                    onClipSelected = onClipSelected,
-                    onMoveClip = onMoveClip,
-                    overlays = overlays,
-                    selectedOverlayId = selectedOverlayId,
-                    onOverlaySelected = onOverlaySelected,
-                    onOverlayTimingChanged = { id, startMs, endMs ->
-                        val overlay = updatedOverlays.find { it.id == id } ?: return@TimelineView
-                        onUpdateOverlay(overlay.copy(startTimeMs = startMs, endTimeMs = endMs))
-                    },
-                    textOverlays = textOverlays,
-                    onTextOverlayTimingChanged = { id, startMs, endMs ->
-                        val textOverlay = updatedTextOverlays.find { it.id == id } ?: return@TimelineView
-                        onUpdateTextOverlay(textOverlay.copy(startTimeMs = startMs, endTimeMs = endMs))
-                    },
-                    onDragStateChange = onDragStateChange,
-                    zoomLevel = zoomLevel,
-                    player = player,
-                    currentTimelineMs = currentTimelineMs,
-                    onTrimClip = onTrimClip,
-                    onMoveOverlayZ = onMoveOverlayZ,
-                    segments = segments,
-                    selectedCaptionSegmentId = selectedCaptionSegmentId,
-                    onCaptionSegmentTap = onCaptionSegmentTap,
+                    data = data,
+                    selection = selection,
+                    callbacks = callbacks,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -175,8 +123,8 @@ fun VideoTimelinePanel(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val hasClipSelection = selectedClipId != null
-                    val hasOverlaySelection = selectedOverlayId != null
+                    val hasClipSelection = selection.selectedClipId != null
+                    val hasOverlaySelection = selection.selectedOverlayId != null
                     val hasAnySelection = hasClipSelection || hasOverlaySelection
                     val accentColor = MaterialTheme.colorScheme.primary
                     val grayColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -186,17 +134,19 @@ fun VideoTimelinePanel(
                         FeatherIcons.Scissors, 
                         stringResource(R.string.timeline_split), 
                         tint = if (hasClipSelection) accentColor else grayColor,
-                        modifier = Modifier.size(24.dp).clickable(enabled = hasClipSelection) { onSplit() }
+                        modifier = Modifier.size(24.dp).clickable(enabled = hasClipSelection) { callbacks.onSplit() }
                     )
                     Icon(
                         FeatherIcons.Copy, 
                         stringResource(R.string.timeline_duplicate), 
                         tint = if (hasAnySelection) accentColor else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
-                            if (hasOverlaySelection) selectedOverlayId.let { 
-                                if (textOverlays.any { t -> t.id == it }) onDuplicateTextOverlay(it) else onDuplicateOverlay(it) 
+                            if (hasOverlaySelection) {
+                                if (selection.isTextOverlaySelected) callbacks.onDuplicateTextOverlay(selection.selectedOverlayId)
+                                else callbacks.onDuplicateImageOverlay(selection.selectedOverlayId)
+                            } else if (hasClipSelection) {
+                                callbacks.onDuplicateClip(selection.selectedClipId)
                             }
-                            else if (hasClipSelection) onDuplicate(selectedClipId)
                         }
                     )
                     Icon(
@@ -204,10 +154,12 @@ fun VideoTimelinePanel(
                         stringResource(R.string.project_delete), 
                         tint = if (hasAnySelection) MaterialTheme.colorScheme.error else grayColor,
                         modifier = Modifier.size(24.dp).clickable(enabled = hasAnySelection) { 
-                            if (hasOverlaySelection) selectedOverlayId.let { 
-                                if (textOverlays.any { t -> t.id == it }) onDeleteTextOverlay(it) else onDeleteOverlay(it) 
+                            if (hasOverlaySelection) {
+                                if (selection.isTextOverlaySelected) callbacks.onDeleteTextOverlay(selection.selectedOverlayId)
+                                else callbacks.onDeleteImageOverlay(selection.selectedOverlayId)
+                            } else if (hasClipSelection) {
+                                callbacks.onDelete(selection.selectedClipId)
                             }
-                            else if (hasClipSelection) onDelete(selectedClipId)
                         }
                     )
                 }
@@ -221,10 +173,10 @@ fun VideoTimelinePanel(
                         FeatherIcons.Minus, 
                         stringResource(R.string.timeline_zoom_out), 
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp).clickable { onZoomOut() }
+                        modifier = Modifier.size(24.dp).clickable { callbacks.onZoomOut() }
                     )
                     Text(
-                        text = "${(zoomLevel * 100).toInt()}%",
+                        text = "${(data.zoomLevel * 100).toInt()}%",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
@@ -233,7 +185,7 @@ fun VideoTimelinePanel(
                         FeatherIcons.Plus, 
                         stringResource(R.string.timeline_zoom_in), 
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp).clickable { onZoomIn() }
+                        modifier = Modifier.size(24.dp).clickable { callbacks.onZoomIn() }
                     )
                 }
             }
