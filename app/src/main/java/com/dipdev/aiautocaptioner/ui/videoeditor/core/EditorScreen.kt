@@ -165,6 +165,7 @@ fun EditorScreen(
         
         var showTranscriptionBottomSheet by remember { mutableStateOf(false) }
         var pendingTranscriptionParams by remember { mutableStateOf<PendingTranscriptionParams?>(null) }
+        var showExportWarning by remember { mutableStateOf(false) }
 
         var pendingImagePlayheadMs by remember { mutableLongStateOf(0L) }
         val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -226,6 +227,9 @@ fun EditorScreen(
                     is VideoEditorUiEffect.NavigateToExport -> {
                         sharedPlayerViewModel.suspendPlayerForExport()
                         onNavigateToExport()
+                    }
+                    is VideoEditorUiEffect.ShowExportWithoutCaptionsWarning -> {
+                        showExportWarning = true
                     }
                 }
             }
@@ -409,7 +413,9 @@ fun EditorScreen(
                                     onNavigateBack = onNavigateBack,
                                     onUndo = { viewModel.setEvent(VideoEditorUiEvent.Undo) },
                                     onRedo = { viewModel.setEvent(VideoEditorUiEvent.Redo) },
-                                    onNavigateToExport = { viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true)) },
+                                    onNavigateToExport = { 
+                                        viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true, hasCaptions = segments.isNotEmpty())) 
+                                    },
                                     modifier = Modifier
                                         .align(Alignment.TopCenter)
                                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp),
@@ -702,7 +708,7 @@ fun EditorScreen(
                 onStart = { modelId, lang, translate, prompt ->
                     showTranscriptionBottomSheet = false
                     pendingTranscriptionParams = PendingTranscriptionParams(modelId, lang, translate, prompt)
-                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false))
+                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = false, hasCaptions = segments.isNotEmpty()))
                 }
             )
         }
@@ -729,6 +735,21 @@ fun EditorScreen(
                     onDismissRequest = { showTextColorMenu = false }
                 )
             }
+        }
+
+        if (showExportWarning) {
+            com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
+                type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
+                title = androidx.compose.ui.res.stringResource(id = R.string.export_no_captions_title),
+                body = androidx.compose.ui.res.stringResource(id = R.string.export_no_captions_body),
+                confirmText = androidx.compose.ui.res.stringResource(id = R.string.export_anyway),
+                onConfirm = {
+                    showExportWarning = false
+                    viewModel.setEvent(VideoEditorUiEvent.ApplyEdits(navigateToExport = true, hasCaptions = false, forceExport = true))
+                },
+                dismissText = androidx.compose.ui.res.stringResource(id = android.R.string.cancel),
+                onDismissRequest = { showExportWarning = false }
+            )
         }
     }
 }

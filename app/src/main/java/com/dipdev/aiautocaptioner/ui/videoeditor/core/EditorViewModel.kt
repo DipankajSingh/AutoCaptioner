@@ -71,7 +71,11 @@ sealed class VideoEditorUiEvent : UiEvent {
     data class DeleteClip(val clipId: String) : VideoEditorUiEvent()
     data class DuplicateClip(val clipId: String) : VideoEditorUiEvent()
     data class MoveClip(val fromIndex: Int, val toIndex: Int, val saveToHistory: Boolean = true) : VideoEditorUiEvent()
-    data class ApplyEdits(val navigateToExport: Boolean = false) : VideoEditorUiEvent()
+    data class ApplyEdits(
+        val navigateToExport: Boolean = false,
+        val hasCaptions: Boolean = true,
+        val forceExport: Boolean = false
+    ) : VideoEditorUiEvent()
     data object Cancel : VideoEditorUiEvent()
     data object DeleteProject : VideoEditorUiEvent()
     data class SaveLanguage(val language: String, val translateToEnglish: Boolean) : VideoEditorUiEvent()
@@ -98,6 +102,7 @@ sealed class VideoEditorUiEffect : UiEffect {
     data object ProjectDeleted : VideoEditorUiEffect()
     data object NavigateToProcessing : VideoEditorUiEffect()
     data object NavigateToExport : VideoEditorUiEffect()
+    data object ShowExportWithoutCaptionsWarning : VideoEditorUiEffect()
 }
 
 @HiltViewModel
@@ -217,7 +222,7 @@ class EditorViewModel @Inject constructor(
             is VideoEditorUiEvent.DeleteClip -> historyManager.deleteClip(event.clipId)
             is VideoEditorUiEvent.DuplicateClip -> historyManager.duplicateClip(event.clipId)
             is VideoEditorUiEvent.MoveClip -> historyManager.moveClip(event.fromIndex, event.toIndex, event.saveToHistory)
-            is VideoEditorUiEvent.ApplyEdits -> applyEdits(event.navigateToExport)
+            is VideoEditorUiEvent.ApplyEdits -> applyEdits(event.navigateToExport, event.hasCaptions, event.forceExport)
             is VideoEditorUiEvent.Cancel -> cancel()
             is VideoEditorUiEvent.DeleteProject -> deleteProject()
             is VideoEditorUiEvent.SaveLanguage -> saveLanguage(event.language, event.translateToEnglish)
@@ -403,10 +408,17 @@ class EditorViewModel @Inject constructor(
         }
     }
 
-    private fun applyEdits(navigateToExport: Boolean) {
+    private fun applyEdits(navigateToExport: Boolean, hasCaptions: Boolean, forceExport: Boolean) {
         val projectId = currentProjectId ?: return
         val step = currentState.step as? VideoEditorUiStep.Ready ?: return
         
+        if (navigateToExport && !hasCaptions && !forceExport) {
+            viewModelScope.launch {
+                setEffect(VideoEditorUiEffect.ShowExportWithoutCaptionsWarning)
+            }
+            return
+        }
+
         val targetEffect = if (navigateToExport) VideoEditorUiEffect.NavigateToExport else VideoEditorUiEffect.NavigateToProcessing
 
         if (!currentState.hasEdits) {
