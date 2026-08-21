@@ -122,7 +122,7 @@ fun VerticalPremiumSlider(
 
     Canvas(
         modifier = modifier
-            .width(60.dp)
+            .width(36.dp)
             .height(220.dp)
             .pointerInput(valueRange) {
                 detectVerticalDragGestures(
