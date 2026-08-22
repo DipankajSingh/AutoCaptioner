@@ -26,7 +26,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
 
-class FacelessVideoRecorder {
+class FacelessVideoRecorder(
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
+) {
 
     private val TAG = "FacelessVideoRecorder"
 
@@ -59,7 +61,7 @@ class FacelessVideoRecorder {
     private val TIMEOUT_USEC = 10000L
 
     private var onCompleteCallback: ((File) -> Unit)? = null
-    private var onErrorCallback: ((Exception) -> Unit)? = null
+    private var onErrorCallback: ((Throwable) -> Unit)? = null
     private var onAmplitudeCallback: ((Float) -> Unit)? = null
     private var outputFile: File? = null
 
@@ -75,7 +77,7 @@ class FacelessVideoRecorder {
         muted: Boolean = false,
         outputFile: File,
         onComplete: (File) -> Unit,
-        onError: (Exception) -> Unit,
+        onError: (Throwable) -> Unit,
         onAmplitude: ((Float) -> Unit)? = null
     ) {
         if (isRecording.getAndSet(true)) {
@@ -147,12 +149,12 @@ class FacelessVideoRecorder {
                 audioJob = scope.launch { audioEncodeLoop() }
             }
 
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             abortRecording(e)
         }
     }
 
-    private fun abortRecording(e: Exception) {
+    private fun abortRecording(e: Throwable) {
         if (!isRecording.getAndSet(false)) return
         Log.e(TAG, "Aborting recording due to error", e)
         releaseResources()
@@ -204,7 +206,7 @@ class FacelessVideoRecorder {
             // (instead of being cut off by codec.stop(), which truncates the tail frames).
             try {
                 videoCodec?.signalEndOfInputStream()
-            } catch (_: Exception) {}
+            } catch (_: Throwable) {}
             withTimeoutOrNull(3000.milliseconds) { videoEncoderJob?.join() }
             withTimeoutOrNull(3000.milliseconds) { audioJob?.join() }
 
@@ -276,9 +278,9 @@ class FacelessVideoRecorder {
                 }
                 lastFrameTime = System.currentTimeMillis()
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Video draw error", e)
-            FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
         } finally {
             bgRenderer.release()
             windowSurface.release()
@@ -330,9 +332,9 @@ class FacelessVideoRecorder {
                     }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Video encode error", e)
-            FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
         }
     }
 
@@ -436,9 +438,9 @@ class FacelessVideoRecorder {
                     encoderStatus = audioCodec?.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC) ?: -1
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Audio encode error", e)
-            FirebaseCrashlytics.getInstance().recordException(e)
+            crashReporter.recordException(e)
             abortRecording(e)
         }
     }
@@ -451,29 +453,29 @@ class FacelessVideoRecorder {
     }
 
     private fun releaseResources() {
-        try { audioRecord?.stop() } catch (_: Exception) {}
-        try { audioRecord?.release() } catch (_: Exception) {}
+        try { audioRecord?.stop() } catch (_: Throwable) {}
+        try { audioRecord?.release() } catch (_: Throwable) {}
         audioRecord = null
 
-        try { videoCodec?.stop() } catch (_: Exception) {}
-        try { videoCodec?.release() } catch (_: Exception) {}
+        try { videoCodec?.stop() } catch (_: Throwable) {}
+        try { videoCodec?.release() } catch (_: Throwable) {}
         videoCodec = null
 
-        try { audioCodec?.stop() } catch (_: Exception) {}
-        try { audioCodec?.release() } catch (_: Exception) {}
+        try { audioCodec?.stop() } catch (_: Throwable) {}
+        try { audioCodec?.release() } catch (_: Throwable) {}
         audioCodec = null
 
         if (isMuxerStarted) {
-            try { muxer?.stop() } catch (_: Exception) {}
+            try { muxer?.stop() } catch (_: Throwable) {}
         }
-        try { muxer?.release() } catch (_: Exception) {}
+        try { muxer?.release() } catch (_: Throwable) {}
         muxer = null
         isMuxerStarted = false
 
         videoTrackIndex = -1
         audioTrackIndex = -1
 
-        try { inputSurface?.release() } catch (_: Exception) {}
+        try { inputSurface?.release() } catch (_: Throwable) {}
         inputSurface = null
 
         isPaused.set(false)

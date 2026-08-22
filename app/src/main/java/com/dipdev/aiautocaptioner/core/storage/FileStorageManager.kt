@@ -10,7 +10,8 @@ import javax.inject.Singleton
 
 @Singleton
 class FileStorageManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) {
     companion object {
         private const val TAG = "FileStorageManager"
@@ -40,6 +41,7 @@ class FileStorageManager @Inject constructor(
                 Log.i(TAG, "Deleted project files: ${projectDir.absolutePath}")
             }
         } catch (e: Exception) {
+            crashReporter.recordException(e)
             Log.e(TAG, "Failed to delete project files", e)
         }
     }
@@ -53,6 +55,7 @@ class FileStorageManager @Inject constructor(
                 Log.i(TAG, "Deleted thumbnail cache: ${cacheDir.absolutePath}")
             }
         } catch (e: Exception) {
+            crashReporter.recordException(e)
             Log.e(TAG, "Failed to delete thumbnail cache", e)
         }
     }

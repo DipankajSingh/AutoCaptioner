@@ -28,7 +28,9 @@ fun NavGraph(
     startDestination: Screen = Screen.Onboarding
 ) {
     val safePopBackStack: () -> Unit = {
-        navController.popBackStack()
+        if (navController.currentBackStackEntry?.lifecycle?.currentState == androidx.lifecycle.Lifecycle.State.RESUMED) {
+            navController.popBackStack()
+        }
     }
 
     NavHost(

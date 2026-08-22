@@ -149,15 +149,16 @@ class AudioExtractionUseCase @Inject constructor(
                 floatArrays.clear()
 
                 if (sampleRate != 16000) resampleTo16kLinear(finalFloats, sampleRate) else finalFloats
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 crashReporter.recordException(e)
                 throw when (e) {
+                    is OutOfMemoryError -> e
                     is IllegalStateException -> e
-                    else -> IllegalStateException("Your video has no audio!")
+                    else -> IllegalStateException("Your video has no audio!", e)
                 }
             } finally {
-                try { codec?.stop() } catch (_: Exception) {}
-                try { codec?.release() } catch (_: Exception) {}
+                try { codec?.stop() } catch (_: Throwable) {}
+                try { codec?.release() } catch (_: Throwable) {}
                 extractor.release()
             }
         }

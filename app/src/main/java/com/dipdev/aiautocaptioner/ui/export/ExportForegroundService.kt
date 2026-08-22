@@ -198,6 +198,7 @@ class ExportForegroundService : Service() {
                 }
             }
         } catch (e: Exception) {
+            crashReporter.recordException(e)
             Log.e(TAG, "Failed to start foreground service: ${e.message}")
             stopSelf()
         }

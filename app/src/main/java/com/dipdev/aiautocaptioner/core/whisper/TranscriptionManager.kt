@@ -124,7 +124,7 @@ class TranscriptionManager @Inject constructor(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 Log.i(TAG, "Process cancelled")
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.e(TAG, "Error: ${e.message}", e)
                 crashReporter.recordException(e)
                 logTranscriptionFailed(e.message ?: "Unknown error", modelId, language, translateToEnglish)
@@ -134,8 +134,9 @@ class TranscriptionManager @Inject constructor(
                         val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
                         val status = if (hasCaptions) ProjectStatus.TRANSCRIBED else ProjectStatus.IMPORTED
                         projectRepository.updateStatus(pid, status)
-                    } catch (inner: Exception) {
+                    } catch (inner: Throwable) {
                         Log.e(TAG, "Failed to revert status", inner)
+                        crashReporter.recordException(inner)
                     }
                 }
             } finally {
@@ -212,7 +213,7 @@ class TranscriptionManager @Inject constructor(
         if (isCancelled) return
 
         if (allWords.isEmpty()) {
-            throw Exception("Could not detect any speech in this video. Make sure the video has clear audio.")
+            throw Exception("No speech was detected. If your video has spoken words, make sure voices are audible and not drowned out by background noise.")
         }
 
         if (language == "auto" || language.isEmpty()) {

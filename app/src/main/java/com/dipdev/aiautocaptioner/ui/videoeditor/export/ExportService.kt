@@ -23,7 +23,8 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @UnstableApi
 class ExportService @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) {
     private var transformer: Transformer? = null
     private var tempOutputFile: File? = null

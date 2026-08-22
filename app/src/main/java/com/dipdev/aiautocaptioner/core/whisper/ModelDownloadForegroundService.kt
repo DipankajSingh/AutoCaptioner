@@ -34,6 +34,9 @@ class ModelDownloadForegroundService : Service() {
     @Inject
     lateinit var modelRepository: ModelRepository
 
+    @Inject
+    lateinit var crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
+
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var downloadJob: Job? = null
 

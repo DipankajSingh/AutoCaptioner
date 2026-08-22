@@ -311,7 +311,7 @@ fun SmartRecorderContent(
             // the main thread — it validates the call stack for a looper-backed caller.
             // Using Dispatchers.IO causes "no caller found on the stack" IllegalStateException.
             val helper = withContext(Dispatchers.Main) {
-                GestureDetectorHelper(context, gestureListener)
+                GestureDetectorHelper(context, viewModel.crashReporter, gestureListener)
             }
             gestureHelper = helper
             cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)

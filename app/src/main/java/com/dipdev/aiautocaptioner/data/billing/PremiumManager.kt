@@ -33,7 +33,8 @@ import com.dipdev.aiautocaptioner.BuildConfig
 
 @Singleton
 class PremiumManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) {
 
     companion object {
@@ -97,6 +98,7 @@ class PremiumManager @Inject constructor(
                 null
             }
         } catch (e: PurchasesException) {
+            crashReporter.recordException(e)
             android.util.Log.e("PremiumManager", "Purchase error", e)
             null
         }

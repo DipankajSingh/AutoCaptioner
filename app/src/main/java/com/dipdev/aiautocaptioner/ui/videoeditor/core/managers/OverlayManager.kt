@@ -16,6 +16,7 @@ import java.util.UUID
 
 class OverlayManager(
     private val context: Context,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter,
     private val overlayRepository: OverlayRepository,
     private val getOverlays: () -> List<ImageOverlayEntity>,
     private val setOverlays: (List<ImageOverlayEntity>) -> Unit = {},
@@ -68,6 +69,7 @@ class OverlayManager(
                 }
                 overlayRepository.addOverlay(overlay)
             } catch (e: Exception) {
+                crashReporter.recordException(e)
                 android.util.Log.e("OverlayManager", "Error adding overlay", e)
             }
         }
@@ -99,6 +101,7 @@ class OverlayManager(
                     val file = File(overlay.imageUri)
                     if (file.exists()) file.delete()
                 } catch (e: Exception) {
+                crashReporter.recordException(e)
                     android.util.Log.e("OverlayManager", "Error deleting file", e)
                 }
             }
@@ -174,6 +177,7 @@ class OverlayManager(
                         newImageUri = destFile.absolutePath
                     }
                 } catch (e: Exception) {
+                crashReporter.recordException(e)
                     android.util.Log.e("OverlayManager", "Error duplicating overlay", e)
                 }
             }

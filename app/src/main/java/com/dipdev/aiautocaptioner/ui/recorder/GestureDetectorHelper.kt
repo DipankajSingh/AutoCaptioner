@@ -12,8 +12,11 @@ import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizer
 import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizerResult
 
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
+
 class GestureDetectorHelper(
     val context: Context,
+    private val crashReporter: CrashReporter,
     private val gestureListener: GestureListener?
 ) : ImageAnalysis.Analyzer {
 
@@ -46,7 +49,8 @@ class GestureDetectorHelper(
                 .build()
 
             gestureRecognizer = GestureRecognizer.createFromOptions(context, options)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            crashReporter.recordException(e)
             gestureListener?.onError(e.message ?: "Failed to initialize gesture recognizer")
         }
     }
@@ -70,7 +74,8 @@ class GestureDetectorHelper(
             val frameTime = SystemClock.uptimeMillis()
 
             gestureRecognizer?.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
-        } catch (_: Exception) {
+        } catch (e: Throwable) {
+            crashReporter.recordException(e)
             isProcessing = false
         } finally {
             bitmapBuffer?.recycle()

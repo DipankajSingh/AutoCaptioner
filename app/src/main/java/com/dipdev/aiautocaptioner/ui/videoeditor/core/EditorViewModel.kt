@@ -124,6 +124,7 @@ class EditorViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
     private val settingsRepository: SettingsRepository,
     private val overlayRepository: OverlayRepository,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter,
     private val videoExporter: ExportService
 ) : BaseViewModel<VideoEditorUiState, VideoEditorUiEvent, VideoEditorUiEffect>(VideoEditorUiState()) {
 
@@ -174,6 +175,7 @@ class EditorViewModel @Inject constructor(
     
     val overlayManager = OverlayManager(
         context = context,
+        crashReporter = crashReporter,
         overlayRepository = overlayRepository,
         getOverlays = { currentState.imageOverlays },
         setOverlays = { list -> setState { copy(imageOverlays = list.toPersistentList()) } },
@@ -185,7 +187,7 @@ class EditorViewModel @Inject constructor(
         onStateUpdated = { historyManager.saveState() }
     )
     
-    val thumbnailManager = ThumbnailManager(context)
+    val thumbnailManager = ThumbnailManager(context, crashReporter)
 
 
     override fun onCleared() {

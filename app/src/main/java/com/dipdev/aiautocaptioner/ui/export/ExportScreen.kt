@@ -86,37 +86,17 @@ fun ExportScreen(
     val outputPath = uiState.outputPath
     val workingVideoPath = uiState.workingVideoPath
     val hasCaptions = uiState.hasCaptions
-    var showNoCaptionsDialog by remember { mutableStateOf(false) }
 
-    var originalWidth by remember { mutableIntStateOf(1080) }
-    var originalHeight by remember { mutableIntStateOf(1920) }
-    var originalBitrate by remember { mutableIntStateOf(5_000_000) }
-    var originalDurationMs by remember { mutableLongStateOf(0L) }
-    var originalFps by remember { mutableIntStateOf(30) }
+    val originalWidth = uiState.originalWidth
+    val originalHeight = uiState.originalHeight
+    val originalBitrate = uiState.originalBitrate
+    val originalDurationMs = uiState.originalDurationMs
+    val originalFps = uiState.originalFps
 
     var selectedHeight by remember(uiState.savedResolution) { mutableIntStateOf(uiState.savedResolution) }
     var selectedFps by remember(uiState.savedFps) { mutableIntStateOf(uiState.savedFps) }
     var selectedQuality by remember(uiState.savedQuality) { mutableIntStateOf(uiState.savedQuality) }
 
-    LaunchedEffect(workingVideoPath) {
-        if (workingVideoPath != null) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val retriever = android.media.MediaMetadataRetriever()
-                try {
-                    retriever.setDataSource(context, workingVideoPath.toUri())
-                    val w = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1080
-                    val h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 1920
-                    val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
-                    if (rotation == 90 || rotation == 270) { originalWidth = h; originalHeight = w }
-                    else { originalWidth = w; originalHeight = h }
-                    originalBitrate = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_BITRATE)?.toIntOrNull() ?: 5_000_000
-                    originalDurationMs = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-                    originalFps = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)?.toIntOrNull() ?: 30
-                } catch (e: Exception) { e.printStackTrace() }
-                finally { try { retriever.release() } catch (_: Exception) {} }
-            }
-        }
-    }
 
     val computedTargetBitrate = remember(selectedQuality, originalBitrate) {
         when (selectedQuality) {
@@ -163,23 +143,6 @@ fun ExportScreen(
                     .padding(horizontal = 24.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (showNoCaptionsDialog) {
-                    com.dipdev.aiautocaptioner.ui.components.UniversalDialog(
-                        type = com.dipdev.aiautocaptioner.ui.components.DialogType.WARNING,
-                        onDismissRequest = { showNoCaptionsDialog = false },
-                        title = stringResource(R.string.export_no_captions_title),
-                        body = stringResource(R.string.export_no_captions_body),
-                        confirmText = stringResource(R.string.export_anyway),
-                        onConfirm = {
-                            showNoCaptionsDialog = false
-                            viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                            viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                        },
-                        dismissText = stringResource(R.string.processing_cancel),
-                        onDismiss = { showNoCaptionsDialog = false }
-                    )
-                }
-
                 when (exportState) {
 
                     // ── Idle / Ready ─────────────────────────────────────────
@@ -239,11 +202,8 @@ fun ExportScreen(
 
                         Button(
                             onClick = {
-                                if (!hasCaptions) showNoCaptionsDialog = true
-                                else {
-                                    viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                                    viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                                }
+                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
                             },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(12.dp)
@@ -457,11 +417,8 @@ fun ExportScreen(
 
                         Button(
                             onClick = {
-                                if (!hasCaptions) showNoCaptionsDialog = true
-                                else {
-                                    viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                                    viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                                }
+                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
                             },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(12.dp)
@@ -502,11 +459,8 @@ fun ExportScreen(
 
                         Button(
                             onClick = {
-                                if (!hasCaptions) showNoCaptionsDialog = true
-                                else {
-                                    viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
-                                    viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
-                                }
+                                viewModel.saveSettings(selectedHeight, selectedFps, selectedQuality)
+                                viewModel.setEvent(ExportUiEvent.StartExport(projectId, computedTargetBitrate, if (selectedFps == -1) null else selectedFps, if (selectedHeight == -1) null else selectedHeight))
                             },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(12.dp)

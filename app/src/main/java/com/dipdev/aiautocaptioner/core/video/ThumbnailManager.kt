@@ -28,7 +28,10 @@ import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
-class ThumbnailManager(private val context: Context) {
+class ThumbnailManager(
+    private val context: Context,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
+) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val poolSemaphore = Semaphore(3)
@@ -122,11 +125,13 @@ class ThumbnailManager(private val context: Context) {
                     }
                     retrieverPool.add(r)
                 } catch (e: Exception) {
+            crashReporter.recordException(e)
                     try { r.release() } catch (_: Exception) {}
                     throw e
                 }
             }
         } catch (e: Exception) {
+            crashReporter.recordException(e)
             android.util.Log.e("ThumbnailManager", "Error", e)
             retrieverPool.forEach { it.release() }
             retrieverPool.clear()
@@ -207,6 +212,7 @@ class ThumbnailManager(private val context: Context) {
                 val bitmap = BitmapFactory.decodeFile(file.absolutePath)
                 if (bitmap != null) return@withContext bitmap
             } catch (e: Exception) {
+            crashReporter.recordException(e)
                 android.util.Log.e("ThumbnailManager", "Error", e)
             }
         }
@@ -238,6 +244,7 @@ class ThumbnailManager(private val context: Context) {
                     return@withContext scaledBitmap
                 }
             } catch (e: Exception) {
+            crashReporter.recordException(e)
                 android.util.Log.e("ThumbnailManager", "Error", e)
             } finally {
                 retrieverPool.offer(r)

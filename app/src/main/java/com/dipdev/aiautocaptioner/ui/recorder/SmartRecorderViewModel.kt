@@ -78,6 +78,7 @@ class SmartRecorderViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val projectRepository: ProjectRepository,
     val cameraEffectManager: CameraEffectManager,
+    val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter,
     savedStateHandle: SavedStateHandle
 ) : BaseViewModel<SmartRecorderState, UiEvent, UiEffect>(
     SmartRecorderState(
@@ -99,7 +100,9 @@ class SmartRecorderViewModel @Inject constructor(
             if (prewarmedProject == null) {
                 try {
                     prewarmedProject = projectRepository.createEmptyProjectForRecording()
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    crashReporter.recordException(e)
+                }
             }
         }
     }
@@ -308,7 +311,7 @@ class SmartRecorderViewModel @Inject constructor(
             currentProjectId = projectId
             currentOutputFile = outputFile
 
-            facelessRecorder = FacelessVideoRecorder()
+            facelessRecorder = FacelessVideoRecorder(crashReporter)
 
             val bgState = currentState.selectedBackground
             val color = (bgState as? BackgroundState.SolidColor)?.color?.toArgb()

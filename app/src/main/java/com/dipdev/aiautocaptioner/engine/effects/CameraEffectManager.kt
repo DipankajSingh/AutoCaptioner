@@ -41,7 +41,9 @@ class StudioGpuCameraEffect(
  * to both live Compose Viewfinders and hardware MP4 video encoders without CPU frame readbacks.
  */
 @OptIn(UnstableApi::class)
-class CameraEffectManager @Inject constructor() {
+class CameraEffectManager @Inject constructor(
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
+) {
 
     private var smoothnessIntensity = 0.35f
     private var activeFilter = CreatorFilter.NATURAL
@@ -83,7 +85,8 @@ class CameraEffectManager @Inject constructor() {
                 context = context.applicationContext,
                 skinSmoothEffect = previewSkin,
                 lutEffect = previewLut,
-                executor = effectExecutor
+                executor = effectExecutor,
+                crashReporter = crashReporter
             )
             activeProcessors.add(previewProcessor)
             val previewEffect = StudioGpuCameraEffect(
@@ -112,7 +115,8 @@ class CameraEffectManager @Inject constructor() {
                 context = context.applicationContext,
                 skinSmoothEffect = videoSkin,
                 lutEffect = videoLut,
-                executor = effectExecutor
+                executor = effectExecutor,
+                crashReporter = crashReporter
             )
             activeProcessors.add(videoProcessor)
             val videoEffect = StudioGpuCameraEffect(
@@ -184,7 +188,8 @@ internal class StudioEffectSurfaceProcessor(
     private val context: Context,
     private val skinSmoothEffect: SkinSmoothGlEffect,
     private val lutEffect: LutGlEffect,
-    private val executor: Executor
+    private val executor: Executor,
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) : SurfaceProcessor {
 
     // Pending surfaces that have not been connected to a processor yet.
@@ -322,6 +327,7 @@ internal class StudioEffectSurfaceProcessor(
             pendingOutput = null
             connectedProcessor = processor
         } catch (e: Exception) {
+            crashReporter.recordException(e)
             Log.e("StudioEffectProcessor", "Failed to initialize Media3 VideoFrameProcessor", e)
             pendingInput?.willNotProvideSurface()
             pendingInput = null

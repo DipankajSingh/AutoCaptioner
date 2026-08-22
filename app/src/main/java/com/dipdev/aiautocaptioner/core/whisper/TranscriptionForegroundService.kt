@@ -31,6 +31,9 @@ class TranscriptionForegroundService : Service() {
     @Inject
     lateinit var transcriptionManager: TranscriptionManager
 
+    @Inject
+    lateinit var crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
+
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var wakeLock: PowerManager.WakeLock? = null
     private var observeJob: Job? = null
