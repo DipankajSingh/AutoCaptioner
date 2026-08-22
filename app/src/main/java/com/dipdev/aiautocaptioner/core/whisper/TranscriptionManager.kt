@@ -86,10 +86,10 @@ class TranscriptionManager @Inject constructor(
                 val batteryLevel = deviceCapabilityUseCase.getBatteryLevel()
                 val charging = deviceCapabilityUseCase.isCharging()
                 if (batteryLevel in 0..10 && !charging) {
-                    throw Exception("Battery too low ($batteryLevel%). Please plug in and try again.")
+                    throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("Battery too low ($batteryLevel%). Please plug in and try again.")
                 }
 
-                val model = modelRepository.getModelById(modelId) ?: throw Exception("Model not found. Please try again.")
+                val model = modelRepository.getModelById(modelId) ?: throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("Model not found. Please try again.")
 
                 if (!model.isDownloaded) {
                     _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)
@@ -109,13 +109,13 @@ class TranscriptionManager @Inject constructor(
                                 downloadSuccess = true
                             }
                             is DownloadState.Error -> {
-                                throw Exception("Could not download the model. Check your internet connection and try again.")
+                                throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("Could not download the model. Check your internet connection and try again.")
                             }
                             else -> {}
                         }
                     }
                     if (!downloadSuccess) {
-                        throw Exception("Model download did not complete")
+                        throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("Model download did not complete")
                     }
                 }
 
@@ -126,7 +126,9 @@ class TranscriptionManager @Inject constructor(
                 throw e
             } catch (e: Throwable) {
                 Log.e(TAG, "Error: ${e.message}", e)
-                crashReporter.recordException(e)
+                if (e !is com.dipdev.aiautocaptioner.core.utils.UserFacingException) {
+                    crashReporter.recordException(e)
+                }
                 logTranscriptionFailed(e.message ?: "Unknown error", modelId, language, translateToEnglish)
                 _step.value = ProcessingStep.Error(e.message ?: "Unknown error")
                 activeProjectId?.let { pid ->
@@ -170,7 +172,7 @@ class TranscriptionManager @Inject constructor(
         }
 
         if (activeModelFile == null || !activeModelFile.exists()) {
-            throw Exception("No model downloaded. Please download a model first.")
+            throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("No model downloaded. Please download a model first.")
         }
 
         if (!whisperEngine.isReady()) {
@@ -212,9 +214,7 @@ class TranscriptionManager @Inject constructor(
 
         if (isCancelled) return
 
-        if (allWords.isEmpty()) {
-            throw Exception("No speech was detected. If your video has spoken words, make sure voices are audible and not drowned out by background noise.")
-        }
+
 
         if (language == "auto" || language.isEmpty()) {
             _detectedLanguage.value = whisperEngine.lastDetectedLanguage

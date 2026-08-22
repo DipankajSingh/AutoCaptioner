@@ -37,7 +37,7 @@ class AudioExtractionUseCase @Inject constructor(
                     }
                 }
                 if (audioTrackIndex == -1 || audioFormat == null) {
-                    throw IllegalStateException("No audio track found in this video file")
+                    throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("No audio track found in this video file")
                 }
                 extractor.selectTrack(audioTrackIndex)
 
@@ -150,10 +150,13 @@ class AudioExtractionUseCase @Inject constructor(
 
                 if (sampleRate != 16000) resampleTo16kLinear(finalFloats, sampleRate) else finalFloats
             } catch (e: Throwable) {
-                crashReporter.recordException(e)
+                if (e !is com.dipdev.aiautocaptioner.core.utils.UserFacingException) {
+                    crashReporter.recordException(e)
+                }
                 throw when (e) {
                     is OutOfMemoryError -> e
                     is IllegalStateException -> e
+                    is com.dipdev.aiautocaptioner.core.utils.UserFacingException -> e
                     else -> IllegalStateException("Your video has no audio!", e)
                 }
             } finally {
