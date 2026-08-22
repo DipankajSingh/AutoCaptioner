@@ -443,7 +443,12 @@ class EditorViewModel @Inject constructor(
         
         if (navigateToExport && !hasCaptions && !forceExport) {
             viewModelScope.launch {
-                setEffect(VideoEditorUiEffect.ShowExportWithoutCaptionsWarning)
+                val project = projectRepository.getProjectById(projectId)
+                if (project?.status != com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus.NO_SPEECH) {
+                    setEffect(VideoEditorUiEffect.ShowExportWithoutCaptionsWarning)
+                } else {
+                    applyEdits(navigateToExport = true, hasCaptions = false, forceExport = true)
+                }
             }
             return
         }

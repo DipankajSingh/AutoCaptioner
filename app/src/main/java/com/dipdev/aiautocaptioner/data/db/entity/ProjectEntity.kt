@@ -76,7 +76,8 @@ enum class ProjectStatus {
     EXTRACTING_AUDIO,
     TRANSCRIBING,
     TRANSCRIBED,
-    EXPORTED
+    EXPORTED,
+    NO_SPEECH
 }
 
 data class ProjectWithExportedFiles(

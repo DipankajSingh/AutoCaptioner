@@ -134,7 +134,13 @@ class TranscriptionManager @Inject constructor(
                 activeProjectId?.let { pid ->
                     try {
                         val hasCaptions = captionRepository.getSegmentsForProject(pid).first().isNotEmpty()
-                        val status = if (hasCaptions) ProjectStatus.TRANSCRIBED else ProjectStatus.IMPORTED
+                        val status = if (hasCaptions) {
+                            ProjectStatus.TRANSCRIBED
+                        } else if (e.message?.startsWith("No speech was detected") == true) {
+                            ProjectStatus.NO_SPEECH
+                        } else {
+                            ProjectStatus.IMPORTED
+                        }
                         projectRepository.updateStatus(pid, status)
                     } catch (inner: Throwable) {
                         Log.e(TAG, "Failed to revert status", inner)
@@ -214,7 +220,9 @@ class TranscriptionManager @Inject constructor(
 
         if (isCancelled) return
 
-
+        if (allWords.isEmpty()) {
+            throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("No speech was detected. If your video has spoken words, make sure voices are audible and not drowned out by background noise.")
+        }
 
         if (language == "auto" || language.isEmpty()) {
             _detectedLanguage.value = whisperEngine.lastDetectedLanguage
