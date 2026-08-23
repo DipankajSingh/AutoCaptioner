@@ -37,7 +37,6 @@ import androidx.media3.transformer.VideoEncoderSettings
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
-import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
@@ -365,10 +364,7 @@ class ExportForegroundService : Service() {
                 // Caption overlay
                 val activeStyle = project.activeStyleId
                     ?.let { captionRepository.getStyleById(it) }
-                    ?: if (project.creationMode ==
-                        CreationMode.QUICK_CAPTION
-                    ) captionRepository.getFirstStyle() else null
-
+                    ?: captionRepository.getFirstStyle()
                 var captionOverlayEffect: CaptionOverlayEffect? = null
                 val segments = captionRepository.getSegmentsOnce(projectId)
                 if (activeStyle != null && segments.isNotEmpty()) {
@@ -476,10 +472,10 @@ class ExportForegroundService : Service() {
                         project.videoWidth < 3840 && project.videoHeight < 3840 -> null
                     else -> targetHeight
                 }
+                videoEffectsBuilder.add(OverlayEffect(textureOverlays.build()))
                 if (resolvedTargetHeight != null) {
                     videoEffectsBuilder.add(Presentation.createForHeight(resolvedTargetHeight))
                 }
-                videoEffectsBuilder.add(OverlayEffect(textureOverlays.build()))
 
                 val effects = Effects(
                     emptyList(),
