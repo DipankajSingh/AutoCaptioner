@@ -49,7 +49,12 @@ class OverlayManager(
                 BitmapFactory.decodeFile(destFile.absolutePath, decodeOpts)
 
                 val overlay = synchronized(zOrderLock) {
-                    val maxZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
+                    // New overlays enter the SHARED z-order space of images + texts
+                    // (same rule EditorViewModel uses for new text overlays), so an
+                    // image added after existing text stacks above it.
+                    val maxImageZ = getOverlays().maxOfOrNull { it.zOrder } ?: -1
+                    val maxTextZ = getTextOverlays().maxOfOrNull { it.zOrder } ?: -1
+                    val maxZ = maxOf(maxImageZ, maxTextZ)
                     ImageOverlayEntity(
                         id = UUID.randomUUID().toString(),
                         projectId = projectId,

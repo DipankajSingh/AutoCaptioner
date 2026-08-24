@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,10 +27,15 @@ class FileStorageManager @Inject constructor(
     }
 
     fun copyUriToInternalStorage(uri: Uri, destFile: File) {
-        context.contentResolver.openInputStream(uri)?.use { input ->
+        val input = context.contentResolver.openInputStream(uri)
+            ?: throw IOException("Could not open input stream for $uri")
+        input.use { source ->
             destFile.outputStream().use { output ->
-                input.copyTo(output)
+                source.copyTo(output)
             }
+        }
+        if (!destFile.exists() || destFile.length() == 0L) {
+            throw IOException("Copy produced an empty file for $uri at ${destFile.absolutePath}")
         }
     }
 

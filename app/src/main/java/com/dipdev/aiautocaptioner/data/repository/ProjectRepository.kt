@@ -68,21 +68,12 @@ class ProjectRepository @Inject constructor(
 
                 Log.i(TAG, "Created project directory: ${projectDir.absolutePath}")
 
-                // Step 3 — Take persistable URI permission or securely copy video
-                var finalVideoPath = videoUri.toString()
-                try {
-                    context.contentResolver.takePersistableUriPermission(
-                        videoUri,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                } catch (e: SecurityException) {
-                    // Photo Picker URIs don't support persistable permissions. 
-                    // Copy to internal storage so we don't lose the video reference on app restart.
-                    Log.w(TAG, "Could not take persistable permission for $videoUri, copying file.", e)
-                    val videoFile = File(projectDir, "original_video.mp4")
-                    fileStorageManager.copyUriToInternalStorage(videoUri, videoFile)
-                    finalVideoPath = videoFile.absolutePath
-                }
+                // Step 3 — Always copy the video into internal storage.
+                // Picked URIs (system Photo Picker on API 30+, gallery apps, SAF) may be
+                // temporary or non-persistable; downstream consumers need a stable local file.
+                val videoFile = File(projectDir, "original_video.mp4")
+                fileStorageManager.copyUriToInternalStorage(videoUri, videoFile)
+                val finalVideoPath = videoFile.absolutePath
 
                 // Step 4 — Extract thumbnail (first frame of video)
                 val thumbnailFile = File(projectDir, "thumbnail.jpg")

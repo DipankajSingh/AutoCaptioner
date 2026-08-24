@@ -227,14 +227,18 @@ class ExportForegroundService : Service() {
         )
 
         try {
-            if (Build.VERSION.SDK_INT >= 35) {
-                ServiceCompat.startForeground(
+            when {
+                Build.VERSION.SDK_INT >= 35 -> ServiceCompat.startForeground(
                     this, NOTIFICATION_ID, notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
                 )
-            } else {
-                // API 24–34: plain foreground service (type not required/available)
-                startForeground(NOTIFICATION_ID, notification)
+                // API 34: mediaProcessing doesn't exist yet — dataSync is the valid
+                // fallback for short on-device processing (permission already declared).
+                Build.VERSION.SDK_INT >= 34 -> ServiceCompat.startForeground(
+                    this, NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+                else -> startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
             crashReporter.recordException(e)
@@ -361,6 +365,13 @@ class ExportForegroundService : Service() {
                 // ── 2. Build overlay effects ──────────────────────────────────
                 val textureOverlays = ImmutableList.builder<TextureOverlay>()
 
+                // User overlays (text + images) share ONE z-order space, exactly like
+                // the editor preview (PreviewSection/OverlayRenderer). Captions are
+                // added last so they render above everything, also matching preview.
+                // Ties (legacy rows can share a zOrder) fall back to creation time,
+                // so the element added later renders on top.
+                val sceneOverlays = mutableListOf<Triple<Int, Long, TextureOverlay>>()
+
                 // Caption overlay
                 val activeStyle = project.activeStyleId
                     ?.let { captionRepository.getStyleById(it) }
@@ -378,34 +389,32 @@ class ExportForegroundService : Service() {
                         style          = activeStyle,
                         rotationDegrees = project.videoRotation
                     )
-                    textureOverlays.add(captionOverlayEffect)
                 }
 
                 // Text overlays
-                val textOverlayEffects = overlayRepository
+                overlayRepository
                     .getTextOverlaysForProjectSync(projectId)
-                    .mapNotNull { overlay ->
+                    .forEach { overlay ->
                         try {
-                            TextOverlayEffect(
+                            sceneOverlays.add(Triple(
+                                overlay.zOrder, overlay.createdAt, TextOverlayEffect(
                                 context         = this@ExportForegroundService,
                                 overlay         = overlay,
                                 videoWidth      = displayWidth,
                                 videoHeight     = displayHeight,
                                 rotationDegrees = project.videoRotation
-                            )
+                            )))
                         } catch (e: Throwable) {
                             crashReporter.recordException(e)
                             Log.w(TAG, "Skipped text overlay: ${e.message}")
-                            null
                         }
                     }
-                textureOverlays.addAll(textOverlayEffects)
 
                 // Image overlays — content-URI images are read once into a
                 // ByteArray so we only open the stream once instead of twice.
-                val imageOverlayEffects = overlayRepository
+                overlayRepository
                     .getOverlaysOnce(projectId)
-                    .mapNotNull { overlay ->
+                    .forEach { overlay ->
                         try {
                             val maxW = (displayWidth  * overlay.scaleX).toInt().coerceAtLeast(256)
                             val maxH = (displayHeight * overlay.scaleY).toInt().coerceAtLeast(256)
@@ -414,7 +423,7 @@ class ExportForegroundService : Service() {
                             val bytes: ByteArray? = readImageBytes(overlay.imageUri)
                             if (bytes == null) {
                                 Log.w(TAG, "Could not read image: ${overlay.imageUri}")
-                                return@mapNotNull null
+                                return@forEach
                             }
 
                             // Pass 1 — bounds only (no pixel allocation)
@@ -431,9 +440,10 @@ class ExportForegroundService : Service() {
                                 }
                             }
                             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-                                ?: return@mapNotNull null
+                                ?: return@forEach
 
-                            ImageOverlayEffect(
+                            sceneOverlays.add(Triple(
+                                overlay.zOrder, overlay.createdAt, ImageOverlayEffect(
                                 bitmap          = bitmap,
                                 positionX       = overlay.positionX,
                                 positionY       = overlay.positionY,
@@ -447,14 +457,18 @@ class ExportForegroundService : Service() {
                                 opacity         = overlay.opacity,
                                 filterName      = overlay.filterName,
                                 isFlippedX      = overlay.isFlippedX
-                            )
+                            )))
                         } catch (e: Throwable) {
                             crashReporter.recordException(e)
                             Log.w(TAG, "Skipped image overlay: ${e.message}")
-                            null
                         }
                     }
-                textureOverlays.addAll(imageOverlayEffects)
+
+                // Stable sort: zOrder first, creation time breaks ties (later = on
+                // top). Captions go above all user overlays.
+                sceneOverlays.sortWith(compareBy({ it.first }, { it.second }))
+                sceneOverlays.forEach { textureOverlays.add(it.third) }
+                captionOverlayEffect?.let { textureOverlays.add(it) }
 
                 // ── 3. Prepare output file ────────────────────────────────────
                 val outDir  = File(filesDir, "exports").also { it.mkdirs() }
@@ -515,8 +529,7 @@ class ExportForegroundService : Service() {
                             projectId           = projectId,
                             targetBitrate       = targetBitrate,
                             captionOverlay      = captionOverlayEffect,
-                            imageOverlays       = imageOverlayEffects,
-                            textOverlays        = textOverlayEffects,
+                            sceneOverlays       = sceneOverlays.map { it.third },
                             project             = project
                         ))
                         .build()
@@ -544,8 +557,7 @@ class ExportForegroundService : Service() {
         projectId: String,
         targetBitrate: Int?,
         captionOverlay: CaptionOverlayEffect?,
-        imageOverlays: List<ImageOverlayEffect>,
-        textOverlays: List<TextOverlayEffect>,
+        sceneOverlays: List<TextureOverlay>,
         project: ProjectEntity
     ): Transformer.Listener = object : Transformer.Listener {
 
@@ -557,7 +569,7 @@ class ExportForegroundService : Service() {
             progressJob?.cancel()
             activeTransformer = null
 
-            releaseOverlays(captionOverlay, imageOverlays, textOverlays)
+            releaseOverlays(captionOverlay, sceneOverlays)
 
             ExportServiceManager.progress.value = 1f
             ExportServiceManager.etaMs.value    = null
@@ -620,7 +632,7 @@ class ExportForegroundService : Service() {
             progressJob?.cancel()
             activeTransformer = null
 
-            releaseOverlays(captionOverlay, imageOverlays, textOverlays)
+            releaseOverlays(captionOverlay, sceneOverlays)
             crashReporter.recordException(exportException)
 
             ExportServiceManager.etaMs.value    = null
@@ -708,12 +720,10 @@ class ExportForegroundService : Service() {
 
     private fun releaseOverlays(
         captionOverlayEffect: CaptionOverlayEffect?,
-        imageOverlayEffects: List<ImageOverlayEffect>,
-        textOverlayEffects: List<TextOverlayEffect>
+        sceneOverlays: List<TextureOverlay>
     ) {
         captionOverlayEffect?.release()
-        imageOverlayEffects.forEach { it.release() }
-        textOverlayEffects.forEach  { it.release() }
+        sceneOverlays.forEach { it.release() }
     }
 
     /**
