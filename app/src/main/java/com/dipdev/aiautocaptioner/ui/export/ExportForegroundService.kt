@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
 import android.os.Build
@@ -17,21 +19,26 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.DefaultVideoFrameProcessor
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
 import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
+import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
+import androidx.media3.transformer.VideoEncoderSettings
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.data.db.dao.ExportedFileDao
 import com.dipdev.aiautocaptioner.data.db.entity.ExportedFileEntity
+import com.dipdev.aiautocaptioner.data.db.entity.ProjectEntity
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
 import com.dipdev.aiautocaptioner.data.repository.OverlayRepository
@@ -45,124 +52,166 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InputStream
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared state bus — observed by ExportViewModel to drive UI.
+// ─────────────────────────────────────────────────────────────────────────────
 object ExportServiceManager {
     val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
-    val progress = MutableStateFlow(0f)
-    val etaMs = MutableStateFlow<Long?>(null)
-    val outputPath = MutableStateFlow<String?>(null)
+    val progress    = MutableStateFlow(0f)
+    val etaMs       = MutableStateFlow<Long?>(null)
+    val outputPath  = MutableStateFlow<String?>(null)
 
     fun reset() {
         exportState.value = ExportState.Idle
-        progress.value = 0f
-        etaMs.value = null
-        outputPath.value = null
+        progress.value    = 0f
+        etaMs.value       = null
+        outputPath.value  = null
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ExportForegroundService
+// ─────────────────────────────────────────────────────────────────────────────
 @OptIn(UnstableApi::class, androidx.media3.common.util.ExperimentalApi::class)
 @AndroidEntryPoint
 class ExportForegroundService : Service() {
 
+    // ── Injected dependencies ─────────────────────────────────────────────────
     @Inject lateinit var projectRepository: ProjectRepository
     @Inject lateinit var captionRepository: CaptionRepository
     @Inject lateinit var overlayRepository: OverlayRepository
     @Inject lateinit var exportedFileDao: ExportedFileDao
     @Inject lateinit var crashReporter: CrashReporter
 
+    // ── Coroutine scope — cancelled in onDestroy() to prevent leaks ───────────
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // ── Export state ──────────────────────────────────────────────────────────
     private var activeTransformer: Transformer? = null
     private var progressJob: Job? = null
     private var currentOutFile: File? = null
-    private var isFinishing = false
 
+    /**
+     * Accessed from both Dispatchers.IO (serviceScope) and Dispatchers.Main
+     * (Transformer callbacks). @Volatile ensures visibility across threads
+     * without the overhead of full synchronisation.
+     */
+    @Volatile private var isFinishing = false
+
+    // ── Cached system resources (avoid repeated allocations on hot paths) ─────
+    private val notificationManager: NotificationManager by lazy {
+        getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    }
+    /** Large icon bitmap — decoded once, reused for every notification update. */
+    private val largeIconBitmap: Bitmap? by lazy {
+        BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+    }
+    /** Last progress percentage posted to the notification (throttle guard). */
+    private var lastNotifiedProgress = -1
+
+    // ── Constants ─────────────────────────────────────────────────────────────
     companion object {
         private const val TAG = "ExportService"
-        const val NOTIFICATION_ID = 102
-        const val CHANNEL_ID = "export_channel"
-        const val ACTION_CANCEL = "com.dipdev.aiautocaptioner.ACTION_CANCEL_EXPORT"
-
-        const val EXTRA_PROJECT_ID = "extra_project_id"
-        const val EXTRA_TARGET_FPS = "extra_target_fps"
-        const val EXTRA_TARGET_HEIGHT = "extra_target_height"
+        const val NOTIFICATION_ID   = 102
+        const val CHANNEL_ID        = "export_channel"
+        const val ACTION_CANCEL     = "com.dipdev.aiautocaptioner.ACTION_CANCEL_EXPORT"
+        const val EXTRA_PROJECT_ID  = "extra_project_id"
+        const val EXTRA_TARGET_FPS  = "extra_target_fps"
+        const val EXTRA_TARGET_HEIGHT  = "extra_target_height"
         const val EXTRA_TARGET_BITRATE = "extra_target_bitrate"
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Lifecycle
+    // ─────────────────────────────────────────────────────────────────────────
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_CANCEL) {
             Log.d(TAG, "Cancel received")
-            isFinishing = true
-            progressJob?.cancel()
-            activeTransformer?.cancel()
-            activeTransformer = null
-            currentOutFile?.delete()
-            ExportServiceManager.exportState.value = ExportState.Cancelled
-            ExportServiceManager.progress.value = 0f
-            ExportServiceManager.etaMs.value = null
-            stopExportService()
+            cancelExport()
             return START_NOT_STICKY
         }
 
-        if (intent == null) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        val projectId = intent.getStringExtra(EXTRA_PROJECT_ID)
+        val projectId = intent?.getStringExtra(EXTRA_PROJECT_ID)
         if (projectId == null) {
+            Log.w(TAG, "Started with no project ID — stopping immediately")
             stopSelf()
             return START_NOT_STICKY
         }
 
-        val targetFps = if (intent.hasExtra(EXTRA_TARGET_FPS)) intent.getIntExtra(EXTRA_TARGET_FPS, -1) else null
-        val targetHeight = if (intent.hasExtra(EXTRA_TARGET_HEIGHT)) intent.getIntExtra(EXTRA_TARGET_HEIGHT, -1) else null
-        val targetBitrate = if (intent.hasExtra(EXTRA_TARGET_BITRATE)) intent.getIntExtra(EXTRA_TARGET_BITRATE, -1) else null
+        // Read optional extras — treat missing or -1 as "use original"
+        fun Intent.intExtraOrNull(key: String) =
+            if (hasExtra(key)) getIntExtra(key, -1).takeIf { it > 0 } else null
 
-        isFinishing = false
-        startForegroundService()
+        val targetFps     = intent.intExtraOrNull(EXTRA_TARGET_FPS)
+        val targetHeight  = intent.intExtraOrNull(EXTRA_TARGET_HEIGHT)
+        val targetBitrate = intent.intExtraOrNull(EXTRA_TARGET_BITRATE)
 
+        isFinishing          = false
+        lastNotifiedProgress = -1
+
+        startForegroundNotification()
         ExportServiceManager.exportState.value = ExportState.Running
-        ExportServiceManager.progress.value = 0f
+        ExportServiceManager.progress.value    = 0f
 
-        startExport(
-            projectId = projectId,
-            targetFps = if (targetFps != -1) targetFps else null,
-            targetHeight = if (targetHeight != -1) targetHeight else null,
-            targetBitrate = if (targetBitrate != -1) targetBitrate else null
-        )
-
+        startExport(projectId, targetFps, targetHeight, targetBitrate)
         return START_NOT_STICKY
     }
 
-    private fun getOpenAppPendingIntent(): PendingIntent {
-        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        } ?: Intent()
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        return PendingIntent.getActivity(this, 1, intent, flags)
-    }
-
-    private fun getCancelPendingIntent(): PendingIntent {
-        val cancelIntent = Intent(this, ExportForegroundService::class.java).apply {
-            action = ACTION_CANCEL
+    override fun onDestroy() {
+        super.onDestroy()
+        progressJob?.cancel()
+        activeTransformer?.cancel()
+        activeTransformer = null
+        // Cancel the scope to stop any in-flight DB / IO work launched after a
+        // destroy (e.g., if the OS kills the service mid-export).
+        serviceScope.cancel()
+        // Only remove the notification if we didn't already post a terminal one.
+        if (!isFinishing) {
+            notificationManager.cancel(NOTIFICATION_ID)
         }
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        return PendingIntent.getService(this, 0, cancelIntent, flags)
     }
 
-    private fun startForegroundService() {
-        // Guard NotificationChannel creation — API 26+ only (minSdk = 24)
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        Log.w(TAG, "Foreground service timeout — stopping")
+        stopSelf(startId)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Cancellation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private fun cancelExport() {
+        isFinishing = true
+        progressJob?.cancel()
+        activeTransformer?.cancel()
+        activeTransformer = null
+        currentOutFile?.delete()
+        ExportServiceManager.exportState.value = ExportState.Cancelled
+        ExportServiceManager.progress.value    = 0f
+        ExportServiceManager.etaMs.value       = null
+        stopExportService()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Notification helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private fun startForegroundNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 getString(R.string.export_channel_name),
@@ -172,34 +221,28 @@ class ExportForegroundService : Service() {
         }
 
         val notification = buildExportNotification(
-            title = getString(R.string.export_notif_title),
+            title       = getString(R.string.export_notif_title),
             contentText = getString(R.string.export_notif_content),
             isIndeterminate = true
         )
 
         try {
             when {
-                // API 35+: mediaProcessing type is available and required
-                Build.VERSION.SDK_INT >= 35 -> {
-                    ServiceCompat.startForeground(
-                        this,
-                        NOTIFICATION_ID,
-                        notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
-                    )
-                }
-                // API 26–34: foreground service works but no specialized type needed for this use case
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
-                    startForeground(NOTIFICATION_ID, notification)
-                }
-                // API < 26: plain foreground service, no type
-                else -> {
-                    startForeground(NOTIFICATION_ID, notification)
-                }
+                Build.VERSION.SDK_INT >= 35 -> ServiceCompat.startForeground(
+                    this, NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+                )
+                // API 34: mediaProcessing doesn't exist yet — dataSync is the valid
+                // fallback for short on-device processing (permission already declared).
+                Build.VERSION.SDK_INT >= 34 -> ServiceCompat.startForeground(
+                    this, NOTIFICATION_ID, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+                else -> startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
             crashReporter.recordException(e)
-            Log.e(TAG, "Failed to start foreground service: ${e.message}")
+            Log.e(TAG, "Failed to start foreground: ${e.message}")
             stopSelf()
         }
     }
@@ -209,72 +252,91 @@ class ExportForegroundService : Service() {
         contentText: String,
         bigText: String? = null,
         progress: Int? = null,
-        isIndeterminate: Boolean = true,
+        isIndeterminate: Boolean = false,
         isFinished: Boolean = false,
         isError: Boolean = false,
-        showCancel: Boolean = true
+        showActions: Boolean = true
     ): Notification {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+            .setLargeIcon(largeIconBitmap)          // reuses cached Bitmap
             .setContentTitle(title)
             .setContentText(contentText)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(!isFinished)
             .setAutoCancel(isFinished)
+            .setColor(
+                when {
+                    isError    -> 0xFFEF4444.toInt()
+                    isFinished -> 0xFF22C55E.toInt()
+                    else       -> 0xFFF59E0B.toInt()
+                }
+            )
 
-        if (showCancel) {
-            builder.addAction(
-                R.drawable.ic_logo_ui,
-                getString(R.string.notif_action_open),
-                getOpenAppPendingIntent()
-            )
-            builder.addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                getString(R.string.notif_action_cancel),
-                getCancelPendingIntent()
-            )
+        if (showActions) {
+            builder.addAction(R.drawable.ic_logo_ui,
+                getString(R.string.notif_action_open), getOpenAppPendingIntent())
+            builder.addAction(android.R.drawable.ic_menu_close_clear_cancel,
+                getString(R.string.notif_action_cancel), getCancelPendingIntent())
         }
 
         if (bigText != null) {
             builder.setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText(bigText)
-                    .setSummaryText(title)
+                NotificationCompat.BigTextStyle().bigText(bigText).setSummaryText(title)
             )
         }
 
         when {
-            isError -> builder.setColor(0xFFEF4444.toInt())
-            isFinished -> builder.setColor(0xFF22C55E.toInt())
-            else -> builder.setColor(0xFFF59E0B.toInt())
-        }
-
-        if (progress != null) {
-            builder.setProgress(100, progress, false)
-        } else if (isIndeterminate) {
-            builder.setProgress(100, 0, true)
-        } else {
-            builder.setProgress(0, 0, false)
+            progress != null   -> builder.setProgress(100, progress, false)
+            isIndeterminate    -> builder.setProgress(100, 0, true)
+            else               -> builder.setProgress(0, 0, false)
         }
 
         return builder.build()
     }
 
-    private fun updateNotificationProgress(progress: Int, etaMs: Long?) {
-        if (isFinishing) return
-        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    /**
+     * Posts a progress notification only when the integer percentage has
+     * changed by at least 1 point — avoids hammering the notification
+     * binder every 500 ms when progress is stalled.
+     */
+    private fun updateNotificationProgress(progressPct: Int, etaMs: Long?) {
+        if (isFinishing || progressPct == lastNotifiedProgress) return
+        lastNotifiedProgress = progressPct
         val etaText = etaMs?.let { ", ETA ${formatEta(it)}" } ?: ""
         val notification = buildExportNotification(
-            title = getString(R.string.export_notif_title),
-            contentText = "Rendering… $progress%",
-            bigText = "Exporting your video with captions…\n$progress% complete$etaText",
-            progress = progress,
-            isIndeterminate = false
+            title       = getString(R.string.export_notif_title),
+            contentText = "Rendering… $progressPct%",
+            bigText     = "Exporting your video with captions…\n$progressPct% complete$etaText",
+            progress    = progressPct
         )
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
+
+    private fun getOpenAppPendingIntent(): PendingIntent {
+        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        } ?: Intent()
+        return PendingIntent.getActivity(
+            this, 1, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun getCancelPendingIntent(): PendingIntent {
+        val cancelIntent = Intent(this, ExportForegroundService::class.java).apply {
+            action = ACTION_CANCEL
+        }
+        return PendingIntent.getService(
+            this, 0, cancelIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Core export pipeline
+    // ─────────────────────────────────────────────────────────────────────────
 
     private fun startExport(
         projectId: String,
@@ -284,324 +346,428 @@ class ExportForegroundService : Service() {
     ) {
         serviceScope.launch {
             try {
+                // ── 1. Load project ───────────────────────────────────────────
                 val project = projectRepository.getProjectById(projectId)
-                    ?: throw Exception("Project not found")
+                    ?: throw IllegalStateException("Project $projectId not found")
 
-                val textureOverlays = ImmutableList.builder<TextureOverlay>()
+                // Validate the source file exists before we hand it to Transformer
+                val sourceFile = File(project.workingVideoPath)
+                if (!sourceFile.exists()) {
+                    throw java.io.FileNotFoundException(
+                        "Source video missing: ${project.workingVideoPath}"
+                    )
+                }
 
-                val isPortrait = project.videoRotation == 90 || project.videoRotation == 270
+                val isPortrait   = project.videoRotation == 90 || project.videoRotation == 270
                 val displayWidth  = if (isPortrait) project.videoHeight else project.videoWidth
                 val displayHeight = if (isPortrait) project.videoWidth  else project.videoHeight
 
-                val segments = captionRepository.getSegmentsOnce(projectId)
-                val activeStyle = project.activeStyleId?.let { captionRepository.getStyleById(it) }
-                    ?: if (project.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION) {
-                        captionRepository.getFirstStyle()
-                    } else null
+                // ── 2. Build overlay effects ──────────────────────────────────
+                val textureOverlays = ImmutableList.builder<TextureOverlay>()
 
+                // User overlays (text + images) share ONE z-order space, exactly like
+                // the editor preview (PreviewSection/OverlayRenderer). Captions are
+                // added last so they render above everything, also matching preview.
+                // Ties (legacy rows can share a zOrder) fall back to creation time,
+                // so the element added later renders on top.
+                val sceneOverlays = mutableListOf<Triple<Int, Long, TextureOverlay>>()
+
+                // Caption overlay
+                val activeStyle = project.activeStyleId
+                    ?.let { captionRepository.getStyleById(it) }
+                    ?: captionRepository.getFirstStyle()
                 var captionOverlayEffect: CaptionOverlayEffect? = null
+                val segments = captionRepository.getSegmentsOnce(projectId)
                 if (activeStyle != null && segments.isNotEmpty()) {
-                    val wordsList = captionRepository.getAllWordsForProject(projectId)
-                    val wordsMap = wordsList.groupBy { it.segmentId }
+                    val wordsMap = captionRepository
+                        .getAllWordsForProject(projectId)
+                        .groupBy { it.segmentId }
                     captionOverlayEffect = CaptionOverlayEffect(
-                        context = this@ExportForegroundService,
-                        segments = segments,
-                        wordsMap = wordsMap,
-                        style = activeStyle,
+                        context        = this@ExportForegroundService,
+                        segments       = segments,
+                        wordsMap       = wordsMap,
+                        style          = activeStyle,
                         rotationDegrees = project.videoRotation
                     )
-                    textureOverlays.add(captionOverlayEffect)
                 }
 
-                val textOverlays = overlayRepository.getTextOverlaysForProjectSync(projectId)
-                val textOverlayEffects = textOverlays.mapNotNull { overlay ->
-                    try {
-                        TextOverlayEffect(
-                            context = this@ExportForegroundService,
-                            overlay = overlay,
-                            videoWidth = displayWidth,
-                            videoHeight = displayHeight,
-                            rotationDegrees = project.videoRotation
-                        )
-                    } catch (e: Throwable) {
-                        crashReporter.recordException(e)
-                        null
+                // Text overlays
+                overlayRepository
+                    .getTextOverlaysForProjectSync(projectId)
+                    .forEach { overlay ->
+                        try {
+                            sceneOverlays.add(Triple(
+                                overlay.zOrder, overlay.createdAt, TextOverlayEffect(
+                                context         = this@ExportForegroundService,
+                                overlay         = overlay,
+                                videoWidth      = displayWidth,
+                                videoHeight     = displayHeight,
+                                rotationDegrees = project.videoRotation
+                            )))
+                        } catch (e: Throwable) {
+                            crashReporter.recordException(e)
+                            Log.w(TAG, "Skipped text overlay: ${e.message}")
+                        }
                     }
-                }
-                textureOverlays.addAll(textOverlayEffects)
 
-                val overlays = overlayRepository.getOverlaysOnce(projectId)
-                val imageOverlayEffects = overlays.mapNotNull { overlay ->
-                    try {
-                        val maxTargetWidth = (displayWidth * overlay.scaleX).toInt().coerceAtLeast(256)
-                        val maxTargetHeight = (displayHeight * overlay.scaleY).toInt().coerceAtLeast(256)
-                        val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        if (overlay.imageUri.startsWith("content://")) {
-                            contentResolver.openInputStream(overlay.imageUri.toUri())?.use { stream ->
-                                BitmapFactory.decodeStream(stream, null, boundsOpts)
+                // Image overlays — content-URI images are read once into a
+                // ByteArray so we only open the stream once instead of twice.
+                overlayRepository
+                    .getOverlaysOnce(projectId)
+                    .forEach { overlay ->
+                        try {
+                            val maxW = (displayWidth  * overlay.scaleX).toInt().coerceAtLeast(256)
+                            val maxH = (displayHeight * overlay.scaleY).toInt().coerceAtLeast(256)
+
+                            // Read source bytes once regardless of URI scheme
+                            val bytes: ByteArray? = readImageBytes(overlay.imageUri)
+                            if (bytes == null) {
+                                Log.w(TAG, "Could not read image: ${overlay.imageUri}")
+                                return@forEach
                             }
-                        } else {
-                            BitmapFactory.decodeFile(overlay.imageUri, boundsOpts)
-                        }
-                        val opts = BitmapFactory.Options().apply {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+
+                            // Pass 1 — bounds only (no pixel allocation)
+                            val boundsOpts = BitmapFactory.Options().apply {
+                                inJustDecodeBounds = true
                             }
-                            inSampleSize = calculateInSampleSize(boundsOpts, maxTargetWidth, maxTargetHeight)
-                        }
-                        val bitmap = if (overlay.imageUri.startsWith("content://")) {
-                            contentResolver.openInputStream(overlay.imageUri.toUri())?.use { stream ->
-                                BitmapFactory.decodeStream(stream, null, opts)
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOpts)
+
+                            // Pass 2 — sub-sampled decode
+                            val opts = BitmapFactory.Options().apply {
+                                inSampleSize = calculateInSampleSize(boundsOpts, maxW, maxH)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+                                }
                             }
-                        } else {
-                            BitmapFactory.decodeFile(overlay.imageUri, opts)
-                        }
-                        if (bitmap != null) {
-                            ImageOverlayEffect(
-                                bitmap = bitmap,
-                                positionX = overlay.positionX,
-                                positionY = overlay.positionY,
-                                scaleX = overlay.scaleX,
-                                scaleY = overlay.scaleY,
-                                startTimeMs = overlay.startTimeMs,
-                                endTimeMs = overlay.endTimeMs,
-                                videoWidth = displayWidth,
-                                videoHeight = displayHeight,
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+                                ?: return@forEach
+
+                            sceneOverlays.add(Triple(
+                                overlay.zOrder, overlay.createdAt, ImageOverlayEffect(
+                                bitmap          = bitmap,
+                                positionX       = overlay.positionX,
+                                positionY       = overlay.positionY,
+                                scaleX          = overlay.scaleX,
+                                scaleY          = overlay.scaleY,
+                                startTimeMs     = overlay.startTimeMs,
+                                endTimeMs       = overlay.endTimeMs,
+                                videoWidth      = displayWidth,
+                                videoHeight     = displayHeight,
                                 rotationDegrees = project.videoRotation,
-                                opacity = overlay.opacity,
-                                filterName = overlay.filterName,
-                                isFlippedX = overlay.isFlippedX
-                            )
-                        } else null
-                    } catch (e: Throwable) {
-                        crashReporter.recordException(e)
-                        null
+                                opacity         = overlay.opacity,
+                                filterName      = overlay.filterName,
+                                isFlippedX      = overlay.isFlippedX
+                            )))
+                        } catch (e: Throwable) {
+                            crashReporter.recordException(e)
+                            Log.w(TAG, "Skipped image overlay: ${e.message}")
+                        }
                     }
-                }
-                textureOverlays.addAll(imageOverlayEffects)
 
-                val outDir = File(filesDir, "exports")
-                if (!outDir.exists()) outDir.mkdirs()
+                // Stable sort: zOrder first, creation time breaks ties (later = on
+                // top). Captions go above all user overlays.
+                sceneOverlays.sortWith(compareBy({ it.first }, { it.second }))
+                sceneOverlays.forEach { textureOverlays.add(it.third) }
+                captionOverlayEffect?.let { textureOverlays.add(it) }
+
+                // ── 3. Prepare output file ────────────────────────────────────
+                val outDir  = File(filesDir, "exports").also { it.mkdirs() }
                 val outFile = File(outDir, "export_${System.currentTimeMillis()}.mp4")
                 currentOutFile = outFile
                 ExportServiceManager.outputPath.value = outFile.absolutePath
 
+                // ── 4. Build video effects chain ──────────────────────────────
                 val videoEffectsBuilder = ImmutableList.builder<androidx.media3.common.Effect>()
-                var finalTargetHeight = targetHeight
-                
-                // 4K Condition Check
-                if (targetHeight != null && targetHeight > 0) {
-                    if (project.videoWidth >= 3840 || project.videoHeight >= 3840) {
-                        // Skip upscaling logic if the original is already 4K or above,
-                        // meaning if targetHeight is less than the original, we respect the downscale (e.g. 4K -> 1080p).
-                        // If they chose 1080p output and original is 4K, let it scale down to 1080p.
-                        // If they chose 4K output and original is 4K, let it pass through.
-                        // So the presentation effect is fine.
-                    } else if (targetHeight >= 2160) {
-                        // Attempting to export 4K but source is less than 4K (e.g., 1080p).
-                        // Skip the upscaling to save resources and file size.
-                        finalTargetHeight = null
-                    }
-                }
-                
-                if (finalTargetHeight != null && finalTargetHeight > 0) {
-                    videoEffectsBuilder.add(Presentation.createForHeight(finalTargetHeight))
+
+                // Prevent upscaling to 4K when source is sub-4K
+                val resolvedTargetHeight = when {
+                    targetHeight == null || targetHeight <= 0 -> null
+                    targetHeight >= 2160 &&
+                        project.videoWidth < 3840 && project.videoHeight < 3840 -> null
+                    else -> targetHeight
                 }
                 videoEffectsBuilder.add(OverlayEffect(textureOverlays.build()))
+                if (resolvedTargetHeight != null) {
+                    videoEffectsBuilder.add(Presentation.createForHeight(resolvedTargetHeight))
+                }
 
-                val videoEffects: List<androidx.media3.common.Effect> = videoEffectsBuilder.build()
-                val audioProcessors: List<androidx.media3.common.audio.AudioProcessor> = emptyList()
-                val effects = androidx.media3.transformer.Effects(audioProcessors, videoEffects)
+                val effects = Effects(
+                    emptyList(),
+                    videoEffectsBuilder.build()
+                )
 
-                val editedMediaItemBuilder = EditedMediaItem.Builder(
+                // ── 5. Build EditedMediaItem ──────────────────────────────────
+                val editedMediaItem = EditedMediaItem.Builder(
                     MediaItem.fromUri(project.workingVideoPath)
                 ).setEffects(effects)
-                if (targetFps != null && targetFps > 0) {
-                    editedMediaItemBuilder.setFrameRate(targetFps)
-                }
-                val editedMediaItem = editedMediaItemBuilder.build()
+                    .apply { if (targetFps != null) setFrameRate(targetFps) }
+                    .build()
 
-                val encoderSettingsBuilder = androidx.media3.transformer.VideoEncoderSettings.Builder()
-                if (targetBitrate != null && targetBitrate > 0) encoderSettingsBuilder.setBitrate(targetBitrate)
-                val encoderSettings = encoderSettingsBuilder.build()
+                // ── 6. Build encoder factory ──────────────────────────────────
+                val encoderSettings = VideoEncoderSettings.Builder()
+                    .apply { if (targetBitrate != null) setBitrate(targetBitrate) }
+                    .build()
 
-                val encoderFactory = androidx.media3.transformer.DefaultEncoderFactory.Builder(this@ExportForegroundService)
+                val encoderFactory = DefaultEncoderFactory.Builder(this@ExportForegroundService)
                     .setRequestedVideoEncoderSettings(encoderSettings)
                     .build()
 
-                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                // ── 7. Start Transformer on Main thread ───────────────────────
+                withContext(Dispatchers.Main) {
                     val videoFrameProcessorFactory = DefaultVideoFrameProcessor.Factory.Builder()
                         .setSdrWorkingColorSpace(DefaultVideoFrameProcessor.WORKING_COLOR_SPACE_ORIGINAL)
                         .build()
 
                     val transformer = Transformer.Builder(this@ExportForegroundService)
-                        .setVideoMimeType(androidx.media3.common.MimeTypes.VIDEO_H264)
+                        .setVideoMimeType(MimeTypes.VIDEO_H264)
                         .setEncoderFactory(encoderFactory)
                         .setVideoFrameProcessorFactory(videoFrameProcessorFactory)
                         .experimentalSetMaxFramesInEncoder(4)
-                        .addListener(object : Transformer.Listener {
-                            override fun onCompleted(
-                                composition: Composition,
-                                exportResult: ExportResult
-                            ) {
-                                if (isFinishing) return
-                                Log.d(TAG, "Export completed")
-                                releaseOverlays(captionOverlayEffect, imageOverlayEffects, textOverlayEffects)
-                                isFinishing = true
-                                progressJob?.cancel()
-                                activeTransformer = null
-                                ExportServiceManager.etaMs.value = null
-                                ExportServiceManager.exportState.value = ExportState.Success
-                                serviceScope.launch {
-                                    val timestamp = System.currentTimeMillis()
-                                    projectRepository.updateProject(
-                                        project.copy(
-                                            status = ProjectStatus.EXPORTED,
-                                            exportedVideoPath = outFile.absolutePath,
-                                            updatedAt = timestamp
-                                        )
-                                    )
-                                    val srtContent = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                                        captionRepository.buildSrtContent(projectId)
-                                    }
-                                    val srtFile = File(outDir, outFile.nameWithoutExtension + ".srt")
-                                    srtFile.writeText(srtContent)
-                                    exportedFileDao.insertExportedFile(
-                                        ExportedFileEntity(
-                                            id = UUID.randomUUID().toString(),
-                                            projectId = project.id,
-                                            videoFilePath = outFile.absolutePath,
-                                            srtFilePath = srtFile.absolutePath,
-                                            exportedAt = timestamp,
-                                            quality = targetBitrate?.let { "$it bps" }
-                                        )
-                                    )
-                                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                        stopExportService()
-                                    }
-                                }
-                            }
-
-                            override fun onError(
-                                composition: Composition,
-                                exportResult: ExportResult,
-                                exportException: ExportException
-                            ) {
-                                if (isFinishing) return
-                                Log.e(TAG, "Export failed: ${exportException.message}")
-                                releaseOverlays(captionOverlayEffect, imageOverlayEffects, textOverlayEffects)
-                                isFinishing = true
-                                progressJob?.cancel()
-                                activeTransformer = null
-                                crashReporter.recordException(exportException)
-                                ExportServiceManager.etaMs.value = null
-                                ExportServiceManager.exportState.value = ExportState.Error(exportException.message ?: "Unknown Export Error")
-                                currentOutFile?.delete()
-                                serviceScope.launch {
-                                    kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                        stopExportService()
-                                    }
-                                }
-                            }
-                        })
+                        .addListener(buildTransformerListener(
+                            outFile             = outFile,
+                            outDir              = outDir,
+                            projectId           = projectId,
+                            targetBitrate       = targetBitrate,
+                            captionOverlay      = captionOverlayEffect,
+                            sceneOverlays       = sceneOverlays.map { it.third },
+                            project             = project
+                        ))
                         .build()
 
                     activeTransformer = transformer
                     transformer.start(editedMediaItem, outFile.absolutePath)
                 }
 
-                progressJob = serviceScope.launch(Dispatchers.Main) {
-                    val progressHolder = ProgressHolder()
-                    val exportStartMs = System.currentTimeMillis()
-                    var timeAt98Ms = 0L
-                    while (activeTransformer != null && !isFinishing) {
-                        val progressState = activeTransformer?.getProgress(progressHolder)
-                        if (progressState == Transformer.PROGRESS_STATE_AVAILABLE) {
-                            val p = progressHolder.progress
-                            ExportServiceManager.progress.value = p / 100f
-
-                            val now = System.currentTimeMillis()
-                            val eta = when {
-                                // Transformer stalls at ~99% during the muxing phase.
-                                // Count down from the moment we reach the end so the ETA
-                                // converges instead of inflating.
-                                p >= 98 -> {
-                                    if (timeAt98Ms == 0L) timeAt98Ms = now
-                                    now - timeAt98Ms
-                                }
-                                // Skip the noisy early phase, then extrapolate the
-                                // remaining work from the overall progress rate.
-                                p >= 5 && now > exportStartMs -> ((100L - p) * (now - exportStartMs)) / p
-                                else -> -1L
-                            }
-                            val etaMs = eta.takeIf { it >= 0L }
-                            ExportServiceManager.etaMs.value = etaMs
-                            updateNotificationProgress(p, etaMs)
-                        }
-                        delay(500.milliseconds)
-                    }
-                }
+                // ── 8. Progress polling loop (on Main to match Transformer) ───
+                startProgressPolling()
 
             } catch (e: Throwable) {
-                if (isFinishing) return@launch
-                Log.e(TAG, "Export error: ${e.message}")
-                isFinishing = true
-                progressJob?.cancel()
-                activeTransformer = null
-                crashReporter.recordException(e)
-                ExportServiceManager.etaMs.value = null
-                ExportServiceManager.exportState.value = ExportState.Error(e.message ?: "Unknown error")
-                currentOutFile?.delete()
-                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                    stopExportService()
+                handleExportFailure(e)
+            }
+        }
+    }
+
+    /**
+     * Builds the Transformer listener as a named function to keep [startExport]
+     * from becoming an unreadable wall of nested lambdas.
+     */
+    private fun buildTransformerListener(
+        outFile: File,
+        outDir: File,
+        projectId: String,
+        targetBitrate: Int?,
+        captionOverlay: CaptionOverlayEffect?,
+        sceneOverlays: List<TextureOverlay>,
+        project: ProjectEntity
+    ): Transformer.Listener = object : Transformer.Listener {
+
+        override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+            if (isFinishing) return
+            Log.d(TAG, "Export completed — ${exportResult.videoFrameCount} frames")
+
+            isFinishing = true
+            progressJob?.cancel()
+            activeTransformer = null
+
+            releaseOverlays(captionOverlay, sceneOverlays)
+
+            ExportServiceManager.progress.value = 1f
+            ExportServiceManager.etaMs.value    = null
+
+            // Persist records FIRST, then signal success so the UI never
+            // celebrates before the data is committed.
+            serviceScope.launch {
+                try {
+                    val timestamp = System.currentTimeMillis()
+
+                    projectRepository.updateProject(
+                        project.copy(
+                            status            = ProjectStatus.EXPORTED,
+                            exportedVideoPath = outFile.absolutePath,
+                            updatedAt         = timestamp
+                        )
+                    )
+
+                    val srtFile = File(outDir, outFile.nameWithoutExtension + ".srt")
+                    val srtContent = withContext(Dispatchers.IO) {
+                        captionRepository.buildSrtContent(projectId)
+                    }
+                    srtFile.writeText(srtContent)
+
+                    exportedFileDao.insertExportedFile(
+                        ExportedFileEntity(
+                            id            = UUID.randomUUID().toString(),
+                            projectId     = project.id,
+                            videoFilePath = outFile.absolutePath,
+                            srtFilePath   = srtFile.absolutePath,
+                            exportedAt    = timestamp,
+                            quality       = targetBitrate?.let { "$it bps" }
+                        )
+                    )
+
+                    // Only now tell the UI we succeeded
+                    ExportServiceManager.exportState.value = ExportState.Success
+
+                } catch (e: Throwable) {
+                    // DB/SRT failure after a successful encode — record it but
+                    // still show success (video is intact on disk).
+                    crashReporter.recordException(e)
+                    Log.e(TAG, "Post-export DB write failed: ${e.message}")
+                    ExportServiceManager.exportState.value = ExportState.Success
+                } finally {
+                    withContext(Dispatchers.Main) { stopExportService() }
                 }
             }
         }
-    }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        progressJob?.cancel()
-        activeTransformer?.cancel()
-        activeTransformer = null
-        if (!isFinishing) {
-            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            nm.cancel(NOTIFICATION_ID)
-        }
-    }
+        override fun onError(
+            composition: Composition,
+            exportResult: ExportResult,
+            exportException: ExportException
+        ) {
+            if (isFinishing) return
+            Log.e(TAG, "Transformer error [${exportException.errorCode}]: ${exportException.message}")
 
-    private fun releaseOverlays(
-        captionOverlayEffect: CaptionOverlayEffect?,
-        imageOverlayEffects: List<ImageOverlayEffect>,
-        textOverlayEffects: List<TextOverlayEffect>
-    ) {
-        captionOverlayEffect?.release()
-        imageOverlayEffects.forEach { it.release() }
-        textOverlayEffects.forEach { it.release() }
-    }
+            isFinishing = true
+            progressJob?.cancel()
+            activeTransformer = null
 
-    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
-        val (height: Int, width: Int) = options.outHeight to options.outWidth
-        var inSampleSize = 1
-        if (height > reqHeight || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2
+            releaseOverlays(captionOverlay, sceneOverlays)
+            crashReporter.recordException(exportException)
+
+            ExportServiceManager.etaMs.value    = null
+            ExportServiceManager.exportState.value = ExportState.Error(
+                friendlyErrorMessage(this@ExportForegroundService, exportException)
+            )
+            currentOutFile?.delete()
+
+            serviceScope.launch {
+                withContext(Dispatchers.Main) { stopExportService() }
             }
         }
-        return inSampleSize
     }
+
+    /** Progress polling loop — runs on Main to safely call [Transformer.getProgress]. */
+    private fun startProgressPolling() {
+        progressJob = serviceScope.launch(Dispatchers.Main) {
+            val holder        = ProgressHolder()
+            val startMs       = System.currentTimeMillis()
+            var timeAt98Ms    = 0L
+
+            while (!isFinishing) {
+                // Snapshot the reference once per iteration — avoids TOCTOU
+                // if another thread nulls activeTransformer mid-call.
+                val transformer = activeTransformer ?: break
+
+                if (transformer.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) {
+                    val p   = holder.progress
+                    val now = System.currentTimeMillis()
+
+                    ExportServiceManager.progress.value = p / 100f
+
+                    val eta = when {
+                        // Transformer stalls at ~99% during muxing — count
+                        // elapsed since we crossed 98% so ETA converges.
+                        p >= 98 -> {
+                            if (timeAt98Ms == 0L) timeAt98Ms = now
+                            now - timeAt98Ms
+                        }
+                        // Extrapolate from overall rate once past the noisy start.
+                        p >= 5 && now > startMs -> ((100L - p) * (now - startMs)) / p
+                        else -> -1L
+                    }
+
+                    val etaValue = eta.takeIf { it >= 0L }
+                    ExportServiceManager.etaMs.value = etaValue
+                    updateNotificationProgress(p, etaValue)
+                }
+
+                delay(500.milliseconds)
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Error handling
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private suspend fun handleExportFailure(e: Throwable) {
+        if (isFinishing) return
+        Log.e(TAG, "Export pipeline error: ${e.message}", e)
+
+        isFinishing = true
+        progressJob?.cancel()
+        activeTransformer = null
+
+        crashReporter.recordException(e)
+        ExportServiceManager.etaMs.value       = null
+        ExportServiceManager.exportState.value = ExportState.Error(
+            friendlyErrorMessage(this@ExportForegroundService, e)
+        )
+        currentOutFile?.delete()
+
+        withContext(Dispatchers.Main) { stopExportService() }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     private fun stopExportService() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    override fun onTimeout(startId: Int, fgsType: Int) {
-        stopSelf(startId)
+    private fun releaseOverlays(
+        captionOverlayEffect: CaptionOverlayEffect?,
+        sceneOverlays: List<TextureOverlay>
+    ) {
+        captionOverlayEffect?.release()
+        sceneOverlays.forEach { it.release() }
+    }
+
+    /**
+     * Reads an image URI into a ByteArray so it can be decoded twice
+     * (first for bounds, then for pixels) without opening two streams.
+     * Returns null if the URI is unreadable.
+     */
+    private fun readImageBytes(imageUri: String): ByteArray? = try {
+        if (imageUri.startsWith("content://")) {
+            contentResolver.openInputStream(imageUri.toUri())?.use(InputStream::readBytes)
+        } else {
+            File(imageUri).takeIf { it.exists() }?.readBytes()
+        }
+    } catch (e: Throwable) {
+        Log.w(TAG, "Could not read image bytes from $imageUri: ${e.message}")
+        null
+    }
+
+    /**
+     * Calculates the largest power-of-2 sub-sampling factor that keeps the
+     * decoded bitmap at or above the required dimensions.
+     */
+    private fun calculateInSampleSize(
+        options: BitmapFactory.Options,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        val rawH = options.outHeight
+        val rawW = options.outWidth
+        var sampleSize = 1
+        if (rawH > reqHeight || rawW > reqWidth) {
+            val halfH = rawH / 2
+            val halfW = rawW / 2
+            while ((halfH / sampleSize) >= reqHeight && (halfW / sampleSize) >= reqWidth) {
+                sampleSize *= 2
+            }
+        }
+        return sampleSize
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Top-level utilities (also used by ExportScreen / ExportViewModel)
+// ─────────────────────────────────────────────────────────────────────────────
 
 fun formatEta(etaMs: Long?): String {
     if (etaMs == null) return ""
@@ -611,4 +777,63 @@ fun formatEta(etaMs: Long?): String {
     val minutes = (seconds + 59) / 60
     if (minutes < 60) return "~$minutes min"
     return "~${minutes / 60}h ${minutes % 60}m"
+}
+
+/**
+ * Maps raw Media3 / JVM throwables to friendly, creator-readable strings.
+ *
+ * Crashlytics always receives the original exception — this only controls
+ * what the user sees on the Export error screen.
+ */
+@OptIn(UnstableApi::class)
+fun friendlyErrorMessage(context: Context, error: Throwable): String {
+    // ── Media3 ExportException — use the structured error code ────────────────
+    if (error is ExportException) {
+        return when (error.errorCode) {
+            ExportException.ERROR_CODE_ENCODER_INIT_FAILED ->
+                context.getString(R.string.export_error_encoder_init)
+            ExportException.ERROR_CODE_ENCODING_FAILED ->
+                context.getString(R.string.export_error_encoding_failed)
+            ExportException.ERROR_CODE_ENCODING_FORMAT_UNSUPPORTED,
+            ExportException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ->
+                context.getString(R.string.export_error_format_unsupported)
+            ExportException.ERROR_CODE_VIDEO_FRAME_PROCESSING_FAILED ->
+                context.getString(R.string.export_error_encoding_failed)
+            ExportException.ERROR_CODE_MUXING_FAILED,
+            ExportException.ERROR_CODE_MUXING_TIMEOUT ->
+                context.getString(R.string.export_error_muxing_failed)
+            ExportException.ERROR_CODE_IO_FILE_NOT_FOUND ->
+                context.getString(R.string.export_error_file_not_found)
+            ExportException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE,
+            ExportException.ERROR_CODE_IO_UNSPECIFIED ->
+                context.getString(R.string.export_error_io)
+            else -> context.getString(R.string.export_error_generic)
+        }
+    }
+
+    // ── Source file missing ────────────────────────────────────────────────────
+    if (error is java.io.FileNotFoundException) {
+        return context.getString(R.string.export_error_file_not_found)
+    }
+
+    // ── JVM class-not-found (e.g. LogSessionId on pre-API-31) ─────────────────
+    val raw = error.message?.lowercase() ?: ""
+    if (error is ClassNotFoundException || error is NoClassDefFoundError ||
+        raw.contains("logsessionid") || raw.contains("failed resolution of")
+    ) {
+        return context.getString(R.string.export_error_device_compat)
+    }
+
+    // ── Out of memory ──────────────────────────────────────────────────────────
+    if (error is OutOfMemoryError || raw.contains("out of memory") || raw.contains("oom")) {
+        return context.getString(R.string.export_error_oom)
+    }
+
+    // ── Hardware codec / encoder failures ─────────────────────────────────────
+    if (raw.contains("codec") || raw.contains("mediacodec") || raw.contains("encoder")) {
+        return context.getString(R.string.export_error_encoder_init)
+    }
+
+    // ── Generic fallback — never expose internal stack details to users ────────
+    return context.getString(R.string.export_error_generic)
 }

@@ -22,7 +22,7 @@ class ImageOverlayEffect(
     private val endTimeMs: Long,
     videoWidth: Int,
     videoHeight: Int,
-    private val rotationDegrees: Int = 0
+    rotationDegrees: Int = 0
     ,private val opacity: Float = 1f
     ,private val filterName: String? = null
     ,private val isFlippedX: Boolean = false
@@ -77,42 +77,22 @@ class ImageOverlayEffect(
         val timeMs = presentationTimeUs / 1000
         val isVisible = timeMs in startTimeMs..endTimeMs
 
-        val isRotated = rotationDegrees == 90 || rotationDegrees == 270
-        var actualX = positionX
-        var actualY = positionY
-
-        if (isRotated) {
-            when (rotationDegrees) {
-                90 -> {
-                    actualX = positionY
-                    actualY = 1f - positionX
-                }
-                270 -> {
-                    actualX = 1f - positionY
-                    actualY = positionX
-                }
-            }
-        }
-
-        val mappedX = actualX * 2f - 1f
-        val mappedY = 1f - (actualY * 2f)
-
-        // For aspect ratio scaling, use the DISPLAY width/height which is counter-rotated
-        val displayW = if (isRotated) bgHeight else bgWidth
-        val displayH = if (isRotated) bgWidth else bgHeight
+        // Media3 1.10.x applies overlays in an already-rotated, display-oriented
+        // frame — anchors map directly with no rotation compensation.
+        val mappedX = positionX * 2f - 1f
+        val mappedY = 1f - (positionY * 2f)
 
         val imgAspect = renderedBitmap.width.toFloat() / renderedBitmap.height.toFloat().coerceAtLeast(1f)
-        val vidAspect = displayW.toFloat() / displayH.toFloat().coerceAtLeast(1f)
+        val vidAspect = bgWidth.toFloat() / bgHeight.toFloat().coerceAtLeast(1f)
         val fitScale = if (imgAspect > vidAspect) {
-            displayW.toFloat() / renderedBitmap.width.toFloat().coerceAtLeast(1f)
+            bgWidth.toFloat() / renderedBitmap.width.toFloat().coerceAtLeast(1f)
         } else {
-            displayH.toFloat() / renderedBitmap.height.toFloat().coerceAtLeast(1f)
+            bgHeight.toFloat() / renderedBitmap.height.toFloat().coerceAtLeast(1f)
         }
 
         return StaticOverlaySettings.Builder()
             .setBackgroundFrameAnchor(mappedX, mappedY)
             .setScale((if (isFlippedX) -scaleX else scaleX) * fitScale, scaleY * fitScale)
-            .setRotationDegrees(if (isRotated) -rotationDegrees.toFloat() else 0f)
             .setAlphaScale(if (isVisible) opacity.coerceIn(0f, 1f) else 0f)
             .build()
     }

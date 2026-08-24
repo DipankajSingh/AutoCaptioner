@@ -45,6 +45,27 @@
 -keepnames class com.dipdev.aiautocaptioner.core.whisper.WhisperException { *; }
 
 # ============================================================
+# Media3 Transformer + Effect — these AARs ship NO consumer
+# ProGuard rules. Without this keep, R8's aggressive inlining
+# disrupts the SDK_INT >= 31 guard around LogSessionId, causing
+# a NoClassDefFoundError on Android 10 and all pre-API-31
+# devices (minSdk = 24, so Android 7–11 are all affected).
+# ============================================================
+-keep class androidx.media3.transformer.** { *; }
+-keep class androidx.media3.effect.** { *; }
+-dontwarn androidx.media3.**
+
+# ============================================================
+# Enums — Room TypeConverters call Enum.valueOf(String) at
+# runtime for every DB read/write. R8 can rename enum constants,
+# silently breaking all caption style and project data reads.
+# ============================================================
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# ============================================================
 # MediaPipe — no consumer rules shipped in AAR
 # ============================================================
 -keep class com.google.mediapipe.** { *; }

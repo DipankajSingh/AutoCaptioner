@@ -7,7 +7,6 @@ import android.graphics.Color
 import android.graphics.PorterDuff
 import android.os.Build
 import androidx.annotation.OptIn
-import androidx.core.graphics.withSave
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.CanvasOverlay
 import com.dipdev.aiautocaptioner.data.db.entity.CaptionSegmentEntity
@@ -21,22 +20,18 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
     private val segments: List<CaptionSegmentEntity>,
     private val wordsMap: Map<String, List<CaptionWordEntity>>,
     private val style: CaptionStyleEntity,
-    private val rotationDegrees: Int = 0
+    rotationDegrees: Int = 0
 ) : CanvasOverlay(/* useInputFrameSize = */ true) {
 
     private val captionEngine = CaptionEngine()
 
     private var released = false
 
-    // Canvas (with useInputFrameSize = true) is in the raw input frame space,
-    // sized to the frame at this point in the effect chain (i.e. AFTER any
-    // Presentation scaling). For rotated videos we must draw in the un-rotated
-    // input space, so the display (post-rotation) dimensions are the actual
-    // canvas dims with w/h swapped — read from the canvas at draw time so the
-    // caption baseScale always matches the real output resolution (not the
-    // project's source resolution, which is wrong when exporting at 720p/1080p).
-    private val isRotated = rotationDegrees == 90 || rotationDegrees == 270
-
+    // Media3 1.10.x hands CanvasOverlay an already-rotated, display-oriented
+    // canvas (upright for portrait videos), so drawing uses canvas dimensions
+    // directly with no manual rotation compensation.
+    // Read from the canvas at draw time so the caption baseScale always matches
+    // the real frame resolution at this point in the effect chain.
     override fun onDraw(canvas: Canvas, presentationTimeUs: Long) {
         if (released) return
 
@@ -50,50 +45,24 @@ class CaptionOverlayEffect @OptIn(UnstableApi::class) constructor
 
         val currentPositionMs = presentationTimeUs / 1000
 
-        val canvasW = canvas.width
-        val canvasH = canvas.height
-        val outputW = if (isRotated) canvasH else canvasW
-        val outputH = if (isRotated) canvasW else canvasH
-
-        if (isRotated) {
-            // Map display-space drawing onto the input-space canvas so that after
-            // Transformer rotates the whole frame, captions land at the intended
-            // position. Rotation 90: (dx,dy) -> (dy, displayW - dx).
-            // Rotation 270: (dx,dy) -> (displayH - dy, dx).
-            canvas.withSave {
-                when (rotationDegrees) {
-                    90 -> {
-                        canvas.rotate(-90f)
-                        canvas.translate(0f, outputW.toFloat())
-                    }
-                    270 -> {
-                        canvas.rotate(90f)
-                        canvas.translate(outputH.toFloat(), 0f)
-                    }
-                }
-                captionEngine.draw(
-                    context = context,
-                    canvas = canvas,
-                    currentPositionMs = currentPositionMs,
-                    videoWidth = outputW,
-                    videoHeight = outputH,
-                    style = style,
-                    segments = segments,
-                    wordsMap = wordsMap
-                )
-            }
-        } else {
-            captionEngine.draw(
-                context = context,
-                canvas = canvas,
-                currentPositionMs = currentPositionMs,
-                videoWidth = outputW,
-                videoHeight = outputH,
-                style = style,
-                segments = segments,
-                wordsMap = wordsMap
+        // TODO(diagnostic): remove after rotation verification
+        if (com.dipdev.aiautocaptioner.BuildConfig.DEBUG) {
+            android.util.Log.w(
+                "RotationDebug",
+                "caption onDraw canvas=${canvas.width}x${canvas.height} t=${currentPositionMs}ms"
             )
         }
+
+        captionEngine.draw(
+            context = context,
+            canvas = canvas,
+            currentPositionMs = currentPositionMs,
+            videoWidth = canvas.width,
+            videoHeight = canvas.height,
+            style = style,
+            segments = segments,
+            wordsMap = wordsMap
+        )
     }
 
     override fun release() {

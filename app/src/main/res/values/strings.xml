@@ -619,6 +619,17 @@
     <string name="export_start_failed">Failed to start export service</string>
     <string name="export_save_failed">Failed to save to gallery</string>
 
+    <!-- Export error messages — user-facing, mapped from raw Media3/JVM exceptions -->
+    <string name="export_error_encoder_init">Your device\'s video encoder couldn\'t start. Try closing other apps and export again.</string>
+    <string name="export_error_encoding_failed">Something went wrong while encoding the video. Try exporting at a lower resolution or quality.</string>
+    <string name="export_error_format_unsupported">This video format isn\'t supported for export on your device. Try a different video.</string>
+    <string name="export_error_muxing_failed">Couldn\'t finish writing the video file. Make sure you have enough storage space and try again.</string>
+    <string name="export_error_file_not_found">The source video file is missing. Please re-import your video and try again.</string>
+    <string name="export_error_io">A storage error occurred while exporting. Check your available storage and try again.</string>
+    <string name="export_error_device_compat">Export isn\'t supported on this device\'s Android version. Please update your device software and try again.</string>
+    <string name="export_error_oom">Not enough memory to export this video. Try closing other apps or export at a lower resolution.</string>
+    <string name="export_error_generic">Something went wrong during export. Please try again, or try at a lower resolution or quality.</string>
+
     <!-- Share Video Bottom Sheet -->
     <string name="share_video_title">Caption this video?</string>
     <string name="share_video_subtitle">How would you like to proceed with the shared video?</string>

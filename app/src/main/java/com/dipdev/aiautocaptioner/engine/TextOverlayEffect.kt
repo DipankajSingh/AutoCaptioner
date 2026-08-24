@@ -25,7 +25,7 @@ class TextOverlayEffect(
     private val overlay: TextOverlayEntity,
     private val videoWidth: Int,
     videoHeight: Int,
-    private val rotationDegrees: Int = 0
+    rotationDegrees: Int = 0
 ) : BitmapOverlay() {
 
     private var released = false
@@ -113,35 +113,17 @@ class TextOverlayEffect(
         val timeMs = presentationTimeUs / 1000
         val isVisible = timeMs in overlay.startTimeMs..overlay.endTimeMs
 
-        val isRotated = rotationDegrees == 90 || rotationDegrees == 270
-        var actualX = overlay.positionX
-        var actualY = overlay.positionY
-        var overlayRotation = overlay.rotation
-
-        if (isRotated) {
-            when (rotationDegrees) {
-                90 -> {
-                    actualX = overlay.positionY
-                    actualY = 1f - overlay.positionX
-                    overlayRotation += 90f
-                }
-                270 -> {
-                    actualX = 1f - overlay.positionY
-                    actualY = overlay.positionX
-                    overlayRotation -= 90f
-                }
-            }
-        }
-
-        val mappedX = actualX * 2f - 1f
-        val mappedY = 1f - (actualY * 2f)
+        // Media3 1.10.x applies overlays in an already-rotated, display-oriented
+        // frame — anchors map directly with no rotation compensation.
+        val mappedX = overlay.positionX * 2f - 1f
+        val mappedY = 1f - (overlay.positionY * 2f)
 
         val finalScale = 1f / QUALITY_SCALE
 
         return StaticOverlaySettings.Builder()
             .setBackgroundFrameAnchor(mappedX, mappedY)
             .setScale(overlay.scaleX * finalScale, overlay.scaleY * finalScale)
-            .setRotationDegrees(overlayRotation)
+            .setRotationDegrees(overlay.rotation)
             .setAlphaScale(if (isVisible) 1f else 0f)
             .build()
     }
