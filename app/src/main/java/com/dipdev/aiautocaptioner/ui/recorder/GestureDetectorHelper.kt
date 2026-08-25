@@ -22,7 +22,6 @@ class GestureDetectorHelper(
 
     private var gestureRecognizer: GestureRecognizer? = null
     private var lastPalmDetectionTime = 0L
-    @Volatile private var isProcessing = false
 
     init {
         setupGestureRecognizer()
@@ -37,7 +36,7 @@ class GestureDetectorHelper(
         try {
             val baseOptions = BaseOptions.builder()
                 .setModelAssetPath("gesture_recognizer.task")
-                .setDelegate(Delegate.CPU)
+                .setDelegate(Delegate.GPU)
                 .build()
 
             val options = GestureRecognizer.GestureRecognizerOptions.builder()
@@ -56,38 +55,23 @@ class GestureDetectorHelper(
     }
 
     override fun analyze(imageProxy: ImageProxy) {
-        if (isProcessing || gestureRecognizer == null) {
-            imageProxy.close()
-            return
-        }
+        val bitmapBuffer = imageProxy.toBitmap()
 
-        isProcessing = true
-        var bitmapBuffer: android.graphics.Bitmap? = null
-        try {
-            bitmapBuffer = imageProxy.toBitmap()
+        val imageProcessingOptions = ImageProcessingOptions.builder()
+            .setRotationDegrees(imageProxy.imageInfo.rotationDegrees)
+            .build()
 
-            val imageProcessingOptions = ImageProcessingOptions.builder()
-                .setRotationDegrees(imageProxy.imageInfo.rotationDegrees)
-                .build()
+        val mpImage = BitmapImageBuilder(bitmapBuffer).build()
+        val frameTime = SystemClock.uptimeMillis()
 
-            val mpImage = BitmapImageBuilder(bitmapBuffer).build()
-            val frameTime = SystemClock.uptimeMillis()
-
-            gestureRecognizer?.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
-        } catch (e: Throwable) {
-            crashReporter.recordException(e)
-            isProcessing = false
-        } finally {
-            bitmapBuffer?.recycle()
-            imageProxy.close()
-        }
+        gestureRecognizer?.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
+        imageProxy.close()
     }
 
     private fun returnLivestreamResult(
         result: GestureRecognizerResult,
         inputImage: com.google.mediapipe.framework.image.MPImage
     ) {
-        isProcessing = false
         inputImage.close()
 
         if (result.gestures().isNotEmpty()) {
@@ -103,7 +87,6 @@ class GestureDetectorHelper(
     }
 
     private fun returnLivestreamError(error: RuntimeException) {
-        isProcessing = false
         gestureListener?.onError(error.message ?: "Gesture recognition error")
     }
 

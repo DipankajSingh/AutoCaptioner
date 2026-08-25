@@ -73,6 +73,7 @@ import compose.icons.feathericons.ZapOff
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 
 @Composable
 fun SmartRecorderScreen(
@@ -213,6 +214,14 @@ fun SmartRecorderContent(
 
     var activeRecording by remember { mutableStateOf<androidx.camera.video.Recording?>(null) }
     
+    LaunchedEffect(uiState.shouldStopCameraRecording) {
+        if (uiState.shouldStopCameraRecording) {
+            activeRecording?.stop()
+            activeRecording = null
+            viewModel.clearShouldStopCameraRecording()
+        }
+    }
+
     LaunchedEffect(mode, recordingState) {
         if ((mode == RecordingMode.FACELESS || recordingState == RecordingState.DONE) && flashEnabled) {
             flashEnabled = false
@@ -287,7 +296,7 @@ fun SmartRecorderContent(
     val currentIsCountdownActive by rememberUpdatedState(isCountdownActive)
     val currentMode by rememberUpdatedState(mode)
     val currentActiveRecording by rememberUpdatedState(activeRecording)
-
+    
     val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
     val gestureListener = remember {
         object : GestureDetectorHelper.GestureListener {
@@ -302,25 +311,23 @@ fun SmartRecorderContent(
         }
     }
 
-    val backgroundExecutor = remember { Dispatchers.Default.asExecutor() }
     var gestureHelper by remember { mutableStateOf<GestureDetectorHelper?>(null) }
+    val backgroundExecutor = remember { Executors.newSingleThreadExecutor() }
+    var imageAnalysisUnsupported by remember { mutableStateOf(false) }
 
     LaunchedEffect(isGestureDetectionEnabled, mode, cameraController) {
-        if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA) {
-            // MediaPipe GestureRecognizer (LIVE_STREAM mode) requires construction on
-            // the main thread — it validates the call stack for a looper-backed caller.
-            // Using Dispatchers.IO causes "no caller found on the stack" IllegalStateException.
-            val helper = withContext(Dispatchers.Main) {
+        if (isGestureDetectionEnabled && mode == RecordingMode.CAMERA && !imageAnalysisUnsupported) {
+            val helper = withContext(Dispatchers.IO) {
                 GestureDetectorHelper(context, viewModel.crashReporter, gestureListener)
             }
             gestureHelper = helper
             cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
         } else {
             cameraController.clearImageAnalysisAnalyzer()
-            withContext(Dispatchers.Main) {
+            withContext(Dispatchers.IO) {
                 gestureHelper?.close()
+                gestureHelper = null
             }
-            gestureHelper = null
         }
     }
 
@@ -330,8 +337,8 @@ fun SmartRecorderContent(
             activeRecording = null
             cameraController.clearImageAnalysisAnalyzer()
             cameraController.clearEffects()
-            gestureHelper?.close()
-            gestureHelper = null
+            backgroundExecutor.execute { gestureHelper?.close() }
+            backgroundExecutor.shutdown()
         }
     }
 
@@ -375,7 +382,23 @@ fun SmartRecorderContent(
                 LaunchedEffect(shouldBindCamera, cameraController, lifecycleOwner) {
                     if (shouldBindCamera) {
                         cameraController.setEffects(viewModel.cameraEffectManager.buildCameraEffects(context))
-                        cameraController.bindToLifecycle(lifecycleOwner)
+                        try {
+                            cameraController.bindToLifecycle(lifecycleOwner)
+                        } catch (_: IllegalStateException) {
+                            imageAnalysisUnsupported = true
+                            cameraController.setEnabledUseCases(CameraController.VIDEO_CAPTURE)
+                            try {
+                                cameraController.bindToLifecycle(lifecycleOwner)
+                            } catch (_: Exception) {
+                            }
+                        } catch (_: IllegalArgumentException) {
+                            imageAnalysisUnsupported = true
+                            cameraController.setEnabledUseCases(CameraController.VIDEO_CAPTURE)
+                            try {
+                                cameraController.bindToLifecycle(lifecycleOwner)
+                            } catch (_: Exception) {
+                            }
+                        }
                     } else {
                         cameraController.unbind()
                         cameraController.clearEffects()
@@ -562,10 +585,29 @@ fun SmartRecorderContent(
             onFlipCamera = {
                 flipRotation += 180f
                 val current = cameraController.cameraSelector
-                cameraController.cameraSelector = if (current == CameraSelector.DEFAULT_BACK_CAMERA) {
+                val target = if (current == CameraSelector.DEFAULT_BACK_CAMERA) {
                     CameraSelector.DEFAULT_FRONT_CAMERA
                 } else {
                     CameraSelector.DEFAULT_BACK_CAMERA
+                }
+                try {
+                    cameraController.cameraSelector = target
+                } catch (_: IllegalStateException) {
+                    imageAnalysisUnsupported = true
+                    cameraController.clearImageAnalysisAnalyzer()
+                    cameraController.setEnabledUseCases(CameraController.VIDEO_CAPTURE)
+                    try {
+                        cameraController.cameraSelector = target
+                    } catch (_: Exception) {
+                    }
+                } catch (_: IllegalArgumentException) {
+                    imageAnalysisUnsupported = true
+                    cameraController.clearImageAnalysisAnalyzer()
+                    cameraController.setEnabledUseCases(CameraController.VIDEO_CAPTURE)
+                    try {
+                        cameraController.cameraSelector = target
+                    } catch (_: Exception) {
+                    }
                 }
             },
             onPauseRecording = {
