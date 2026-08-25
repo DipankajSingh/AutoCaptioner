@@ -321,12 +321,17 @@ fun SmartRecorderContent(
                 GestureDetectorHelper(context, viewModel.crashReporter, gestureListener)
             }
             gestureHelper = helper
-            cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
+            withContext(Dispatchers.Main) {
+                cameraController.setImageAnalysisAnalyzer(backgroundExecutor, helper)
+            }
         } else {
-            cameraController.clearImageAnalysisAnalyzer()
-            withContext(Dispatchers.IO) {
-                gestureHelper?.close()
-                gestureHelper = null
+            withContext(Dispatchers.Main) {
+                cameraController.clearImageAnalysisAnalyzer()
+            }
+            val helperToClose = gestureHelper
+            gestureHelper = null
+            if (helperToClose != null) {
+                backgroundExecutor.execute { helperToClose.close() }
             }
         }
     }

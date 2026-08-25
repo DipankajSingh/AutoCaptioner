@@ -49,13 +49,17 @@ class TranscriptionForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // Call startForeground IMMEDIATELY to satisfy the system's strict timeout
+        // after startForegroundService() — especially on Android 12+ / 16 where the
+        // window is tightly enforced and any delay in onCreate can trigger the crash.
         createNotificationChannel()
+        startForegroundServiceGracefully()
         acquireWakeLock()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // startForeground MUST be called before any early returns or async work
-        // to satisfy the system's 5-second window after startForegroundService().
+        // startForeground may already be called in onCreate; call again to update
+        // the notification or handle re-delivery after process kill.
         startForegroundServiceGracefully()
 
         if (intent?.action == ACTION_CANCEL) {

@@ -20,7 +20,7 @@ class GestureDetectorHelper(
     private val gestureListener: GestureListener?
 ) : ImageAnalysis.Analyzer {
 
-    private var gestureRecognizer: GestureRecognizer? = null
+    private @Volatile var gestureRecognizer: GestureRecognizer? = null
     private var lastPalmDetectionTime = 0L
 
     init {
@@ -55,6 +55,10 @@ class GestureDetectorHelper(
     }
 
     override fun analyze(imageProxy: ImageProxy) {
+        val recognizer = gestureRecognizer ?: run {
+            imageProxy.close()
+            return
+        }
         val bitmapBuffer = imageProxy.toBitmap()
 
         val imageProcessingOptions = ImageProcessingOptions.builder()
@@ -64,7 +68,7 @@ class GestureDetectorHelper(
         val mpImage = BitmapImageBuilder(bitmapBuffer).build()
         val frameTime = SystemClock.uptimeMillis()
 
-        gestureRecognizer?.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
+        recognizer.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
         imageProxy.close()
     }
 

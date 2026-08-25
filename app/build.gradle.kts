@@ -20,8 +20,8 @@ android {
         applicationId = "com.dipdev.aiautocaptioner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 26
-        versionName = "2.11.3"
+        versionCode = 27
+        versionName = "2.11.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
