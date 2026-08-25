@@ -70,7 +70,8 @@ data class SmartRecorderState(
     val smoothnessIntensity: Float = 0.35f,
     val isFilterCarouselVisible: Boolean = false,
     val isSmoothnessSliderVisible: Boolean = false,
-    val recentlySelectedFilterName: String? = null
+    val recentlySelectedFilterName: String? = null,
+    val shouldStopCameraRecording: Boolean = false
 ) : UiState
 
 @HiltViewModel
@@ -246,6 +247,10 @@ class SmartRecorderViewModel @Inject constructor(
 
     fun dismissExitDialog() {
         setState { copy(showExitDialog = false) }
+    }
+
+    fun clearShouldStopCameraRecording() {
+        setState { copy(shouldStopCameraRecording = false) }
     }
 
     fun saveAndExit() {
@@ -461,6 +466,8 @@ class SmartRecorderViewModel @Inject constructor(
         if (currentState.recordingState == RecordingState.IDLE || currentState.recordingState == RecordingState.DONE) return
         if (currentState.recordingMode == RecordingMode.FACELESS) {
             facelessRecorder?.stop()
+        } else {
+            setState { copy(shouldStopCameraRecording = true) }
         }
     }
 
