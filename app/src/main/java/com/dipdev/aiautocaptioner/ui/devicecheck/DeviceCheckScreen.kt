@@ -47,6 +47,7 @@ fun DeviceCheckScreen(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(24.dp)
     ) {
         Spacer(modifier = Modifier.height(4.dp))
