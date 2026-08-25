@@ -143,15 +143,6 @@ internal fun EmptyProjectView(
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.home_no_projects_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFB0B6C2),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                lineHeight = 20.sp
-            )
         }
         
         Spacer(Modifier.height(20.dp))
@@ -171,23 +162,6 @@ internal fun EmptyProjectView(
         )
 
         Spacer(Modifier.height(20.dp))
-
-        // 4. SECONDARY STUDIO CONSOLE (More Creation Tools)
-        Text(
-            text = "MORE STUDIO TOOLS",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF8A91A0),
-            letterSpacing = 1.2.sp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp)
-                .graphicsLayer {
-                    alpha = animateSecondary1.value
-                },
-            textAlign = TextAlign.Start
-        )
-        Spacer(Modifier.height(6.dp))
 
         // Secondary Card 1: Record Video
         StudioActionCard(
