@@ -26,10 +26,12 @@ fun PermissionGate(
     val context = LocalContext.current
     var permissionsState by remember { mutableStateOf(requiredPermissions.associateWith { isGranted(context, it) }) }
     var permanentlyDenied by remember { mutableStateOf(mapOf<String, Boolean>()) }
+    var hasRequestedPermissions by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
+        hasRequestedPermissions = true
         grants.forEach { (perm, granted) ->
             permissionsState = permissionsState + (perm to granted)
             if (!granted) {
@@ -44,7 +46,16 @@ fun PermissionGate(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 permissionsState = requiredPermissions.associateWith { isGranted(context, it) }
-                permanentlyDenied = emptyMap()
+                if (hasRequestedPermissions) {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        permanentlyDenied = requiredPermissions.associateWith { perm ->
+                            !isGranted(context, perm) && !ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)
+                        }
+                    } else {
+                        permanentlyDenied = emptyMap()
+                    }
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

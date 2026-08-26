@@ -2,13 +2,17 @@ package com.dipdev.aiautocaptioner.ui.recorder.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -67,7 +71,6 @@ import com.dipdev.aiautocaptioner.ui.recorder.ui.overlay.GridOverlay
 import com.dipdev.aiautocaptioner.ui.recorder.ui.picker.BackgroundPickerSheet
 import com.dipdev.aiautocaptioner.ui.recorder.ui.preview.CameraPreview
 import com.dipdev.aiautocaptioner.ui.recorder.ui.preview.FacelessPreview
-import com.dipdev.aiautocaptioner.ui.recorder.camera.ActiveRecording
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.X
 import compose.icons.feathericons.Zap
@@ -123,6 +126,18 @@ private fun RecorderContent(
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(Unit) {
+        viewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is com.dipdev.aiautocaptioner.ui.recorder.model.RecorderEffect.NavigateToEditor -> onVideoReady(effect.projectId)
+                is com.dipdev.aiautocaptioner.ui.recorder.model.RecorderEffect.NavigateBack -> onNavigateBack()
+                is com.dipdev.aiautocaptioner.ui.recorder.model.RecorderEffect.ShowError -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
     val mode = uiState.recordingMode
     val recordingState = uiState.recordingState
     val aspectRatio = uiState.aspectRatio
@@ -142,7 +157,6 @@ private fun RecorderContent(
     val isAudioMuted = uiState.isAudioMuted
 
     var showBgPicker by remember { mutableStateOf(false) }
-    var flashEnabled by remember { mutableStateOf(false) }
 
     var flipRotation by remember { mutableFloatStateOf(0f) }
     val animateFlip: Float by animateFloatAsState(
@@ -152,70 +166,34 @@ private fun RecorderContent(
     )
 
     val engine = viewModel.cameraEngineRef
-    var activeRecording by remember { mutableStateOf<ActiveRecording?>(null) }
     var cameraOpened by remember { mutableStateOf(false) }
-
-    LaunchedEffect(uiState.shouldStopCameraRecording) {
-        if (uiState.shouldStopCameraRecording) {
-            activeRecording?.stop()
-            activeRecording = null
-            viewModel.clearShouldStopCameraRecording()
-        }
-    }
 
     LaunchedEffect(uiState.shouldStartCameraRecording) {
         if (uiState.shouldStartCameraRecording) {
             viewModel.clearShouldStartCameraRecording()
-            if (activeRecording != null) {
+            if (viewModel.activeCameraRecording != null) {
                 return@LaunchedEffect
             }
             viewModel.prepareCameraRecordingFile { file ->
-                val quality = uiState.recordingQuality
-                val ratio = uiState.aspectRatio
-                activeRecording = engine.startRecording(
-                    file = file,
-                    videoWidth = ratio.width,
-                    videoHeight = ratio.height,
-                    videoBitrate = quality.videoBitrate,
-                    listener = object : com.dipdev.aiautocaptioner.ui.recorder.camera.RecordingListener {
-                        override fun onRecordingStarted() {
-                            viewModel.onCameraRecordingStarted()
-                        }
-                        override fun onRecordingFinished(file: java.io.File) {
-                            viewModel.onCameraRecordingStopped()
-                            activeRecording = null
-                        }
-                        override fun onRecordingError(error: Throwable) {
-                            viewModel.onCameraRecordingError()
-                            activeRecording = null
-                        }
-                    }
-                )
+                viewModel.startCameraRecording(file)
             }
         }
     }
 
     LaunchedEffect(mode, recordingState) {
-        if ((mode == RecordingMode.FACELESS || recordingState is RecordingState.Finalized) && flashEnabled) {
-            flashEnabled = false
-            engine.setTorch(false)
+        if ((mode == RecordingMode.FACELESS || recordingState is RecordingState.Finalized) && uiState.isTorchOn) {
+            viewModel.setEvent(RecorderEvent.ToggleTorch)
         }
     }
 
     val startRecordingAction: (forceCountdown: Int) -> Unit = { _ ->
-        if (recordingState is RecordingState.Idle) {
+        if (recordingState is RecordingState.Idle || recordingState is RecordingState.Failed) {
             viewModel.setEvent(RecorderEvent.StartRecording)
         } else {
             if (mode == RecordingMode.FACELESS) {
-                if (recordingState is RecordingState.Paused) {
-                    viewModel.setEvent(RecorderEvent.ResumeRecording)
-                }
                 viewModel.setEvent(RecorderEvent.StopRecording)
             } else {
-                if (recordingState is RecordingState.Paused) {
-                    activeRecording?.resume()
-                }
-                activeRecording?.stop()
+                viewModel.stopCameraRecording()
             }
         }
     }
@@ -228,7 +206,7 @@ private fun RecorderContent(
     LaunchedEffect(shouldBindCamera, mode) {
         if (shouldBindCamera) {
             if (!cameraOpened) {
-                engine.setAspectAndPreview(0, aspectRatio.width, aspectRatio.height)
+                engine.setAspectAndPreview(arWidth = aspectRatio.width, arHeight = aspectRatio.height)
                 engine.open()
                 cameraOpened = true
             }
@@ -240,7 +218,7 @@ private fun RecorderContent(
 
     LaunchedEffect(aspectRatio) {
         if (cameraOpened) {
-            engine.setAspectAndPreview(0, aspectRatio.width, aspectRatio.height)
+            engine.setAspectAndPreview(arWidth = aspectRatio.width, arHeight = aspectRatio.height)
         }
     }
 
@@ -270,8 +248,7 @@ private fun RecorderContent(
 
     DisposableEffect(Unit) {
         onDispose {
-            activeRecording?.stop()
-            activeRecording = null
+            viewModel.stopCameraRecording()
             engine.setFrameAnalyzer(null)
             gestureHelper.value?.close()
             gestureHelper.value = null
@@ -279,20 +256,34 @@ private fun RecorderContent(
     }
 
     DisposableEffect(lifecycleOwner) {
+        var wasCameraOpenBeforePause = false
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                val state = uiState.recordingState
-                val m = uiState.recordingMode
-                if (state is RecordingState.Recording || state is RecordingState.Paused) {
-                    if (m == RecordingMode.FACELESS) {
-                        viewModel.setEvent(RecorderEvent.StopRecording)
-                    } else {
-                        if (state is RecordingState.Paused) {
-                            activeRecording?.resume()
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    wasCameraOpenBeforePause = cameraOpened
+                    val state = uiState.recordingState
+                    val m = uiState.recordingMode
+                    if (state is RecordingState.Recording || state is RecordingState.Paused) {
+                        if (m == RecordingMode.FACELESS) {
+                            viewModel.setEvent(RecorderEvent.StopRecording)
+                        } else {
+                            viewModel.stopCameraRecording()
                         }
-                        activeRecording?.stop()
+                    }
+                    if (wasCameraOpenBeforePause) {
+                        engine.close()
+                        cameraOpened = false
                     }
                 }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (wasCameraOpenBeforePause && !cameraOpened && shouldBindCamera) {
+                        engine.setAspectAndPreview(arWidth = aspectRatio.width, arHeight = aspectRatio.height)
+                        engine.open()
+                        cameraOpened = true
+                        if (uiState.isTorchOn) engine.setTorch(true)
+                    }
+                }
+                else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -317,13 +308,19 @@ private fun RecorderContent(
                         loop = true,
                         autoPlay = true,
                         showControls = false,
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                     )
                 }
             }
         } else {
             if (mode == RecordingMode.CAMERA) {
-                CameraPreview(textureView = engine.textureView, modifier = Modifier.fillMaxSize())
+                CameraPreview(
+                    textureView = engine.textureView,
+                    maxZoomRatio = engine.maxZoomRatio,
+                    onZoomChanged = { zoom -> engine.setZoomRatio(zoom) },
+                    onTapToFocus = { x, y, w, h -> engine.setFocusPoint(x, y, w, h) },
+                    modifier = Modifier.fillMaxSize()
+                )
             } else {
                 AnimatedVisibility(
                     visible = mode == RecordingMode.FACELESS,
@@ -365,15 +362,24 @@ private fun RecorderContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val closeInteractionSource = remember { MutableInteractionSource() }
+            val closeIsPressed by closeInteractionSource.collectIsPressedAsState()
+            val closeScale by animateFloatAsState(
+                targetValue = if (closeIsPressed) 0.85f else 1f,
+                animationSpec = spring(dampingRatio = 0.45f),
+                label = "closeScale"
+            )
             IconButton(
                 onClick = {
                     when (recordingState) {
-                        is RecordingState.Idle, is RecordingState.Finalized -> onNavigateBack()
+                        is RecordingState.Idle, is RecordingState.Finalized, is RecordingState.Failed -> onNavigateBack()
                         else -> viewModel.setEvent(RecorderEvent.RequestExitRecording)
                     }
                 },
+                interactionSource = closeInteractionSource,
                 modifier = Modifier
                     .size(40.dp)
+                    .scale(closeScale)
                     .clip(CircleShape)
             ) {
                 Icon(FeatherIcons.X, contentDescription = "Close", tint = Color.White, modifier = Modifier.scale(1.25f))
@@ -382,13 +388,12 @@ private fun RecorderContent(
             if (recordingState !is RecordingState.Finalized && mode != RecordingMode.FACELESS) {
                 IconButton(
                     onClick = {
-                        flashEnabled = !flashEnabled
-                        engine.setTorch(flashEnabled)
+                        viewModel.setEvent(RecorderEvent.ToggleTorch)
                     },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = if (flashEnabled) FeatherIcons.Zap else FeatherIcons.ZapOff,
+                        imageVector = if (uiState.isTorchOn) FeatherIcons.Zap else FeatherIcons.ZapOff,
                         contentDescription = "Flash",
                         tint = Color.White,
                         modifier = Modifier.scale(1.25f)
@@ -402,8 +407,8 @@ private fun RecorderContent(
                 TopHeaderBar(
                     aspectRatio = aspectRatio,
                     recordingQuality = recordingQuality,
-                    onAspectRatioClick = { viewModel.setEvent(RecorderEvent.CycleAspectRatio(aspectRatio)) },
-                    onQualityClick = { viewModel.setEvent(RecorderEvent.CycleRecordingQuality(recordingQuality)) }
+                    onAspectRatioClick = { viewModel.setEvent(RecorderEvent.CycleAspectRatio) },
+                    onQualityClick = { viewModel.setEvent(RecorderEvent.CycleRecordingQuality) }
                 )
             } else {
                 Spacer(modifier = Modifier.size(40.dp))
@@ -429,7 +434,7 @@ private fun RecorderContent(
                 onToggleGesture = { viewModel.setEvent(RecorderEvent.ToggleGestureDetection) },
                 onOpenCanvasPicker = { showBgPicker = true },
                 onCycleTimer = {
-                    val next = when (countdownTimer) { 3 -> 10; else -> 3 }
+                    val next = when (countdownTimer) { 0 -> 3; 3 -> 5; 5 -> 10; else -> 0 }
                     viewModel.setEvent(RecorderEvent.SetCountdownTimer(next))
                 },
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 10.dp)

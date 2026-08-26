@@ -32,6 +32,7 @@ abstract class AppModule {
     ): CrashReporter
 
     @Binds
+    @Singleton
     abstract fun bindCameraEngine(
         engine: Camera2Engine
     ): CameraEngine
@@ -49,6 +50,7 @@ abstract class AppModule {
         ): WhisperEngine = WhisperEngine(context)
 
         @Provides
+        @Singleton
         fun provideCamera2Engine(
             @ApplicationContext context: Context
         ): Camera2Engine = Camera2Engine(context)

@@ -219,7 +219,32 @@ fun StudioBottomArea(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
-            else -> {}
+            is RecordingState.Failed -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        if (mode == RecordingMode.CAMERA) {
+                            IntegratedFilterShutter(
+                                activeFilter = uiState.activeFilter,
+                                onFilterSelected = onFilterSelected,
+                                onRecordClick = onStartRecording
+                            )
+                        } else {
+                            HollowShutterRing(
+                                onClick = onStartRecording
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = when (val err = recordingState.error) {
+                            is com.dipdev.aiautocaptioner.ui.recorder.model.RecordingError.Unknown -> err.message
+                            else -> "Recording failed"
+                        },
+                        color = Color(0xFFFF6B6B),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 }

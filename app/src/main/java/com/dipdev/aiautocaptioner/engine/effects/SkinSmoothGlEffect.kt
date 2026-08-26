@@ -30,7 +30,7 @@ class SkinSmoothGlEffect(
 
     @Volatile
     private var currentSmoothness: Float = initialSmoothness
-    private var activeShaderProgram: SkinSmoothShaderProgram? = null
+    @Volatile private var activeShaderProgram: SkinSmoothShaderProgram? = null
 
     /**
      * Atomically updates the uniform smoothness intensity without causing shader recompilation,

@@ -4,7 +4,6 @@ import java.io.File
 
 sealed interface RecordingState {
     data object Idle : RecordingState
-    data object Countdown : RecordingState
     data object Recording : RecordingState
     data object Paused : RecordingState
     data class Finalized(val projectId: String, val file: File) : RecordingState

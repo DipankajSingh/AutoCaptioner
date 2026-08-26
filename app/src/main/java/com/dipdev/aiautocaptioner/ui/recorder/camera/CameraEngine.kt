@@ -8,18 +8,24 @@ import java.io.File
 interface CameraEngine {
     val state: StateFlow<CameraState>
     val textureView: TextureView
+    val maxZoomRatio: Float
 
     fun open()
     fun close()
     fun flipCamera()
     fun setTorch(enabled: Boolean)
-    fun setAspectAndPreview(ar: Int, arWidth: Int, arHeight: Int)
+    fun setAspectAndPreview(arWidth: Int, arHeight: Int)
     fun setFrameAnalyzer(analyzer: FrameAnalyzer?)
+    fun setFocusPoint(x: Float, y: Float, viewWidth: Int, viewHeight: Int)
+    fun setZoomRatio(ratio: Float)
+    fun setPreviewFps(fps: Int)
     fun startRecording(
         file: File,
         videoWidth: Int,
         videoHeight: Int,
         videoBitrate: Int,
+        videoFrameRate: Int,
+        audioBitrate: Int,
         listener: RecordingListener
     ): ActiveRecording
     fun release()

@@ -34,7 +34,7 @@ class FacelessVideoRecorder(
 
     private val isRecording = AtomicBoolean(false)
     private val isPaused = AtomicBoolean(false)
-    private var isMuxerStarted = false
+    @Volatile private var isMuxerStarted = false
 
     private var videoCodec: MediaCodec? = null
     private var audioCodec: MediaCodec? = null
@@ -43,8 +43,8 @@ class FacelessVideoRecorder(
     private var inputSurface: Surface? = null
     private var audioRecord: AudioRecord? = null
 
-    private var videoTrackIndex = -1
-    private var audioTrackIndex = -1
+    @Volatile private var videoTrackIndex = -1
+    @Volatile private var audioTrackIndex = -1
 
     private var videoJob: Job? = null
     private var audioJob: Job? = null
@@ -158,8 +158,10 @@ class FacelessVideoRecorder(
         if (!isRecording.getAndSet(false)) return
         Log.e(TAG, "Aborting recording due to error", e)
         releaseResources()
-        scope.cancel()
         onErrorCallback?.invoke(e)
+        onCompleteCallback = null
+        onErrorCallback = null
+        onAmplitudeCallback = null
     }
 
     fun pause() {
@@ -175,11 +177,10 @@ class FacelessVideoRecorder(
         isPaused.set(false)
         videoCodec?.setParameters(Bundle().apply {
             putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
-            // PARAMETER_KEY_SUSPEND_TIME requires API 29 — omitted on older devices.
-            // Without it, the encoder may have minor timestamp drift on resume, but
-            // won't crash. API 24–28 users get best-effort resume behaviour.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+            } else {
+                putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0)
             }
         })
     }
@@ -193,17 +194,16 @@ class FacelessVideoRecorder(
             if (wasPaused) {
                 videoCodec?.setParameters(Bundle().apply {
                     putInt(MediaCodec.PARAMETER_KEY_SUSPEND, 0)
-                    // PARAMETER_KEY_SUSPEND_TIME requires API 29 — omitted on older devices.
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         putLong(MediaCodec.PARAMETER_KEY_SUSPEND_TIME, 0L)
+                    } else {
+                        putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0)
                     }
                 })
                 delay(50.milliseconds)
             }
 
             withTimeoutOrNull(1000.milliseconds) { videoJob?.join() }
-            // Signal the encoder that no more input will arrive so it can drain to EOS
-            // (instead of being cut off by codec.stop(), which truncates the tail frames).
             try {
                 videoCodec?.signalEndOfInputStream()
             } catch (_: Throwable) {}
@@ -214,7 +214,7 @@ class FacelessVideoRecorder(
             videoEncoderJob?.cancel()
             audioJob?.cancel()
 
-            val muxerWasStarted = isMuxerStarted
+            val muxerWasStarted = synchronized(this@FacelessVideoRecorder) { isMuxerStarted }
             releaseResources()
 
             if (muxerWasStarted && outputFile != null) {
@@ -222,6 +222,9 @@ class FacelessVideoRecorder(
             } else {
                 onErrorCallback?.invoke(IllegalStateException("Recording finished without a valid output (muxer never started)"))
             }
+            onCompleteCallback = null
+            onErrorCallback = null
+            onAmplitudeCallback = null
             scope.cancel()
         }
     }
@@ -452,7 +455,7 @@ class FacelessVideoRecorder(
         }
     }
 
-    private fun releaseResources() {
+    private fun releaseResources() = synchronized(this) {
         try { audioRecord?.stop() } catch (_: Throwable) {}
         try { audioRecord?.release() } catch (_: Throwable) {}
         audioRecord = null

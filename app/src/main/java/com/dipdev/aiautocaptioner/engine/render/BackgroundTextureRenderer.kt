@@ -61,6 +61,9 @@ class BackgroundTextureRenderer {
         GLES20.glAttachShader(program, fragmentShader)
         GLES20.glLinkProgram(program)
 
+        GLES20.glDeleteShader(vertexShader)
+        GLES20.glDeleteShader(fragmentShader)
+
         val linkStatus = IntArray(1)
         GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0)
         if (linkStatus[0] != GLES20.GL_TRUE) {

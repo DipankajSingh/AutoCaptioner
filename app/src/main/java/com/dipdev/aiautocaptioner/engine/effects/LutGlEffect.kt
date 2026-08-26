@@ -29,7 +29,7 @@ class LutGlEffect(
 
     @Volatile
     private var currentFilter: CreatorFilter = initialFilter
-    private var activeShaderProgram: LutShaderProgram? = null
+    @Volatile private var activeShaderProgram: LutShaderProgram? = null
 
     /**
      * Atomically switches the active color filter without triggering shader recompilation or video stream interruption.

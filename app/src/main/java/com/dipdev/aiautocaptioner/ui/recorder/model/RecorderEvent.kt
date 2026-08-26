@@ -5,8 +5,8 @@ import com.dipdev.aiautocaptioner.ui.base.UiEvent
 
 sealed interface RecorderEvent : UiEvent {
     data class SetRecordingMode(val mode: RecordingMode) : RecorderEvent
-    data class CycleAspectRatio(val current: AspectRatio) : RecorderEvent
-    data class CycleRecordingQuality(val current: RecordingQuality) : RecorderEvent
+    data object CycleAspectRatio : RecorderEvent
+    data object CycleRecordingQuality : RecorderEvent
     data class SelectFilter(val filter: CreatorFilter) : RecorderEvent
     data class UpdateSmoothness(val intensity: Float) : RecorderEvent
     data object ToggleGrid : RecorderEvent
@@ -14,7 +14,6 @@ sealed interface RecorderEvent : UiEvent {
     data class UpdateTeleprompterText(val text: String) : RecorderEvent
     data object ToggleGestureDetection : RecorderEvent
     data class SetCountdownTimer(val seconds: Int) : RecorderEvent
-    data object ToggleFilterCarousel : RecorderEvent
     data object ToggleSmoothnessSlider : RecorderEvent
     data object DismissSubControls : RecorderEvent
     data class SetSelectedBackground(val background: BackgroundState) : RecorderEvent

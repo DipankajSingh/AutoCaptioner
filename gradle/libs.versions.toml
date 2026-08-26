@@ -29,7 +29,6 @@ splashscreen = "1.2.0"
 
 firebaseBom = "34.15.0"
 revenuecat = "10.13.0"
-camerax = "1.6.1"
 mediapipeTasksVision = "0.10.29"
 kotlinxSerialization = "1.6.3"
 kotlinxCollectionsImmutable = "0.3.7"
@@ -90,13 +89,6 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 firebase-perf = { group = "com.google.firebase", name = "firebase-perf" }
 firebase-config = { group = "com.google.firebase", name = "firebase-config" }
 revenuecat-purchases = { group = "com.revenuecat.purchases", name = "purchases", version.ref = "revenuecat" }
-androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
-androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
-androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
-androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax" }
-androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
-androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "camerax" }
-androidx-camera-effects = { group = "androidx.camera", name = "camera-effects", version.ref = "camerax" }
 mediapipe-tasks-vision = { group = "com.google.mediapipe", name = "tasks-vision", version.ref = "mediapipeTasksVision" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
@@ -109,15 +101,6 @@ compose = [
     "androidx-compose-foundation",
     "androidx-compose-foundation-layout",
     "androidx-compose-material-icons-extended"
-]
-camera = [
-    "androidx-camera-core",
-    "androidx-camera-camera2",
-    "androidx-camera-lifecycle",
-    "androidx-camera-video",
-    "androidx-camera-view",
-    "androidx-camera-compose",
-    "androidx-camera-effects"
 ]
 media3 = [
     "androidx-media3-exoplayer",

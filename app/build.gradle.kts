@@ -129,7 +129,6 @@ dependencies {
     // -------------------------------------------------------
     // Media & Camera
     // -------------------------------------------------------
-    implementation(libs.bundles.camera)
     implementation(libs.bundles.media3)
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.mediapipe.tasks.vision)
