@@ -22,7 +22,7 @@ import compose.icons.FeatherIcons
 import compose.icons.feathericons.Pause
 import compose.icons.feathericons.Play
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
-import com.dipdev.aiautocaptioner.ui.recorder.RecordButton
+import com.dipdev.aiautocaptioner.ui.recorder.ui.controls.RecordButton
 
 @Composable
 fun PauseResumeControls(

@@ -19,7 +19,7 @@ import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
-import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen
+import com.dipdev.aiautocaptioner.ui.recorder.ui.RecorderRoute
 
 @Composable
 fun NavGraph(
@@ -233,7 +233,7 @@ fun NavGraph(
         }
 
         composable<Screen.SmartRecorder> { _ ->
-            SmartRecorderScreen(
+            RecorderRoute(
                 onNavigateBack = { safePopBackStack() },
                 onVideoReady = { projectId ->
                     navController.navigate(Screen.VideoEditor(projectId)) {

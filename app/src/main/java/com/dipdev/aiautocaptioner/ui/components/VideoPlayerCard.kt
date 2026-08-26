@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.theme.TextPrimary
@@ -47,7 +48,8 @@ fun VideoPlayerCard(
     player: Player?,
     showControls: Boolean = false,
     enableTapOverlay: Boolean = true,
-    cornerRadius: Dp = 4.dp
+    cornerRadius: Dp = 4.dp,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(cornerRadius))) {
         AndroidView(
@@ -57,11 +59,13 @@ fun VideoPlayerCard(
                     useController = showControls
                     setShowNextButton(false)
                     setShowPreviousButton(false)
+                    this.resizeMode = resizeMode
                 }
             },
             update  = { view -> 
                 view.player = player 
                 view.useController = showControls
+                view.resizeMode = resizeMode
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -137,7 +141,8 @@ fun VideoPlayerCard(
     loop: Boolean = true,
     autoPlay: Boolean = true,
     showControls: Boolean = true,
-    cornerRadius: Dp = 4.dp
+    cornerRadius: Dp = 4.dp,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
 ) {
     val context = LocalContext.current
     val player = remember(path) {
@@ -169,6 +174,7 @@ fun VideoPlayerCard(
         player = player,
         modifier = modifier,
         showControls = showControls,
-        cornerRadius = cornerRadius
+        cornerRadius = cornerRadius,
+        resizeMode = resizeMode
     )
 }

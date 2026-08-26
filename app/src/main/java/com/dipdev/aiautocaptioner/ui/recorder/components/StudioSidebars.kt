@@ -12,11 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.R
-import com.dipdev.aiautocaptioner.ui.recorder.RecordingMode
-import com.dipdev.aiautocaptioner.ui.recorder.SidebarButton
-import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderState
+import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingMode
+import com.dipdev.aiautocaptioner.ui.recorder.ui.controls.SidebarButton
+import com.dipdev.aiautocaptioner.ui.recorder.ui.controls.TimerButton
+import com.dipdev.aiautocaptioner.ui.recorder.ui.RecorderState
 import compose.icons.FeatherIcons
-import compose.icons.feathericons.Clock
 import compose.icons.feathericons.FileText
 import compose.icons.feathericons.Grid
 import compose.icons.feathericons.Image
@@ -25,7 +25,7 @@ import compose.icons.feathericons.Smile
 @Composable
 fun StudioRightSidebar(
     mode: RecordingMode,
-    uiState: SmartRecorderState,
+    uiState: RecorderState,
     isGestureDetectionEnabled: Boolean,
     countdownTimer: Int,
     showGrid: Boolean,
@@ -80,11 +80,8 @@ fun StudioRightSidebar(
                     onClick = onOpenCanvasPicker
                 )
             }
-            val timerText = if (countdownTimer == 0) stringResource(R.string.recorder_timer) else "${countdownTimer}s"
-            SidebarButton(
-                icon = FeatherIcons.Clock,
-                text = timerText,
-                isActive = countdownTimer > 0,
+            TimerButton(
+                countdownSeconds = countdownTimer,
                 onClick = onCycleTimer
             )
         }

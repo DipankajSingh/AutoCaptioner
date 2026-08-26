@@ -7,6 +7,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.core.logging.FirebaseCrashReporter
 import com.dipdev.aiautocaptioner.core.whisper.WhisperEngine
+import com.dipdev.aiautocaptioner.ui.recorder.camera.CameraEngine
+import com.dipdev.aiautocaptioner.ui.recorder.camera.Camera2Engine
+import com.dipdev.aiautocaptioner.ui.recorder.recording.FacelessRecorder
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -28,6 +31,11 @@ abstract class AppModule {
         reporter: FirebaseCrashReporter
     ): CrashReporter
 
+    @Binds
+    abstract fun bindCameraEngine(
+        engine: Camera2Engine
+    ): CameraEngine
+
     companion object {
         @Provides
         fun provideDataStore(
@@ -39,5 +47,15 @@ abstract class AppModule {
         fun provideWhisperEngine(
             @ApplicationContext context: Context
         ): WhisperEngine = WhisperEngine(context)
+
+        @Provides
+        fun provideCamera2Engine(
+            @ApplicationContext context: Context
+        ): Camera2Engine = Camera2Engine(context)
+
+        @Provides
+        fun provideFacelessRecorder(
+            crashReporter: CrashReporter
+        ): FacelessRecorder = FacelessRecorder(crashReporter)
     }
 }

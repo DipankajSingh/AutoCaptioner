@@ -1,9 +1,12 @@
-package com.dipdev.aiautocaptioner.ui.recorder
+package com.dipdev.aiautocaptioner.ui.recorder.gesture
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
+import android.media.Image
 import android.os.SystemClock
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.core.Delegate
@@ -11,14 +14,15 @@ import com.google.mediapipe.tasks.vision.core.ImageProcessingOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizer
 import com.google.mediapipe.tasks.vision.gesturerecognizer.GestureRecognizerResult
-
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
+import com.dipdev.aiautocaptioner.ui.recorder.camera.FrameAnalyzer
+import java.io.ByteArrayOutputStream
 
 class GestureDetectorHelper(
     val context: Context,
     private val crashReporter: CrashReporter,
     private val gestureListener: GestureListener?
-) : ImageAnalysis.Analyzer {
+) : FrameAnalyzer {
 
     private @Volatile var gestureRecognizer: GestureRecognizer? = null
     private var lastPalmDetectionTime = 0L
@@ -54,22 +58,47 @@ class GestureDetectorHelper(
         }
     }
 
-    override fun analyze(imageProxy: ImageProxy) {
-        val recognizer = gestureRecognizer ?: run {
-            imageProxy.close()
-            return
-        }
-        val bitmapBuffer = imageProxy.toBitmap()
+    override fun analyze(image: Image, rotationDegrees: Int) {
+        val recognizer = gestureRecognizer ?: return
+        val bitmap = image.toBitmap() ?: return
 
         val imageProcessingOptions = ImageProcessingOptions.builder()
-            .setRotationDegrees(imageProxy.imageInfo.rotationDegrees)
+            .setRotationDegrees(rotationDegrees)
             .build()
 
-        val mpImage = BitmapImageBuilder(bitmapBuffer).build()
+        val mpImage = BitmapImageBuilder(bitmap).build()
         val frameTime = SystemClock.uptimeMillis()
 
         recognizer.recognizeAsync(mpImage, imageProcessingOptions, frameTime)
-        imageProxy.close()
+    }
+
+    private fun Image.toBitmap(): Bitmap? {
+        try {
+            val yBuffer = planes[0].buffer
+            val uBuffer = planes[1].buffer
+            val vBuffer = planes[2].buffer
+
+            val ySize = yBuffer.remaining()
+            val uSize = uBuffer.remaining()
+            val vSize = vBuffer.remaining()
+
+            val nv21 = ByteArray(ySize + uSize + vSize)
+            yBuffer.get(nv21, 0, ySize)
+            vBuffer.get(nv21, ySize, vSize)
+            uBuffer.get(nv21, ySize + vSize, uSize)
+
+            val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+            val out = ByteArrayOutputStream()
+            yuvImage.compressToJpeg(Rect(0, 0, width, height), 80, out)
+            val bytes = out.toByteArray()
+
+            val opts = android.graphics.BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        } catch (e: Exception) {
+            return null
+        }
     }
 
     private fun returnLivestreamResult(

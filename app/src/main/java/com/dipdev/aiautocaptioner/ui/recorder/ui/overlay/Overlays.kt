@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.recorder
+package com.dipdev.aiautocaptioner.ui.recorder.ui.overlay
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing

@@ -43,14 +43,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
-import com.dipdev.aiautocaptioner.ui.recorder.ModeToggle
-import com.dipdev.aiautocaptioner.ui.recorder.RecordingMode
-import com.dipdev.aiautocaptioner.ui.recorder.RecordingState
-import com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderState
+import com.dipdev.aiautocaptioner.ui.recorder.ui.controls.ModeToggle
+import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingMode
+import com.dipdev.aiautocaptioner.ui.recorder.model.RecordingState
+import com.dipdev.aiautocaptioner.ui.recorder.ui.RecorderState
 
 @Composable
 fun StudioBottomArea(
-    uiState: SmartRecorderState,
+    uiState: RecorderState,
     recordingState: RecordingState,
     mode: RecordingMode,
     isPermissionBlocked: Boolean,
@@ -81,7 +81,7 @@ fun StudioBottomArea(
     ) {
         // Studio Overlays (Filters / Smoothness Sliders) sliding cleanly above shutter
         AnimatedVisibility(
-            visible = uiState.isSmoothnessSliderVisible && recordingState == RecordingState.IDLE,
+            visible = uiState.isSmoothnessSliderVisible && recordingState is RecordingState.Idle,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(250)),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(200)),
             modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth()
@@ -97,7 +97,7 @@ fun StudioBottomArea(
 
 
         // Recording Duration Timer Pill located cleanly above bottom controls during recording
-        if (recordingState == RecordingState.RECORDING || recordingState == RecordingState.PAUSED) {
+        if (recordingState is RecordingState.Recording || recordingState is RecordingState.Paused) {
             val minutes = elapsedSeconds / 60
             val seconds = elapsedSeconds % 60
             Box(
@@ -115,7 +115,7 @@ fun StudioBottomArea(
                     Box(
                         modifier = Modifier.size(8.dp).clip(CircleShape)
                             .background(
-                                if (recordingState == RecordingState.PAUSED) Color.White
+                                if (recordingState is RecordingState.Paused) Color.White
                                 else MaterialTheme.colorScheme.primary
                             )
                     )
@@ -130,7 +130,7 @@ fun StudioBottomArea(
 
         // Central Shutter / Record Button & Controls
         when (recordingState) {
-            RecordingState.IDLE -> {
+            is RecordingState.Idle -> {
                 if (!isPermissionBlocked) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -196,7 +196,7 @@ fun StudioBottomArea(
                     }
                 }
             }
-            RecordingState.RECORDING -> {
+            is RecordingState.Recording -> {
                 PauseResumeControls(
                     isPaused = false,
                     onPause = onPauseRecording,
@@ -204,7 +204,7 @@ fun StudioBottomArea(
                     onStop = onStopRecording
                 )
             }
-            RecordingState.PAUSED -> {
+            is RecordingState.Paused -> {
                 PauseResumeControls(
                     isPaused = true,
                     onPause = onPauseRecording,
@@ -212,13 +212,14 @@ fun StudioBottomArea(
                     onStop = onStopRecording
                 )
             }
-            RecordingState.DONE -> {
+            is RecordingState.Finalized -> {
                 QuickShareBar(
                     onRetake = onRetake,
                     onEdit = onEdit,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
+            else -> {}
         }
     }
 }

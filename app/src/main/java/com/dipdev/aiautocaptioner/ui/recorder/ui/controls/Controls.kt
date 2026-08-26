@@ -1,4 +1,4 @@
-package com.dipdev.aiautocaptioner.ui.recorder
+package com.dipdev.aiautocaptioner.ui.recorder.ui.controls
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SidebarButton(
     icon: ImageVector,
-    text: String, // Kept for compatibility but ignored in UI
+    text: String,
     isActive: Boolean = false,
     rotationY: Float = 0f,
     pulseRing: Boolean = false,
@@ -58,7 +58,6 @@ fun SidebarButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Interactive visual bounce physics: pressed = 0.85f -> release = 1.08f -> settle = 1.0f
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1f,
         animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow),
@@ -67,7 +66,6 @@ fun SidebarButton(
     val alpha by animateFloatAsState(targetValue = if (isActive) 1f else 0.85f, label = "buttonAlpha")
     val activeColor = MaterialTheme.colorScheme.primary
 
-    // Subtle ambient breathing aura when active (zero vibration / zero haptic feedback)
     val infiniteTransition = rememberInfiniteTransition(label = "pulseRing")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -114,7 +112,7 @@ fun SidebarButton(
             tint = if (isActive) activeColor else Color.White.copy(alpha = alpha),
             modifier = Modifier
                 .size(24.dp)
-                .scale(1.2f) // Scale up to increase visual weight/thickness
+                .scale(1.2f)
         )
         
         if (badgeText != null && badgeText != "0.0") {
@@ -134,6 +132,54 @@ fun SidebarButton(
                     fontWeight = FontWeight.Black
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun TimerButton(
+    countdownSeconds: Int,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow),
+        label = "timerScale"
+    )
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(44.dp)
+            .scale(scale)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.15f))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "$countdownSeconds",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                text = "s",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }
@@ -234,7 +280,6 @@ fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Outer aura pulse ring during active recording / idle guide ring
         Canvas(modifier = Modifier.fillMaxSize()) {
             val baseRadius = (size.width / 2f) * 0.86f
             drawCircle(
@@ -242,7 +287,6 @@ fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
                 radius = if (isRecording) baseRadius * pulseScale else baseRadius,
                 style = Stroke(width = if (isRecording) 10f else 6f)
             )
-            // Inner crisp white guidance frame
             drawCircle(
                 color = Color.White.copy(alpha = 0.9f),
                 radius = baseRadius - 6f,
@@ -250,7 +294,6 @@ fun RecordButton(isRecording: Boolean, onClick: () -> Unit) {
             )
         }
 
-        // Fluid morphing internal shape (Solid circle -> Rounded stop square)
         Box(
             modifier = Modifier
                 .size(buttonSize)
