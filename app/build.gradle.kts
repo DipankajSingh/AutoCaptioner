@@ -131,7 +131,6 @@ dependencies {
     // -------------------------------------------------------
     implementation(libs.bundles.media3)
     implementation(libs.kotlinx.coroutines.guava)
-    implementation(libs.mediapipe.tasks.vision)
 
     // -------------------------------------------------------
     // Networking & Image Loading
@@ -140,11 +139,10 @@ dependencies {
     implementation(libs.bundles.coil)
 
     // -------------------------------------------------------
-    // Firebase & RevenueCat
+    // Firebase
     // -------------------------------------------------------
     implementation(platform(libs.firebase.bom))
     implementation(libs.bundles.firebase)
-    implementation(libs.revenuecat.purchases)
 
     // -------------------------------------------------------
     // Coroutines

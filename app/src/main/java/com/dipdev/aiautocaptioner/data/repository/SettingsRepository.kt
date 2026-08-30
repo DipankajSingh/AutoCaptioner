@@ -5,9 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.dipdev.aiautocaptioner.engine.effects.CreatorFilter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -33,16 +31,8 @@ class SettingsRepository @Inject constructor(
     private val LAST_LANGUAGE_KEY = stringPreferencesKey("last_transcription_language")
     private val LAST_TRANSLATE_KEY = booleanPreferencesKey("last_translate_to_english")
 
-    private val LAST_RECORDING_MODE_KEY = stringPreferencesKey("last_recording_mode")
-    private val LAST_ASPECT_RATIO_KEY = stringPreferencesKey("last_aspect_ratio")
-    private val LAST_RECORDING_QUALITY_KEY = stringPreferencesKey("last_recording_quality")
-
     // Preview rendering FPS — lower values reduce battery usage and heat
     private val PREVIEW_FPS_KEY = intPreferencesKey("preview_fps")
-
-    // Creator camera studio settings
-    private val SELECTED_CREATOR_FILTER_KEY = stringPreferencesKey("selected_creator_filter_name")
-    private val SKIN_SMOOTHNESS_INTENSITY_KEY = floatPreferencesKey("skin_smoothness_intensity_float")
 
     val glassmorphismFlow: Flow<Boolean> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) }
@@ -79,24 +69,6 @@ class SettingsRepository @Inject constructor(
         .map { prefs ->
         prefs[EXPORT_QUALITY_KEY] ?: 1
     }
-
-    val lastRecordingModeFlow: Flow<String> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) }
-        .map { prefs ->
-        prefs[LAST_RECORDING_MODE_KEY] ?: "CAMERA"
-    }
-
-    val lastAspectRatioFlow: Flow<String> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) }
-        .map { prefs ->
-        prefs[LAST_ASPECT_RATIO_KEY] ?: "PORTRAIT_9_16"
-    }.distinctUntilChanged()
-
-    val lastRecordingQualityFlow: Flow<String> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) }
-        .map { prefs ->
-        prefs[LAST_RECORDING_QUALITY_KEY] ?: "MEDIUM"
-    }.distinctUntilChanged()
 
     /** Preview FPS: 30 (default, saves battery) or 60 (smooth but more power). */
     val previewFpsFlow: Flow<Int> = dataStore.data
@@ -153,48 +125,6 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { prefs ->
             prefs[LAST_LANGUAGE_KEY] = language
             prefs[LAST_TRANSLATE_KEY] = translateToEnglish
-        }
-    }
-
-    suspend fun setLastRecordingMode(mode: String) {
-        dataStore.edit { prefs ->
-            prefs[LAST_RECORDING_MODE_KEY] = mode
-        }
-    }
-
-    suspend fun setLastAspectRatio(aspectRatio: String) {
-        dataStore.edit { prefs ->
-            prefs[LAST_ASPECT_RATIO_KEY] = aspectRatio
-        }
-    }
-
-    suspend fun setLastRecordingQuality(quality: String) {
-        dataStore.edit { prefs ->
-            prefs[LAST_RECORDING_QUALITY_KEY] = quality
-        }
-    }
-
-    val selectedCreatorFilterFlow: Flow<CreatorFilter> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) }
-        .map { prefs ->
-        CreatorFilter.fromName(prefs[SELECTED_CREATOR_FILTER_KEY])
-    }.distinctUntilChanged()
-
-    val skinSmoothnessIntensityFlow: Flow<Float> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) }
-        .map { prefs ->
-        prefs[SKIN_SMOOTHNESS_INTENSITY_KEY] ?: 0.35f
-    }.distinctUntilChanged()
-
-    suspend fun setCreatorFilter(filter: CreatorFilter) {
-        dataStore.edit { prefs ->
-            prefs[SELECTED_CREATOR_FILTER_KEY] = filter.name
-        }
-    }
-
-    suspend fun setSkinSmoothnessIntensity(intensity: Float) {
-        dataStore.edit { prefs ->
-            prefs[SKIN_SMOOTHNESS_INTENSITY_KEY] = intensity
         }
     }
 }

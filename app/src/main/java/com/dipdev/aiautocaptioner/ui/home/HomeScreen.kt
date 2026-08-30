@@ -51,7 +51,6 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Scissors
-import compose.icons.feathericons.Video
 import compose.icons.feathericons.Zap
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
@@ -59,7 +58,6 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
-    onNavigateToSmartRecorder: (String) -> Unit,
     onNavigateToVideoEditor: (String) -> Unit,
     onNavigateToProcessing: (String) -> Unit,
     onNavigateToCaptionEditor: (String) -> Unit,
@@ -130,13 +128,6 @@ fun HomeScreen(
                                 onClick = { quickPicker.launch("video/*") }
                             ),
                             SpeedDialItem(
-                                icon = FeatherIcons.Video,
-                                label = stringResource(R.string.home_record_video),
-                                color = MaterialTheme.colorScheme.tertiary,
-                                onColor = MaterialTheme.colorScheme.onTertiary,
-                                onClick = { onNavigateToSmartRecorder(uiState.lastRecordingMode) }
-                            ),
-                            SpeedDialItem(
                                 icon = FeatherIcons.Scissors,
                                 label = stringResource(R.string.home_advanced_studio),
                                 color = MaterialTheme.colorScheme.tertiary,
@@ -175,8 +166,6 @@ fun HomeScreen(
                             }
                             projects.isEmpty() -> {
                                 EmptyProjectView(
-                                    lastRecordingMode = uiState.lastRecordingMode,
-                                    onNavigateToSmartRecorder = onNavigateToSmartRecorder,
                                     onQuickCaption = { quickPicker.launch("video/*") },
                                     onAdvancedStudio = { videoPicker.launch("video/*") }
                                 )

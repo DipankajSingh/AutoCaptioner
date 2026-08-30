@@ -23,18 +23,15 @@ data class HomeState(
     val importState: ImportState = ImportState.Idle,
     val announcementMessage: String = "",
     val projects: List<ProjectWithExportedFiles>? = null,
-    val activeModel: com.dipdev.aiautocaptioner.data.model.WhisperModel? = null,
-    val lastRecordingMode: String = "CAMERA"
+    val activeModel: com.dipdev.aiautocaptioner.data.model.WhisperModel? = null
 ) : UiState
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val application: Application,
     private val projectRepository: ProjectRepository,
-    private val settingsRepository: com.dipdev.aiautocaptioner.data.repository.SettingsRepository,
     modelRepository: ModelRepository
 ) : BaseViewModel<HomeState, UiEvent, UiEffect>(HomeState()) {
-
 
 
     override fun handleEvent(event: UiEvent) {}
@@ -49,11 +46,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             modelRepository.getActiveModel().collect { m ->
                 setState { copy(activeModel = m) }
-            }
-        }
-        viewModelScope.launch {
-            settingsRepository.lastRecordingModeFlow.collect { mode ->
-                setState { copy(lastRecordingMode = mode) }
             }
         }
     }

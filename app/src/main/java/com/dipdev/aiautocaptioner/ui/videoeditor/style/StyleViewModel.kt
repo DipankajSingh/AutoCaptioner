@@ -1,6 +1,5 @@
 package com.dipdev.aiautocaptioner.ui.videoeditor.style
 
-import android.app.Activity
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.billing.PremiumManager
@@ -15,8 +14,6 @@ import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import com.dipdev.aiautocaptioner.ui.captioneditor.CaptionAlignmentUtils
-import com.revenuecat.purchases.Purchases
-import com.revenuecat.purchases.restorePurchasesWith
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -37,7 +34,6 @@ data class StyleEditorUiState(
     val selectedTab: StyleTab = StyleTab.PRESETS,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
-    val isPurchaseLoading: Boolean = false
 ) : UiState
 
 sealed interface StyleEditorUiEvent : UiEvent {
@@ -50,8 +46,6 @@ sealed interface StyleEditorUiEvent : UiEvent {
     data class DeletePreset(val style: CaptionStyleEntity) : StyleEditorUiEvent
     data object Undo : StyleEditorUiEvent
     data object Redo : StyleEditorUiEvent
-    data class PurchaseLifetime(val activity: Activity) : StyleEditorUiEvent
-    data object RestorePurchases : StyleEditorUiEvent
     data class UpdateSegmentText(val segmentId: String, val newText: String) : StyleEditorUiEvent
     data class MarkCaptionEditorVisited(val projectId: String) : StyleEditorUiEvent
 }
@@ -83,31 +77,8 @@ class StyleViewModel @Inject constructor(
             is StyleEditorUiEvent.DeletePreset -> deletePreset(event.style)
             is StyleEditorUiEvent.Undo -> undo()
             is StyleEditorUiEvent.Redo -> redo()
-            is StyleEditorUiEvent.PurchaseLifetime -> purchaseLifetime()
-            is StyleEditorUiEvent.RestorePurchases -> restorePurchases()
             is StyleEditorUiEvent.UpdateSegmentText -> updateSegmentText(event.segmentId, event.newText)
             is StyleEditorUiEvent.MarkCaptionEditorVisited -> markCaptionEditorVisited(event.projectId)
-        }
-    }
-
-    private fun purchaseLifetime() {
-    }
-
-    private fun restorePurchases() {
-        viewModelScope.launch {
-            setState { copy(isPurchaseLoading = true) }
-            try {
-                Purchases.sharedInstance.restorePurchasesWith(
-                    onSuccess = { _ ->
-                        setState { copy(isPurchaseLoading = false) }
-                    },
-                    onError = { _ ->
-                        setState { copy(isPurchaseLoading = false) }
-                    }
-                )
-            } catch (_: Exception) {
-                setState { copy(isPurchaseLoading = false) }
-            }
         }
     }
 
@@ -143,8 +114,6 @@ class StyleViewModel @Inject constructor(
     }
 
     // Fix A: ExoPlayer ownership moved to SharedPlayerViewModel (navigation-graph-scoped).
-    // Fix 15: purchaseLifetime() is a no-op — RevenueCat Paywall handles purchases in UI.
-    // Fix 16: @SuppressLint("EmptySuperCall") annotation removed — it was incorrect.
 
     /**
      * Fix 9: Persists [ProjectEntity.hasVisitedCaptionEditor] = true so the "Export Anyway"

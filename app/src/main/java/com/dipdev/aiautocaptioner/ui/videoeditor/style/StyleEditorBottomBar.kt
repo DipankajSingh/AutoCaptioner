@@ -4,20 +4,9 @@ package com.dipdev.aiautocaptioner.ui.videoeditor.style
  * v1: Presets-only style editor
  *
  * The Text / Color / Animate tabs are hidden for the initial release.
- * Payment and legal documents are not yet ready, so the style editor ships
- * with only the Presets tab active.
- *
  * The tab bar (StyleEditorBottomBar) is not rendered in the UI.
  * StylePanel.kt renders PresetsTab directly instead of routing through
  * a tabbed layout.
- *
- * TO RE-ENABLE TABS when premium / payment is ready:
- *   1. Uncomment the StyleEditorBottomBar composable body below.
- *   2. In StylePanel.kt:
- *      - Uncomment the StyleEditorBottomBar() call.
- *      - Uncomment the Text / Color / Animation when-branches.
- *      - Restore the isPremium state reading.
- *   3. Wire the paywall dialog to BottomTabItem clicks for locked tabs.
  *
  * The StyleTab enum (in StyleViewModel.kt) and all tab composables
  * (TextTab, ColorTab, AnimationTab) are kept as-is.
@@ -85,13 +74,10 @@ fun BottomTabItem(
 
 // ── Hidden for v1 ────────────────────────────────────────────────────────────
 // Uncomment the function body below to restore the tab bar.
-// Requires StylePanel.kt to also restore the isPremium state and the
-// Text / Color / Animation when-branches.
 //
 // @Composable
 // fun StyleEditorBottomBar(
 //     selectedTab: StyleTab,
-//     isPremium: Boolean,
 //     onTabSelected: (StyleTab) -> Unit
 // ) {
 //     Row(
@@ -102,8 +88,8 @@ fun BottomTabItem(
 //         verticalAlignment = Alignment.CenterVertically
 //     ) {
 //         BottomTabItem("Presets", FeatherIcons.Layers, selectedTab == StyleTab.PRESETS, selectedTint = AccentAmber) { onTabSelected(StyleTab.PRESETS) }
-//         BottomTabItem("Text", FeatherIcons.Type, selectedTab == StyleTab.TEXT, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.TEXT) }
-//         BottomTabItem("Color", FeatherIcons.Droplet, selectedTab == StyleTab.COLOR, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.COLOR) }
-//         BottomTabItem("Animate", FeatherIcons.Activity, selectedTab == StyleTab.ANIMATION, isPremiumLocked = !isPremium, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
+//         BottomTabItem("Text", FeatherIcons.Type, selectedTab == StyleTab.TEXT, selectedTint = AccentAmber) { onTabSelected(StyleTab.TEXT) }
+//         BottomTabItem("Color", FeatherIcons.Droplet, selectedTab == StyleTab.COLOR, selectedTint = AccentAmber) { onTabSelected(StyleTab.COLOR) }
+//         BottomTabItem("Animate", FeatherIcons.Activity, selectedTab == StyleTab.ANIMATION, selectedTint = AccentAmber) { onTabSelected(StyleTab.ANIMATION) }
 //     }
 // }

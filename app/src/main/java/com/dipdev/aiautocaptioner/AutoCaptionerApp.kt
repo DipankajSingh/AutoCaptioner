@@ -8,9 +8,6 @@ import com.google.firebase.perf.performance
 import com.google.firebase.remoteconfig.remoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
 import dagger.hilt.android.HiltAndroidApp
-import com.revenuecat.purchases.LogLevel
-import com.revenuecat.purchases.Purchases
-import com.revenuecat.purchases.PurchasesConfiguration
 import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,19 +26,6 @@ class AiAutoCaptioner : Application() {
     override fun onCreate() {
         super.onCreate()
         initFirebase()
-    }
-
-    private fun initRevenueCat() {
-        val apiKey = Firebase.remoteConfig.getString("revenuecat_api_key")
-        if (apiKey != "disabled" && apiKey.isNotBlank()) {
-            if (BuildConfig.DEBUG) {
-                Purchases.logLevel = LogLevel.DEBUG
-            }
-            Purchases.configure(
-                PurchasesConfiguration.Builder(this, apiKey)
-                    .build()
-            )
-        }
     }
 
     private fun initFirebase() {
@@ -77,9 +61,7 @@ class AiAutoCaptioner : Application() {
             minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
-        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults).addOnCompleteListener {
-            initRevenueCat()
-        }
+        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
 
         // Fetch and activate in the background. New values take effect on next launch.
         remoteConfig.fetchAndActivate()

@@ -84,11 +84,7 @@ stripped and a fresh versionCode — do not promote the `-betaNN` binary to Prod
   they must opt out before joining open/closed tests. Don't put real beta testers there.
 - Open testing feedback is private and does NOT affect the public store rating. Testers
   join via the opt-in link on our store listing page (app already has production access).
-- **In-app purchases (RevenueCat):** the SDK is integrated, but there are **no paid
-  features or products yet** - billing is a non-issue for current releases. When paid
-  features launch, remember: test-track users are charged REAL money unless they are
-  license testers (Settings -> License testing). License-tester purchases become sandbox
-  "Test order"s with accelerated renewals; RevenueCat shows them under View Sandbox Data.
+- **In-app purchases:** billing is a non-issue for current releases.
 - Pricing and country-availability changes apply across all tracks at once.
 - Once published, builds on the Open track have a fixed signing key (Play App Signing).
 - New uploads must target the current required API level (Android 16 / API 36 from

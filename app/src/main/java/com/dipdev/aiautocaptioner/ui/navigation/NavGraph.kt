@@ -19,7 +19,6 @@ import com.dipdev.aiautocaptioner.ui.processing.ProcessingScreen
 import com.dipdev.aiautocaptioner.ui.settings.SettingsScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.EditorScreen
 import com.dipdev.aiautocaptioner.ui.videoeditor.core.player.SharedPlayerViewModel
-import com.dipdev.aiautocaptioner.ui.recorder.ui.RecorderRoute
 
 @Composable
 fun NavGraph(
@@ -98,7 +97,6 @@ fun NavGraph(
             val homeViewModel: com.dipdev.aiautocaptioner.ui.home.HomeViewModel = hiltViewModel()
 
             HomeScreen(
-                onNavigateToSmartRecorder = { mode -> navController.navigate(Screen.SmartRecorder(mode)) },
                 onNavigateToVideoEditor = { projectId ->
                     navController.navigate(Screen.VideoEditor(projectId))
                 },
@@ -229,17 +227,6 @@ fun NavGraph(
             com.dipdev.aiautocaptioner.ui.export.ExportScreen(
                 projectId = args.projectId,
                 onNavigateBack = { safePopBackStack() }
-            )
-        }
-
-        composable<Screen.SmartRecorder> { _ ->
-            RecorderRoute(
-                onNavigateBack = { safePopBackStack() },
-                onVideoReady = { projectId ->
-                    navController.navigate(Screen.VideoEditor(projectId)) {
-                        popUpTo<Screen.SmartRecorder> { inclusive = true }
-                    }
-                }
             )
         }
     }

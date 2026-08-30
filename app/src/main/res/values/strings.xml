@@ -12,8 +12,6 @@
     <string name="home_1_tap_desc">Select a video and generate viral captions instantly.</string>
     <string name="home_advanced_studio">Trim &amp; Edit</string>
     <string name="home_advanced_desc"> Trim and edit video before generating subtitles.</string>
-    <string name="home_record_video">Record Video</string>
-    <string name="home_record_desc">Record new video or record faceless audio.</string>
     <string name="home_importing_video">Importing video…</string>
     <string name="home_import_failed">Import failed: %s</string>
     
@@ -535,61 +533,6 @@
     <string name="model_download_one_time">This is a one-time download.\nKeep the app open until complete.</string>
     <string name="model_download_failed">Download Failed</string>
 
-    <!-- Smart Recorder -->
-    <string name="recorder_script">Script</string>
-    <string name="recorder_canvas">Canvas</string>
-    <string name="recorder_flip">Flip</string>
-    <string name="recorder_flash">Flash</string>
-    <string name="recorder_grid">Grid</string>
-    <string name="recorder_palm">Palm</string>
-    <string name="recorder_timer">Timer</string>
-    
-    <string name="recorder_open_settings">Open Settings</string>
-    <string name="recorder_permission_eyebrow">QUICK SETUP</string>
-    <string name="recorder_permission_screen_title">We need your camera &amp; mic</string>
-    <string name="recorder_permission_screen_subtitle">We\'ll only use them while you are recording. Nothing gets saved or shared without you.</string>
-    <string name="recorder_permission_camera_title">Camera</string>
-    <string name="recorder_permission_camera_desc">See what you\'re filming in real time</string>
-    <string name="recorder_permission_microphone_title">Microphone</string>
-    <string name="recorder_permission_microphone_desc">Pick up your voice loud &amp; clear</string>
-    <string name="recorder_permission_granted">Granted</string>
-    <string name="recorder_permission_needed">Needed</string>
-    <string name="recorder_permission_allow_both">Allow Camera &amp; Microphone</string>
-    <string name="recorder_permission_not_now">Not now</string>
-
-    <!-- Teleprompter -->
-    <string name="teleprompter_placeholder">Paste your script here…</string>
-    <string name="teleprompter_tap_to_pause">Tap to pause</string>
-    <string name="teleprompter_mirror">Mirror</string>
-    
-    <string name="teleprompter_back_to_top">Back to top</string>
-    <string name="teleprompter_script_complete">Script complete</string>
-    <plurals name="teleprompter_words_left">
-        <item quantity="one">%d word left</item>
-        <item quantity="other">%d words left</item>
-    </plurals>
-    <string name="teleprompter_minutes_left">~%d min left</string>
-    
-    <!-- Recording Feedback -->
-    <string name="rec_rec">REC</string>
-    <string name="rec_paused">PAUSED</string>
-    
-    <!-- Recorder Controls -->
-    <string name="recorder_ratio">Ratio</string>
-    <string name="recorder_quality">Quality</string>
-    
-    <!-- Exit Recording Dialog -->
-    <string name="recorder_exit_title">Exit Recording?</string>
-    <string name="recorder_exit_message">You have an active recording. What would you like to do?</string>
-    <string name="recorder_save_and_exit">Save &amp; Exit</string>
-    <string name="recorder_discard">Discard &amp; Exit</string>
-    <string name="recorder_cancel">Cancel</string>
-
-    <!-- Quick Share Bar -->
-    <string name="recorder_retake">Retake</string>
-    
-    <string name="recorder_edit">Edit</string>
-
     <!-- Device Check Screen -->
     <string name="device_check_title_screen">Choose Your AI Model</string>
     <string name="device_check_subtitle_screen">Downloaded once, processes entirely on-device.</string>
@@ -597,13 +540,6 @@
     <string name="device_check_available_models_screen">Available Models</string>
     <string name="device_check_recommended_badge">Recommended</string>
     <string name="device_check_ram_warning_format">Needs %d MB RAM — your device has less</string>
-
-    <!-- Paywall -->
-    <string name="paywall_title">AutoCaptioner Pro</string>
-    <string name="paywall_subtitle">Unlock all features. Pay once. Own it forever.</string>
-    <string name="paywall_unlock_button">Unlock for ₹99</string>
-    <string name="paywall_restore">Restore Purchases</string>
-    <string name="paywall_secure">Payment processed securely by Google Play</string>
 
     <!-- Welcome / Onboarding -->
     <string name="welcome_brand">AutoCaptioner</string>

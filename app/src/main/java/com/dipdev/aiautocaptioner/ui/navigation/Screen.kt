@@ -44,7 +44,4 @@ sealed class Screen {
 
     @Serializable
     data class Export(val projectId: String) : Screen()
-
-    @Serializable
-    data class SmartRecorder(val mode: String) : Screen()
 }

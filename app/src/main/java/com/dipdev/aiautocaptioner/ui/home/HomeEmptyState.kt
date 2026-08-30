@@ -42,7 +42,6 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.ArrowRight
 import compose.icons.feathericons.Scissors
-import compose.icons.feathericons.Video
 import compose.icons.feathericons.Zap
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -58,8 +57,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun EmptyProjectView(
-    lastRecordingMode: String,
-    onNavigateToSmartRecorder: (String) -> Unit,
     onQuickCaption: () -> Unit,
     onAdvancedStudio: () -> Unit,
     modifier: Modifier = Modifier
@@ -68,8 +65,7 @@ internal fun EmptyProjectView(
     val animateIllustration = remember { Animatable(0f) }
     val animateText = remember { Animatable(0f) }
     val animatePrimary = remember { Animatable(0f) }
-    val animateSecondary1 = remember { Animatable(0f) }
-    val animateSecondary2 = remember { Animatable(0f) }
+    val animateSecondary = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
         launch { animateIllustration.animateTo(1f, tween(900, easing = EaseOutBack)) }
@@ -83,11 +79,7 @@ internal fun EmptyProjectView(
         }
         launch { 
             delay(120.milliseconds)
-            animateSecondary1.animateTo(1f, tween(800, easing = EaseOutQuint)) 
-        }
-        launch { 
-            delay(160.milliseconds)
-            animateSecondary2.animateTo(1f, tween(800, easing = EaseOutQuint)) 
+            animateSecondary.animateTo(1f, tween(800, easing = EaseOutQuint)) 
         }
     }
 
@@ -163,22 +155,7 @@ internal fun EmptyProjectView(
 
         Spacer(Modifier.height(20.dp))
 
-        // Secondary Card 1: Record Video
-        StudioActionCard(
-            title = stringResource(R.string.home_record_video),
-            subtitle = stringResource(R.string.home_record_desc),
-            icon = FeatherIcons.Video,
-            onClick = { onNavigateToSmartRecorder(lastRecordingMode) },
-            contentDescriptionText = stringResource(R.string.home_record_video),
-            modifier = Modifier.graphicsLayer {
-                alpha = animateSecondary1.value
-                translationY = (1f - animateSecondary1.value) * 20.dp.toPx()
-            }
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        // Secondary Card 2: Trim & Custom Setup
+        // Secondary Card: Trim & Custom Setup
         StudioActionCard(
             title = stringResource(R.string.home_advanced_studio),
             subtitle = stringResource(R.string.home_advanced_desc),
@@ -186,8 +163,8 @@ internal fun EmptyProjectView(
             onClick = onAdvancedStudio,
             contentDescriptionText = stringResource(R.string.home_start_advanced),
             modifier = Modifier.graphicsLayer {
-                alpha = animateSecondary2.value
-                translationY = (1f - animateSecondary2.value) * 20.dp.toPx()
+                alpha = animateSecondary.value
+                translationY = (1f - animateSecondary.value) * 20.dp.toPx()
             }
         )
         
