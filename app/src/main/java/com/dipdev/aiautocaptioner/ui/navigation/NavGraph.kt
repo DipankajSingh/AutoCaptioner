@@ -9,7 +9,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import androidx.navigation.toRoute
+import com.dipdev.aiautocaptioner.BuildConfig
 import com.dipdev.aiautocaptioner.ui.captioneditor.CaptionEditorScreen
 import com.dipdev.aiautocaptioner.ui.devicecheck.DeviceCheckScreen
 import com.dipdev.aiautocaptioner.ui.home.HomeScreen
@@ -228,6 +230,14 @@ fun NavGraph(
                 projectId = args.projectId,
                 onNavigateBack = { safePopBackStack() }
             )
+        }
+
+        if (BuildConfig.DEBUG) {
+            composable<Screen.PreviewHarness>(
+                deepLinks = listOf(navDeepLink { uriPattern = "autocaptioner://preview-harness" })
+            ) {
+                com.dipdev.aiautocaptioner.ui.recorder.PreviewHarnessScreen()
+            }
         }
     }
 }
