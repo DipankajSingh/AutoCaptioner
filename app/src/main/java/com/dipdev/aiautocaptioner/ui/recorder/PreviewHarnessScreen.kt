@@ -81,13 +81,10 @@ fun PreviewHarnessScreen() {
 
         val ratio = RecordingAspectRatio.DEFAULT
         val quality = RecordingQuality.DEFAULT
-        // NOTE: this is the real sensor-native (landscape) stream size, NOT
-        // ratio.resolve(quality) — that method returns the portrait, already-cropped
-        // *final output* size, which is not a valid size to request from the camera itself.
-        val cameraStreamSize = capabilities.bestCameraStreamSize(cameraId, quality, ratio)
+        val size = ratio.resolve(quality)
 
         val cameraSurface = cameraSurfaceDeferred.await()
-        rendererThread.setCameraFrameSize(cameraStreamSize.width, cameraStreamSize.height)
+        rendererThread.setCameraFrameSize(size.width, size.height)
         rendererThread.setAspectRatio(ratio)
 
         val session = Camera2Session(context, cameraId, cameraSurface)

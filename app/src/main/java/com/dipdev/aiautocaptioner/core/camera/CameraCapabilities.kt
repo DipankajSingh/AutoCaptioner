@@ -70,42 +70,4 @@ class CameraCapabilities(context: Context) {
 
     fun streamConfigMap(cameraId: String): StreamConfigurationMap? =
         characteristics(cameraId).get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-
-    /**
-     * Picks a real, sensor-supported [SurfaceTexture] output size for the given [quality] /
-     * [aspectRatio] target.
-     *
-     * IMPORTANT: this is NOT the same thing as [RecordingAspectRatio.resolve] — that method
-     * returns the desired *final, portrait, already-cropped* output size (e.g. 720x1280),
-     * which is meaningless as a camera stream size. Camera2's [StreamConfigurationMap]
-     * always reports SurfaceTexture sizes in the sensor's native landscape-style layout
-     * (width >= height) regardless of how the phone is held — asking the sensor to natively
-     * stream a portrait-shaped buffer is not a valid request. This function bridges the two:
-     * it picks the smallest supported *landscape* size whose pixel area comfortably covers
-     * the desired output area (so the later GL crop loses as little resolution as possible
-     * without over-fetching), falling back to the largest available size if none is big enough.
-     */
-    fun bestCameraStreamSize(
-        cameraId: String,
-        quality: RecordingQuality,
-        aspectRatio: RecordingAspectRatio
-    ): android.util.Size {
-        val supportedSizes = streamConfigMap(cameraId)
-            ?.getOutputSizes(SurfaceTexture::class.java)
-            ?.toList()
-            .orEmpty()
-
-        if (supportedSizes.isEmpty()) {
-            // Should not happen on any real device with a working camera, but keep this total.
-            return android.util.Size(1280, 720)
-        }
-
-        val target = aspectRatio.resolve(quality)
-        val desiredArea = target.width.toLong() * target.height.toLong()
-
-        return supportedSizes
-            .sortedBy { it.width.toLong() * it.height.toLong() }
-            .firstOrNull { it.width.toLong() * it.height.toLong() >= desiredArea }
-            ?: supportedSizes.maxByOrNull { it.width.toLong() * it.height.toLong() }!!
-    }
 }

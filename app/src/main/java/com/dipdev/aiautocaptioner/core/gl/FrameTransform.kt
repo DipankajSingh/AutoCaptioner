@@ -23,16 +23,6 @@ import android.opengl.Matrix
  * optional mirror. So the calls are issued in the opposite order: mirror, then scale, then
  * rotate last.
  *
- * ROTATION DIRECTION — a second, separate gotcha from matrix order: Android's
- * `CameraCharacteristics.SENSOR_ORIENTATION` is documented as "the angle the image needs to
- * be rotated CLOCKWISE to show correctly." `android.opengl.Matrix.rotateM`, however, follows
- * the standard right-hand-rule convention, where a POSITIVE angle rotates COUNTER-clockwise
- * (as seen by the viewer looking at the screen). The two conventions are opposite-handed, so
- * the sensor's clockwise degrees must be negated before being passed to `rotateM`. Getting
- * this backwards doesn't just flip the direction — for a 90°/270° sensor orientation it
- * produces an image rotated a full 180° from correct, which is exactly the "wrong rotation"
- * symptom this fix addresses.
- *
  * VERIFICATION NOTE: `sensorOrientation` must be queried per-lens from
  * `CameraCharacteristics.SENSOR_ORIENTATION` (it is NOT guaranteed equal for front vs. back —
  * query whichever lens is active, see [com.dipdev.aiautocaptioner.core.camera.Camera2Session.sensorOrientation]).
@@ -79,8 +69,7 @@ object FrameTransform {
             Matrix.scaleM(matrix, 0, 1f, targetAspect / uprightAspect, 1f)
         }
 
-        // Negated: see "ROTATION DIRECTION" in the class doc above.
-        Matrix.rotateM(matrix, 0, -sensorOrientation.toFloat(), 0f, 0f, 1f)
+        Matrix.rotateM(matrix, 0, sensorOrientation.toFloat(), 0f, 0f, 1f)
 
         return matrix
     }
