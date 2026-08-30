@@ -12,6 +12,8 @@
     <string name="home_1_tap_desc">Select a video and generate viral captions instantly.</string>
     <string name="home_advanced_studio">Trim &amp; Edit</string>
     <string name="home_advanced_desc"> Trim and edit video before generating subtitles.</string>
+    <string name="home_record_video">Record Video</string>
+    <string name="home_record_desc">Record new video or record faceless audio.</string>
     <string name="home_importing_video">Importing video…</string>
     <string name="home_import_failed">Import failed: %s</string>
     
