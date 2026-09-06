@@ -7,8 +7,8 @@ import android.view.Surface
 import com.dipdev.aiautocaptioner.core.camera.RecordingAspectRatio
 
 /**
- * Owns the single EGLContext this feature uses, and drives the camera -> preview (and, from
- * stage 2 onward, camera -> encoder) draw loop. All GL work happens on this thread's own
+ * Owns the single EGLContext this feature uses, and drives the camera → preview (and, from
+ * stage 2 onward, camera → encoder) draw loop. All GL work happens on this thread's own
  * Looper — nothing here is ever touched from the main/Compose thread directly except through
  * the methods below, which post to [handler] and return immediately.
  *
@@ -32,6 +32,13 @@ class RendererThread(
     private var previewWindowSurface: WindowSurface? = null
     private var previewViewportWidth = 0
     private var previewViewportHeight = 0
+
+    // Encoder surface — non-null only while recording.
+    private var encoderWindowSurface: WindowSurface? = null
+    private var encoderViewportWidth = 0
+    private var encoderViewportHeight = 0
+    @Volatile private var isRecordingActive = false
+    @Volatile private var pausedDurationNanos = 0L
 
     // Mutated via setters below (posted to this thread's handler), read only from onFrameAvailable.
     private var sensorOrientation = 90
@@ -108,6 +115,48 @@ class RendererThread(
         }
     }
 
+    // -----------------------------------------------------------------------------------------
+    // Stage 2 — Encoder surface control (called by RecordingSession)
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * Attaches or detaches the encoder's input [Surface].
+     *
+     * Pass a non-null [surface] + dimensions at recording start, and `null` (with 0 dimensions)
+     * at recording stop. The [WindowSurface] wraps the MediaCodec encoder's input surface;
+     * [ownsSurface] is false because MediaCodec releases it during [MediaCodec.release].
+     */
+    fun setEncoderSurface(surface: Surface?, width: Int, height: Int) {
+        handler.post {
+            encoderWindowSurface?.release()
+            encoderWindowSurface = surface?.let {
+                WindowSurface(eglCore, it, ownsSurface = false)
+            }
+            encoderViewportWidth = width
+            encoderViewportHeight = height
+        }
+    }
+
+    /**
+     * Enables or disables the encoder draw pass. When false, camera frames are still rendered
+     * to the preview surface but skipped for the encoder (used during pause).
+     */
+    fun setRecordingActive(active: Boolean) {
+        isRecordingActive = active
+    }
+
+    /**
+     * Updates the total paused nanoseconds used for PTS correction on the encoder surface.
+     * Called by [com.dipdev.aiautocaptioner.core.media.RecordingSession] each time recording resumes.
+     */
+    fun setPausedDurationNanos(nanos: Long) {
+        pausedDurationNanos = nanos
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Frame loop
+    // -----------------------------------------------------------------------------------------
+
     private fun onFrameAvailable() {
         cameraTexture.updateTexImage()
         cameraTexture.getTransformMatrix(texMatrix)
@@ -118,15 +167,24 @@ class RendererThread(
             return
         }
 
-        val modelMatrix = modelMatrixFor(cameraFrameWidth, cameraFrameHeight, mirror = mirrorPreview)
+        val previewMatrix = modelMatrixFor(cameraFrameWidth, cameraFrameHeight, mirror = mirrorPreview)
 
+        // Draw to preview surface.
         preview.makeCurrent()
-        frameRenderer.drawFrame(texMatrix, modelMatrix, previewViewportWidth, previewViewportHeight)
+        frameRenderer.drawFrame(texMatrix, previewMatrix, previewViewportWidth, previewViewportHeight)
         preview.swapBuffers()
 
-        // Stage 2 hook point: when recording, also draw to the encoder's WindowSurface here
-        // (mirror = false always, fixed output-resolution viewport), call
-        // encoderSurface.setPresentationTime(...) before swapBuffers() on it.
+        // Draw to encoder surface (mirror = false — saved file must never be mirrored).
+        val enc = encoderWindowSurface
+        if (isRecordingActive && enc != null && encoderViewportWidth > 0 && encoderViewportHeight > 0) {
+            val encMatrix = modelMatrixFor(cameraFrameWidth, cameraFrameHeight, mirror = false)
+            // Adjust PTS by subtracting total paused duration to keep timestamps monotonic.
+            val adjustedPtsNanos = (cameraTexture.timestamp - pausedDurationNanos).coerceAtLeast(0L)
+            enc.makeCurrent()
+            frameRenderer.drawFrame(texMatrix, encMatrix, encoderViewportWidth, encoderViewportHeight)
+            enc.setPresentationTime(adjustedPtsNanos)
+            enc.swapBuffers()
+        }
     }
 
     private fun modelMatrixFor(srcWidth: Int, srcHeight: Int, mirror: Boolean): FloatArray {
@@ -147,6 +205,7 @@ class RendererThread(
 
     fun release() {
         handler.post {
+            encoderWindowSurface?.release()
             previewWindowSurface?.release()
             frameRenderer.release()
             cameraSurface.release()
