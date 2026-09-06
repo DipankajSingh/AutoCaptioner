@@ -573,4 +573,25 @@
     <string name="share_video_subtitle">How would you like to proceed with the shared video?</string>
     <string name="share_video_auto_caption">Auto Caption</string>
     <string name="share_video_edit_video">Edit Video</string>
+
+    <!-- Recorder Permission Screen -->
+    <string name="recorder_permission_title">Camera &amp; Microphone Access</string>
+    <string name="recorder_permission_body">AutoCaptioner needs your camera and microphone to record video. Audio is required — this app transcribes speech to generate captions automatically.</string>
+    <string name="recorder_permission_denied_camera">Camera access was denied. Please allow it to record video.</string>
+    <string name="recorder_permission_denied_mic">Microphone access was denied. Please allow it — audio is required for transcription.</string>
+    <string name="recorder_permission_permanently_denied">You\'ve permanently denied one or more required permissions. Open Settings to allow camera and microphone access.</string>
+    <string name="recorder_permission_allow">Allow Access</string>
+    <string name="recorder_permission_open_settings">Open Settings</string>
+    <string name="recorder_permission_dismiss">Not Now</string>
+    <string name="recorder_permission_privacy">Privacy Policy</string>
+
+    <!-- Recorder Screen -->
+    <string name="recorder_start">Start Recording</string>
+    <string name="recorder_stop">Stop</string>
+    <string name="recorder_pause">Pause</string>
+    <string name="recorder_resume">Resume</string>
+    <string name="recorder_switch_camera">Switch Camera</string>
+    <string name="recorder_torch">Toggle Flash</string>
+    <string name="recorder_error_generic">Something went wrong. Please try again.</string>
+    <string name="recorder_error_no_camera">No camera found on this device.</string>
 </resources>

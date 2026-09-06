@@ -66,6 +66,7 @@ fun HomeScreen(
     onNavigateToCaptionEditor: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: (String) -> Unit,
+    onNavigateToRecorder: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -147,7 +148,7 @@ fun HomeScreen(
                                 label = stringResource(R.string.home_record_video),
                                 color = MaterialTheme.colorScheme.tertiary,
                                 onColor = MaterialTheme.colorScheme.onTertiary,
-                                onClick = { launchRecord() }
+                                onClick = { onNavigateToRecorder() }
                             ),
                             SpeedDialItem(
                                 icon = FeatherIcons.Scissors,
@@ -188,7 +189,7 @@ fun HomeScreen(
                             }
                             projects.isEmpty() -> {
                                 EmptyProjectView(
-                                    onRecord = { launchRecord() },
+                                    onRecord = { onNavigateToRecorder() },
                                     onQuickCaption = { quickPicker.launch("video/*") },
                                     onAdvancedStudio = { videoPicker.launch("video/*") }
                                 )

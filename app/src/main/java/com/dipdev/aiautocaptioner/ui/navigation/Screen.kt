@@ -45,7 +45,7 @@ sealed class Screen {
     @Serializable
     data class Export(val projectId: String) : Screen()
 
-    /** Debug-only Camera2 -> GL preview harness, reachable via adb deep link. */
+    /** The in-app video recorder — wired as the real nav destination in Stage 3. */
     @Serializable
-    data object PreviewHarness : Screen()
+    data object SmartRecorder : Screen()
 }
