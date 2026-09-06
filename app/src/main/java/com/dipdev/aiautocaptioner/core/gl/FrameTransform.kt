@@ -42,6 +42,11 @@ import android.opengl.Matrix
  */
 object FrameTransform {
 
+    /** Debug-only extra rotation (degrees) added to the upright rotation. Set to 90 to verify
+     *  whether the sensor-rotation sign is correct on an oddly-reporting device, then set back
+     *  to 0. */
+    const val DEBUG_ROTATION_OFFSET: Int = 90
+
     val IDENTITY: FloatArray = FloatArray(16).also { Matrix.setIdentityM(it, 0) }
 
     /**
@@ -80,7 +85,7 @@ object FrameTransform {
         }
 
         // Negated: see "ROTATION DIRECTION" in the class doc above.
-        Matrix.rotateM(matrix, 0, -sensorOrientation.toFloat(), 0f, 0f, 1f)
+        Matrix.rotateM(matrix, 0, -sensorOrientation.toFloat() + DEBUG_ROTATION_OFFSET, 0f, 0f, 1f)
 
         return matrix
     }
