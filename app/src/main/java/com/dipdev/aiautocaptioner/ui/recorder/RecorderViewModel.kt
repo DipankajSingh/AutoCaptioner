@@ -171,8 +171,15 @@ class RecorderViewModel @Inject constructor(
             rendererThread.setCameraFrameSize(streamSize.width, streamSize.height)
             rendererThread.setAspectRatio(ratio)
 
-            val surface = awaitCameraSurface()
-            val session = Camera2Session(context, cameraId, surface)
+            // Wait for both the GL input surface (RendererThread → camera OES texture)
+            // AND the preview output surface (TextureView → previewWindowSurface) to be
+            // ready before opening Camera2. Without this, early frames hit a null
+            // previewWindowSurface and the draw loop falls back to the offscreen buffer,
+            // producing a permanently black preview.
+            val cameraSurface = awaitCameraSurface()
+            awaitPreviewSurface()
+
+            val session = Camera2Session(context, cameraId, cameraSurface)
             rendererThread.setTransformParams(
                 session.sensorOrientation,
                 mirrorPreviewForFrontCamera = facing == CameraFacing.FRONT
@@ -199,8 +206,10 @@ class RecorderViewModel @Inject constructor(
 
         cameraSession?.close()
         cameraSession = null
-        cameraReady = false
-        pendingCameraSurface = null
+        // NOTE: do NOT reset cameraReady / pendingCameraSurface here.
+        // The OES SurfaceTexture is created once by RendererThread and stays alive for
+        // the entire ViewModel lifetime. onCameraSurfaceReady only fires once, so resetting
+        // these flags would cause awaitCameraSurface() to hang forever on the next open.
 
         setState { copy(cameraFacing = newFacing, torchOn = false) }
         openCamera()
@@ -213,8 +222,7 @@ class RecorderViewModel @Inject constructor(
 
         cameraSession?.close()
         cameraSession = null
-        cameraReady = false
-        pendingCameraSurface = null
+        // NOTE: same as switchCamera — do not reset cameraReady/pendingCameraSurface.
 
         setState { copy(quality = quality) }
         openCamera()
@@ -227,8 +235,7 @@ class RecorderViewModel @Inject constructor(
 
         cameraSession?.close()
         cameraSession = null
-        cameraReady = false
-        pendingCameraSurface = null
+        // NOTE: same as switchCamera — do not reset cameraReady/pendingCameraSurface.
 
         setState { copy(aspectRatio = ratio) }
         openCamera()
@@ -340,6 +347,13 @@ class RecorderViewModel @Inject constructor(
             delay(16)
         }
         return pendingCameraSurface!!
+    }
+
+    /** Polls until [RendererThread.isPreviewSurfaceReady] is true (TextureView surface attached). */
+    private suspend fun awaitPreviewSurface() {
+        while (!rendererThread.isPreviewSurfaceReady) {
+            delay(16)
+        }
     }
 
     override fun onCleared() {

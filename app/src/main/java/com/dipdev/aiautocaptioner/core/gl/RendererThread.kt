@@ -32,6 +32,9 @@ class RendererThread(
     private var previewWindowSurface: WindowSurface? = null
     private var previewViewportWidth = 0
     private var previewViewportHeight = 0
+    /** True once [setPreviewSurface] has been called with a non-null Surface at least once. */
+    @Volatile var isPreviewSurfaceReady: Boolean = false
+        private set
 
     // Encoder surface — non-null only while recording.
     private var encoderWindowSurface: WindowSurface? = null
@@ -97,6 +100,7 @@ class RendererThread(
 
     /** Called by [com.dipdev.aiautocaptioner.ui.recorder.components.CameraPreviewView] as its TextureView surface changes. */
     fun setPreviewSurface(surface: Surface?) {
+        if (surface != null) isPreviewSurfaceReady = true
         handler.post {
             previewWindowSurface?.release()
             previewWindowSurface = surface?.let { WindowSurface(eglCore, it, ownsSurface = true) }

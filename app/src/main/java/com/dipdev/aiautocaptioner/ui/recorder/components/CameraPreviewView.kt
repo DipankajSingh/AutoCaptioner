@@ -22,9 +22,12 @@ fun CameraPreviewView(
     modifier: Modifier = Modifier
 ) {
     AndroidView(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier,
         factory = { context ->
             TextureView(context).apply {
+                // TextureView must be opaque to render correctly inside Compose on
+                // many devices — without this, the compositor may not composite it.
+                isOpaque = true
                 surfaceTextureListener = object : TextureView.SurfaceTextureListener {
                     override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
                         rendererThread.setPreviewViewportSize(width, height)
