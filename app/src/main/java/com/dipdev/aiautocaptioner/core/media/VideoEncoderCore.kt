@@ -44,15 +44,18 @@ class VideoEncoderCore(
             setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL_SECS)
 
-            // Prefer constant-quality mode if the hardware encoder supports it.
-            val encoderName = MediaCodec.createEncoderByType(MIME_TYPE).name
-            val caps = MediaCodecInfo.CodecCapabilities.createFromProfileLevel(
-                MIME_TYPE, 0, 0
-            )
+            // Query encoder capabilities WITHOUT instantiating a codec.
+            // The old code did MediaCodec.createEncoderByType(MIME_TYPE).name and then lost
+            // the reference — leaking a hardware codec slot. On devices with a low concurrent
+            // codec limit (e.g. MediaTek RMX1825) this stalled the GL frame loop, freezing
+            // the preview as soon as recording started.
             val encoderCaps = try {
                 android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
                     .codecInfos
-                    .firstOrNull { it.name == encoderName && it.isEncoder }
+                    .firstOrNull { info ->
+                        info.isEncoder &&
+                        info.supportedTypes.any { it.equals(MIME_TYPE, ignoreCase = true) }
+                    }
                     ?.getCapabilitiesForType(MIME_TYPE)
                     ?.encoderCapabilities
             } catch (_: Exception) { null }

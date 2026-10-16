@@ -171,20 +171,25 @@ class RecorderViewModel @Inject constructor(
             rendererThread.setCameraFrameSize(streamSize.width, streamSize.height)
             rendererThread.setAspectRatio(ratio)
 
-            // Wait for both the GL input surface (RendererThread → camera OES texture)
-            // AND the preview output surface (TextureView → previewWindowSurface) to be
-            // ready before opening Camera2. Without this, early frames hit a null
-            // previewWindowSurface and the draw loop falls back to the offscreen buffer,
-            // producing a permanently black preview.
             val cameraSurface = awaitCameraSurface()
             awaitPreviewSurface()
 
             val session = Camera2Session(context, cameraId, cameraSurface)
             rendererThread.setTransformParams(
-                session.sensorOrientation,
-                mirrorPreviewForFrontCamera = facing == CameraFacing.FRONT
+                sensorOrientationDeg = session.sensorOrientation,
+                // Bug 1 fix: never mirror the preview. The front camera shows an un-mirrored
+                // view, matching what will actually be recorded. Mirroring was confusing and
+                // cosmetically wrong — the recording was never mirrored, so the preview shouldn't
+                // be either.
+                mirrorPreviewForFrontCamera = false
             )
             session.open()
+
+            // Bug 3 fix: restore the user's saved zoom level after every camera reopen
+            // (quality/ratio/facing change). Without this the hardware resets to 1× on open.
+            val savedZoom = currentState.zoomRatio
+            if (savedZoom != 1f) session.setZoom(savedZoom)
+
             cameraSession = session
 
             setState {
@@ -206,10 +211,10 @@ class RecorderViewModel @Inject constructor(
 
         cameraSession?.close()
         cameraSession = null
-        // NOTE: do NOT reset cameraReady / pendingCameraSurface here.
-        // The OES SurfaceTexture is created once by RendererThread and stays alive for
-        // the entire ViewModel lifetime. onCameraSurfaceReady only fires once, so resetting
-        // these flags would cause awaitCameraSurface() to hang forever on the next open.
+        // Bug 4 fix: reset frame dimensions so the GL thread renders IDENTITY (full-frame)
+        // during the gap between old session close and new session open, rather than
+        // using stale dimensions from the previous camera that cause a visible layout snap.
+        rendererThread.setCameraFrameSize(0, 0)
 
         setState { copy(cameraFacing = newFacing, torchOn = false) }
         openCamera()
@@ -222,7 +227,7 @@ class RecorderViewModel @Inject constructor(
 
         cameraSession?.close()
         cameraSession = null
-        // NOTE: same as switchCamera — do not reset cameraReady/pendingCameraSurface.
+        rendererThread.setCameraFrameSize(0, 0)
 
         setState { copy(quality = quality) }
         openCamera()
@@ -235,7 +240,7 @@ class RecorderViewModel @Inject constructor(
 
         cameraSession?.close()
         cameraSession = null
-        // NOTE: same as switchCamera — do not reset cameraReady/pendingCameraSurface.
+        rendererThread.setCameraFrameSize(0, 0)
 
         setState { copy(aspectRatio = ratio) }
         openCamera()
@@ -304,11 +309,16 @@ class RecorderViewModel @Inject constructor(
             setState { copy(recordingPhase = RecordingPhase.Finalizing, elapsedMs = 0L) }
             try {
                 val session = recordingSession ?: return@launch
-                session.stop()
+                val projectId = currentProjectId ?: return@launch
+
+                // Bug 6 fix: stop() must be called EXACTLY ONCE. The previous code called it
+                // twice — first as `session.stop()` (discarding the return value), then again
+                // as `val outputFile = session.stop()`. The second call hit an already-released
+                // MediaMuxer while the audio HandlerThread was still draining → crash:
+                // "IllegalStateException: writeSampleData returned an error"
+                val outputFile = session.stop()
                 recordingSession = null
 
-                val projectId = currentProjectId ?: return@launch
-                val outputFile = session.stop() // already finalized; file path is the same
                 projectRepository.finalizeRecordedProject(projectId, outputFile)
                     .onSuccess { setEffect(RecorderEffect.NavigateToEditor(projectId)) }
                     .onFailure { e ->

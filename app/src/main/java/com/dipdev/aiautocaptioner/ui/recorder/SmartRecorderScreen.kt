@@ -228,14 +228,13 @@ private fun RecorderContent(
                 .statusBarsPadding()
                 .padding(top = 8.dp)
         ) {
+            // Row 1: Back button only
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Back button
                 IconButton(
                     onClick = onNavigateBack,
                     modifier = Modifier
@@ -248,21 +247,30 @@ private fun RecorderContent(
                         tint = Color.White
                     )
                 }
+            }
 
-                // Quality + Ratio selectors
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QualitySelector(
-                        qualities = state.availableQualities,
-                        selected = state.quality,
-                        enabled = !isRecordingActive,
-                        onSelect = onSelectQuality
-                    )
-                    RatioSelector(
-                        selected = state.aspectRatio,
-                        enabled = !isRecordingActive,
-                        onSelect = onSelectRatio
-                    )
-                }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Row 2: Quality + Ratio selectors centered, with enough room for both pills
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                QualitySelector(
+                    qualities = state.availableQualities,
+                    selected = state.quality,
+                    enabled = !isRecordingActive,
+                    onSelect = onSelectQuality
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                RatioSelector(
+                    selected = state.aspectRatio,
+                    enabled = !isRecordingActive,
+                    onSelect = onSelectRatio
+                )
             }
         }
 
