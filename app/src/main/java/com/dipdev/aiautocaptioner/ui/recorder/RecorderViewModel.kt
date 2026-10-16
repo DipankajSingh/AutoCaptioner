@@ -258,7 +258,7 @@ class RecorderViewModel @Inject constructor(
     }
 
     private fun tapToFocus(x: Float, y: Float) {
-        // Camera2Session does not expose tap-to-focus in Stage 1–3; no-op for now.
+        cameraSession?.setFocusPoint(x, y)
     }
 
     // ── Recording ─────────────────────────────────────────────────────────────

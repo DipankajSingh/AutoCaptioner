@@ -168,6 +168,8 @@ fun SmartRecorderScreen(
                         onToggleTorch = { viewModel.setEvent(RecorderEvent.ToggleTorch) },
                         onSelectQuality = { viewModel.setEvent(RecorderEvent.SelectQuality(it)) },
                         onSelectRatio = { viewModel.setEvent(RecorderEvent.SelectAspectRatio(it)) },
+                        onZoomChange = { viewModel.setEvent(RecorderEvent.SetZoom(it)) },
+                        onTapToFocus = { x, y -> viewModel.setEvent(RecorderEvent.TapToFocus(x, y)) },
                         onStart = { viewModel.setEvent(RecorderEvent.StartRecording) },
                         onPause = { viewModel.setEvent(RecorderEvent.PauseRecording) },
                         onResume = { viewModel.setEvent(RecorderEvent.ResumeRecording) },
@@ -199,6 +201,8 @@ private fun RecorderContent(
     onToggleTorch: () -> Unit,
     onSelectQuality: (com.dipdev.aiautocaptioner.core.camera.RecordingQuality) -> Unit,
     onSelectRatio: (com.dipdev.aiautocaptioner.core.camera.RecordingAspectRatio) -> Unit,
+    onZoomChange: (Float) -> Unit,
+    onTapToFocus: (Float, Float) -> Unit,
     onStart: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -217,6 +221,8 @@ private fun RecorderContent(
                     state.aspectRatio.heightRatio.toFloat()
             CameraPreviewView(
                 rendererThread = rendererThread,
+                onZoomChange = onZoomChange,
+                onTapToFocus = onTapToFocus,
                 modifier = Modifier.aspectRatio(aspectRatioValue)
             )
         }
