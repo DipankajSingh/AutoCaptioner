@@ -1,7 +1,7 @@
 # Release & Beta Workflow
 
 How this app is versioned, branched, and shipped to Google Play.
-Current production: `versionName 2.11.2`, `versionCode 25`.
+Current production: `versionName 2.11.4`, `versionCode 27`.
 
 ## Branch model
 
