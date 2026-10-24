@@ -44,8 +44,4 @@ sealed class Screen {
 
     @Serializable
     data class Export(val projectId: String) : Screen()
-
-    /** The in-app video recorder — wired as the real nav destination in Stage 3. */
-    @Serializable
-    data object SmartRecorder : Screen()
 }

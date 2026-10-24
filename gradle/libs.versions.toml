@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.2.1"
 
 feather = "1.1.1"
 kotlin = "2.4.0"
@@ -11,7 +11,7 @@ lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 composeBom = "2026.06.01"
 hilt = "2.60.1"
-ksp = "2.3.6"
+ksp = "2.3.2"
 
 googleServices = "4.5.0"
 crashlytics = "3.0.7"

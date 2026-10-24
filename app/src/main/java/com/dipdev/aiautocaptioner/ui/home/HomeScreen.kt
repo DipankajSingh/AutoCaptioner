@@ -1,9 +1,7 @@
 package com.dipdev.aiautocaptioner.ui.home
 
 import android.app.Activity
-import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -53,7 +51,6 @@ import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.ScreenThemeProvider
 import compose.icons.FeatherIcons
 import compose.icons.feathericons.Scissors
-import compose.icons.feathericons.Video
 import compose.icons.feathericons.Zap
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
@@ -66,7 +63,6 @@ fun HomeScreen(
     onNavigateToCaptionEditor: (String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: (String) -> Unit,
-    onNavigateToRecorder: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,18 +85,6 @@ fun HomeScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.importVideoQuick(it) }
-    }
-
-    // Record video via the system camera → imported into the editor
-    val recordPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val uri = result.data?.data
-        uri?.let { viewModel.importVideo(it) }
-    }
-    val launchRecord: () -> Unit = {
-        val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-        intent.resolveActivity(context.packageManager)?.let { recordPicker.launch(intent) }
     }
 
     BackHandler {
@@ -144,13 +128,6 @@ fun HomeScreen(
                                 onClick = { quickPicker.launch("video/*") }
                             ),
                             SpeedDialItem(
-                                icon = FeatherIcons.Video,
-                                label = stringResource(R.string.home_record_video),
-                                color = MaterialTheme.colorScheme.tertiary,
-                                onColor = MaterialTheme.colorScheme.onTertiary,
-                                onClick = { onNavigateToRecorder() }
-                            ),
-                            SpeedDialItem(
                                 icon = FeatherIcons.Scissors,
                                 label = stringResource(R.string.home_advanced_studio),
                                 color = MaterialTheme.colorScheme.tertiary,
@@ -189,7 +166,6 @@ fun HomeScreen(
                             }
                             projects.isEmpty() -> {
                                 EmptyProjectView(
-                                    onRecord = { onNavigateToRecorder() },
                                     onQuickCaption = { quickPicker.launch("video/*") },
                                     onAdvancedStudio = { videoPicker.launch("video/*") }
                                 )
