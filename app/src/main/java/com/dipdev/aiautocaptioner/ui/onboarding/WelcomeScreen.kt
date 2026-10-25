@@ -3,7 +3,6 @@ package com.dipdev.aiautocaptioner.ui.onboarding
 import android.content.Intent
 import androidx.compose.animation.core.*
 import androidx.core.net.toUri
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +25,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
@@ -299,13 +301,14 @@ private fun BeforeAfterVideoCards(
 }
 
 @Composable
-@SuppressLint("UnsafeOptInUsageError")
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun LoopingVideoPlayer(
     rawResId: Int,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    @Suppress("DEPRECATION")
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     val exoPlayer = remember(context, rawResId) {
         ExoPlayer.Builder(context).build().apply {
             val uri = RawResourceDataSource.buildRawResourceUri(rawResId)
@@ -317,8 +320,20 @@ private fun LoopingVideoPlayer(
         }
     }
 
-    DisposableEffect(exoPlayer) {
+    // Pause/resume the player in sync with the host Activity lifecycle so the
+    // video resumes correctly after app-switching, screen-off, or notification
+    // shade pull-down — the most common cause of "video not playing" reports.
+    DisposableEffect(lifecycleOwner, exoPlayer) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> exoPlayer.play()
+                Lifecycle.Event.ON_PAUSE  -> exoPlayer.pause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer.release()
         }
     }

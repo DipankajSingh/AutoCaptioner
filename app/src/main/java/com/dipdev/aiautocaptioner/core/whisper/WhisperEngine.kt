@@ -135,7 +135,9 @@ class WhisperEngine(private val context: Context) {
     fun isReady(): Boolean = nativeHandle != 0L
 
     private fun getOptimalThreads(): Int {
-        val maxThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+        // Use up to 6 threads — covers 8-core flagships (e.g. Snapdragon 888/8 Gen 1)
+        // while still leaving headroom for the UI thread and background services.
+        val maxThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, 6)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return maxThreads
 
         val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return maxThreads

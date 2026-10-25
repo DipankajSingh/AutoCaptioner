@@ -19,6 +19,19 @@ data class WhisperModel(
 ) {
     val sizeMb: Int get() = (sizeBytes / 1_000_000).toInt()
 
+    /**
+     * Human-readable speed estimate shown on model selection cards so users
+     * understand the real-world wait time before committing to a download.
+     * Based on the model's [speed] rating (1–5) and typical mobile CPU throughput.
+     */
+    val speedHint: String get() = when (speed) {
+        5    -> "~3–8 sec / 30s clip"
+        4    -> "~10–20 sec / 30s clip"
+        3    -> "~30–60 sec / 30s clip"
+        2    -> "~2–4 min / 30s clip"
+        else -> "~5+ min / 30s clip"
+    }
+
     companion object {
         /**
          * Filters and sorts available models based on the selected language:

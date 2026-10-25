@@ -294,6 +294,14 @@ fun TierCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "⚡ ${tier.model.speedHint}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+            )
+
             if (tier.isRecommended) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(

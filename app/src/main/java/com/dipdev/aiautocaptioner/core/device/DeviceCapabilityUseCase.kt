@@ -84,19 +84,22 @@ class DeviceCapabilityUseCase @Inject constructor(
 
         return when (language) {
             "auto" -> when {
-                totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
-                totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
-                else -> RecommendationResult("base", R.string.recommend_reason_low_end)
+                // Only push the heavy 'small' model on genuine flagships (≥ 6 GB).
+                // Devices in the 4–5 GB range are fast enough for 'base' and users
+                // expect near-instant results — don't surprise them with a 60-second wait.
+                totalRamMb >= 6000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
+                totalRamMb >= 3000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
+                else               -> RecommendationResult("base", R.string.recommend_reason_low_end)
             }
             "en" -> when {
-                totalRamMb >= 4000 -> RecommendationResult("small.en", R.string.recommend_reason_high_end)
-                totalRamMb >= 2000 -> RecommendationResult("base.en", R.string.recommend_reason_mid_range)
-                else -> RecommendationResult("tiny.en", R.string.recommend_reason_low_end_english)
+                totalRamMb >= 6000 -> RecommendationResult("small.en", R.string.recommend_reason_high_end)
+                totalRamMb >= 3000 -> RecommendationResult("base.en", R.string.recommend_reason_mid_range)
+                else               -> RecommendationResult("tiny.en", R.string.recommend_reason_low_end_english)
             }
             else -> when {
-                totalRamMb >= 4000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
-                totalRamMb >= 2000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
-                else -> RecommendationResult("base", R.string.recommend_reason_low_end)
+                totalRamMb >= 6000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
+                totalRamMb >= 3000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)
+                else               -> RecommendationResult("base", R.string.recommend_reason_low_end)
             }
         }
     }

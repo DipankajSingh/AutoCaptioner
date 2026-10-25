@@ -105,6 +105,12 @@ private fun ModelCard(
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "⚡ ${model.speedHint}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                    )
                 }
                 
                 if (isActive) {
