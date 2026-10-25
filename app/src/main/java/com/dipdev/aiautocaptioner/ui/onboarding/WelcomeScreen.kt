@@ -1,8 +1,6 @@
 package com.dipdev.aiautocaptioner.ui.onboarding
 
 import android.content.Intent
-import android.view.TextureView
-import android.view.ViewGroup
 import androidx.compose.animation.core.*
 import androidx.core.net.toUri
 import android.annotation.SuppressLint
@@ -40,9 +38,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.dipdev.aiautocaptioner.AppLinks
 import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.MascotRobot
@@ -306,7 +304,7 @@ private fun LoopingVideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val exoPlayer = remember {
+    val exoPlayer = remember(context, rawResId) {
         ExoPlayer.Builder(context).build().apply {
             val uri = "android.resource://${context.packageName}/$rawResId".toUri()
             setMediaItem(MediaItem.fromUri(uri))
@@ -325,31 +323,14 @@ private fun LoopingVideoPlayer(
 
     AndroidView(
         factory = { ctx ->
-            val textureView = TextureView(ctx)
-            exoPlayer.setVideoTextureView(textureView)
-
-            AspectRatioFrameLayout(ctx).apply {
+            PlayerView(ctx).apply {
+                useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                addView(
-                    textureView,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-
-                // Dynamically sync zoom aspect ratio with video track dimensions
-                val listener = object : Player.Listener {
-                    override fun onVideoSizeChanged(videoSize: VideoSize) {
-                        if (videoSize.height > 0 && videoSize.width > 0) {
-                            setAspectRatio(videoSize.width.toFloat() / videoSize.height.toFloat())
-                        }
-                    }
-                }
-                exoPlayer.addListener(listener)
-
-                if (exoPlayer.videoSize.height > 0 && exoPlayer.videoSize.width > 0) {
-                    setAspectRatio(exoPlayer.videoSize.width.toFloat() / exoPlayer.videoSize.height.toFloat())
-                }
+                player = exoPlayer
             }
+        },
+        update = { playerView ->
+            playerView.player = exoPlayer
         },
         modifier = modifier.clipToBounds()
     )
