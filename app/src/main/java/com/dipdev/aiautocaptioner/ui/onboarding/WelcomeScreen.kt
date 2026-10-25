@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.datasource.RawResourceDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -304,9 +305,10 @@ private fun LoopingVideoPlayer(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    @Suppress("DEPRECATION")
     val exoPlayer = remember(context, rawResId) {
         ExoPlayer.Builder(context).build().apply {
-            val uri = "android.resource://${context.packageName}/$rawResId".toUri()
+            val uri = RawResourceDataSource.buildRawResourceUri(rawResId)
             setMediaItem(MediaItem.fromUri(uri))
             repeatMode = Player.REPEAT_MODE_ALL
             volume = 0f
@@ -326,6 +328,7 @@ private fun LoopingVideoPlayer(
             PlayerView(ctx).apply {
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                findViewById<android.view.View>(androidx.media3.ui.R.id.exo_shutter)?.visibility = android.view.View.GONE
                 player = exoPlayer
             }
         },
