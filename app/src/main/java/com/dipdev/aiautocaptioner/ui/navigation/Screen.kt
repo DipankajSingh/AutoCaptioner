@@ -44,4 +44,8 @@ sealed class Screen {
 
     @Serializable
     data class Export(val projectId: String) : Screen()
+
+    /** CameraX video recorder route. */
+    @Serializable
+    data object SmartRecorder : Screen()
 }

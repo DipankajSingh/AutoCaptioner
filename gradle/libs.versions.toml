@@ -25,6 +25,7 @@ kotlinxCoroutines = "1.11.0"
 datastore = "1.2.1"
 coil = "3.5.0"
 splashscreen = "1.2.0"
+camerax = "1.6.2"
 
 
 firebaseBom = "34.15.0"
@@ -79,6 +80,12 @@ coil-svg = { group = "io.coil-kt.coil3", name = "coil-svg", version.ref = "coil"
 coil-video = { group = "io.coil-kt.coil3", name = "coil-video", version.ref = "coil" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-video = { group = "androidx.camera", name = "camera-video", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+
 
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
@@ -125,6 +132,13 @@ coil = [
     "coil-compose",
     "coil-svg",
     "coil-video"
+]
+camerax = [
+    "androidx-camera-core",
+    "androidx-camera-camera2",
+    "androidx-camera-lifecycle",
+    "androidx-camera-video",
+    "androidx-camera-view"
 ]
 
 

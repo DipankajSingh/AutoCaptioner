@@ -130,6 +130,7 @@ dependencies {
     // Media & Camera
     // -------------------------------------------------------
     implementation(libs.bundles.media3)
+    implementation(libs.bundles.camerax)
     implementation(libs.kotlinx.coroutines.guava)
 
     // -------------------------------------------------------

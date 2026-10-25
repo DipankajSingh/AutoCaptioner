@@ -114,6 +114,9 @@ fun NavGraph(
                 onNavigateToHistory = { projectId ->
                     navController.navigate(Screen.ExportHistory(projectId))
                 },
+                onNavigateToRecorder = {
+                    navController.navigate(Screen.SmartRecorder)
+                },
                 viewModel = homeViewModel
             )
         }
@@ -227,6 +230,17 @@ fun NavGraph(
             com.dipdev.aiautocaptioner.ui.export.ExportScreen(
                 projectId = args.projectId,
                 onNavigateBack = { safePopBackStack() }
+            )
+        }
+
+        composable<Screen.SmartRecorder> {
+            com.dipdev.aiautocaptioner.ui.recorder.SmartRecorderScreen(
+                onNavigateBack = { safePopBackStack() },
+                onVideoReady = { projectId ->
+                    navController.navigate(Screen.VideoEditor(projectId)) {
+                        popUpTo<Screen.SmartRecorder> { inclusive = true }
+                    }
+                }
             )
         }
     }
