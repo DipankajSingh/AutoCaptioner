@@ -2,11 +2,15 @@ package com.dipdev.aiautocaptioner.ui.recorder
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.MirrorMode
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.FileOutputOptions
@@ -14,8 +18,8 @@ import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
-import androidx.camera.video.VideoRecordEvent
 import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
@@ -27,6 +31,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +64,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -67,26 +73,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.ui.components.VideoPlayerCard
 import com.dipdev.aiautocaptioner.ui.theme.AccentAmber
 import com.dipdev.aiautocaptioner.ui.theme.AccentRose
 import java.io.File
 import java.util.Locale
-import java.util.concurrent.Executor
+import kotlin.coroutines.resume
 
 @Composable
 fun SmartRecorderScreen(
@@ -135,6 +140,27 @@ fun SmartRecorderScreen(
     // Active CameraX Video Recording instance
     var activeRecording by remember { mutableStateOf<Recording?>(null) }
     var activeCamera by remember { mutableStateOf<Camera?>(null) }
+
+    // Lifecycle observer to stop/cleanup active recording on ON_PAUSE or ON_STOP
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
+                if (uiState.isRecording) {
+                    activeRecording?.stop()
+                    activeRecording = null
+                    viewModel.onRecordingStopped()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            if (uiState.isRecording) {
+                activeRecording?.stop()
+                activeRecording = null
+            }
+        }
+    }
 
     // Auto-stop recording when 3-minute cap is reached
     LaunchedEffect(uiState.recordedDurationMs) {
@@ -237,6 +263,7 @@ private fun CameraPreviewAndControls(
     onNavigateBack: () -> Unit
 ) {
     var videoCapture: VideoCapture<Recorder>? by remember { mutableStateOf(null) }
+    var previewView by remember { mutableStateOf<PreviewView?>(null) }
     var currentZoom by remember { mutableFloatStateOf(uiState.zoomRatio) }
 
     val cameraSelector = if (uiState.isFrontCamera) {
@@ -245,9 +272,67 @@ private fun CameraPreviewAndControls(
         CameraSelector.DEFAULT_BACK_CAMERA
     }
 
+    // Dynamic CameraX binding/rebinding on previewView, cameraSelector, or lifecycleOwner changes
+    LaunchedEffect(previewView, cameraSelector, lifecycleOwner) {
+        val pView = previewView ?: return@LaunchedEffect
+        val ctx = pView.context
+        val cameraProvider = ctx.getCameraProvider()
+
+        val rotation = pView.display?.rotation ?: Surface.ROTATION_0
+
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+            .build()
+
+        val preview = Preview.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .setTargetRotation(rotation)
+            .build()
+            .also {
+                it.surfaceProvider = pView.surfaceProvider
+            }
+
+        val recorder = Recorder.Builder()
+            .setQualitySelector(
+                QualitySelector.from(
+                    Quality.HIGHEST,
+                    FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
+                )
+            )
+            .build()
+
+        val capture = VideoCapture.Builder(recorder)
+            .setTargetRotation(rotation)
+            .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
+            .build()
+        videoCapture = capture
+
+        try {
+            cameraProvider.unbindAll()
+            val camera = cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                preview,
+                capture
+            )
+            onCameraBound(camera)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(uiState.isRecording) {
+                detectTapGestures(
+                    onDoubleTap = {
+                        if (!uiState.isRecording) {
+                            onToggleCamera()
+                        }
+                    }
+                )
+            }
             .pointerInput(Unit) {
                 detectTransformGestures { _, _, zoom, _ ->
                     currentZoom = (currentZoom * zoom).coerceIn(1.0f, 10.0f)
@@ -259,45 +344,13 @@ private fun CameraPreviewAndControls(
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
-                val previewView = PreviewView(ctx).apply {
+                PreviewView(ctx).apply {
                     scaleType = PreviewView.ScaleType.FILL_CENTER
+                    previewView = this
                 }
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also {
-                        it.surfaceProvider = previewView.surfaceProvider
-                    }
-
-                    val recorder = Recorder.Builder()
-                        .setQualitySelector(
-                            QualitySelector.from(
-                                Quality.HIGHEST,
-                                FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
-                            )
-                        )
-                        .build()
-
-                    val capture = VideoCapture.withOutput(recorder)
-                    videoCapture = capture
-
-                    try {
-                        cameraProvider.unbindAll()
-                        val camera = cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            capture
-                        )
-                        onCameraBound(camera)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }, ContextCompat.getMainExecutor(ctx))
-                previewView
             },
-            update = { previewView ->
-                // Handled via state updates
+            update = { view ->
+                previewView = view
             }
         )
 
@@ -365,23 +418,8 @@ private fun CameraPreviewAndControls(
                 }
             }
 
-            // Switch Camera Lens Button
-            IconButton(
-                onClick = onToggleCamera,
-                enabled = !uiState.isRecording,
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        Color.Black.copy(alpha = if (!uiState.isRecording) 0.5f else 0.2f),
-                        CircleShape
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Cameraswitch,
-                    contentDescription = "Switch Camera",
-                    tint = if (!uiState.isRecording) Color.White else Color.Gray
-                )
-            }
+            // Empty balancing container on top-right (camera switch button moved to bottom controls & double-tap gesture)
+            Box(modifier = Modifier.size(44.dp))
         }
 
         // Near-Limit Warning Badge
@@ -467,6 +505,11 @@ private fun CameraPreviewAndControls(
                         )
                     }
                 } else {
+                    // Spacer on left to balance the Switch Camera button on right
+                    Box(modifier = Modifier.size(56.dp))
+
+                    Spacer(modifier = Modifier.width(32.dp))
+
                     // Big Start Recording Button
                     IconButton(
                         onClick = {
@@ -481,6 +524,23 @@ private fun CameraPreviewAndControls(
                             modifier = Modifier
                                 .size(32.dp)
                                 .background(Color.White, CircleShape)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(32.dp))
+
+                    // Switch Camera Lens Button next to Start Recording
+                    IconButton(
+                        onClick = onToggleCamera,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(Color.White.copy(alpha = 0.25f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cameraswitch,
+                            contentDescription = "Switch Camera",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }
@@ -643,3 +703,17 @@ private fun PermissionRationaleContent(
         }
     }
 }
+
+private suspend fun android.content.Context.getCameraProvider(): ProcessCameraProvider =
+    kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener(
+            {
+                if (continuation.isActive) {
+                    continuation.resume(cameraProviderFuture.get())
+                }
+            },
+            ContextCompat.getMainExecutor(this)
+        )
+    }
+

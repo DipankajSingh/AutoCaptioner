@@ -418,16 +418,18 @@ Navigation uses Jetpack Navigation Compose with type-safe `@Serializable` routes
                                 │ Screen.Home │
                                 └──────┬──────┘
                                        │
-            ┌──────────────────────────┼──────────────────────────┐
-            ▼                          ▼                          ▼
-   ┌─────────────────┐        ┌─────────────────┐        ┌─────────────────┐
-   │Screen.Processing│        │Screen.VideoEditor│       │ Screen.Settings │
-   └────────┬────────┘        └────────┬────────┘        └─────────────────┘
-            │                          │
-            ▼                          ▼
-   ┌────────────────────┐     ┌──────────────────┐
-   │Screen.CaptionEditor│     │  Screen.Export   │
-   └────────────────────┘     └──────────────────┘
+            ┌──────────────────────────┼──────────────────────────┬──────────────────────────┐
+            ▼                          ▼                          ▼                          ▼
+   ┌──────────────────┐       ┌─────────────────┐        ┌─────────────────┐        ┌─────────────────┐
+   │Screen.SmartRecord│       │Screen.Processing│        │Screen.VideoEditor│       │ Screen.Settings │
+   └────────┬─────────┘       └────────┬────────┘        └────────┬────────┘        └─────────────────┘
+            │                          │                          │
+            └────────────────────────► │                          ▼
+                                       │                 ┌──────────────────┐
+                                       ▼                 │  Screen.Export   │
+                              ┌────────────────────┐     └──────────────────┘
+                              │Screen.CaptionEditor│
+                              └────────────────────┘
 ```
 
 ### Screen ViewModel Architecture
@@ -445,6 +447,12 @@ Navigation uses Jetpack Navigation Compose with type-safe `@Serializable` routes
    * Provides fine-grained word timestamp editing, word splitting, merging, and word insertion.
 5. **`ExportViewModel`**:
    * Binds to `ExportForegroundService`, streaming progress percentage and navigating to `ExportHistoryScreen` upon completion.
+6. **`CameraRecorderViewModel` & `SmartRecorderScreen`**:
+   * Uses CameraX `VideoCapture<Recorder>` with a 16:9 `ResolutionSelector` aspect ratio strategy matching preview framing to recorded video output.
+   * Dynamic camera lens switching (`LaunchedEffect(previewView, cameraSelector, lifecycleOwner)`) via top control bar toggle, bottom controls row flip button, and double-tap gesture on the live preview surface.
+   * Lifecycle-aware recording safety (`DisposableEffect(lifecycleOwner)` observing `ON_PAUSE`/`ON_STOP`) to cleanly finalize active recordings when navigating away or backgrounding the app.
+   * Display rotation matching (`previewView.display?.rotation`) on `Preview` and `VideoCapture`.
+   * Enforces a 3-minute max recording cap, near-limit warning badge, review overlay, and project creation import pipeline.
 
 ---
 

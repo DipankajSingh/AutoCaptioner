@@ -218,7 +218,7 @@ private fun BeforeAfterVideoCards(
             ) {
                 LoopingVideoPlayer(
                     rawResId = R.raw.before_sample,
-                    modifier = Modifier.fillMaxSize().clipToBounds()
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 // "BEFORE" Badge Top-Left
@@ -253,7 +253,7 @@ private fun BeforeAfterVideoCards(
             ) {
                 LoopingVideoPlayer(
                     rawResId = R.raw.after_sample,
-                    modifier = Modifier.fillMaxSize().clipToBounds()
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 // "AFTER" Glowing Gradient Badge Top-Left
@@ -300,8 +300,8 @@ private fun BeforeAfterVideoCards(
     }
 }
 
+@OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 private fun LoopingVideoPlayer(
     rawResId: Int,
     modifier: Modifier = Modifier
@@ -338,20 +338,25 @@ private fun LoopingVideoPlayer(
         }
     }
 
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                useController = false
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                findViewById<android.view.View>(androidx.media3.ui.R.id.exo_shutter)?.visibility = android.view.View.GONE
-                player = exoPlayer
-            }
-        },
-        update = { playerView ->
-            playerView.player = exoPlayer
-        },
-        modifier = modifier.clipToBounds()
-    )
+    // Clip is applied to the outer Box, NOT to the AndroidView itself.
+    // SurfaceView (ExoPlayer's default) renders in a separate hardware layer
+    // outside Compose's drawing tree — clipToBounds() on AndroidView prevents
+    // the surface from attaching correctly, causing a black/frozen screen.
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    player = exoPlayer
+                }
+            },
+            update = { playerView ->
+                playerView.player = exoPlayer
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
 
 @Composable
