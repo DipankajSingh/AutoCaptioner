@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.data.source
 
 import android.content.Context
 import android.content.res.AssetManager
+import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -36,7 +37,8 @@ class WhisperModelRegistryTest {
         every { context.assets } returns assets
         every { assets.open("whisper_models.json") } returns ByteArrayInputStream(json.toByteArray())
         
-        val registry = WhisperModelRegistry(context)
+        val crashReporter = mockk<CrashReporter>(relaxed = true)
+        val registry = WhisperModelRegistry(context, crashReporter)
 
         // Act
         val models = registry.getModels()
@@ -58,7 +60,8 @@ class WhisperModelRegistryTest {
         every { context.assets } returns assets
         every { assets.open("whisper_models.json") } throws Exception("File not found")
         
-        val registry = WhisperModelRegistry(context)
+        val crashReporter = mockk<CrashReporter>(relaxed = true)
+        val registry = WhisperModelRegistry(context, crashReporter)
 
         // Act
         val models = registry.getModels()

@@ -96,6 +96,10 @@ class DeviceCapabilityUseCase @Inject constructor(
                 totalRamMb >= 3000 -> RecommendationResult("base.en", R.string.recommend_reason_mid_range)
                 else               -> RecommendationResult("tiny.en", R.string.recommend_reason_low_end_english)
             }
+            "hinglish" -> when {
+                totalRamMb >= 6000 -> RecommendationResult("hi.hinglish.swift", R.string.recommend_reason_mid_range)
+                else               -> RecommendationResult("hi.hinglish.swift", R.string.recommend_reason_low_end)
+            }
             else -> when {
                 totalRamMb >= 6000 -> RecommendationResult("small", R.string.recommend_reason_high_end)
                 totalRamMb >= 3000 -> RecommendationResult("base", R.string.recommend_reason_mid_range)

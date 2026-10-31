@@ -120,9 +120,21 @@
     "isMultilingual": false
   },
   {
+    "id": "hi.hinglish.swift",
+    "displayName": "Hinglish Swift — Fast (Roman Script)",
+    "description": "Ultra-lightweight, fast conversational Hinglish transcription in English/Latin script.",
+    "sizeBytes": 59768832,
+    "downloadUrl": "https://huggingface.co/rohitag13/whisper-hindi2hinglish-swift-GGUF/resolve/main/ggml-hinglish-swift-q5_1.bin",
+    "minRamMb": 512,
+    "accuracy": 4,
+    "speed": 5,
+    "languages": ["hi", "hinglish"],
+    "isMultilingual": false
+  },
+  {
     "id": "hi.hinglish.q5",
-    "displayName": "Hinglish Turbo — Fast (Roman Script)",
-    "description": "Fast conversational Hinglish transcription in English/Latin script.",
+    "displayName": "Hinglish Turbo — Standard (Roman Script)",
+    "description": "High accuracy conversational Hinglish transcription in English/Latin script.",
     "sizeBytes": 547384320,
     "downloadUrl": "https://huggingface.co/Marquestra/Whisper-Hindi2Hinglish-Apex-GGML/resolve/main/ggml-apex-hinglish-q5_0.bin",
     "minRamMb": 2048,

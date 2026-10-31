@@ -1,39 +1,46 @@
 package com.dipdev.aiautocaptioner.core.device
 
+import android.content.Context
+import com.dipdev.aiautocaptioner.R
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.mock
 
 class OnboardingModelTierMapperTest {
 
     private lateinit var mapper: OnboardingModelTierMapper
     private lateinit var mockModelRecommendationUseCase: ModelRecommendationUseCase
+    private lateinit var mockContext: Context
 
     private fun createFakeModel(id: String, sizeMb: Int): WhisperModel {
         return WhisperModel(
             id = id,
             displayName = "Model $id",
             description = "Desc $id",
-            sizeMb = sizeMb,
+            sizeBytes = sizeMb.toLong() * 1_000_000L,
             downloadUrl = "http://fake.url/$id",
+            minRamMb = sizeMb * 2,
+            accuracy = 3,
+            speed = 4,
             languages = listOf("en"),
-            isMultilingual = false,
-            minRamMb = sizeMb * 2
+            isMultilingual = false
         )
     }
 
     @Before
     fun setup() {
-        mockModelRecommendationUseCase = mock {
-            on { getRecommendation(any(), any()) } doReturn ModelRecommendation("model_2", 123)
-        }
-        mapper = OnboardingModelTierMapper(mockModelRecommendationUseCase)
+        mockModelRecommendationUseCase = mockk()
+        mockContext = mockk()
+        every { mockModelRecommendationUseCase.getRecommendation(any(), any()) } returns ModelRecommendation("model_2", 123)
+        every { mockContext.getString(R.string.model_tier_fast) } returns "Fast & Light"
+        every { mockContext.getString(R.string.model_tier_standard) } returns "Standard"
+        every { mockContext.getString(R.string.model_tier_pro) } returns "Pro Quality"
+        mapper = OnboardingModelTierMapper(mockModelRecommendationUseCase, mockContext)
     }
 
     @Test
@@ -109,7 +116,7 @@ class OnboardingModelTierMapperTest {
         assertEquals("model_1", tiers[0].model.id)
 
         assertEquals("Standard", tiers[1].tierName)
-        assertEquals("model_3", tiers[1].model.id)
+        assertEquals("model_2", tiers[1].model.id)
 
         assertEquals("Pro Quality", tiers[2].tierName)
         assertEquals("model_5", tiers[2].model.id)

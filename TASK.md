@@ -26,6 +26,13 @@
   - [x] Verified code quality via static code analysis.
 - [x] **Project Documentation**:
   - [x] Generated full technical specification in `PROJECT_DOCUMENTATION.md`.
+- [x] **Lightweight Hinglish Model Integration & Recommendation System**:
+  - [x] Integrate `hi.hinglish.swift` (~57 MB, Q5_1 quantized GGML build) into `whisper_models.json`.
+  - [x] Update `WhisperLanguages.kt` to decode Hinglish via `whisperCode = "en"` for direct Latin/Roman script generation.
+  - [x] Add explicit device capability recommendation in `DeviceCapabilityUseCase.kt` to prioritize `hi.hinglish.swift`.
+  - [x] Refactor `ModelRecommendationUseCase.kt` so explicit RAM-based matches take precedence over generic language models.
+  - [x] Add unit test suite in `ModelRecommendationUseCaseTest.kt` and fix outdated unit test files (`WhisperModelRegistryTest.kt`, `OnboardingModelTierMapperTest.kt`, `WhisperLanguagesTest.kt`).
+  - [x] Verified build and unit test suite passing (`./gradlew testDebugUnitTest`).
 
 ---
 

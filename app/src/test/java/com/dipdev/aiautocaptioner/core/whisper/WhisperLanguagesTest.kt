@@ -8,7 +8,7 @@ class WhisperLanguagesTest {
 
     @Test
     fun testWhisperCodeMapping() {
-        assertEquals("hi", WhisperLanguages.whisperCode("hinglish"))
+        assertEquals("en", WhisperLanguages.whisperCode("hinglish"))
         assertEquals("zh", WhisperLanguages.whisperCode("zh-TW"))
         assertEquals("en", WhisperLanguages.whisperCode("en"))
         assertEquals("es", WhisperLanguages.whisperCode("es"))

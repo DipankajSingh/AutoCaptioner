@@ -15,7 +15,7 @@ object WhisperLanguages {
         Language("auto", displayNameOverride = "Auto"),
         Language("en", aliases = listOf("American", "British")),
         Language("hi", aliases = listOf("Hindu", "Hindustani")),
-        Language("hinglish", whisperCode = "hi", displayNameOverride = "Hinglish"),
+        Language("hinglish", whisperCode = "en", displayNameOverride = "Hinglish"),
         Language("es", aliases = listOf("Castilian")),
         Language("fr"),
         Language("de"),

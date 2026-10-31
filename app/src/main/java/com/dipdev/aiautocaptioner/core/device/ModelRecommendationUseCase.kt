@@ -32,17 +32,18 @@ class ModelRecommendationUseCase @Inject constructor(
         val ramBasedId = ramRecommendation.modelId
 
         val isSpecificLanguage = language != "en" && language != "auto"
+        val exactRamMatch = compatibleModels.find { it.id == ramBasedId }
         val languageSpecificModel = if (isSpecificLanguage) {
             compatibleModels.firstOrNull { it.languages.contains(language) && !it.isMultilingual }
         } else null
 
         return when {
-            languageSpecificModel != null -> ModelRecommendation(
-                modelId = languageSpecificModel.id,
+            exactRamMatch != null -> ModelRecommendation(
+                modelId = exactRamMatch.id,
                 reasonResId = ramRecommendation.reasonResId
             )
-            compatibleModels.any { it.id == ramBasedId } -> ModelRecommendation(
-                modelId = ramBasedId,
+            languageSpecificModel != null -> ModelRecommendation(
+                modelId = languageSpecificModel.id,
                 reasonResId = ramRecommendation.reasonResId
             )
             else -> ModelRecommendation(

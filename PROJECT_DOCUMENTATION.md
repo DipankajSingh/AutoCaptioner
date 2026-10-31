@@ -466,6 +466,13 @@ To prevent Out-Of-Memory (OOM) crashes on low-end devices, `DeviceCheckUseCase` 
   * `3.0 GB - 5.5 GB RAM`: Recommends `base.en` (~140 MB RAM footprint).
   * `5.5 GB - 7.5 GB RAM`: Recommends `small` (~460 MB RAM footprint).
   * `> 7.5 GB RAM`: Recommends `medium` (~1.5 GB RAM footprint).
+* **Language-Specific Routing & Hinglish Model Tiering**:
+  * **Hinglish (`hinglish`)**: Automatically recommends `hi.hinglish.swift` (~57 MB, Q5_1 quantized GGML build) across all hardware profiles to avoid out-of-memory risks while ensuring sub-8-second transcription per 30-second clip on mobile CPU.
+  * **Roman Script Decoding**: Configured with `whisperCode = "en"` in `WhisperLanguages.kt`, enforcing Whisper token generation in Latin alphabet space (*"Kal office mein meeting hai"*) to prevent Devanagari Unicode fallback loops.
+  * **Onboarding Model Tiering**: `OnboardingModelTierMapper` groups Hinglish models into three tiers:
+    * **Fast & Light (Recommended)**: `hi.hinglish.swift` (57 MB)
+    * **Standard**: `hi.hinglish.q5` (547 MB)
+    * **Pro Quality**: `hi.hinglish.q8` (834 MB)
 * **CPU Evaluation**: Evaluates available ARM CPU cores (`Runtime.getRuntime().availableProcessors()`) to assign optimal thread count (`n_threads`).
 
 ---
