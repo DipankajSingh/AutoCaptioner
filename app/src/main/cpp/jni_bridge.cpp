@@ -2,14 +2,19 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <atomic>
 #include <android/log.h>
 #include "whisper.h"
-
-// Deleted sanitizeForJni since we now pass raw byte arrays instead of Strings.
 
 #define TAG "WhisperJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
+static std::atomic<bool> g_abort_flag{false};
+
+static bool android_whisper_abort_callback(void * /*user_data*/) {
+    return g_abort_flag.load();
+}
 
 // NOTE: The static g_ctx global has been removed.
 // The whisper_context pointer is now returned as a jlong (64-bit handle) by
@@ -198,6 +203,8 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
         return nullptr;
     }
 
+    g_abort_flag.store(false);
+
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads        = (int) n_threads;
     params.language         = lang;
@@ -207,10 +214,10 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     params.print_realtime   = false;
     params.print_timestamps = true;
     params.token_timestamps = true;
-    params.max_len          = 0;  // Disabled: we iterate tokens below for word-level output.
-                                  // Setting this to 1 caused whisper to wrap every segment to 1
-                                  // character, creating thousands of tiny segments and JNI crossings.
+    params.max_len          = 0;
     params.greedy.best_of   = 1;
+    params.abort_callback   = android_whisper_abort_callback;
+    params.abort_callback_user_data = nullptr;
 
     if (prompt != nullptr) {
         params.initial_prompt       = prompt;
@@ -378,6 +385,47 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_freeModel(
         whisper_free(ctx);
         LOGI("Model freed");
     }
+}
+
+// ---------------------------------------------------------------------------
+// getNativeTimings — returns [sample_ms, encode_ms, decode_ms, batchd_ms, prompt_ms]
+// ---------------------------------------------------------------------------
+JNIEXPORT jfloatArray JNICALL
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getNativeTimings(
+        JNIEnv * env, jobject, jlong handle) {
+    auto * ctx = reinterpret_cast<whisper_context *>(handle);
+    if (ctx == nullptr) return nullptr;
+
+    whisper_timings * t = whisper_get_timings(ctx);
+    if (t == nullptr) return nullptr;
+
+    jfloatArray jarr = env->NewFloatArray(5);
+    if (jarr == nullptr) return nullptr;
+
+    jfloat vals[5] = { t->sample_ms, t->encode_ms, t->decode_ms, t->batchd_ms, t->prompt_ms };
+    env->SetFloatArrayRegion(jarr, 0, 5, vals);
+    return jarr;
+}
+
+// ---------------------------------------------------------------------------
+// getSystemInfo — returns compiled native whisper CPU feature info
+// ---------------------------------------------------------------------------
+JNIEXPORT jstring JNICALL
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getSystemInfo(
+        JNIEnv * env, jobject) {
+    const char * sys_info = whisper_print_system_info();
+    if (sys_info == nullptr) return nullptr;
+    return env->NewStringUTF(sys_info);
+}
+
+// ---------------------------------------------------------------------------
+// cancelNativeTranscription — signals the abort_callback to terminate whisper_full
+// ---------------------------------------------------------------------------
+JNIEXPORT void JNICALL
+Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_cancelNativeTranscription(
+        JNIEnv *, jobject) {
+    g_abort_flag.store(true);
+    LOGI("Native transcription cancellation requested");
 }
 
 } // extern "C"

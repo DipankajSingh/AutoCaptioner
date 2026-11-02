@@ -81,6 +81,14 @@
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
+        <receiver
+            android:name=".core.benchmark.BenchmarkReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.dipdev.aiautocaptioner.RUN_BENCHMARK" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

@@ -22,7 +22,7 @@ class WhisperEngine(private val context: Context) {
         private const val TAG = "WhisperEngine"
 
         init {
-            System.loadLibrary("whisper-lib")
+            NativeLibLoader.loadWhisperLibrary()
         }
     }
 
@@ -39,6 +39,9 @@ class WhisperEngine(private val context: Context) {
     private external fun loadModel(modelPath: String): Long
     private external fun freeModel(handle: Long)
     private external fun getDetectedLanguage(handle: Long): String?
+    private external fun getNativeTimings(handle: Long): FloatArray?
+    private external fun getSystemInfo(): String?
+    private external fun cancelNativeTranscription()
     private external fun transcribeWithTimestamps(
         handle: Long,
         audioData: FloatArray,
@@ -131,6 +134,30 @@ class WhisperEngine(private val context: Context) {
         val confidence: Float
     )
 
+    data class WhisperNativeTimings(
+        val sampleMs: Float,
+        val encodeMs: Float,
+        val decodeMs: Float,
+        val batchdMs: Float,
+        val promptMs: Float
+    )
+
+    fun getTimings(): WhisperNativeTimings? {
+        val handle = nativeHandle
+        if (handle == 0L) return null
+        val raw = getNativeTimings(handle) ?: return null
+        if (raw.size < 5) return null
+        return WhisperNativeTimings(raw[0], raw[1], raw[2], raw[3], raw[4])
+    }
+
+    fun getCompiledSystemInfo(): String {
+        return getSystemInfo() ?: "unknown"
+    }
+
+    fun cancelTranscription() {
+        Log.i(TAG, "Requesting native transcription cancellation...")
+        cancelNativeTranscription()
+    }
 
     fun isReady(): Boolean = nativeHandle != 0L
 

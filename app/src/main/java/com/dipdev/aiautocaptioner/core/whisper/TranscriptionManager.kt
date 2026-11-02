@@ -4,9 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
+import android.os.SystemClock
 import com.dipdev.aiautocaptioner.BuildConfig
 import com.dipdev.aiautocaptioner.core.audio.AudioExtractionUseCase
 import com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase
+import com.dipdev.aiautocaptioner.core.diagnostics.CpuCapability
+import com.dipdev.aiautocaptioner.core.diagnostics.DiagnosticsRepository
+import com.dipdev.aiautocaptioner.core.diagnostics.TranscriptionRunRecord
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
 import com.dipdev.aiautocaptioner.data.db.entity.ProjectStatus
 import com.dipdev.aiautocaptioner.data.repository.CaptionRepository
@@ -43,7 +47,8 @@ class TranscriptionManager @Inject constructor(
     private val whisperEngine: WhisperEngine,
     private val crashReporter: CrashReporter,
     private val audioExtractionUseCase: AudioExtractionUseCase,
-    private val deviceCapabilityUseCase: DeviceCapabilityUseCase
+    private val deviceCapabilityUseCase: DeviceCapabilityUseCase,
+    private val diagnosticsRepository: DiagnosticsRepository
 ) {
     companion object {
         private const val TAG = "TranscriptionManager"
@@ -167,6 +172,8 @@ class TranscriptionManager @Inject constructor(
             return
         }
 
+        val totalRunStartMs = SystemClock.elapsedRealtime()
+
         _step.value = ProcessingStep.ExtractingAudio
         projectRepository.updateStatus(projectId, ProjectStatus.EXTRACTING_AUDIO)
         projectRepository.updateProject(project.copy(transcriptionLanguage = language, initialPrompt = initialPrompt))
@@ -181,9 +188,11 @@ class TranscriptionManager @Inject constructor(
             throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("No model downloaded. Please download a model first.")
         }
 
+        val modelLoadStart = SystemClock.elapsedRealtime()
         if (!whisperEngine.isReady()) {
             whisperEngine.initialize(activeModelFile)
         }
+        val modelLoadDurationMs = SystemClock.elapsedRealtime() - modelLoadStart
 
         logTranscriptionStarted(project.videoDurationMs, language, translateToEnglish, isRegenerating, initialPrompt, activeModel.id)
 
@@ -191,8 +200,11 @@ class TranscriptionManager @Inject constructor(
         _step.value = ProcessingStep.Transcribing(0f)
         projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
+        val extractionStart = SystemClock.elapsedRealtime()
         val pcmSamples = audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
+        val extractionDurationMs = SystemClock.elapsedRealtime() - extractionStart
 
+        val whisperStart = SystemClock.elapsedRealtime()
         val allWords = whisperEngine.transcribeWithWordTimestamps(
                 samples = pcmSamples,
                 language = language,
@@ -217,6 +229,7 @@ class TranscriptionManager @Inject constructor(
                     }
                 }
             )
+        val whisperWallDurationMs = SystemClock.elapsedRealtime() - whisperStart
 
         if (isCancelled) return
 
@@ -232,10 +245,12 @@ class TranscriptionManager @Inject constructor(
 
         _step.value = ProcessingStep.Saving
 
+        val saveStart = SystemClock.elapsedRealtime()
         val finalSegments = CaptionSegmenter.buildFinalSegments(allWords)
 
         captionRepository.saveTranscription(projectId, finalSegments)
         projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBED)
+        val saveDurationMs = SystemClock.elapsedRealtime() - saveStart
 
         val elapsedMs = System.currentTimeMillis() - transcriptionStartTimeMs
         logTranscriptionCompleted(
@@ -248,6 +263,36 @@ class TranscriptionManager @Inject constructor(
             wordCount = allWords.size,
             elapsedMs = elapsedMs
         )
+
+        val nativeTimings = whisperEngine.getTimings()
+        val runRecord = TranscriptionRunRecord(
+            appVersion = BuildConfig.VERSION_NAME,
+            modelId = activeModel.id,
+            languageCode = language,
+            translateToEnglish = translateToEnglish,
+            isRegenerating = isRegenerating,
+            clipDurationMs = project.videoDurationMs,
+            resampledSampleCount = pcmSamples.size.toLong(),
+            windowCount = kotlin.math.ceil(project.videoDurationMs / 30000.0).toInt(),
+            modelLoadDurationMs = modelLoadDurationMs,
+            extractionDurationMs = extractionDurationMs,
+            whisperWallDurationMs = whisperWallDurationMs,
+            saveDurationMs = saveDurationMs,
+            totalDurationMs = SystemClock.elapsedRealtime() - totalRunStartMs,
+            sampleMs = nativeTimings?.sampleMs ?: 0f,
+            encodeMs = nativeTimings?.encodeMs ?: 0f,
+            decodeMs = nativeTimings?.decodeMs ?: 0f,
+            wordCount = allWords.size,
+            batteryLevel = deviceCapabilityUseCase.getBatteryLevel(),
+            isCharging = deviceCapabilityUseCase.isCharging(),
+            outcome = "SUCCESS",
+            cpuVariant = if (CpuCapability.current.isArmv82Supported) "armv8.2-a" else "baseline",
+            cpuFeatures = CpuCapability.current.features.joinToString(","),
+            deviceManufacturer = CpuCapability.current.manufacturer,
+            deviceModel = CpuCapability.current.model,
+            sdkInt = CpuCapability.current.sdkInt
+        )
+        diagnosticsRepository.recordRun(runRecord)
 
         flushDripFeed()
         _step.value = ProcessingStep.Done
@@ -315,6 +360,7 @@ class TranscriptionManager @Inject constructor(
     fun cancel() {
         isCancelled = true
         _step.value = ProcessingStep.Cancelling
+        whisperEngine.cancelTranscription()
         activeJob?.cancel()
         activeJob = null
         managerScope.launch(Dispatchers.IO) {
