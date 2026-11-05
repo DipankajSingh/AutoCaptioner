@@ -1,13 +1,40 @@
 package com.dipdev.aiautocaptioner.ui.recorder
 
+import android.content.Context
+import com.dipdev.aiautocaptioner.data.repository.ProjectRepository
+import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import java.io.File
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CameraRecorderViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private val context: Context = mockk(relaxed = true)
+    private val projectRepository: ProjectRepository = mockk(relaxed = true)
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     @Test
     fun initialState_hasDefaultValues() {
@@ -56,19 +83,73 @@ class CameraRecorderViewModelTest {
 
     @Test
     fun onRecordingStopped_withValidFile_updatesState() {
+        val viewModel = CameraRecorderViewModel(context, projectRepository)
         val tempFile = File.createTempFile("test_video", ".mp4")
         tempFile.writeText("fake video data")
 
-        val state = CameraRecorderState(
-            isRecording = false,
-            isPaused = false,
-            reviewVideoFile = tempFile,
-            errorMessage = null
-        )
+        viewModel.onRecordingStopped(tempFile)
 
+        val state = viewModel.uiState.value
         assertEquals(tempFile, state.reviewVideoFile)
         assertNull(state.errorMessage)
 
         tempFile.delete()
     }
+
+    @Test
+    fun pausedTime_doesNotCountTowardDuration() = runTest(testDispatcher) {
+        val viewModel = CameraRecorderViewModel(context, projectRepository)
+        var fakeTime = 1000L
+        viewModel.clock = { fakeTime }
+
+        viewModel.onRecordingStarted()
+        testDispatcher.scheduler.advanceTimeBy(200L)
+
+        // Advance 5 seconds while recording
+        fakeTime += 5000L
+        testDispatcher.scheduler.advanceTimeBy(200L)
+        assertEquals(5000L, viewModel.uiState.value.recordedDurationMs)
+
+        // Pause and advance 10 seconds
+        viewModel.onRecordingPaused()
+        fakeTime += 10000L
+        testDispatcher.scheduler.advanceTimeBy(200L)
+        assertEquals(5000L, viewModel.uiState.value.recordedDurationMs)
+
+        // Resume and advance 1 second
+        viewModel.onRecordingResumed()
+        fakeTime += 1000L
+        testDispatcher.scheduler.advanceTimeBy(200L)
+
+        // Expect total duration to be 6 seconds (5s + 1s), NOT 16 seconds
+        assertEquals(6000L, viewModel.uiState.value.recordedDurationMs)
+
+        viewModel.onRecordingStopping()
+        testDispatcher.scheduler.advanceTimeBy(200L)
+    }
+
+    @Test
+    fun onRecordingFailed_resetsStateAndSetsErrorMessage() {
+        val viewModel = CameraRecorderViewModel(context, projectRepository)
+        viewModel.onRecordingStarted()
+
+        viewModel.onRecordingFailed(1)
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isRecording)
+        assertFalse(state.isPaused)
+        assertNull(state.reviewVideoFile)
+        assertNotNull(state.errorMessage)
+        assertTrue(state.errorMessage!!.contains("code 1"))
+    }
+
+    @Test
+    fun onCameraError_setsErrorMessage() {
+        val viewModel = CameraRecorderViewModel(context, projectRepository)
+        viewModel.onCameraError(RuntimeException("Camera bound failed"))
+
+        val state = viewModel.uiState.value
+        assertEquals("Camera unavailable. Close other camera apps and try again.", state.errorMessage)
+    }
 }
+

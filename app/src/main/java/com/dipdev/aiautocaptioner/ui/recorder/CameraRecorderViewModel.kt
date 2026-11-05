@@ -2,6 +2,7 @@ package com.dipdev.aiautocaptioner.ui.recorder
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.data.db.entity.CreationMode
@@ -51,6 +52,9 @@ class CameraRecorderViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var tempOutputFile: File? = null
 
+    /** Clock source, overridable in unit tests. */
+    var clock: () -> Long = { SystemClock.elapsedRealtime() }
+
     fun createTempOutputFile(): File {
         val file = File(context.cacheDir, "recorded_clip_${System.currentTimeMillis()}.mp4")
         tempOutputFile = file
@@ -77,7 +81,11 @@ class CameraRecorderViewModel @Inject constructor(
         _uiState.update { it.copy(isPaused = false) }
     }
 
-    fun onRecordingStopped(file: File? = tempOutputFile) {
+    fun onRecordingStopping() {
+        stopTimer()
+    }
+
+    fun onRecordingStopped(file: File?) {
         stopTimer()
         val validFile = if (file != null && file.exists() && file.length() > 0) file else null
         _uiState.update {
@@ -88,6 +96,30 @@ class CameraRecorderViewModel @Inject constructor(
                 errorMessage = if (validFile == null) "Failed to record video file." else null
             )
         }
+    }
+
+    fun onRecordingFailed(errorCode: Int) {
+        stopTimer()
+        tempOutputFile?.delete()
+        tempOutputFile = null
+        _uiState.update {
+            it.copy(
+                isRecording = false,
+                isPaused = false,
+                reviewVideoFile = null,
+                errorMessage = "Recording failed (code $errorCode). Please try again."
+            )
+        }
+    }
+
+    fun onCameraError(e: Throwable) {
+        _uiState.update {
+            it.copy(errorMessage = "Camera unavailable. Close other camera apps and try again.")
+        }
+    }
+
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun toggleCameraFacing() {
@@ -129,24 +161,19 @@ class CameraRecorderViewModel @Inject constructor(
     }
 
     private fun startTimer() {
-        timerJob?.cancel()
+        stopTimer()
         timerJob = viewModelScope.launch {
-            val startTime = System.currentTimeMillis() - _uiState.value.recordedDurationMs
+            var last = clock()
+            var accumulated = _uiState.value.recordedDurationMs
             while (_uiState.value.isRecording) {
+                val now = clock()
                 if (!_uiState.value.isPaused) {
-                    val currentDuration = System.currentTimeMillis() - startTime
-                    if (currentDuration >= MAX_RECORDING_DURATION_MS) {
-                        _uiState.update {
-                            it.copy(recordedDurationMs = MAX_RECORDING_DURATION_MS)
-                        }
-                        // Stop timer and let UI finalize CameraX recording
-                        break
-                    } else {
-                        _uiState.update {
-                            it.copy(recordedDurationMs = currentDuration)
-                        }
-                    }
+                    accumulated += (now - last)
                 }
+                last = now
+                val capped = accumulated.coerceAtMost(MAX_RECORDING_DURATION_MS)
+                _uiState.update { it.copy(recordedDurationMs = capped) }
+                if (capped >= MAX_RECORDING_DURATION_MS) break
                 delay(100L)
             }
         }
@@ -163,3 +190,4 @@ class CameraRecorderViewModel @Inject constructor(
         tempOutputFile?.delete()
     }
 }
+

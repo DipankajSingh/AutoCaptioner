@@ -33,6 +33,12 @@
   - [x] Refactor `ModelRecommendationUseCase.kt` so explicit RAM-based matches take precedence over generic language models.
   - [x] Add unit test suite in `ModelRecommendationUseCaseTest.kt` and fix outdated unit test files (`WhisperModelRegistryTest.kt`, `OnboardingModelTierMapperTest.kt`, `WhisperLanguagesTest.kt`).
   - [x] Verified build and unit test suite passing (`./gradlew testDebugUnitTest`).
+- [x] **Recorder Bug Fixes (R1-R5)**:
+  - [x] R1 - Exclude paused time from 3-minute cap calculation using time accumulator.
+  - [x] R2 - Restrict file publishing to `Finalize` event only; added `onRecordingStopping()`.
+  - [x] R3 - Handle CameraX `Finalize` errors and display error messages in UI.
+  - [x] R4 - Log and surface camera lifecycle bind errors to user.
+  - [x] R5 - Cleaned up duplicate duration cap logic and verified unit test suite.
 
 ---
 

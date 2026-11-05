@@ -146,9 +146,9 @@ fun SmartRecorderScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
                 if (uiState.isRecording) {
+                    viewModel.onRecordingStopping()
                     activeRecording?.stop()
                     activeRecording = null
-                    viewModel.onRecordingStopped()
                 }
             }
         }
@@ -156,6 +156,7 @@ fun SmartRecorderScreen(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             if (uiState.isRecording) {
+                viewModel.onRecordingStopping()
                 activeRecording?.stop()
                 activeRecording = null
             }
@@ -165,9 +166,9 @@ fun SmartRecorderScreen(
     // Auto-stop recording when 3-minute cap is reached
     LaunchedEffect(uiState.recordedDurationMs) {
         if (uiState.recordedDurationMs >= 180_000L && uiState.isRecording) {
+            viewModel.onRecordingStopping()
             activeRecording?.stop()
             activeRecording = null
-            viewModel.onRecordingStopped()
         }
     }
 
@@ -221,7 +222,11 @@ fun SmartRecorderScreen(
                             }
                             is VideoRecordEvent.Finalize -> {
                                 activeRecording = null
-                                viewModel.onRecordingStopped(file)
+                                if (event.hasError() && (!file.exists() || file.length() == 0L)) {
+                                    viewModel.onRecordingFailed(event.error)
+                                } else {
+                                    viewModel.onRecordingStopped(file)
+                                }
                             }
                         }
                     }
@@ -233,6 +238,7 @@ fun SmartRecorderScreen(
                     activeRecording?.resume()
                 },
                 onStopRecording = {
+                    viewModel.onRecordingStopping()
                     activeRecording?.stop()
                     activeRecording = null
                 },
@@ -243,8 +249,51 @@ fun SmartRecorderScreen(
                     viewModel.setZoomRatio(zoom)
                     activeCamera?.cameraControl?.setZoomRatio(zoom)
                 },
+                onCameraError = viewModel::onCameraError,
                 onNavigateBack = onNavigateBack
             )
+        }
+
+        // Display Error Message Banner if error exists
+        AnimatedVisibility(
+            visible = uiState.errorMessage != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 120.dp, start = 24.dp, end = 24.dp)
+        ) {
+            uiState.errorMessage?.let { errorMsg ->
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = AccentRose.copy(alpha = 0.95f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = errorMsg,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { viewModel.clearErrorMessage() },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Dismiss",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -260,6 +309,7 @@ private fun CameraPreviewAndControls(
     onStopRecording: () -> Unit,
     onToggleCamera: () -> Unit,
     onZoomChanged: (Float) -> Unit,
+    onCameraError: (Throwable) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     var videoCapture: VideoCapture<Recorder>? by remember { mutableStateOf(null) }
@@ -317,7 +367,8 @@ private fun CameraPreviewAndControls(
             )
             onCameraBound(camera)
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("SmartRecorder", "Camera bind failed", e)
+            onCameraError(e)
         }
     }
 
