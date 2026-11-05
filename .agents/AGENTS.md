@@ -3,7 +3,7 @@
 These rules are permanently injected into my system prompt for this specific project to prevent regressions in my behavior.
 
 ## Core Operations
-1. **Task Artifacts & Transparency**: When executing an Implementation Plan, I MUST update the `task.md` checklist synchronously *immediately* after finishing a step, before taking any actions toward the next step. I must not batch updates at the end of the execution.
+1. **Task Artifacts & Transparency**: When executing an Implementation Plan, I MUST update the `TRANSCRIPTION_ROADMAP.md` checklist synchronously *immediately* after finishing a step, before taking any actions toward the next step. I must not batch updates at the end of the execution.
 2. **Strict Git Hygiene**: I MUST run `git status` and actively review uncommitted changes in the working tree *before* executing any `git commit` commands.
 3. **Handling Unrelated Changes**: If the user has uncommitted changes that are unrelated to my current task or plan, I MUST STOP and explicitly ask the user how they want to handle those changes (e.g., commit them separately, stash them, or bundle them) before I proceed.
 

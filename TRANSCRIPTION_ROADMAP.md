@@ -667,4 +667,4 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 ---
 
 *Last updated: November 2, 2026 — source: AutoCaptioner Transcription Investigation PDF (33 pages, Oct 31 2026)*
-*Canonical location: `/home/dipankaj/AndroidStudioProjects/AutoCaptioner/task.md`*
+*Canonical location: `/home/dipankaj/AndroidStudioProjects/AutoCaptioner/TRANSCRIPTION_ROADMAP.md`*
