@@ -163,10 +163,10 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | BUG-02 | No guard for English-only model paired with non-English language | Model selection logic | High — wrong/empty transcription | Part 6 D6 |
 | BUG-03 | RAM tier thresholds don't match device reality: RMX3782 at 5,749 MB gets `base`, not `small` as the code comment implies a "6 GB" phone would | Recommender logic | Medium — suboptimal model for device | Part 6 |
 | BUG-04 | Realme 3 at 2,797 MB gets `tiny.en` (below 3 GB), but PDF assumed it gets `base.en` | Recommender logic | Low — mismatched expectations | Part 6 |
-| BUG-05 | No abort callback in JNI — pressing Cancel does not stop native decoding | `jni_bridge.cpp` | High — app stuck until whisper_full returns | Part 5 + 7 |
+| BUG-05 | No abort callback in JNI — pressing Cancel does not stop native decoding | `jni_bridge.cpp` | High — app stuck until whisper_full returns | ✅ Resolved (Part 7 — JNI abort_callback) |
 | BUG-06 | Model reloads on every run (initialized + released in finally block) — load time not measured | `TranscriptionManager.kt` | Medium — wasted time per run | Part 5 E5.5 |
-| BUG-07 | `whisper_print_timings` never called; no fallback counter exists | `jni_bridge.cpp` | Medium — can't measure or debug slowdowns | Part 1 T3 |
-| BUG-08 | whisper.cpp version string in CMake says `1.7.4` but actual code is between v1.8.4–v1.8.5 | `CMakeLists.txt` | Low — stale metadata | Part 3 S6 |
+| BUG-07 | `whisper_print_timings` never called; no fallback counter exists | `jni_bridge.cpp` | Medium — can't measure or debug slowdowns | ✅ Resolved (Part 1 T3 — JNI getNativeTimings) |
+| BUG-08 | whisper.cpp version string in CMake says `1.7.4` but actual code is between v1.8.4–v1.8.5 | `CMakeLists.txt` | Low — stale metadata | ✅ Resolved (Part 3 S6 — CMake v1.9.5) |
 | BUG-09 | Resampler is plain linear interpolation — no anti-aliasing low-pass filter | `AudioExtractionUseCase.kt` | Medium — potential aliasing artifacts | Part 4 E4.2 |
 | BUG-10 | `PROJECT_DOCUMENTATION.md` is stale (wrong thread rule, library names, JNI names, medium tier, benchmark claims) | Docs | Low — misleads contributors | Part 3 S6 / Part 8 |
 
@@ -366,7 +366,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Do NOT edit upstream files; use patch files in `cpp/patches` if local changes are unavoidable
   - Delete old copied ggml/whisper files only after new build passes gates
 
-- [ ] **S2** — CMake setup (time-boxed spike first):
+- [x] **S2** — CMake setup (time-boxed spike first):
   - `GGML_NATIVE=OFF`; `GGML_CPU_ARM_ARCH` empty for baseline, `armv8.2-a+fp16+dotprod` for ARMv8.2 variant
   - `BUILD_SHARED_LIBS=OFF`; examples/tests/server OFF
   - Benchmark `GGML_OPENMP` and `GGML_LLAMAFILE` both ways
@@ -374,7 +374,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Keep `-O3 -DNDEBUG` explicit, keep the 16 KB page-size linker flag
   - Set version and commit defines from `git describe` instead of hand-written strings
 
-- [ ] **S3** — JNI rewrite (same Kotlin contract):
+- [x] **S3** — JNI rewrite (same Kotlin contract):
   - Keep `loadModel`, `freeModel`, `getDetectedLanguage`, `transcribeWithTimestamps` with current signatures
   - Read word times with VAD-aware `whisper_full_get_token_t0` and `t1` instead of raw token data
   - Keep current params: greedy, best_of 1, token_timestamps on, max_len 0, initial prompt carried, flash attention on
@@ -382,7 +382,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Accept VAD model path and flag (leave VAD off in this part)
   - Set `params.abort_callback` tied to an atomic cancel flag (Part 7 uses this)
 
-- [ ] **S4** — Kotlin library loader (`NativeLibLoader`):
+- [x] **S4** — Kotlin library loader (`NativeLibLoader`):
   - Read `/proc/cpuinfo`, take Features common to all cores
   - Choose ARMv8.2 library only if `asimddp` AND (`fphp` OR `asimdhp`) present on every core
   - Wrap in try/catch; offer debug override; fall back to baseline on load failure
@@ -398,7 +398,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Add `THIRD_PARTY.md`
   - Remove stale defines
 
-- [ ] **S7** — 16 KB alignment:
+- [x] **S7** — 16 KB alignment:
   - Verify final bundle with Google's 16 KB page-size tooling for both libraries
 
 ### CPU Variant Decision Gate
