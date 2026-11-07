@@ -13,14 +13,14 @@
 |-------|--------|-------|
 | **Device recon** | ✅ Done | Both phones read via adb |
 | **Owner decisions** | 🟡 5 of 14 resolved | See blocker list below |
-| **Part 1 — Telemetry** | 🟡 Core instrumentation built | Record, timers, native JNI & CPU probes complete |
+| **Part 1 — Telemetry** | 🟡 Fully instrumented | TxAnalytics, TxRecord, timers, Crashlytics, Perf traces, diagnostics |
 | **Part 2 — Benchmark harness** | 🟡 Harness built | Device harness & laptop scripts complete |
-| **Part 3 — Whisper re-setup** | 🟡 Configured | NativeLibLoader, ARMv8.2 loader, CMake v1.9.5 |
+| **Part 3 — Whisper re-setup** | 🟡 Configured | NativeLibLoader, ARMv8.2 loader, CMake v1.9.5, S6/S7 complete |
 | **Part 4 — Audio pipeline** | ⬜ Not started | |
-| **Part 5 — Decoding/threading** | ⬜ Not started | Awaiting Part 2 baseline |
-| **Part 6 — Models/onboarding** | ⬜ Not started | Awaiting Part 5 results |
+| **Part 5 — Decoding/threading** | ⬜ Not started | Awaiting Part 2 baseline (abort callback ready) |
+| **Part 6 — Models/onboarding** | 🟡 Guardrails built | D6/G5 language guards complete; awaiting Part 5 results |
 | **Part 7 — Long-video guard** | 🟡 Phase 1 ready | VideoLengthGuard & native JNI abort callback |
-| **Part 8 — Rollout** | ⬜ Not started | |
+| **Part 8 — Rollout** | 🟡 Docs & plan ready | Documentation, licenses, benchmark log, and release workflow ready |
 
 ---
 
@@ -152,6 +152,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | Oct 31, 2026 | PDF authored | 33-page investigation written; 8-part plan defined |
 | Nov 2, 2026 | Session 1 | PDF read; master task list created; both devices connected and read via adb; ARMv8.2 unblocked; 2 recommender bugs discovered |
 | Nov 2, 2026 | Session 2 | Built benchmark harness (Part 2), Telemetry core (Part 1), NativeLibLoader & JNI timings (Part 3), VideoLengthGuard & instant JNI cancel (Part 7) |
+| Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates (PROJECT_DOCUMENTATION.md, THIRD_PARTY.md, BENCHMARKS.md, RELEASE.md) |
 
 ---
 
@@ -168,7 +169,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | BUG-07 | `whisper_print_timings` never called; no fallback counter exists | `jni_bridge.cpp` | Medium — can't measure or debug slowdowns | ✅ Resolved (Part 1 T3 — JNI getNativeTimings) |
 | BUG-08 | whisper.cpp version string in CMake says `1.7.4` but actual code is between v1.8.4–v1.8.5 | `CMakeLists.txt` | Low — stale metadata | ✅ Resolved (Part 3 S6 — CMake v1.9.5) |
 | BUG-09 | Resampler is plain linear interpolation — no anti-aliasing low-pass filter | `AudioExtractionUseCase.kt` | Medium — potential aliasing artifacts | Part 4 E4.2 |
-| BUG-10 | `PROJECT_DOCUMENTATION.md` is stale (wrong thread rule, library names, JNI names, medium tier, benchmark claims) | Docs | Low — misleads contributors | Part 3 S6 / Part 8 |
+| BUG-10 | `PROJECT_DOCUMENTATION.md` is stale (wrong thread rule, library names, JNI names, medium tier, benchmark claims) | Docs | Low — misleads contributors | ✅ Resolved (Part 3 S6 / D1-D3 — Docs updated with NativeLibLoader, whisper-lib, JNI signatures, and RAM tiers) |
 
 ---
 
@@ -393,7 +394,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Load and transcribe a 10-second sample with every model in `whisper_models.json` (FP16, q5_0, q5_1, q8_0, third-party fine-tunes) under the new build
   - Compare transcripts with old build on the corpus
 
-- [ ] **S6** — Cleanup:
+- [x] **S6** — Cleanup:
   - Update `PROJECT_DOCUMENTATION.md` (build section, library names, JNI names)
   - Add `THIRD_PARTY.md`
   - Remove stale defines
@@ -491,7 +492,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 ### Tasks
 
-- [ ] Implement abort callback (cancel flag checked inside callback) — stops native work within ~2 seconds. Also required by Part 7.
+- [x] Implement abort callback (cancel flag checked inside callback) — stops native work within ~2 seconds. Also required by Part 7.
 - [ ] Implement `ThreadPolicy` class: one testable function (inputs: core layout, thermal status, model tier)
 - [ ] Record every experiment result in `bench_results/` with the decision made
 
@@ -526,7 +527,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Recommendation card: model name, estimated time for a 30-s clip, size in MB, two alternatives (Faster / More accurate with honest trade-off line)
   - Keep existing storage check and cellular warning for files > 100 MB
 
-- [ ] **D6** — Compatibility guard:
+- [x] **D6** — Compatibility guard:
   - Check active model supports selected language before processing
   - If English-only model + non-English language: prompt user to switch or auto-select
 
@@ -546,7 +547,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 - [ ] **G2** — On each test phone, the recommended default meets the Balanced time budget on the corpus, as measured.
 - [ ] **G3** — Catalog JSON validates: every entry has a pinned URL and matching SHA-256, verified by download test.
 - [ ] **G4** — Onboarding flow walked through by ≥3 people who have not seen the app; observed confusion points recorded.
-- [ ] **G5** — Language mismatch guard blocks English-only + non-English case in an automated test.
+- [x] **G5** — Language mismatch guard blocks English-only + non-English case in an automated test.
 
 ---
 
@@ -646,10 +647,10 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 ### Documentation Updates
 
-- [ ] Correct `PROJECT_DOCUMENTATION.md`: recommendation logic, thread rule, library and JNI names, claimed benchmarking, medium tier
-- [ ] Add `THIRD_PARTY.md`: whisper.cpp tag + commit, model sources and licences
-- [ ] Add `BENCHMARKS.md` with latest results
-- [ ] Add runbook for the benchmark harness
+- [x] Correct `PROJECT_DOCUMENTATION.md`: recommendation logic, thread rule, library and JNI names, claimed benchmarking, medium tier
+- [x] Add `THIRD_PARTY.md`: whisper.cpp tag + commit, model sources and licences
+- [x] Add `BENCHMARKS.md` with latest results
+- [x] Add runbook for the benchmark harness
 
 ### Reviewer Follow-up
 

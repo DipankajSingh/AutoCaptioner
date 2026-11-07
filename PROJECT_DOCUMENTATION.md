@@ -48,22 +48,35 @@ AutoCaptioner is an offline-first, on-device video captioning studio built with 
 ## 2. Native C++ & JNI Layer (`cpp/` & `core/whisper`)
 
 ### 2.1 Native C++ Build Configuration (`CMakeLists.txt`)
-The C++ core compiles GGML and Whisper.cpp libraries into a shared native library (`libautocaptioner_jni.so`) targeting `arm64-v8a` with ARM NEON SIMD vectorization.
+The C++ core compiles GGML and Whisper.cpp (pinned to `v1.9.5`) into shared native libraries (`libwhisper-lib.so` and `libwhisper-lib-v82.so`) targeting `arm64-v8a` with 16 KB page-size alignment (`-Wl,-z,max-page-size=16384`) and ARM SIMD/dotprod vectorization. Runtime variant selection and fallback are managed dynamically by `NativeLibLoader.kt`.
 
 ### 2.2 JNI Bridge Interface (`jni_bridge.cpp`)
-The JNI bridge exposes C functions matching Kotlin native declarations:
+The JNI bridge exposes C functions matching Kotlin native declarations in `WhisperEngine.kt`:
 
 ```cpp
-// Native Method Signatures
-JNIEXPORT jlong JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeInit(JNIEnv* env, jobject thiz, jstring modelPath);
-JNIEXPORT void JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeFree(JNIEnv* env, jobject thiz, jlong contextPtr);
-JNIEXPORT jint JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeFullTranscribe(JNIEnv* env, jobject thiz, jlong contextPtr, jfloatArray audioSamples, jint sampleCount, jint threadCount, jstring language);
-JNIEXPORT jint JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeGetSegmentCount(JNIEnv* env, jobject thiz, jlong contextPtr);
-JNIEXPORT jstring JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeGetSegmentText(JNIEnv* env, jobject thiz, jlong contextPtr, jint segmentIndex);
-JNIEXPORT jlong JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeGetSegmentStart(JNIEnv* env, jobject thiz, jlong contextPtr, jint segmentIndex);
-JNIEXPORT jlong JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeGetSegmentEnd(JNIEnv* env, jobject thiz, jlong contextPtr, jint segmentIndex);
-JNIEXPORT jint JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeGetTokenCount(JNIEnv* env, jobject thiz, jlong contextPtr, jint segmentIndex);
-JNIEXPORT jobject JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_nativeGetTokenData(JNIEnv* env, jobject thiz, jlong contextPtr, jint segmentIndex, jint tokenIndex);
+// Native Method Signatures in jni_bridge.cpp
+JNIEXPORT jlong JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
+        JNIEnv * env, jobject, jstring model_path_str);
+
+JNIEXPORT jbyteArray JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str,
+        jboolean translate_to_english, jint n_threads, jstring initial_prompt,
+        jobject listener, jobject segmentListener);
+
+JNIEXPORT jstring JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getDetectedLanguage(
+        JNIEnv * env, jobject, jlong handle);
+
+JNIEXPORT void JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_freeModel(
+        JNIEnv *, jobject, jlong handle);
+
+JNIEXPORT jfloatArray JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getNativeTimings(
+        JNIEnv * env, jobject, jlong handle);
+
+JNIEXPORT jstring JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_getSystemInfo(
+        JNIEnv * env, jobject);
+
+JNIEXPORT void JNICALL Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_cancelNativeTranscription(
+        JNIEnv *, jobject);
 ```
 
 ### 2.3 Execution Parameters
