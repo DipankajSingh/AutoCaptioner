@@ -594,4 +594,16 @@
     <string name="recorder_torch">Toggle Flash</string>
     <string name="recorder_error_generic">Something went wrong. Please try again.</string>
     <string name="recorder_error_no_camera">No camera found on this device.</string>
+
+    <!-- Long-Video Guard -->
+    <string name="video_guard_dialog_title">Long Video Notice</string>
+    <string name="video_guard_dialog_title_strong">Extended Video Notice</string>
+    <string name="video_guard_video_length">Video Duration: %s</string>
+    <string name="video_guard_estimated_time">Estimated Time: ~%s</string>
+    <string name="video_guard_short_form_note">AutoCaptioner is optimized for short-form content. Transcribing this video will take notable battery, memory, and processing time.</string>
+    <string name="video_guard_strong_note">This video exceeds 30 minutes. Processing on-device may consume significant battery, heat the phone, and take a long time. We strongly recommend trimming the clip first or switching to a faster model.</string>
+    <string name="video_guard_continue">Continue Anyway</string>
+    <string name="video_guard_choose_faster">Choose a Faster Model</string>
+    <string name="video_guard_trim_first">Trim First in Editor</string>
+    <string name="video_guard_cancel">Cancel</string>
 </resources>

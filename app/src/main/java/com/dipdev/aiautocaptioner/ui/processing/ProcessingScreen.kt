@@ -55,6 +55,7 @@ import com.dipdev.aiautocaptioner.ui.components.GradientPrimaryButton
 import com.dipdev.aiautocaptioner.ui.processing.components.CancelProcessDialog
 import com.dipdev.aiautocaptioner.ui.processing.components.CancelledView
 import com.dipdev.aiautocaptioner.ui.processing.components.ErrorView
+import com.dipdev.aiautocaptioner.ui.processing.components.LongVideoWarningDialog
 import com.dipdev.aiautocaptioner.ui.processing.components.ModelPickerCard
 import com.dipdev.aiautocaptioner.ui.processing.components.SafetyCheckDialogs
 import androidx.compose.ui.graphics.Color
@@ -113,9 +114,11 @@ fun ProcessingScreen(
 
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = isProcessing || uiState.isQuickImport) {
+    BackHandler(enabled = isProcessing || uiState.isQuickImport || uiState.longVideoWarning != null) {
         if (isProcessing) {
             showCancelDialog = true
+        } else if (uiState.longVideoWarning != null) {
+            viewModel.setEvent(ProcessingUiEvent.DismissLongVideoWarning(proceed = false))
         } else {
             viewModel.setEvent(ProcessingUiEvent.CancelAndCleanup)
         }
@@ -696,4 +699,24 @@ fun ProcessingScreen(
         onDismiss = { viewModel.setEvent(ProcessingUiEvent.ResetSafetyCheck) },
         onProceed = { modelId -> viewModel.setEvent(ProcessingUiEvent.ConfirmCellularDownload(modelId)) }
     )
+
+    val longVideoWarning = uiState.longVideoWarning
+    if (longVideoWarning != null) {
+        LongVideoWarningDialog(
+            guardResult = longVideoWarning.guardResult,
+            videoDurationMs = longVideoWarning.durationMs,
+            onContinue = {
+                viewModel.setEvent(ProcessingUiEvent.DismissLongVideoWarning(proceed = true))
+            },
+            onChooseFasterModel = {
+                viewModel.setEvent(ProcessingUiEvent.ChooseFasterModelFromWarning)
+            },
+            onTrimFirst = {
+                viewModel.setEvent(ProcessingUiEvent.TrimFirstFromWarning)
+            },
+            onCancel = {
+                viewModel.setEvent(ProcessingUiEvent.DismissLongVideoWarning(proceed = false))
+            }
+        )
+    }
 }

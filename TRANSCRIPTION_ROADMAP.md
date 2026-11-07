@@ -152,7 +152,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | Oct 31, 2026 | PDF authored | 33-page investigation written; 8-part plan defined |
 | Nov 2, 2026 | Session 1 | PDF read; master task list created; both devices connected and read via adb; ARMv8.2 unblocked; 2 recommender bugs discovered |
 | Nov 2, 2026 | Session 2 | Built benchmark harness (Part 2), Telemetry core (Part 1), NativeLibLoader & JNI timings (Part 3), VideoLengthGuard & instant JNI cancel (Part 7) |
-| Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates (PROJECT_DOCUMENTATION.md, THIRD_PARTY.md, BENCHMARKS.md, RELEASE.md) |
+| Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates, Part 7 LongVideoWarning dialog wired with Continue/Faster Model/Trim/Cancel actions and unit tests |
 
 ---
 
@@ -562,7 +562,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Outputs: warn level (NONE / WARN / STRONG_WARN) + time estimate
   - Unit tests for 10-min and 30-min boundaries
 
-- [ ] Wire the warning dialog into every video entry point (gallery picker, share intent, all import paths):
+- [x] Wire the warning dialog into every video entry point (gallery picker, share intent, all import paths):
   - Show for any video > 10 minutes, before processing starts
   - Content: video length, estimated time on this phone, "app is built for short videos", choices: Continue / Choose a faster model / Trim first / Cancel
   - Add strings to `strings.xml` for each supported UI language

@@ -66,6 +66,11 @@ sealed class ModelSafetyCheck {
     data object Passed : ModelSafetyCheck()
 }
 
+data class LongVideoWarningState(
+    val guardResult: com.dipdev.aiautocaptioner.core.video.VideoGuardResult,
+    val durationMs: Long
+)
+
 data class ProcessingUiState(
     val step: ProcessingStep = ProcessingStep.Idle,
     val selectedLanguage: String = "en",
@@ -78,7 +83,8 @@ data class ProcessingUiState(
     val activeModel: WhisperModel? = null,
     val availableModels: List<WhisperModel> = emptyList(),
     val detectedLanguage: String? = null,
-    val isQuickImport: Boolean = false
+    val isQuickImport: Boolean = false,
+    val longVideoWarning: LongVideoWarningState? = null
 ) : UiState
 
 sealed class ProcessingUiEvent : UiEvent {
@@ -108,6 +114,9 @@ sealed class ProcessingUiEvent : UiEvent {
     ) : ProcessingUiEvent()
     data class SetInitialPrompt(val prompt: String) : ProcessingUiEvent()
     data object ResetToIdle : ProcessingUiEvent()
+    data class DismissLongVideoWarning(val proceed: Boolean) : ProcessingUiEvent()
+    data object ChooseFasterModelFromWarning : ProcessingUiEvent()
+    data object TrimFirstFromWarning : ProcessingUiEvent()
 }
 
 sealed class ProcessingUiEffect : UiEffect {
@@ -124,8 +133,12 @@ class ProcessingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val deviceCapabilityUseCase: com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase,
     private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase,
-    private val transcriptionManager: com.dipdev.aiautocaptioner.core.whisper.TranscriptionManager
+    private val transcriptionManager: com.dipdev.aiautocaptioner.core.whisper.TranscriptionManager,
+    private val videoLengthGuard: com.dipdev.aiautocaptioner.core.video.VideoLengthGuard
 ) : BaseViewModel<ProcessingUiState, ProcessingUiEvent, ProcessingUiEffect>(ProcessingUiState()) {
+
+    private var hasAcknowledgedLongVideoWarning = false
+    private var currentVideoDurationMs: Long = 0L
 
 
 
@@ -211,10 +224,41 @@ class ProcessingViewModel @Inject constructor(
                 setState { copy(initialPrompt = event.prompt) }
             }
             is ProcessingUiEvent.ResetToIdle -> resetToIdle()
+            is ProcessingUiEvent.DismissLongVideoWarning -> {
+                if (event.proceed) {
+                    hasAcknowledgedLongVideoWarning = true
+                    setState { copy(longVideoWarning = null) }
+                    val projectId = pendingProjectId
+                    if (projectId != null) {
+                        startProcessing(projectId)
+                    }
+                } else {
+                    setState { copy(longVideoWarning = null) }
+                    cancelAndCleanup()
+                }
+            }
+            is ProcessingUiEvent.ChooseFasterModelFromWarning -> {
+                hasAcknowledgedLongVideoWarning = true
+                setState { copy(longVideoWarning = null) }
+                showModelPicker()
+            }
+            is ProcessingUiEvent.TrimFirstFromWarning -> {
+                setState { copy(longVideoWarning = null) }
+                setEffect(ProcessingUiEffect.NavigateToVideoEditor)
+            }
         }
     }
 
-
+    private fun shouldWarnLongVideo(durationMs: Long, modelId: String): LongVideoWarningState? {
+        if (hasAcknowledgedLongVideoWarning) return null
+        val totalRamMb = deviceCapabilityUseCase.getDeviceInfo().totalRamMb
+        val guardResult = videoLengthGuard.evaluate(durationMs, modelId, totalRamMb)
+        return if (guardResult.warnLevel != com.dipdev.aiautocaptioner.core.video.VideoWarnLevel.NONE) {
+            LongVideoWarningState(guardResult, durationMs)
+        } else {
+            null
+        }
+    }
 
     private fun prepareForProject(projectId: String, forceModelPicker: Boolean, isRegenerating: Boolean) {
         viewModelScope.launch {
@@ -222,6 +266,8 @@ class ProcessingViewModel @Inject constructor(
             val isAlreadyDone = project?.status == ProjectStatus.TRANSCRIBED ||
                                 project?.status == ProjectStatus.EXPORTED
             pendingProjectId = projectId
+            currentVideoDurationMs = project?.videoDurationMs ?: 0L
+            hasAcknowledgedLongVideoWarning = false
             val quickImport = project?.creationMode == com.dipdev.aiautocaptioner.data.db.entity.CreationMode.QUICK_CAPTION
             setState {
                 copy(
@@ -248,8 +294,14 @@ class ProcessingViewModel @Inject constructor(
 
             val activeModel = modelRepository.getActiveModel().first()
             if (activeModel != null && activeModel.isDownloaded) {
-                // Model ready — start immediately with saved language and prompt
-                startProcessing(projectId)
+                // Check long-video warning before starting
+                val warning = shouldWarnLongVideo(currentVideoDurationMs, activeModel.id)
+                if (warning != null) {
+                    setState { copy(longVideoWarning = warning) }
+                } else {
+                    // Model ready — start immediately with saved language and prompt
+                    startProcessing(projectId)
+                }
             } else {
                 // First run — show model setup sheet
                 showModelSetup()
@@ -401,6 +453,11 @@ class ProcessingViewModel @Inject constructor(
     private fun startProcessing(projectId: String) {
         pendingProjectId = projectId
         val activeModelId = currentState.activeModel?.id ?: return
+        val warning = shouldWarnLongVideo(currentVideoDurationMs, activeModelId)
+        if (warning != null) {
+            setState { copy(longVideoWarning = warning) }
+            return
+        }
         val language = currentState.selectedLanguage
         val model = modelRepository.getModelById(activeModelId)
         if (model != null && !modelRecommendationUseCase.isCompatible(model, language)) {
@@ -421,6 +478,11 @@ class ProcessingViewModel @Inject constructor(
 
     private fun startTranscriptionExplicit(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, initialPrompt: String = "") {
         pendingProjectId = projectId
+        val warning = shouldWarnLongVideo(currentVideoDurationMs, modelId)
+        if (warning != null) {
+            setState { copy(longVideoWarning = warning) }
+            return
+        }
         val model = modelRepository.getModelById(modelId)
         if (model != null && !modelRecommendationUseCase.isCompatible(model, language)) {
             showModelPicker()
