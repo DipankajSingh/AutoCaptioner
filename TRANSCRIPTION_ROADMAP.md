@@ -259,7 +259,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Capture any `onTrimMemory` callbacks during the run
   - Catch and record `OutOfMemoryError`
 
-- [ ] **T7** — Firebase event schema (3 events, each within parameter cap):
+- [x] **T7** — Firebase event schema (3 events, each within parameter cap):
   - `tx_run`: one per run (completed / cancelled / failed) — stage, internals, resource, outcome fields
   - `tx_device`: once per install + app version — device and CPU fields
   - `model_download`: model id, size, duration, network type (Wi-Fi / cellular), outcome
@@ -269,9 +269,9 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 - [ ] **T9** — Link BigQuery in Firebase project settings (Integrations). Confirm data appears before assuming it will.
 
-- [ ] **T10** — Crashlytics custom keys at run start: model id, threads, thermal status, window count, CPU variant. Log non-fatal `'slow_transcription'` when RTF > 2 OR total time > 120 s. Use existing `CrashReporter` wrapper.
+- [x] **T10** — Crashlytics custom keys at run start: model id, threads, thermal status, window count, CPU variant. Log non-fatal `'slow_transcription'` when RTF > 2 OR total time > 120 s. Use existing `CrashReporter` wrapper.
 
-- [ ] **T11** — Performance Monitoring custom traces for model load, extraction, and Whisper — with model id and thread count as attributes (plugin already present).
+- [x] **T11** — Performance Monitoring custom traces for model load, extraction, and Whisper — with model id and thread count as attributes (plugin already present).
 
 - [x] **T12** — Hidden Diagnostics screen:
   - Shows last 20 `TranscriptionRunRecord`s

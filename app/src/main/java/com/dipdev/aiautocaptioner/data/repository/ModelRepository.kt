@@ -1,11 +1,13 @@
 package com.dipdev.aiautocaptioner.data.repository
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.dipdev.aiautocaptioner.core.diagnostics.TxAnalytics
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.dipdev.aiautocaptioner.core.logging.CrashReporter
@@ -34,7 +36,8 @@ class ModelRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     // The full list of available models from WhisperModule
     private val availableModels: List<WhisperModel>,
-    private val crashReporter: CrashReporter
+    private val crashReporter: CrashReporter,
+    private val txAnalytics: TxAnalytics
 ) {
 
     companion object {
@@ -156,7 +159,20 @@ class ModelRepository @Inject constructor(
     // should not call this concurrently for the same modelId. 
     // Since onboarding blocks until download completion, this isn't reachable in Phase 1, 
     // but future changes must avoid silently reintroducing a race condition here.
+    private fun getNetworkType(context: Context): String {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return "UNKNOWN"
+        val network = cm.activeNetwork ?: return "NONE"
+        val caps = cm.getNetworkCapabilities(network) ?: return "UNKNOWN"
+        return when {
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "WIFI"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "CELLULAR"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "ETHERNET"
+            else -> "OTHER"
+        }
+    }
+
     fun downloadModel(modelId: String): Flow<DownloadState> = flow {
+        val downloadStartMs = SystemClock.elapsedRealtime()
         val model = getModelById(modelId)
             ?: run {
                 emit(DownloadState.Error("Model not found: $modelId"))
@@ -249,6 +265,7 @@ class ModelRepository @Inject constructor(
             }
 
             if (!tempFile.renameTo(outputFile)) {
+                txAnalytics.logModelDownload(modelId, model.sizeMb.toLong(), SystemClock.elapsedRealtime() - downloadStartMs, getNetworkType(context), "ERROR")
                 emit(DownloadState.Error("Failed to rename temporary file"))
                 return@flow
             }
@@ -256,23 +273,28 @@ class ModelRepository @Inject constructor(
             setActiveModel(modelId)
 
             Log.i(TAG, "Download complete: ${outputFile.absolutePath}")
+            txAnalytics.logModelDownload(modelId, model.sizeMb.toLong(), SystemClock.elapsedRealtime() - downloadStartMs, getNetworkType(context), "SUCCESS")
             emit(DownloadState.Complete(outputFile.absolutePath))
 
         } catch (e: java.net.UnknownHostException) {
             Log.e(TAG, "Download error (No Internet)", e)
             crashReporter.recordException(e)
+            txAnalytics.logModelDownload(modelId, 0L, SystemClock.elapsedRealtime() - downloadStartMs, getNetworkType(context), "NO_INTERNET")
             emit(DownloadState.Error("No internet connection. Please check your network and try again."))
         } catch (e: java.net.SocketTimeoutException) {
             Log.e(TAG, "Download error (Timeout)", e)
             crashReporter.recordException(e)
+            txAnalytics.logModelDownload(modelId, 0L, SystemClock.elapsedRealtime() - downloadStartMs, getNetworkType(context), "TIMEOUT")
             emit(DownloadState.Error("Connection timed out. The server took too long to respond."))
         } catch (e: java.io.IOException) {
             Log.e(TAG, "Download error (Network)", e)
             crashReporter.recordException(e)
+            txAnalytics.logModelDownload(modelId, 0L, SystemClock.elapsedRealtime() - downloadStartMs, getNetworkType(context), "NETWORK_ERROR")
             emit(DownloadState.Error("Network error occurred. Please try again."))
         } catch (e: Exception) {
             Log.e(TAG, "Download error", e)
             crashReporter.recordException(e)
+            txAnalytics.logModelDownload(modelId, 0L, SystemClock.elapsedRealtime() - downloadStartMs, getNetworkType(context), "ERROR")
             emit(DownloadState.Error(e.message ?: "Unknown error occurred."))
         }
 // flowOn moves the entire flow execution to IO thread

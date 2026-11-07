@@ -49,7 +49,8 @@ class TranscriptionManager @Inject constructor(
     private val audioExtractionUseCase: AudioExtractionUseCase,
     private val deviceCapabilityUseCase: DeviceCapabilityUseCase,
     private val diagnosticsRepository: DiagnosticsRepository,
-    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase
+    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase,
+    private val txAnalytics: com.dipdev.aiautocaptioner.core.diagnostics.TxAnalytics
 ) {
     companion object {
         private const val TAG = "TranscriptionManager"
@@ -193,9 +194,26 @@ class TranscriptionManager @Inject constructor(
             throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("No model downloaded. Please download a model first.")
         }
 
+        // Set Crashlytics keys (T10)
+        val windowCount = kotlin.math.ceil(project.videoDurationMs / 30000.0).toInt()
+        val cpuVariant = if (CpuCapability.current.isArmv82Supported) "armv8.2-a" else "baseline"
+        crashReporter.setKey("model_id", activeModel.id)
+        crashReporter.setKey("threads", whisperEngine.getOptimalThreads().toString())
+        crashReporter.setKey("window_count", windowCount.toString())
+        crashReporter.setKey("cpu_variant", cpuVariant)
+
+        // Performance Trace: model_load (T11)
+        val loadTrace = com.google.firebase.perf.FirebasePerformance.getInstance().newTrace("model_load")
+        loadTrace.putAttribute("model_id", activeModel.id)
+        loadTrace.putAttribute("threads", whisperEngine.getOptimalThreads().toString())
+        loadTrace.start()
         val modelLoadStart = SystemClock.elapsedRealtime()
-        if (!whisperEngine.isReady()) {
-            whisperEngine.initialize(activeModelFile)
+        try {
+            if (!whisperEngine.isReady()) {
+                whisperEngine.initialize(activeModelFile)
+            }
+        } finally {
+            loadTrace.stop()
         }
         val modelLoadDurationMs = SystemClock.elapsedRealtime() - modelLoadStart
 
@@ -205,12 +223,26 @@ class TranscriptionManager @Inject constructor(
         _step.value = ProcessingStep.Transcribing(0f)
         projectRepository.updateStatus(projectId, ProjectStatus.TRANSCRIBING)
 
+        // Performance Trace: audio_extraction (T11)
+        val extractionTrace = com.google.firebase.perf.FirebasePerformance.getInstance().newTrace("audio_extraction")
+        extractionTrace.putAttribute("model_id", activeModel.id)
+        extractionTrace.start()
         val extractionStart = SystemClock.elapsedRealtime()
-        val pcmSamples = audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
+        val pcmSamples = try {
+            audioExtractionUseCase.extractAudioFloatArray(project.workingVideoPath)
+        } finally {
+            extractionTrace.stop()
+        }
         val extractionDurationMs = SystemClock.elapsedRealtime() - extractionStart
 
+        // Performance Trace: whisper_transcribe (T11)
+        val whisperTrace = com.google.firebase.perf.FirebasePerformance.getInstance().newTrace("whisper_transcribe")
+        whisperTrace.putAttribute("model_id", activeModel.id)
+        whisperTrace.putAttribute("threads", whisperEngine.getOptimalThreads().toString())
+        whisperTrace.start()
         val whisperStart = SystemClock.elapsedRealtime()
-        val allWords = whisperEngine.transcribeWithWordTimestamps(
+        val allWords = try {
+            whisperEngine.transcribeWithWordTimestamps(
                 samples = pcmSamples,
                 language = language,
                 translateToEnglish = translateToEnglish,
@@ -234,6 +266,9 @@ class TranscriptionManager @Inject constructor(
                     }
                 }
             )
+        } finally {
+            whisperTrace.stop()
+        }
         val whisperWallDurationMs = SystemClock.elapsedRealtime() - whisperStart
 
         if (isCancelled) return
@@ -270,6 +305,7 @@ class TranscriptionManager @Inject constructor(
         )
 
         val nativeTimings = whisperEngine.getTimings()
+        val totalRunMs = SystemClock.elapsedRealtime() - totalRunStartMs
         val runRecord = TranscriptionRunRecord(
             appVersion = BuildConfig.VERSION_NAME,
             modelId = activeModel.id,
@@ -278,12 +314,12 @@ class TranscriptionManager @Inject constructor(
             isRegenerating = isRegenerating,
             clipDurationMs = project.videoDurationMs,
             resampledSampleCount = pcmSamples.size.toLong(),
-            windowCount = kotlin.math.ceil(project.videoDurationMs / 30000.0).toInt(),
+            windowCount = windowCount,
             modelLoadDurationMs = modelLoadDurationMs,
             extractionDurationMs = extractionDurationMs,
             whisperWallDurationMs = whisperWallDurationMs,
             saveDurationMs = saveDurationMs,
-            totalDurationMs = SystemClock.elapsedRealtime() - totalRunStartMs,
+            totalDurationMs = totalRunMs,
             sampleMs = nativeTimings?.sampleMs ?: 0f,
             encodeMs = nativeTimings?.encodeMs ?: 0f,
             decodeMs = nativeTimings?.decodeMs ?: 0f,
@@ -291,13 +327,20 @@ class TranscriptionManager @Inject constructor(
             batteryLevel = deviceCapabilityUseCase.getBatteryLevel(),
             isCharging = deviceCapabilityUseCase.isCharging(),
             outcome = "SUCCESS",
-            cpuVariant = if (CpuCapability.current.isArmv82Supported) "armv8.2-a" else "baseline",
+            cpuVariant = cpuVariant,
             cpuFeatures = CpuCapability.current.features.joinToString(","),
             deviceManufacturer = CpuCapability.current.manufacturer,
             deviceModel = CpuCapability.current.model,
             sdkInt = CpuCapability.current.sdkInt
         )
         diagnosticsRepository.recordRun(runRecord)
+        txAnalytics.logRun(runRecord)
+
+        // Slow run non-fatal logging (T10)
+        val rtf = if (project.videoDurationMs > 0) whisperWallDurationMs.toFloat() / project.videoDurationMs.toFloat() else 0f
+        if (rtf > 2.0f || totalRunMs > 120_000L) {
+            crashReporter.logNonFatal("slow_transcription")
+        }
 
         flushDripFeed()
         _step.value = ProcessingStep.Done
