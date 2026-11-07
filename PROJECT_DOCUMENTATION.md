@@ -285,17 +285,42 @@ Video export renders edited captions and overlays onto source video frames, enco
 
 #### 1. `ProjectEntity`
 ```kotlin
-@Entity(tableName = "projects")
+@Entity(
+    tableName = "projects",
+    foreignKeys = [
+        ForeignKey(
+            entity = CaptionStyleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["activeStyleId"],
+            onDelete = ForeignKey.SET_NULL
+        )
+    ],
+    indices = [Index(value = ["activeStyleId"])]
+)
 data class ProjectEntity(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    @PrimaryKey val id: String,
     val title: String,
-    val videoPath: String,
-    val durationMs: Long,
-    val width: Int,
-    val height: Int,
-    val aspectRatio: String,
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val originalVideoUri: String,
+    val workingVideoPath: String,
+    val audioPath: String? = null,
+    val thumbnailPath: String? = null,
+    val videoDurationMs: Long,
+    val videoWidth: Int,
+    val videoHeight: Int,
+    val videoRotation: Int = 0,
+    val videoFps: Float,
+    val status: ProjectStatus = ProjectStatus.IMPORTED,
+    val activeStyleId: String? = null,
+    val hasVisitedCaptionEditor: Boolean = false,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val exportedVideoPath: String? = null,
+    val transcriptionLanguage: String? = "en",
+    val transcribedWithModelId: String? = null,
+    val facelessBackgroundType: String? = null,
+    val facelessBackgroundValue: String? = null,
+    val initialPrompt: String? = null,
+    val creationMode: CreationMode = CreationMode.ADVANCED
 )
 ```
 
@@ -458,22 +483,28 @@ Navigation uses Jetpack Navigation Compose with type-safe `@Serializable` routes
 
 ## 10. Hardware Benchmarking & Model Recommendation (`core/device/`)
 
-To prevent Out-Of-Memory (OOM) crashes on low-end devices, `DeviceCheckUseCase` benchmarks hardware specs before recommending GGML Whisper models:
+To prevent Out-Of-Memory (OOM) crashes on low-end devices, `DeviceCapabilityUseCase` and `ModelRecommendationUseCase` evaluate hardware specs before recommending GGML Whisper models:
 
-### Benchmark Threshold Logic
+### Benchmark & Recommendation Threshold Logic
 * **RAM Memory Thresholds**:
-  * `< 3.0 GB RAM`: Recommends `tiny.en` (~75 MB RAM footprint).
-  * `3.0 GB - 5.5 GB RAM`: Recommends `base.en` (~140 MB RAM footprint).
-  * `5.5 GB - 7.5 GB RAM`: Recommends `small` (~460 MB RAM footprint).
-  * `> 7.5 GB RAM`: Recommends `medium` (~1.5 GB RAM footprint).
-* **Language-Specific Routing & Hinglish Model Tiering**:
-  * **Hinglish (`hinglish`)**: Automatically recommends `hi.hinglish.swift` (~57 MB, Q5_1 quantized GGML build) across all hardware profiles to avoid out-of-memory risks while ensuring sub-8-second transcription per 30-second clip on mobile CPU.
-  * **Roman Script Decoding**: Configured with `whisperCode = "en"` in `WhisperLanguages.kt`, enforcing Whisper token generation in Latin alphabet space (*"Kal office mein meeting hai"*) to prevent Devanagari Unicode fallback loops.
-  * **Onboarding Model Tiering**: `OnboardingModelTierMapper` groups Hinglish models into three tiers:
+  * `< 3,000 MB RAM`: Recommends `tiny.en` (~77 MB) for English content, or `base` for non-English content.
+  * `3,000 MB – 6,000 MB RAM`: Recommends `base.en` (~148 MB) for English, or `base` for non-English content.
+  * `≥ 6,000 MB RAM`: Recommends `small.en` / `small` (~487 MB) as higher-accuracy option.
+* **Language & Model Compatibility Guard (`ModelRecommendationUseCase.isCompatible`)**:
+  * **English-Only Models (`tiny.en`, `base.en`, `small.en`)**: Restricted strictly to English and Hinglish (where `whisperCode` maps to `"en"`). Selecting `"auto"` or non-English languages (e.g. `"hi"`, `"es"`) with English-only models is blocked at recommendation time and in `TranscriptionManager` / `ProcessingViewModel`.
+  * **Multilingual & Language-Fine-Tuned Models**: Compatible across all languages or their specific fine-tuned language targets.
+* **Hinglish Model Recommendation & Routing**:
+  * **Hinglish (`hinglish`)**: Recommends `hi.hinglish.swift` (~57 MB, Q5_1 quantized GGML build) across hardware profiles to ensure lightweight, fast Latin/Roman script generation (*"Kal office mein meeting hai"*).
+  * **Onboarding Model Tiering**: `OnboardingModelTierMapper` categorizes Hinglish models into:
     * **Fast & Light (Recommended)**: `hi.hinglish.swift` (57 MB)
     * **Standard**: `hi.hinglish.q5` (547 MB)
     * **Pro Quality**: `hi.hinglish.q8` (834 MB)
-* **CPU Evaluation**: Evaluates available ARM CPU cores (`Runtime.getRuntime().availableProcessors()`) to assign optimal thread count (`n_threads`).
+* **Dynamic Core & Thermal Thread Policy**:
+  * Evaluates available high-performance CPU cores (`Runtime.getRuntime().availableProcessors().coerceIn(1, 6)`), dynamically throttling thread count during high thermal states (`PowerManager.THERMAL_STATUS_*`) to protect battery and prevent system thermal stalls.
+* **Telemetry & Crash Diagnostics (`TxAnalytics`)**:
+  * Records detailed per-run telemetry (`tx_run`), device capability info (`tx_device`), and model download performance (`model_download`) via Firebase Analytics.
+  * Sets Crashlytics custom keys (`model_id`, `threads`, `window_count`, `cpu_variant`) and logs non-fatal `slow_transcription` events for runs with high RTF.
+  * Tracks `model_load`, `audio_extraction`, and `whisper_transcribe` performance traces via Firebase Performance Monitoring.
 
 ---
 

@@ -34,7 +34,7 @@ Google Play enforces these across ALL tracks:
 
 Therefore:
 
-- Keep **one global counter**: next upload is `22`, then `23`, ... regardless of track.
+- Keep **one global counter**: next upload is `max(ever used anywhere) + 1`; production is currently 27, so check Play Console before choosing.
   Before any upload: `versionCode = max(ever used anywhere) + 1`.
 - Bump `versionCode`/`versionName` in `app/build.gradle.kts` (`defaultConfig`) as part of
   the release commit on the branch being released.
