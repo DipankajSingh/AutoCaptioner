@@ -159,8 +159,8 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 | # | Bug | Where | Impact | Resolved |
 |---|-----|-------|--------|---------|
-| BUG-01 | Onboarding `DeviceCheck` hard-codes language `en` when recommending — non-English users get wrong model | `DeviceCheck` screen | Medium — wrong model auto-selected | Part 6 |
-| BUG-02 | No guard for English-only model paired with non-English language | Model selection logic | High — wrong/empty transcription | Part 6 D6 |
+| BUG-01 | Onboarding `DeviceCheck` hard-codes language `en` when recommending — non-English users get wrong model | `DeviceCheck` screen | Medium — wrong model auto-selected | ✅ Resolved (Phase B / B1 — DeviceCheck uses selected language) |
+| BUG-02 | No guard for English-only model paired with non-English language | Model selection logic | High — wrong/empty transcription | ✅ Resolved (Phase B / B2 — Language/model compatibility guard) |
 | BUG-03 | RAM tier thresholds don't match device reality: RMX3782 at 5,749 MB gets `base`, not `small` as the code comment implies a "6 GB" phone would | Recommender logic | Medium — suboptimal model for device | Part 6 |
 | BUG-04 | Realme 3 at 2,797 MB gets `tiny.en` (below 3 GB), but PDF assumed it gets `base.en` | Recommender logic | Low — mismatched expectations | Part 6 |
 | BUG-05 | No abort callback in JNI — pressing Cancel does not stop native decoding | `jni_bridge.cpp` | High — app stuck until whisper_full returns | ✅ Resolved (Part 7 — JNI abort_callback) |

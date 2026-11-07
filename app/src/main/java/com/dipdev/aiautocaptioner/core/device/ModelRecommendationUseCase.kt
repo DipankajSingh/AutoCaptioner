@@ -14,6 +14,18 @@ class ModelRecommendationUseCase @Inject constructor(
     private val deviceCapabilityUseCase: DeviceCapabilityUseCase
 ) {
 
+    fun isCompatible(model: WhisperModel, language: String): Boolean {
+        if (model.isEnglishOnly()) {
+            val whisperLang = com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages.whisperCode(language)
+            return whisperLang == "en" && language != "auto"
+        }
+        if (model.isMultilingual) {
+            return true
+        }
+        val whisperLang = com.dipdev.aiautocaptioner.core.whisper.WhisperLanguages.whisperCode(language)
+        return language == "auto" || model.languages.contains(language) || model.languages.contains(whisperLang)
+    }
+
     fun filterCompatibleModels(
         allModels: List<WhisperModel>,
         language: String

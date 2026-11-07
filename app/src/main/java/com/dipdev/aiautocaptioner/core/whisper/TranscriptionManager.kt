@@ -48,7 +48,8 @@ class TranscriptionManager @Inject constructor(
     private val crashReporter: CrashReporter,
     private val audioExtractionUseCase: AudioExtractionUseCase,
     private val deviceCapabilityUseCase: DeviceCapabilityUseCase,
-    private val diagnosticsRepository: DiagnosticsRepository
+    private val diagnosticsRepository: DiagnosticsRepository,
+    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase
 ) {
     companion object {
         private const val TAG = "TranscriptionManager"
@@ -95,6 +96,10 @@ class TranscriptionManager @Inject constructor(
                 }
 
                 val model = modelRepository.getModelById(modelId) ?: throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("Model not found. Please try again.")
+
+                if (!modelRecommendationUseCase.isCompatible(model, language)) {
+                    throw com.dipdev.aiautocaptioner.core.utils.UserFacingException("This model only supports English. Please choose a multilingual model.")
+                }
 
                 if (!model.isDownloaded) {
                     _step.value = ProcessingStep.DownloadingModel(modelName = model.displayName)

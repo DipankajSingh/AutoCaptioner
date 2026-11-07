@@ -19,6 +19,11 @@ data class WhisperModel(
 ) {
     val sizeMb: Int get() = (sizeBytes / 1_000_000).toInt()
 
+    /** Returns true if this model is an English-only model (e.g. tiny.en, base.en, small.en). */
+    fun isEnglishOnly(): Boolean {
+        return !isMultilingual && (id.endsWith(".en") || (languages.size == 1 && languages.contains("en")))
+    }
+
     /**
      * Human-readable speed estimate shown on model selection cards so users
      * understand the real-world wait time before committing to a download.

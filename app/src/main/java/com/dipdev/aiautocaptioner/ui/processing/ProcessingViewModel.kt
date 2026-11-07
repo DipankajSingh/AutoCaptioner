@@ -401,12 +401,18 @@ class ProcessingViewModel @Inject constructor(
     private fun startProcessing(projectId: String) {
         pendingProjectId = projectId
         val activeModelId = currentState.activeModel?.id ?: return
+        val language = currentState.selectedLanguage
+        val model = modelRepository.getModelById(activeModelId)
+        if (model != null && !modelRecommendationUseCase.isCompatible(model, language)) {
+            showModelPicker()
+            return
+        }
         val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
         val prompt = currentState.initialPrompt.ifBlank { null }
         transcriptionManager.startProcess(
             projectId = projectId,
             modelId = activeModelId,
-            language = currentState.selectedLanguage,
+            language = language,
             translateToEnglish = currentState.translateToEnglish,
             isRegenerating = isRegenerating,
             initialPrompt = prompt
@@ -415,6 +421,11 @@ class ProcessingViewModel @Inject constructor(
 
     private fun startTranscriptionExplicit(projectId: String, modelId: String, language: String, translateToEnglish: Boolean, initialPrompt: String = "") {
         pendingProjectId = projectId
+        val model = modelRepository.getModelById(modelId)
+        if (model != null && !modelRecommendationUseCase.isCompatible(model, language)) {
+            showModelPicker()
+            return
+        }
         val isRegenerating = savedStateHandle.get<Boolean>("isRegenerating") ?: false
         val prompt = initialPrompt.ifBlank { null }
         

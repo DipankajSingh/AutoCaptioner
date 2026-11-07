@@ -1,16 +1,21 @@
 package com.dipdev.aiautocaptioner.ui.devicecheck
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import com.dipdev.aiautocaptioner.core.device.DeviceCapabilityUseCase
 import com.dipdev.aiautocaptioner.core.device.ModelSafetyCheckState
 import com.dipdev.aiautocaptioner.data.model.WhisperModel
 import com.dipdev.aiautocaptioner.data.repository.ModelRepository
+import com.dipdev.aiautocaptioner.data.repository.SettingsRepository
 import com.dipdev.aiautocaptioner.ui.base.BaseViewModel
 import com.dipdev.aiautocaptioner.ui.base.UiEffect
 import com.dipdev.aiautocaptioner.ui.base.UiEvent
 import com.dipdev.aiautocaptioner.ui.base.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class DeviceInfo(
@@ -25,7 +30,8 @@ data class DeviceCheckUiState(
     val models: List<WhisperModel> = emptyList(),
     val recommendedModelId: String? = null,
     val recommendedReasonResId: Int? = null,
-    val safetyState: ModelSafetyCheckState = ModelSafetyCheckState.Idle
+    val safetyState: ModelSafetyCheckState = ModelSafetyCheckState.Idle,
+    val language: String = "en"
 ) : UiState
 
 sealed interface DeviceCheckUiEvent : UiEvent {
@@ -40,11 +46,25 @@ class DeviceCheckViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val modelRepository: ModelRepository,
     private val deviceCapabilityUseCase: DeviceCapabilityUseCase,
-    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase
+    private val modelRecommendationUseCase: com.dipdev.aiautocaptioner.core.device.ModelRecommendationUseCase,
+    private val settingsRepository: SettingsRepository,
+    savedStateHandle: SavedStateHandle
 ) : BaseViewModel<DeviceCheckUiState, DeviceCheckUiEvent, DeviceCheckUiEffect>(DeviceCheckUiState()) {
 
     init {
-        checkDevice()
+        val navLang: String? = savedStateHandle["languageCode"] ?: savedStateHandle["language"]
+        if (navLang != null) {
+            checkDevice(navLang)
+        } else {
+            viewModelScope.launch {
+                val lastLang = try {
+                    settingsRepository.lastLanguageFlow.first()
+                } catch (_: Exception) {
+                    "en"
+                }
+                checkDevice(lastLang)
+            }
+        }
     }
 
     override fun handleEvent(event: DeviceCheckUiEvent) {
@@ -58,7 +78,7 @@ class DeviceCheckViewModel @Inject constructor(
         }
     }
 
-    private fun checkDevice() {
+    fun checkDevice(language: String = currentState.language) {
         val info = deviceCapabilityUseCase.getDeviceInfo()
         val deviceInfo = DeviceInfo(
             totalRamMb = info.totalRamMb,
@@ -68,15 +88,16 @@ class DeviceCheckViewModel @Inject constructor(
         )
 
         val allModels = modelRepository.getAvailableModels()
-        val compatibleModels = modelRecommendationUseCase.filterCompatibleModels(allModels, "en")
-        val recommendation = modelRecommendationUseCase.getRecommendation(compatibleModels, "en")
+        val compatibleModels = modelRecommendationUseCase.filterCompatibleModels(allModels, language)
+        val recommendation = modelRecommendationUseCase.getRecommendation(compatibleModels, language)
 
         setState { 
             copy(
                 deviceInfo = deviceInfo,
                 models = allModels,
                 recommendedModelId = recommendation.modelId.ifEmpty { null },
-                recommendedReasonResId = recommendation.reasonResId
+                recommendedReasonResId = recommendation.reasonResId,
+                language = language
             )
         }
     }

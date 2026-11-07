@@ -75,4 +75,30 @@ class ModelRecommendationUseCaseTest {
         // Multilingual base last
         assertEquals("base", filtered[2].id)
     }
+
+    @Test
+    fun `isCompatible validates english-only vs multilingual vs language-specific models`() {
+        val tinyEn = createModel("tiny.en", 77_000_000L, listOf("en"), false, 512)
+        val baseMulti = createModel("base", 147_000_000L, listOf("multilingual"), true, 1024)
+        val esTiny = createModel("es.tiny", 77_000_000L, listOf("es"), false, 512)
+        val hinglishSwift = createModel("hi.hinglish.swift", 59_000_000L, listOf("hi", "hinglish"), false, 512)
+
+        // English-only model checks
+        org.junit.Assert.assertFalse(useCase.isCompatible(tinyEn, "es"))
+        org.junit.Assert.assertFalse(useCase.isCompatible(tinyEn, "hi"))
+        org.junit.Assert.assertFalse(useCase.isCompatible(tinyEn, "auto"))
+        org.junit.Assert.assertTrue(useCase.isCompatible(tinyEn, "en"))
+        org.junit.Assert.assertTrue(useCase.isCompatible(tinyEn, "hinglish")) // whisperCode is "en"
+
+        // Multilingual model checks
+        org.junit.Assert.assertTrue(useCase.isCompatible(baseMulti, "en"))
+        org.junit.Assert.assertTrue(useCase.isCompatible(baseMulti, "es"))
+        org.junit.Assert.assertTrue(useCase.isCompatible(baseMulti, "hi"))
+        org.junit.Assert.assertTrue(useCase.isCompatible(baseMulti, "auto"))
+
+        // Language-specific checks
+        org.junit.Assert.assertTrue(useCase.isCompatible(esTiny, "es"))
+        org.junit.Assert.assertFalse(useCase.isCompatible(esTiny, "fr"))
+        org.junit.Assert.assertTrue(useCase.isCompatible(hinglishSwift, "hinglish"))
+    }
 }
