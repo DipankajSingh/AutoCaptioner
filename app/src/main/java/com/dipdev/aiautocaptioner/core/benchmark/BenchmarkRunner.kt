@@ -105,7 +105,10 @@ class BenchmarkRunner @Inject constructor(
             // Extract Audio
             val extractStart = SystemClock.elapsedRealtime()
             val samples = try {
-                audioExtractionUseCase.extractAudioFloatArray(clipFile.absolutePath)
+                audioExtractionUseCase.extractAudioFloatArray(
+                    clipFile.absolutePath,
+                    useResamplerV2 = config.resamplerV2
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Audio extraction failed for ${clipFile.name}: ${e.message}", e)
                 continue

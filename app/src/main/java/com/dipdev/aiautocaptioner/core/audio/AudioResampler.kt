@@ -20,7 +20,11 @@ interface AudioResampler {
             if (fromRate == toRate) {
                 return PassthroughResampler()
             }
-            return StreamingLinearResampler(fromRate, toRate)
+            return if (useResamplerV2) {
+                BandLimitedResampler(fromRate, toRate)
+            } else {
+                StreamingLinearResampler(fromRate, toRate)
+            }
         }
     }
 }
