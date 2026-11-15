@@ -14,7 +14,7 @@ class AudioExtractionUseCase @Inject constructor(
     private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
 ) {
 
-    suspend fun extractAudioFloatArray(videoPath: String): FloatArray {
+    suspend fun extractAudioFloatArray(videoPath: String, useResamplerV2: Boolean = false): FloatArray {
         return withContext(Dispatchers.IO) {
             val extractor = MediaExtractor()
             var codec: MediaCodec? = null
@@ -49,10 +49,17 @@ class AudioExtractionUseCase @Inject constructor(
 
                 val info = MediaCodec.BufferInfo()
                 var isEOS = false
-                
-                val floatArrays = ArrayList<FloatArray>()
-                var totalFloatsWritten = 0
-                
+
+                var sampleRate = if (audioFormat.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                    audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                } else {
+                    16000
+                }
+                var resampler: AudioResampler = AudioResampler.create(sampleRate, 16000, useResamplerV2)
+
+                val resampledChunks = ArrayList<FloatArray>()
+                var totalResampledFloats = 0
+
                 // Hoisted buffers
                 var pcmBytes = ByteArray(0)
 
@@ -77,6 +84,15 @@ class AudioExtractionUseCase @Inject constructor(
                     val outputBufferId = codec.dequeueOutputBuffer(info, 10000)
                     if (outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         audioFormat = codec.outputFormat
+                        val updatedRate = if (audioFormat?.containsKey(MediaFormat.KEY_SAMPLE_RATE) == true) {
+                            audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                        } else {
+                            sampleRate
+                        }
+                        if (updatedRate != sampleRate && totalResampledFloats == 0) {
+                            sampleRate = updatedRate
+                            resampler = AudioResampler.create(sampleRate, 16000, useResamplerV2)
+                        }
                     } else if (outputBufferId >= 0) {
                         if (info.size > 0) {
                             val outputBuffer = codec.getOutputBuffer(outputBufferId)
@@ -86,7 +102,7 @@ class AudioExtractionUseCase @Inject constructor(
                             }
                             outputBuffer.get(pcmBytes, 0, info.size)
                             outputBuffer.clear()
-                            
+
                             val pcmEncoding = if (audioFormat?.containsKey(MediaFormat.KEY_PCM_ENCODING) == true) {
                                 audioFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
                             } else {
@@ -123,9 +139,12 @@ class AudioExtractionUseCase @Inject constructor(
                             } else {
                                 floatArray
                             }
-                            
-                            floatArrays.add(monoFloats)
-                            totalFloatsWritten += monoFloats.size
+
+                            val resampled = resampler.process(monoFloats)
+                            if (resampled.isNotEmpty()) {
+                                resampledChunks.add(resampled)
+                                totalResampledFloats += resampled.size
+                            }
                         }
                         codec.releaseOutputBuffer(outputBufferId, false)
                         if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -134,21 +153,20 @@ class AudioExtractionUseCase @Inject constructor(
                     }
                 }
 
-                val sampleRate = audioFormat?.getInteger(MediaFormat.KEY_SAMPLE_RATE) ?: 16000
+                val flushed = resampler.flush()
+                if (flushed.isNotEmpty()) {
+                    resampledChunks.add(flushed)
+                    totalResampledFloats += flushed.size
+                }
 
-                // Write chunks directly into a pre-sized output array — avoids the extra
-                // merged-copy allocation that caused OOM on long videos.
-                val finalFloats = FloatArray(totalFloatsWritten)
+                val finalFloats = FloatArray(totalResampledFloats)
                 var offset = 0
-                for (arr in floatArrays) {
+                for (arr in resampledChunks) {
                     arr.copyInto(finalFloats, offset)
                     offset += arr.size
                 }
-                // Clear the chunk list immediately so GC can reclaim the per-chunk arrays
-                // before we allocate the resampled output below.
-                floatArrays.clear()
-
-                if (sampleRate != 16000) resampleTo16kLinear(finalFloats, sampleRate) else finalFloats
+                resampledChunks.clear()
+                finalFloats
             } catch (e: Throwable) {
                 if (e !is com.dipdev.aiautocaptioner.core.utils.UserFacingException) {
                     crashReporter.recordException(e)
@@ -167,18 +185,4 @@ class AudioExtractionUseCase @Inject constructor(
         }
     }
 
-    private fun resampleTo16kLinear(input: FloatArray, fromRate: Int): FloatArray {
-        if (fromRate == 16000) return input
-        if (input.size < 2) return input
-        val ratio = fromRate.toDouble() / 16000.0
-        val outputSize = (input.size / ratio).toInt()
-        return FloatArray(outputSize) { i ->
-            val srcPos = i * ratio
-            val srcIndex = srcPos.toInt().coerceIn(0, input.size - 2)
-            val fraction = (srcPos - srcIndex).toFloat()
-            val s0 = input[srcIndex]
-            val s1 = input[srcIndex + 1]
-            s0 + (s1 - s0) * fraction
-        }
-    }
 }
