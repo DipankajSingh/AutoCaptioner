@@ -477,6 +477,10 @@ Navigation uses Jetpack Navigation Compose with type-safe `@Serializable` routes
    * Manages video import routines (`importVideo` / `importVideoQuick`).
 2. **`ProcessingViewModel`**:
    * Drives audio extraction, transcription foreground service binding, progress polling, and error recovery.
+   * **Long-Video Guard Interception (`VideoLengthGuard.kt` & `LongVideoWarningDialog.kt`)**:
+     * Intercepts videos exceeding 10 minutes (`WARN`) and 30 minutes (`STRONG_WARN`) before model loading or transcription begins.
+     * Evaluates device class, model tier, and window count ($windows = \lceil \text{duration} / 30\text{s} \rceil$) to estimate processing duration.
+     * Surfaces `LongVideoWarningDialog` with 4 actionable user choices: Continue Anyway, Choose a Faster Model (redirects to Model Picker), Trim First in Editor (redirects to Video Editor timeline), and Cancel/Cleanup.
 3. **`EditorViewModel` & `SharedPlayerViewModel`**:
    * **`SharedPlayerViewModel`**: Scoped to `ProjectEditorGraph`, maintaining a single ExoPlayer instance across Video Editor and Style tabs to avoid player re-instantiation stutter.
    * **`HistoryManager.kt`**: Implements undo/redo state stacks for caption styling and text edits.
