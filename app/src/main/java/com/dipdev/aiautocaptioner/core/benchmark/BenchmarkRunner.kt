@@ -104,10 +104,18 @@ class BenchmarkRunner @Inject constructor(
 
             // Extract Audio
             val extractStart = SystemClock.elapsedRealtime()
+            val preprocessorConfig = if (config.normalize) {
+                com.dipdev.aiautocaptioner.core.audio.PreprocessorConfig(
+                    normalizationMode = com.dipdev.aiautocaptioner.core.audio.NormalizationMode.PEAK_0_9
+                )
+            } else {
+                com.dipdev.aiautocaptioner.core.audio.PreprocessorConfig()
+            }
             val samples = try {
                 audioExtractionUseCase.extractAudioFloatArray(
                     clipFile.absolutePath,
-                    useResamplerV2 = config.resamplerV2
+                    useResamplerV2 = config.resamplerV2,
+                    preprocessorConfig = preprocessorConfig
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Audio extraction failed for ${clipFile.name}: ${e.message}", e)

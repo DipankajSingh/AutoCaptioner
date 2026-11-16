@@ -11,10 +11,15 @@ import androidx.core.net.toUri
 
 class AudioExtractionUseCase @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
-    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter
+    private val crashReporter: com.dipdev.aiautocaptioner.core.logging.CrashReporter,
+    private val audioPreprocessor: AudioPreprocessor
 ) {
 
-    suspend fun extractAudioFloatArray(videoPath: String, useResamplerV2: Boolean = false): FloatArray {
+    suspend fun extractAudioFloatArray(
+        videoPath: String,
+        useResamplerV2: Boolean = false,
+        preprocessorConfig: PreprocessorConfig = PreprocessorConfig()
+    ): FloatArray {
         return withContext(Dispatchers.IO) {
             val extractor = MediaExtractor()
             var codec: MediaCodec? = null
@@ -166,7 +171,7 @@ class AudioExtractionUseCase @Inject constructor(
                     offset += arr.size
                 }
                 resampledChunks.clear()
-                finalFloats
+                audioPreprocessor.process(finalFloats, preprocessorConfig)
             } catch (e: Throwable) {
                 if (e !is com.dipdev.aiautocaptioner.core.utils.UserFacingException) {
                     crashReporter.recordException(e)
