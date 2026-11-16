@@ -54,3 +54,11 @@ Models loaded via `whisper_models.json` in `app/src/main/assets/whisper_models.j
 - **Room Database:** `androidx.room` (Apache-2.0)
 - **DataStore Preferences:** `androidx.datastore` (Apache-2.0)
 - **Firebase:** Analytics, Crashlytics, Performance Monitoring (Apache-2.0)
+
+---
+
+## 4. First-Party Audio DSP Architecture
+All audio preprocessing components are written 100% in first-party Kotlin under `core/audio/` without external DSP native binary dependencies (avoiding GPL / LGPL licensing restrictions from libraries such as `libsamplerate` or `speexdsp`):
+- **Band-Limited Kaiser Resampler (`BandLimitedResampler.kt`)**: First-party polyphase Kaiser-windowed sinc resampler ($\beta = 8.6$, 64 phases with inter-phase interpolation).
+- **Butterworth High-Pass Filter (`AudioPreprocessor.kt`)**: First-party 2nd-order Direct Form II Transposed biquad filter.
+- **Dynamic Level Normalizer (`AudioPreprocessor.kt`)**: First-party peak and RMS energy normalizer with $+20\text{ dB}$ gain cap and peak limiter.

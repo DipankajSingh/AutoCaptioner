@@ -1,7 +1,7 @@
 # AutoCaptioner: Transcription Speed & Accuracy — Living Tracker
 
 > **Source:** AutoCaptioner Transcription Investigation — Part 0 of 8 (Evidence Ledger & Roadmap)
-> **Prepared:** October 31, 2026 | **Last updated:** November 2, 2026
+> **Prepared:** October 31, 2026 | **Last updated:** November 16, 2026
 > **Priority order:** Accuracy first, Speed second
 > **Rule:** One change per experiment, per commit. Before + after numbers required in `bench_results/`.
 
@@ -429,7 +429,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 ### Architecture
 
 - [x] Create `AudioPreprocessor` class with one toggle per stage, driven by `BenchConfig`
-- [ ] Each stage has unit tests with synthetic signals (tone, chirp, silence + speech fixture)
+- [x] Each stage has unit tests with synthetic signals (tone, chirp, silence + speech fixture) (Verified by AudioResamplerTest and AudioPreprocessorTest)
 - [ ] Use built-in VAD and its remapping (not app-side VAD); keep app-side fallback only if built-in fails gates
 
 ### Pipeline Stages & Experiments
@@ -668,5 +668,5 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 ---
 
-*Last updated: November 2, 2026 — source: AutoCaptioner Transcription Investigation PDF (33 pages, Oct 31 2026)*
+*Last updated: November 16, 2026 — source: AutoCaptioner Transcription Investigation PDF (33 pages, Oct 31 2026)*
 *Canonical location: `/home/dipankaj/AndroidStudioProjects/AutoCaptioner/TRANSCRIPTION_ROADMAP.md`*

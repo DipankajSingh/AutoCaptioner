@@ -31,6 +31,8 @@ Optional intent extras:
 - `--ez flashAttention <true|false>`
 - `--ei iterations <num>` (default: 3)
 - `--es language <langCode>` (default: "en")
+- `--ez resamplerV2 <true|false>` (enable E4.2 band-limited polyphase Kaiser resampler)
+- `--ez normalize <true|false>` (enable E4.3 audio level normalization)
 
 ### 3. Pull Results
 ```bash

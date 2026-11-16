@@ -32,5 +32,13 @@ To run on-device benchmarks:
 # Push test corpus audio clips to app's external files directory
 adb push corpus/ /sdcard/Android/data/com.dipdev.aiautocaptioner/files/
 
+# Trigger benchmark via adb broadcast (with optional pipeline toggles)
+adb shell am broadcast \
+  -a com.dipdev.aiautocaptioner.RUN_BENCHMARK \
+  --es model tiny.en \
+  --ei iterations 3 \
+  --ez resamplerV2 true \
+  --ez normalize true
+
 # Results will be generated in JSON and CSV formats under bench_results/
 ```
