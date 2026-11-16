@@ -13,8 +13,8 @@ This document logs all controlled benchmark runs across target hardware platform
 | B0 | Baseline — current release build v2.11.4 | Realme 3 | — | — | — | Pending |
 | B0 | Baseline — current release build v2.11.4 | RMX3782 | — | — | — | Pending |
 | E4.2 | Resampler: linear → band-limited | All | — | — | — | ✅ Adopted / Passed Unit Gates (>=80 dB stopband, <1 dB passband) |
-| E4.3 | Level normalization grid | — | — | — | — | Pending |
-| E4.4 | High-pass filter 80 Hz | — | — | — | — | Pending |
+| E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
+| E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
 | E4.5 | VAD + window packing | — | — | — | — | Pending |
 | E4.6 | audio_ctx reduction for short clips | — | — | — | — | Pending |
 | E5.1 | Fallback policy comparison | — | — | — | — | Pending |

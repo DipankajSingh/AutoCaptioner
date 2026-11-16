@@ -2,9 +2,12 @@ package com.dipdev.aiautocaptioner.core.audio
 
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 enum class NormalizationMode {
@@ -35,7 +38,7 @@ class AudioPreprocessor @Inject constructor() {
 
         var current = samples
 
-        // Stage 4: High-Pass Filter (applied first so rumble does not bias normalization)
+        // Stage 4: High-Pass Filter (applied first so rumble does not bias level normalization)
         if (config.highPass80Hz) {
             current = applyHighPass80Hz(current)
         }
@@ -131,8 +134,46 @@ class AudioPreprocessor @Inject constructor() {
         return result
     }
 
-    internal fun applyHighPass80Hz(samples: FloatArray): FloatArray {
-        // Placeholder for Stage 4 (E4.4)
-        return samples
+    /**
+     * 2nd-order Butterworth High-Pass Filter at 80 Hz.
+     * Uses Direct Form II Transposed biquad structure.
+     * Attenuates sub-rumble (< 30 Hz) by > 15 dB while preserving speech frequencies (> 200 Hz) within 0.1 dB.
+     */
+    fun applyHighPass80Hz(samples: FloatArray, sampleRate: Int = 16000): FloatArray {
+        if (samples.isEmpty()) return samples
+
+        val fc = 80.0
+        val q = 1.0 / sqrt(2.0)
+        val w0 = 2.0 * PI * fc / sampleRate.toDouble()
+        val cosW0 = cos(w0)
+        val sinW0 = sin(w0)
+        val alpha = sinW0 / (2.0 * q)
+
+        val b0 = (1.0 + cosW0) / 2.0
+        val b1 = -(1.0 + cosW0)
+        val b2 = (1.0 + cosW0) / 2.0
+        val a0 = 1.0 + alpha
+        val a1 = -2.0 * cosW0
+        val a2 = 1.0 - alpha
+
+        val b0n = (b0 / a0).toFloat()
+        val b1n = (b1 / a0).toFloat()
+        val b2n = (b2 / a0).toFloat()
+        val a1n = (a1 / a0).toFloat()
+        val a2n = (a2 / a0).toFloat()
+
+        val output = FloatArray(samples.size)
+        var d1 = 0f
+        var d2 = 0f
+
+        for (i in samples.indices) {
+            val x = samples[i]
+            val y = b0n * x + d1
+            d1 = b1n * x - a1n * y + d2
+            d2 = b2n * x - a2n * y
+            output[i] = y
+        }
+
+        return output
     }
 }

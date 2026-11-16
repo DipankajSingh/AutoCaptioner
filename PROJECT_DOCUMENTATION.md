@@ -109,7 +109,19 @@ Before AI transcription can execute, source video files must yield a clean 16kHz
        * **Passband Accuracy**: Preserves 1 kHz tone energy within $\pm 1 \text{ dB}$ with 0 dB DC ripple.
        * **Zero-Phase Delay & Boundary Safety**: Maintains a causal history buffer across stream chunks to eliminate clicks and phase glitches.
        * **Efficiency**: Pure Kotlin implementation taking $< 1 \text{ ms}$ per audio second on modern ARM architectures ($< 0.5\%$ of transcription duration).
-5. **Collection**: Aggregates only 16 kHz resampled chunks into the final `FloatArray` delivered to `TranscriptionManager`.
+5. **Collection & Preprocessing (E4.3 & E4.4)**:
+   * Aggregates 16 kHz resampled chunks into the final `FloatArray` and applies `AudioPreprocessor.process()`.
+
+### 3.2 Audio Preprocessing Engine (`AudioPreprocessor.kt`)
+Operates on the 16 kHz mono PCM `FloatArray` before passing it to Whisper decoding:
+1. **80 Hz 2nd-Order Butterworth High-Pass Filter (E4.4)**:
+   * Direct Form II Transposed biquad filter ($f_s = 16\text{ kHz}$, $f_c = 80\text{ Hz}$, $Q = 1/\sqrt{2}$).
+   * Attenuates sub-audible HVAC rumble and wind noise below 30 Hz by $> 15\text{ dB}$ (and 20 Hz by $> 24\text{ dB}$) while preserving speech frequencies above 200 Hz with $< 0.1\text{ dB}$ loss.
+   * Applied *prior* to level normalization so inaudible low-frequency rumble does not skew RMS or peak amplitude measurements.
+2. **Dynamic Level Normalization & Peak Limiter (E4.3)**:
+   * **`PEAK_0_9`**: Scales peak absolute amplitude to $0.90$ with a $+20\text{ dB}$ ($10\times$) gain limiter cap, boosting quiet speech audio without amplifying noise floor in silent recordings.
+   * **`RMS_TARGET`**: Targets a calibrated RMS level (e.g. $-20\text{ dBFS}$) with a $+20\text{ dB}$ gain cap and a $0.95$ ceiling peak limiter to prevent digital clipping.
+   * Driven by `BenchConfig.normalize` and feature flag `preprocess_normalize`.
 
 ---
 

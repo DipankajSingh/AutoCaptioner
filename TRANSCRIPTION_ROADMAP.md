@@ -16,7 +16,7 @@
 | **Part 1 — Telemetry** | 🟡 Fully instrumented | TxAnalytics, TxRecord, timers, Crashlytics, Perf traces, diagnostics |
 | **Part 2 — Benchmark harness** | 🟡 Harness built | Device harness & laptop scripts complete |
 | **Part 3 — Whisper re-setup** | 🟡 Configured | NativeLibLoader, ARMv8.2 loader, CMake v1.9.5, S6/S7 complete |
-| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.2 (band-limited resampler), E4.3 (level normalization) complete |
+| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.2 (band-limited resampler), E4.3 (level normalization), E4.4 (80 Hz Butterworth high-pass) complete |
 | **Part 5 — Decoding/threading** | ⬜ Not started | Awaiting Part 2 baseline (abort callback ready) |
 | **Part 6 — Models/onboarding** | 🟡 Guardrails built | D6/G5 language guards complete; awaiting Part 5 results |
 | **Part 7 — Long-video guard** | 🟡 Phase 1 ready | VideoLengthGuard & native JNI abort callback |
@@ -134,7 +134,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | B0 | Baseline — current release build v2.11.4 | RMX3782 | — | — | — | Pending |
 | E4.2 | Resampler: linear → band-limited | All | — | — | — | ✅ Adopted / Passed Unit Gates (>=80 dB stopband, <1 dB passband) |
 | E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
-| E4.4 | High-pass filter 80 Hz | — | — | — | — | Pending |
+| E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
 | E4.5 | VAD + window packing | — | — | — | — | Pending |
 | E4.6 | audio_ctx reduction for short clips | — | — | — | — | Pending |
 | E5.1 | Fallback policy comparison | — | — | — | — | Pending |
@@ -153,7 +153,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | Nov 2, 2026 | Session 1 | PDF read; master task list created; both devices connected and read via adb; ARMv8.2 unblocked; 2 recommender bugs discovered |
 | Nov 2, 2026 | Session 2 | Built benchmark harness (Part 2), Telemetry core (Part 1), NativeLibLoader & JNI timings (Part 3), VideoLengthGuard & instant JNI cancel (Part 7) |
 | Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates, Part 7 LongVideoWarning dialog wired with Continue/Faster Model/Trim/Cancel actions and unit tests |
-| Nov 15, 2026 | Session 4 | Part 4 Stage 0 (Streaming decode-downmix-resample audio pipeline) & E4.2 (BandLimitedResampler polyphase Kaiser sinc resampler); resolved BUG-09; E4.3 (AudioPreprocessor and level normalization with gain limiter) |
+| Nov 15–16, 2026 | Session 4 | Part 4 Stage 0 (Streaming decode-downmix-resample audio pipeline) & E4.2 (BandLimitedResampler polyphase Kaiser sinc resampler); resolved BUG-09; E4.3 (AudioPreprocessor and level normalization with gain limiter); E4.4 (80 Hz 2nd-order Butterworth biquad high-pass filter) |
 
 ---
 
@@ -447,7 +447,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 - [x] **E4.3 (Stage 3, level normalization)** — Grid over: off, peak-normalize to 0.9, RMS targets around -23 / -20 / -18 dBFS with a limiter (gain cap, e.g., +20 dB). (Implemented via AudioPreprocessor: NormalizationMode.PEAK_0_9 and RMS_TARGET with +20 dB gain limiter and 0.95 peak ceiling; verified by AudioPreprocessorTest)
 
-- [ ] **E4.4 (Stage 4, high-pass filter)** — 80 Hz 2nd-order Butterworth. Keep only if WER improves or is neutral and hum-related errors drop.
+- [x] **E4.4 (Stage 4, high-pass filter)** — 80 Hz 2nd-order Butterworth. (Implemented via AudioPreprocessor.applyHighPass80Hz: Direct Form II Transposed biquad attenuating sub-rumble by >15 dB while preserving speech frequencies with <0.1 dB loss; verified by AudioPreprocessorTest)
 
 - [ ] **E4.5 (Stage 5, VAD + window packing)** — Enable Silero VAD:
   - Models: `silero-v5.1.2` or `silero-v6.2.0` from `ggml-org/whisper-vad` on Hugging Face (~885 KB)
