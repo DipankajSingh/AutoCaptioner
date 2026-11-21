@@ -62,3 +62,4 @@ All audio preprocessing components are written 100% in first-party Kotlin under 
 - **Band-Limited Kaiser Resampler (`BandLimitedResampler.kt`)**: First-party polyphase Kaiser-windowed sinc resampler ($\beta = 8.6$, 64 phases with inter-phase interpolation).
 - **Butterworth High-Pass Filter (`AudioPreprocessor.kt`)**: First-party 2nd-order Direct Form II Transposed biquad filter.
 - **Dynamic Level Normalizer (`AudioPreprocessor.kt`)**: First-party peak and RMS energy normalizer with $+20\text{ dB}$ gain cap and peak limiter.
+- **Correlation-Aware Stereo Downmixer (`AudioDownmixer.kt`)**: First-party cross-correlation-driven channel mixer preventing destructive antiphase cancellation and boosting in-phase speech SNR.
