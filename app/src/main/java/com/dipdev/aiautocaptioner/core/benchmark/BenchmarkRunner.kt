@@ -35,7 +35,8 @@ data class SingleRunResult(
     val detectedLanguage: String?,
     val thermalStatusStart: String,
     val thermalStatusEnd: String,
-    val availMemMb: Long
+    val availMemMb: Long,
+    val audioCtx: Int = 0
 )
 
 data class BenchmarkSummary(
@@ -179,6 +180,7 @@ class BenchmarkRunner @Inject constructor(
                     put("thermalStatusStart", res.thermalStatusStart)
                     put("thermalStatusEnd", res.thermalStatusEnd)
                     put("availMemMb", res.availMemMb)
+                    put("audioCtx", res.audioCtx)
                 })
             }
             put("runs", runsArray)
@@ -187,10 +189,10 @@ class BenchmarkRunner @Inject constructor(
 
         // Save CSV Report
         val csvFile = File(outputDir, "results_${timestamp}.csv")
-        val csvHeader = "Timestamp,Device,ClipName,DurationMs,Iteration,ExtractMs,WhisperMs,RTF,WordCount,DetectedLang,ThermalStart,ThermalEnd,AvailMemMb\n"
+        val csvHeader = "Timestamp,Device,ClipName,DurationMs,Iteration,ExtractMs,WhisperMs,RTF,WordCount,DetectedLang,ThermalStart,ThermalEnd,AvailMemMb,AudioCtx\n"
         val csvLines = StringBuilder(csvHeader)
         results.forEach { res ->
-            csvLines.append("$timestamp,\"$deviceModel\",\"${res.clipName}\",${res.clipDurationMs},${res.iteration},${res.extractionTimeMs},${res.whisperTimeMs},${res.rtf},${res.wordCount},\"${res.detectedLanguage ?: ""}\",${res.thermalStatusStart},${res.thermalStatusEnd},${res.availMemMb}\n")
+            csvLines.append("$timestamp,\"$deviceModel\",\"${res.clipName}\",${res.clipDurationMs},${res.iteration},${res.extractionTimeMs},${res.whisperTimeMs},${res.rtf},${res.wordCount},\"${res.detectedLanguage ?: ""}\",${res.thermalStatusStart},${res.thermalStatusEnd},${res.availMemMb},${res.audioCtx}\n")
         }
         csvFile.writeText(csvLines.toString())
 
@@ -219,11 +221,18 @@ class BenchmarkRunner @Inject constructor(
         val thermalStart = getThermalStatus()
         val memMb = getAvailableMemoryMb()
 
+        val targetAudioCtx = when {
+            config.audioCtx > 0 -> config.audioCtx
+            config.audioCtxReduction -> com.dipdev.aiautocaptioner.core.audio.AudioContextCalculator.calculate(samples.size)
+            else -> 0
+        }
+
         val whisperStart = SystemClock.elapsedRealtime()
         val words = whisperEngine.transcribeWithWordTimestamps(
             samples = samples,
             language = config.language,
-            translateToEnglish = config.translateToEnglish
+            translateToEnglish = config.translateToEnglish,
+            audioCtx = targetAudioCtx
         )
         val whisperDurationMs = SystemClock.elapsedRealtime() - whisperStart
         val thermalEnd = getThermalStatus()
@@ -244,7 +253,8 @@ class BenchmarkRunner @Inject constructor(
             detectedLanguage = whisperEngine.lastDetectedLanguage,
             thermalStatusStart = thermalStart,
             thermalStatusEnd = thermalEnd,
-            availMemMb = memMb
+            availMemMb = memMb,
+            audioCtx = targetAudioCtx
         )
     }
 

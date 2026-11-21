@@ -35,6 +35,7 @@ class BenchmarkReceiver : BroadcastReceiver() {
         val resamplerV2 = intent.getBooleanExtra("resamplerV2", false)
         val normalize = intent.getBooleanExtra("normalize", false)
         val audioCtx = intent.getIntExtra("audioCtx", 0)
+        val audioCtxReduction = intent.getBooleanExtra("audioCtxReduction", false)
         val iterations = intent.getIntExtra("iterations", 3)
         val language = intent.getStringExtra("language") ?: "en"
         val translateToEnglish = intent.getBooleanExtra("translateToEnglish", false)
@@ -48,6 +49,7 @@ class BenchmarkReceiver : BroadcastReceiver() {
             resamplerV2 = resamplerV2,
             normalize = normalize,
             audioCtx = audioCtx,
+            audioCtxReduction = audioCtxReduction,
             iterations = iterations,
             language = language,
             translateToEnglish = translateToEnglish

@@ -14,6 +14,7 @@ data class BenchConfig(
     val resamplerV2: Boolean = false,
     val normalize: Boolean = false,
     val audioCtx: Int = 0,
+    val audioCtxReduction: Boolean = false,
     val iterations: Int = 3,
     val language: String = "en",
     val translateToEnglish: Boolean = false
@@ -28,6 +29,7 @@ data class BenchConfig(
             put("resamplerV2", resamplerV2)
             put("normalize", normalize)
             put("audioCtx", audioCtx)
+            put("audioCtxReduction", audioCtxReduction)
             put("iterations", iterations)
             put("language", language)
             put("translateToEnglish", translateToEnglish)
@@ -46,6 +48,7 @@ data class BenchConfig(
                 resamplerV2 = json.optBoolean("resamplerV2", false),
                 normalize = json.optBoolean("normalize", false),
                 audioCtx = json.optInt("audioCtx", 0),
+                audioCtxReduction = json.optBoolean("audioCtxReduction", false),
                 iterations = json.optInt("iterations", 3),
                 language = json.optString("language", "en"),
                 translateToEnglish = json.optBoolean("translateToEnglish", false)

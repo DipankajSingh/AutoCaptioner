@@ -16,7 +16,7 @@
 | **Part 1 — Telemetry** | 🟡 Fully instrumented | TxAnalytics, TxRecord, timers, Crashlytics, Perf traces, diagnostics |
 | **Part 2 — Benchmark harness** | 🟡 Harness built | Device harness & laptop scripts complete |
 | **Part 3 — Whisper re-setup** | 🟡 Configured | NativeLibLoader, ARMv8.2 loader, CMake v1.9.5, S6/S7 complete |
-| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.1 (correlation-aware downmix), E4.2 (band-limited resampler), E4.3 (level normalization), E4.4 (80 Hz Butterworth high-pass) complete |
+| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.1 (correlation-aware downmix), E4.2 (band-limited resampler), E4.3 (level normalization), E4.4 (80 Hz Butterworth high-pass), E4.6 (audio context reduction) complete |
 | **Part 5 — Decoding/threading** | ⬜ Not started | Awaiting Part 2 baseline (abort callback ready) |
 | **Part 6 — Models/onboarding** | 🟡 Guardrails built | D6/G5 language guards complete; awaiting Part 5 results |
 | **Part 7 — Long-video guard** | 🟡 Phase 1 ready | VideoLengthGuard & native JNI abort callback |
@@ -137,7 +137,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
 | E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
 | E4.5 | VAD + window packing | — | — | — | — | Pending |
-| E4.6 | audio_ctx reduction for short clips | — | — | — | — | Pending |
+| E4.6 | audio_ctx reduction for short clips | All | — | — | — | ✅ Adopted / Passed Unit Gates (50 pos/s, capped at 1500, 32-aligned context) |
 | E5.1 | Fallback policy comparison | — | — | — | — | Pending |
 | E5.2 | Thread count sweep | — | — | — | — | Pending |
 | E5.3 | Flash attention A/B | — | — | — | — | Pending |
@@ -155,7 +155,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | Nov 2, 2026 | Session 2 | Built benchmark harness (Part 2), Telemetry core (Part 1), NativeLibLoader & JNI timings (Part 3), VideoLengthGuard & instant JNI cancel (Part 7) |
 | Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates, Part 7 LongVideoWarning dialog wired with Continue/Faster Model/Trim/Cancel actions and unit tests |
 | Nov 15–16, 2026 | Session 4 | Part 4 Stage 0 (Streaming decode-downmix-resample audio pipeline) & E4.2 (BandLimitedResampler polyphase Kaiser sinc resampler); resolved BUG-09; E4.3 (AudioPreprocessor and level normalization with gain limiter); E4.4 (80 Hz 2nd-order Butterworth biquad high-pass filter) |
-| Nov 21, 2026 | Session 5 | Part 4 E4.1 (Correlation-aware stereo downmixer via AudioDownmixer to prevent antiphase speech cancellation; verified by AudioDownmixerTest) |
+| Nov 21, 2026 | Session 5 | Part 4 E4.1 (Correlation-aware stereo downmixing via AudioDownmixer) & E4.6 (Audio context reduction via AudioContextCalculator & JNI params.audio_ctx for clips <= 30s; verified by AudioDownmixerTest and AudioContextCalculatorTest) |
 
 ---
 
@@ -458,9 +458,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
   - Use VAD-aware token getters for correct word-time remapping
   - If VAD finds no speech, skip Whisper and report existing 'no speech' outcome — but only after confirming on corpus that no clip with real speech is dropped
 
-- [ ] **E4.6 (Stage 6, audio context reduction)** — For clips ≤30 s (after VAD packing):
-  - Set `audio_ctx` = clip seconds × 50 (50 positions/second), capped at 1500, rounded to safe multiple
-  - Accuracy and hallucination risk are unknown — decide per model from corpus data only
+- [x] **E4.6 (Stage 6, audio context reduction)** — Audio context reduction (`AudioContextCalculator.kt`) wired into `WhisperEngine.kt` and `jni_bridge.cpp` (`params.audio_ctx`): for clips $\le 30$ seconds, sets audio context to `clip_seconds * 50` positions rounded up to nearest multiple of 32 (capped at 1500), cutting redundant encoder attention cycles; verified by `AudioContextCalculatorTest`.
 
 - [ ] **E4.7 (Stage 7, denoising)** — Last and optional. Test one lightweight denoiser on noisy clips only. Adopt only with a clear WER gain.
 

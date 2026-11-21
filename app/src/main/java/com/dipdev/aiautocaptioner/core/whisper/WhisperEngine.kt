@@ -24,6 +24,13 @@ class WhisperEngine(private val context: Context) {
         init {
             NativeLibLoader.loadWhisperLibrary()
         }
+
+        /**
+         * Calculates reduced audio context size for clips <= 30 seconds (E4.6).
+         * Delegates to AudioContextCalculator.
+         */
+        fun calculateAudioCtx(sampleCount: Int, sampleRate: Int = 16000): Int =
+            com.dipdev.aiautocaptioner.core.audio.AudioContextCalculator.calculate(sampleCount, sampleRate)
     }
 
 
@@ -48,6 +55,7 @@ class WhisperEngine(private val context: Context) {
         language: String,
         translateToEnglish: Boolean,
         nThreads: Int,
+        audioCtx: Int = 0,
         initialPrompt: String? = null,
         listener: ProgressListener? = null,
         segmentListener: SegmentListener? = null
@@ -94,6 +102,7 @@ class WhisperEngine(private val context: Context) {
         language: String = "en",
         translateToEnglish: Boolean = false,
         initialPrompt: String? = null,
+        audioCtx: Int = 0,
         onProgress: ((Int) -> Unit)? = null,
         onSegmentDecoded: ((text: String, startMs: Long, endMs: Long) -> Unit)? = null
     ): List<WordTimestamp> {
@@ -104,7 +113,7 @@ class WhisperEngine(private val context: Context) {
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
-                val rawBytes = transcribeWithTimestamps(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), initialPrompt, listener, segListener)
+                val rawBytes = transcribeWithTimestamps(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), audioCtx, initialPrompt, listener, segListener)
                     ?: return@withContext emptyList()
 
                 lastDetectedLanguage = getDetectedLanguage(handle)

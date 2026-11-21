@@ -177,7 +177,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
 // ---------------------------------------------------------------------------
 JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jstring initial_prompt, jobject listener, jobject segmentListener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jint audio_ctx, jstring initial_prompt, jobject listener, jobject segmentListener) {
 
     auto * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -207,6 +207,9 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads        = (int) n_threads;
+    if (audio_ctx > 0) {
+        params.audio_ctx    = (int) audio_ctx;
+    }
     params.language         = lang;
     params.translate        = translate_to_english == JNI_TRUE;
     params.print_special    = false;

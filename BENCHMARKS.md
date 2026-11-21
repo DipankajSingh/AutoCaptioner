@@ -17,7 +17,7 @@ This document logs all controlled benchmark runs across target hardware platform
 | E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
 | E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
 | E4.5 | VAD + window packing | — | — | — | — | Pending |
-| E4.6 | audio_ctx reduction for short clips | — | — | — | — | Pending |
+| E4.6 | audio_ctx reduction for short clips | All | — | — | — | ✅ Adopted / Passed Unit Gates (50 pos/s, capped at 1500, 32-aligned context) |
 | E5.1 | Fallback policy comparison | — | — | — | — | Pending |
 | E5.2 | Thread count sweep | — | — | — | — | Pending |
 | E5.3 | Flash attention A/B | — | — | — | — | Pending |
@@ -39,7 +39,8 @@ adb shell am broadcast \
   --es model tiny.en \
   --ei iterations 3 \
   --ez resamplerV2 true \
-  --ez normalize true
+  --ez normalize true \
+  --ez audioCtxReduction true
 
 # Results will be generated in JSON and CSV formats under bench_results/
 ```

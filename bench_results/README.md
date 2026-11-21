@@ -33,6 +33,8 @@ Optional intent extras:
 - `--es language <langCode>` (default: "en")
 - `--ez resamplerV2 <true|false>` (enable E4.2 band-limited polyphase Kaiser resampler)
 - `--ez normalize <true|false>` (enable E4.3 audio level normalization)
+- `--ez audioCtxReduction <true|false>` (enable E4.6 audio context reduction for clips <= 30s)
+- `--ei audioCtx <num>` (explicit audio context position override, e.g. 512, 768)
 
 ### 3. Pull Results
 ```bash

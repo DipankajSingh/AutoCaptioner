@@ -63,3 +63,4 @@ All audio preprocessing components are written 100% in first-party Kotlin under 
 - **Butterworth High-Pass Filter (`AudioPreprocessor.kt`)**: First-party 2nd-order Direct Form II Transposed biquad filter.
 - **Dynamic Level Normalizer (`AudioPreprocessor.kt`)**: First-party peak and RMS energy normalizer with $+20\text{ dB}$ gain cap and peak limiter.
 - **Correlation-Aware Stereo Downmixer (`AudioDownmixer.kt`)**: First-party cross-correlation-driven channel mixer preventing destructive antiphase cancellation and boosting in-phase speech SNR.
+- **Audio Context Calculator (`AudioContextCalculator.kt`)**: First-party context reduction optimizer for clips $\le 30\text{ s}$ aligning encoder positions to 32-element boundaries to eliminate redundant self-attention computation.

@@ -126,6 +126,11 @@ Operates on the 16 kHz mono PCM `FloatArray` before passing it to Whisper decodi
    * **`PEAK_0_9`**: Scales peak absolute amplitude to $0.90$ with a $+20\text{ dB}$ ($10\times$) gain limiter cap, boosting quiet speech audio without amplifying noise floor in silent recordings.
    * **`RMS_TARGET`**: Targets a calibrated RMS level (e.g. $-20\text{ dBFS}$) with a $+20\text{ dB}$ gain cap and a $0.95$ ceiling peak limiter to prevent digital clipping.
    * Driven by `BenchConfig.normalize` and feature flag `preprocess_normalize`.
+3. **Dynamic Audio Context Reduction (`AudioContextCalculator.kt`, E4.6)**:
+   * By default, Whisper allocates a full 30-second context window ($1500$ encoder positions at 50 positions/sec).
+   * For short audio clips ($\le 30\text{ s}$), full context calculation wastes quadratic self-attention computation and memory bandwidth on padded zero-frames.
+   * `AudioContextCalculator` computes $\text{audio\_ctx} = \lceil (\text{duration} \times 50) / 32 \rceil \times 32$ (capped at $1500$, 32-element aligned).
+   * Overrides `params.audio_ctx` natively in `whisper.cpp` via `jni_bridge.cpp`, accelerating encoder inference on short clips without altering longer recordings.
 
 ---
 
