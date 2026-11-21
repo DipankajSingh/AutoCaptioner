@@ -1,7 +1,7 @@
 # AutoCaptioner: Transcription Speed & Accuracy — Living Tracker
 
 > **Source:** AutoCaptioner Transcription Investigation — Part 0 of 8 (Evidence Ledger & Roadmap)
-> **Prepared:** October 31, 2026 | **Last updated:** November 16, 2026
+> **Prepared:** October 31, 2026 | **Last updated:** November 21, 2026
 > **Priority order:** Accuracy first, Speed second
 > **Rule:** One change per experiment, per commit. Before + after numbers required in `bench_results/`.
 
@@ -16,7 +16,7 @@
 | **Part 1 — Telemetry** | 🟡 Fully instrumented | TxAnalytics, TxRecord, timers, Crashlytics, Perf traces, diagnostics |
 | **Part 2 — Benchmark harness** | 🟡 Harness built | Device harness & laptop scripts complete |
 | **Part 3 — Whisper re-setup** | 🟡 Configured | NativeLibLoader, ARMv8.2 loader, CMake v1.9.5, S6/S7 complete |
-| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.2 (band-limited resampler), E4.3 (level normalization), E4.4 (80 Hz Butterworth high-pass) complete |
+| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.1 (correlation-aware downmix), E4.2 (band-limited resampler), E4.3 (level normalization), E4.4 (80 Hz Butterworth high-pass) complete |
 | **Part 5 — Decoding/threading** | ⬜ Not started | Awaiting Part 2 baseline (abort callback ready) |
 | **Part 6 — Models/onboarding** | 🟡 Guardrails built | D6/G5 language guards complete; awaiting Part 5 results |
 | **Part 7 — Long-video guard** | 🟡 Phase 1 ready | VideoLengthGuard & native JNI abort callback |
@@ -132,6 +132,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 |----|-----------|--------|-------------|------------|-------|----------|
 | B0 | Baseline — current release build v2.11.4 | Realme 3 | — | — | — | Pending |
 | B0 | Baseline — current release build v2.11.4 | RMX3782 | — | — | — | Pending |
+| E4.1 | Correlation-aware stereo downmix | All | — | — | — | ✅ Adopted / Passed Unit Gates (antiphase cancellation prevention & in-phase SNR boost) |
 | E4.2 | Resampler: linear → band-limited | All | — | — | — | ✅ Adopted / Passed Unit Gates (>=80 dB stopband, <1 dB passband) |
 | E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
 | E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
@@ -154,6 +155,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | Nov 2, 2026 | Session 2 | Built benchmark harness (Part 2), Telemetry core (Part 1), NativeLibLoader & JNI timings (Part 3), VideoLengthGuard & instant JNI cancel (Part 7) |
 | Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates, Part 7 LongVideoWarning dialog wired with Continue/Faster Model/Trim/Cancel actions and unit tests |
 | Nov 15–16, 2026 | Session 4 | Part 4 Stage 0 (Streaming decode-downmix-resample audio pipeline) & E4.2 (BandLimitedResampler polyphase Kaiser sinc resampler); resolved BUG-09; E4.3 (AudioPreprocessor and level normalization with gain limiter); E4.4 (80 Hz 2nd-order Butterworth biquad high-pass filter) |
+| Nov 21, 2026 | Session 5 | Part 4 E4.1 (Correlation-aware stereo downmixer via AudioDownmixer to prevent antiphase speech cancellation; verified by AudioDownmixerTest) |
 
 ---
 
@@ -436,7 +438,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 - [x] **Stage 0, decode** — Make streaming: decode → downmix → resample → append (source-rate arrays are transient). Memory details in Part 7. (Completed: AudioResampler streaming interface + AudioExtractionUseCase chunked decode pipeline eliminates peak RAM accumulation).
 
-- [ ] **E4.1 (Stage 1, downmix)** — Compare mean downmix vs. choosing the louder channel when channels are negatively correlated. Low priority; stereo clips only.
+- [x] **E4.1 (Stage 1, downmix)** — Correlation-aware stereo downmixer (`AudioDownmixer.kt`): evaluates cross-correlation of stereo channels; uses arithmetic mean for non-negative correlation (improves SNR) and selects louder channel for negative correlation (prevents antiphase cancellation); verified by `AudioDownmixerTest`.
 
 - [x] **E4.2 (Stage 2, resample)** — Replace linear interpolation with band-limited polyphase or windowed-sinc resampler:
   - Cutoff ~7.6 kHz for 16 kHz output, stopband attenuation ≥80 dB (Kaiser beta = 8.6, 64 polyphase phases + continuous inter-phase interpolation)

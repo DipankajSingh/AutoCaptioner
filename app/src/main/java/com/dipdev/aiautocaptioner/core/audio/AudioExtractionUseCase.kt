@@ -130,20 +130,7 @@ class AudioExtractionUseCase @Inject constructor(
                             }
 
                             val channelCount = audioFormat?.getInteger(MediaFormat.KEY_CHANNEL_COUNT) ?: 1
-                            val monoFloats = if (channelCount > 1) {
-                                FloatArray(floatArray.size / channelCount) { i ->
-                                    var sum = 0f
-                                    for (ch in 0 until channelCount) {
-                                        val idx = i * channelCount + ch
-                                        if (idx < floatArray.size) {
-                                            sum += floatArray[idx]
-                                        }
-                                    }
-                                    sum / channelCount
-                                }
-                            } else {
-                                floatArray
-                            }
+                            val monoFloats = AudioDownmixer.downmix(floatArray, channelCount)
 
                             val resampled = resampler.process(monoFloats)
                             if (resampled.isNotEmpty()) {

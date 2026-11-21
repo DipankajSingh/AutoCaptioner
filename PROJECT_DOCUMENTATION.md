@@ -97,8 +97,12 @@ Before AI transcription can execute, source video files must yield a clean 16kHz
 1. **Track Discovery**: `MediaExtractor` inspects the input video URI and locates the first track with `mime.startsWith("audio/")`.
 2. **Format Inspection**: Retrieves sample rate, channel count, and audio encoding.
 3. **Hardware Decoding**: `MediaCodec` configures an asynchronous hardware decoder for the selected audio format (e.g. AAC, MP3, Opus).
-4. **Streaming Resampling & Downmixing Pipeline (Stage 0 & E4.2)**:
-   * **Zero Intermediate Buffering**: Output `ByteBuffer` frames from `MediaCodec` are immediately downmixed to mono float chunks and fed into `AudioResampler.process()`. Source-rate audio arrays are discarded immediately after processing each chunk.
+4. **Streaming Resampling & Downmixing Pipeline (Stage 0, E4.1 & E4.2)**:
+   * **Zero Intermediate Buffering**: Output `ByteBuffer` frames from `MediaCodec` are immediately downmixed to mono float chunks via `AudioDownmixer` and fed into `AudioResampler.process()`. Source-rate audio arrays are discarded immediately after processing each chunk.
+   * **Correlation-Aware Stereo Downmixing (`AudioDownmixer.kt`, E4.1)**:
+     * When audio channels are in-phase or uncorrelated ($\sum L[i] \cdot R[i] \ge 0$), arithmetic mean $(L + R)/2$ is used, boosting speech SNR.
+     * When stereo audio channels are out-of-phase / negatively correlated ($\sum L[i] \cdot R[i] < 0$), standard averaging causes destructive interference and speech cancellation. `AudioDownmixer` detects antiphase polarity and selects the channel with higher energy, completely preventing cancellation.
+     * Multichannel audio (> 2 channels) computes the arithmetic mean across all channels.
    * **Peak Memory Reduction**: Eliminates monolithic in-memory audio buffers; peak heap footprint is reduced by ~75% on long videos (from >1 GB down to ~115 MB for 30-minute files).
    * **Resampler Architecture (`AudioResampler.kt`)**:
      * `PassthroughResampler`: Active when input is already 16 kHz; returns frames without copying or math overhead.
