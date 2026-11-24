@@ -83,18 +83,24 @@ class AudioContextCalculatorTest {
     }
 
     @Test
-    fun `BenchConfig handles audioCtx and audioCtxReduction defaults and custom values`() {
+    fun `BenchConfig handles audioCtx, audioCtxReduction, and vad defaults and custom values`() {
         val defaultCfg = BenchConfig()
         assertEquals(0, defaultCfg.audioCtx)
         assertFalse(defaultCfg.audioCtxReduction)
+        assertFalse(defaultCfg.vadEnabled)
+        assertEquals("", defaultCfg.vadModelPath)
 
         val customCfg = BenchConfig(
             modelId = "base.en",
             audioCtx = 512,
-            audioCtxReduction = true
+            audioCtxReduction = true,
+            vadEnabled = true,
+            vadModelPath = "/sdcard/models/silero-v5.1.2.bin"
         )
         assertEquals("base.en", customCfg.modelId)
         assertEquals(512, customCfg.audioCtx)
         assertTrue(customCfg.audioCtxReduction)
+        assertTrue(customCfg.vadEnabled)
+        assertEquals("/sdcard/models/silero-v5.1.2.bin", customCfg.vadModelPath)
     }
 }

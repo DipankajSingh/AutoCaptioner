@@ -56,6 +56,8 @@ class WhisperEngine(private val context: Context) {
         translateToEnglish: Boolean,
         nThreads: Int,
         audioCtx: Int = 0,
+        vadEnabled: Boolean = false,
+        vadModelPath: String? = null,
         initialPrompt: String? = null,
         listener: ProgressListener? = null,
         segmentListener: SegmentListener? = null
@@ -103,6 +105,8 @@ class WhisperEngine(private val context: Context) {
         translateToEnglish: Boolean = false,
         initialPrompt: String? = null,
         audioCtx: Int = 0,
+        vadEnabled: Boolean = false,
+        vadModelPath: String? = null,
         onProgress: ((Int) -> Unit)? = null,
         onSegmentDecoded: ((text: String, startMs: Long, endMs: Long) -> Unit)? = null
     ): List<WordTimestamp> {
@@ -113,8 +117,19 @@ class WhisperEngine(private val context: Context) {
                 if (handle == 0L) return@withContext emptyList()
                 val listener = onProgress?.let { ProgressListener { progress -> it(progress) } }
                 val segListener = onSegmentDecoded?.let { cb -> SegmentListener { textBytes, startMs, endMs -> cb(String(textBytes, Charsets.UTF_8), startMs, endMs) } }
-                val rawBytes = transcribeWithTimestamps(handle, samples, whisperLang, translateToEnglish, getOptimalThreads(), audioCtx, initialPrompt, listener, segListener)
-                    ?: return@withContext emptyList()
+                val rawBytes = transcribeWithTimestamps(
+                    handle = handle,
+                    audioData = samples,
+                    language = whisperLang,
+                    translateToEnglish = translateToEnglish,
+                    nThreads = getOptimalThreads(),
+                    audioCtx = audioCtx,
+                    vadEnabled = vadEnabled,
+                    vadModelPath = vadModelPath,
+                    initialPrompt = initialPrompt,
+                    listener = listener,
+                    segmentListener = segListener
+                ) ?: return@withContext emptyList()
 
                 lastDetectedLanguage = getDetectedLanguage(handle)
                 

@@ -11,6 +11,7 @@ data class BenchConfig(
     val flashAttention: Boolean = true,
     val fallbackPolicy: String = "default",
     val vadEnabled: Boolean = false,
+    val vadModelPath: String = "",
     val resamplerV2: Boolean = false,
     val normalize: Boolean = false,
     val audioCtx: Int = 0,
@@ -26,6 +27,7 @@ data class BenchConfig(
             put("flashAttention", flashAttention)
             put("fallbackPolicy", fallbackPolicy)
             put("vadEnabled", vadEnabled)
+            put("vadModelPath", vadModelPath)
             put("resamplerV2", resamplerV2)
             put("normalize", normalize)
             put("audioCtx", audioCtx)
@@ -45,6 +47,7 @@ data class BenchConfig(
                 flashAttention = json.optBoolean("flashAttention", true),
                 fallbackPolicy = json.optString("fallbackPolicy", "default"),
                 vadEnabled = json.optBoolean("vadEnabled", false),
+                vadModelPath = json.optString("vadModelPath", ""),
                 resamplerV2 = json.optBoolean("resamplerV2", false),
                 normalize = json.optBoolean("normalize", false),
                 audioCtx = json.optInt("audioCtx", 0),

@@ -32,6 +32,7 @@ class BenchmarkReceiver : BroadcastReceiver() {
         val flashAttention = intent.getBooleanExtra("flashAttention", true)
         val fallbackPolicy = intent.getStringExtra("fallbackPolicy") ?: "default"
         val vadEnabled = intent.getBooleanExtra("vadEnabled", false)
+        val vadModelPath = intent.getStringExtra("vadModelPath") ?: ""
         val resamplerV2 = intent.getBooleanExtra("resamplerV2", false)
         val normalize = intent.getBooleanExtra("normalize", false)
         val audioCtx = intent.getIntExtra("audioCtx", 0)
@@ -46,6 +47,7 @@ class BenchmarkReceiver : BroadcastReceiver() {
             flashAttention = flashAttention,
             fallbackPolicy = fallbackPolicy,
             vadEnabled = vadEnabled,
+            vadModelPath = vadModelPath,
             resamplerV2 = resamplerV2,
             normalize = normalize,
             audioCtx = audioCtx,

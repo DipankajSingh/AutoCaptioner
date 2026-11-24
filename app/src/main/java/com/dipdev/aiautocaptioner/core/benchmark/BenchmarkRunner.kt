@@ -36,7 +36,8 @@ data class SingleRunResult(
     val thermalStatusStart: String,
     val thermalStatusEnd: String,
     val availMemMb: Long,
-    val audioCtx: Int = 0
+    val audioCtx: Int = 0,
+    val vadEnabled: Boolean = false
 )
 
 data class BenchmarkSummary(
@@ -181,6 +182,7 @@ class BenchmarkRunner @Inject constructor(
                     put("thermalStatusEnd", res.thermalStatusEnd)
                     put("availMemMb", res.availMemMb)
                     put("audioCtx", res.audioCtx)
+                    put("vadEnabled", res.vadEnabled)
                 })
             }
             put("runs", runsArray)
@@ -189,10 +191,10 @@ class BenchmarkRunner @Inject constructor(
 
         // Save CSV Report
         val csvFile = File(outputDir, "results_${timestamp}.csv")
-        val csvHeader = "Timestamp,Device,ClipName,DurationMs,Iteration,ExtractMs,WhisperMs,RTF,WordCount,DetectedLang,ThermalStart,ThermalEnd,AvailMemMb,AudioCtx\n"
+        val csvHeader = "Timestamp,Device,ClipName,DurationMs,Iteration,ExtractMs,WhisperMs,RTF,WordCount,DetectedLang,ThermalStart,ThermalEnd,AvailMemMb,AudioCtx,VadEnabled\n"
         val csvLines = StringBuilder(csvHeader)
         results.forEach { res ->
-            csvLines.append("$timestamp,\"$deviceModel\",\"${res.clipName}\",${res.clipDurationMs},${res.iteration},${res.extractionTimeMs},${res.whisperTimeMs},${res.rtf},${res.wordCount},\"${res.detectedLanguage ?: ""}\",${res.thermalStatusStart},${res.thermalStatusEnd},${res.availMemMb},${res.audioCtx}\n")
+            csvLines.append("$timestamp,\"$deviceModel\",\"${res.clipName}\",${res.clipDurationMs},${res.iteration},${res.extractionTimeMs},${res.whisperTimeMs},${res.rtf},${res.wordCount},\"${res.detectedLanguage ?: ""}\",${res.thermalStatusStart},${res.thermalStatusEnd},${res.availMemMb},${res.audioCtx},${res.vadEnabled}\n")
         }
         csvFile.writeText(csvLines.toString())
 
@@ -227,12 +229,23 @@ class BenchmarkRunner @Inject constructor(
             else -> 0
         }
 
+        val vadPath = if (config.vadEnabled) {
+            if (config.vadModelPath.isNotBlank()) {
+                config.vadModelPath
+            } else {
+                val candidate = File(context.filesDir, "models/ggml-silero-vad.bin")
+                if (candidate.exists()) candidate.absolutePath else File(context.getExternalFilesDir(null), "models/ggml-silero-vad.bin").absolutePath
+            }
+        } else null
+
         val whisperStart = SystemClock.elapsedRealtime()
         val words = whisperEngine.transcribeWithWordTimestamps(
             samples = samples,
             language = config.language,
             translateToEnglish = config.translateToEnglish,
-            audioCtx = targetAudioCtx
+            audioCtx = targetAudioCtx,
+            vadEnabled = config.vadEnabled,
+            vadModelPath = vadPath
         )
         val whisperDurationMs = SystemClock.elapsedRealtime() - whisperStart
         val thermalEnd = getThermalStatus()
@@ -254,7 +267,8 @@ class BenchmarkRunner @Inject constructor(
             thermalStatusStart = thermalStart,
             thermalStatusEnd = thermalEnd,
             availMemMb = memMb,
-            audioCtx = targetAudioCtx
+            audioCtx = targetAudioCtx,
+            vadEnabled = config.vadEnabled
         )
     }
 

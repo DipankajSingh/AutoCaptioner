@@ -177,7 +177,7 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_loadModel(
 // ---------------------------------------------------------------------------
 JNIEXPORT jbyteArray JNICALL
 Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimestamps(
-        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jint audio_ctx, jstring initial_prompt, jobject listener, jobject segmentListener) {
+        JNIEnv * env, jobject, jlong handle, jfloatArray audio_data, jstring lang_str, jboolean translate_to_english, jint n_threads, jint audio_ctx, jboolean vad_enabled, jstring vad_model_path_str, jstring initial_prompt, jobject listener, jobject segmentListener) {
 
     auto * ctx = reinterpret_cast<whisper_context *>(handle);
     if (ctx == nullptr) {
@@ -195,11 +195,17 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
         prompt = env->GetStringUTFChars(initial_prompt, nullptr);
     }
 
+    const char * vad_model_path = nullptr;
+    if (vad_model_path_str != nullptr) {
+        vad_model_path = env->GetStringUTFChars(vad_model_path_str, nullptr);
+    }
+
     jsize n_samples   = env->GetArrayLength(audio_data);
     jfloat * samples  = env->GetFloatArrayElements(audio_data, nullptr);
     if (samples == nullptr) {
         if (lang != nullptr) env->ReleaseStringUTFChars(lang_str, lang);
         if (prompt != nullptr) env->ReleaseStringUTFChars(initial_prompt, prompt);
+        if (vad_model_path != nullptr) env->ReleaseStringUTFChars(vad_model_path_str, vad_model_path);
         return nullptr;
     }
 
@@ -209,6 +215,11 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     params.n_threads        = (int) n_threads;
     if (audio_ctx > 0) {
         params.audio_ctx    = (int) audio_ctx;
+    }
+    if (vad_enabled == JNI_TRUE && vad_model_path != nullptr && strlen(vad_model_path) > 0) {
+        params.vad            = true;
+        params.vad_model_path = vad_model_path;
+        LOGI("VAD enabled with model: %s", vad_model_path);
     }
     params.language         = lang;
     params.translate        = translate_to_english == JNI_TRUE;
@@ -256,6 +267,9 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
     }
     if (prompt != nullptr) {
         env->ReleaseStringUTFChars(initial_prompt, prompt);
+    }
+    if (vad_model_path != nullptr) {
+        env->ReleaseStringUTFChars(vad_model_path_str, vad_model_path);
     }
 
     if (result != 0) {
@@ -322,15 +336,18 @@ Java_com_dipdev_aiautocaptioner_core_whisper_WhisperEngine_transcribeWithTimesta
             }
 
             cur_word += tok;
+            int64_t token_t0 = td.t0 >= 0 ? whisper_map_processed_to_original_time(ctx, td.t0) : -1;
+            int64_t token_t1 = td.t1 >= 0 ? whisper_map_processed_to_original_time(ctx, td.t1) : -1;
+
             if (word_t0_ms < 0) {
-                if (td.t0 >= 0) {
-                    word_t0_ms = static_cast<long>(td.t0 * 10);
+                if (token_t0 >= 0) {
+                    word_t0_ms = static_cast<long>(token_t0 * 10);
                 } else {
                     word_t0_ms = static_cast<long>(whisper_full_get_segment_t0(ctx, i) * 10);
                 }
             }
-            if (td.t1 >= 0) {
-                word_t1_ms = static_cast<long>(td.t1 * 10);
+            if (token_t1 >= 0) {
+                word_t1_ms = static_cast<long>(token_t1 * 10);
             } else {
                 word_t1_ms = static_cast<long>(whisper_full_get_segment_t1(ctx, i) * 10);
             }

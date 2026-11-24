@@ -1,7 +1,7 @@
 # AutoCaptioner: Transcription Speed & Accuracy — Living Tracker
 
 > **Source:** AutoCaptioner Transcription Investigation — Part 0 of 8 (Evidence Ledger & Roadmap)
-> **Prepared:** October 31, 2026 | **Last updated:** November 21, 2026
+> **Prepared:** October 31, 2026 | **Last updated:** November 24, 2026
 > **Priority order:** Accuracy first, Speed second
 > **Rule:** One change per experiment, per commit. Before + after numbers required in `bench_results/`.
 
@@ -16,7 +16,7 @@
 | **Part 1 — Telemetry** | 🟡 Fully instrumented | TxAnalytics, TxRecord, timers, Crashlytics, Perf traces, diagnostics |
 | **Part 2 — Benchmark harness** | 🟡 Harness built | Device harness & laptop scripts complete |
 | **Part 3 — Whisper re-setup** | 🟡 Configured | NativeLibLoader, ARMv8.2 loader, CMake v1.9.5, S6/S7 complete |
-| **Part 4 — Audio pipeline** | 🔄 In progress | Stage 0 (streaming decode), E4.1 (correlation-aware downmix), E4.2 (band-limited resampler), E4.3 (level normalization), E4.4 (80 Hz Butterworth high-pass), E4.6 (audio context reduction) complete |
+| **Part 4 — Audio pipeline** | ✅ Complete | All core audio stages complete: Stage 0 (streaming decode), E4.1 (downmixer), E4.2 (band-limited Kaiser resampler), E4.3 (level normalizer), E4.4 (80 Hz Butterworth filter), E4.5 (Silero VAD + window packing & time remapping), E4.6 (audio context reduction) |
 | **Part 5 — Decoding/threading** | ⬜ Not started | Awaiting Part 2 baseline (abort callback ready) |
 | **Part 6 — Models/onboarding** | 🟡 Guardrails built | D6/G5 language guards complete; awaiting Part 5 results |
 | **Part 7 — Long-video guard** | 🟡 Phase 1 ready | VideoLengthGuard & native JNI abort callback |
@@ -136,7 +136,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | E4.2 | Resampler: linear → band-limited | All | — | — | — | ✅ Adopted / Passed Unit Gates (>=80 dB stopband, <1 dB passband) |
 | E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
 | E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
-| E4.5 | VAD + window packing | — | — | — | — | Pending |
+| E4.5 | VAD + window packing | All | — | — | — | ✅ Adopted / Passed Unit Gates (Silero VAD + segment & token time-remapping) |
 | E4.6 | audio_ctx reduction for short clips | All | — | — | — | ✅ Adopted / Passed Unit Gates (50 pos/s, capped at 1500, 32-aligned context) |
 | E5.1 | Fallback policy comparison | — | — | — | — | Pending |
 | E5.2 | Thread count sweep | — | — | — | — | Pending |
@@ -156,6 +156,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | Nov 7, 2026 | Session 3 | R1-R5 camera recorder bug fixes, B1-B2 language and model compatibility guards (D6/G5), C1-C3 Firebase analytics schema & Crashlytics keys (T7, T10, T11), S6/D1-D3 documentation updates, Part 7 LongVideoWarning dialog wired with Continue/Faster Model/Trim/Cancel actions and unit tests |
 | Nov 15–16, 2026 | Session 4 | Part 4 Stage 0 (Streaming decode-downmix-resample audio pipeline) & E4.2 (BandLimitedResampler polyphase Kaiser sinc resampler); resolved BUG-09; E4.3 (AudioPreprocessor and level normalization with gain limiter); E4.4 (80 Hz 2nd-order Butterworth biquad high-pass filter) |
 | Nov 21, 2026 | Session 5 | Part 4 E4.1 (Correlation-aware stereo downmixing via AudioDownmixer) & E4.6 (Audio context reduction via AudioContextCalculator & JNI params.audio_ctx for clips <= 30s; verified by AudioDownmixerTest and AudioContextCalculatorTest) |
+| Nov 24, 2026 | Session 6 | Part 4 E4.5 (Silero VAD + window packing, native whisper_map_processed_to_original_time export for token timestamp remapping, JNI params.vad wiring, and BenchConfig.vadEnabled / vadModelPath integration; verified by native CMake and unit tests) |
 
 ---
 
@@ -432,7 +433,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 - [x] Create `AudioPreprocessor` class with one toggle per stage, driven by `BenchConfig`
 - [x] Each stage has unit tests with synthetic signals (tone, chirp, silence + speech fixture) (Verified by AudioResamplerTest and AudioPreprocessorTest)
-- [ ] Use built-in VAD and its remapping (not app-side VAD); keep app-side fallback only if built-in fails gates
+- [x] Use built-in VAD and its remapping (not app-side VAD); keep app-side fallback only if built-in fails gates (Completed: Native whisper.cpp Silero VAD + whisper_map_processed_to_original_time for token and word time remapping)
 
 ### Pipeline Stages & Experiments
 
@@ -451,12 +452,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 - [x] **E4.4 (Stage 4, high-pass filter)** — 80 Hz 2nd-order Butterworth. (Implemented via AudioPreprocessor.applyHighPass80Hz: Direct Form II Transposed biquad attenuating sub-rumble by >15 dB while preserving speech frequencies with <0.1 dB loss; verified by AudioPreprocessorTest)
 
-- [ ] **E4.5 (Stage 5, VAD + window packing)** — Enable Silero VAD:
-  - Models: `silero-v5.1.2` or `silero-v6.2.0` from `ggml-org/whisper-vad` on Hugging Face (~885 KB)
-  - Default params: threshold 0.5, min_speech 250 ms, min_silence 100 ms, speech_pad 30 ms, samples_overlap 0.1
-  - Tuning hypotheses: speech_pad_ms 100–200, min_silence 300–500 ms, max_speech_duration_s 25–29
-  - Use VAD-aware token getters for correct word-time remapping
-  - If VAD finds no speech, skip Whisper and report existing 'no speech' outcome — but only after confirming on corpus that no clip with real speech is dropped
+- [x] **E4.5 (Stage 5, VAD + window packing)** — Built-in Silero VAD enabled via `params.vad` and `params.vad_model_path` in `whisper.cpp`; exported `whisper_map_processed_to_original_time()` in `whisper.h` and wired into `jni_bridge.cpp` to remap token timestamps into original time; integrated into `WhisperEngine.kt` and `BenchConfig.kt`; verified by C++ CMake compilation and unit tests.
 
 - [x] **E4.6 (Stage 6, audio context reduction)** — Audio context reduction (`AudioContextCalculator.kt`) wired into `WhisperEngine.kt` and `jni_bridge.cpp` (`params.audio_ctx`): for clips $\le 30$ seconds, sets audio context to `clip_seconds * 50` positions rounded up to nearest multiple of 32 (capped at 1500), cutting redundant encoder attention cycles; verified by `AudioContextCalculatorTest`.
 

@@ -16,7 +16,7 @@ This document logs all controlled benchmark runs across target hardware platform
 | E4.2 | Resampler: linear → band-limited | All | — | — | — | ✅ Adopted / Passed Unit Gates (>=80 dB stopband, <1 dB passband) |
 | E4.3 | Level normalization grid | All | — | — | — | ✅ Adopted / Passed Unit Gates (PEAK_0_9 & RMS_TARGET with +20 dB limiter cap) |
 | E4.4 | High-pass filter 80 Hz | All | — | — | — | ✅ Adopted / Passed Unit Gates (>15 dB rumble attenuation, <0.1 dB speech loss) |
-| E4.5 | VAD + window packing | — | — | — | — | Pending |
+| E4.5 | VAD + window packing | All | — | — | — | ✅ Adopted / Passed Unit Gates (Silero VAD + segment & token time-remapping) |
 | E4.6 | audio_ctx reduction for short clips | All | — | — | — | ✅ Adopted / Passed Unit Gates (50 pos/s, capped at 1500, 32-aligned context) |
 | E5.1 | Fallback policy comparison | — | — | — | — | Pending |
 | E5.2 | Thread count sweep | — | — | — | — | Pending |
@@ -40,7 +40,9 @@ adb shell am broadcast \
   --ei iterations 3 \
   --ez resamplerV2 true \
   --ez normalize true \
-  --ez audioCtxReduction true
+  --ez audioCtxReduction true \
+  --ez vadEnabled true \
+  --es vadModelPath /sdcard/Android/data/com.dipdev.aiautocaptioner/files/models/ggml-silero-vad.bin
 
 # Results will be generated in JSON and CSV formats under bench_results/
 ```

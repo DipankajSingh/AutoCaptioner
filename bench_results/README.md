@@ -35,6 +35,8 @@ Optional intent extras:
 - `--ez normalize <true|false>` (enable E4.3 audio level normalization)
 - `--ez audioCtxReduction <true|false>` (enable E4.6 audio context reduction for clips <= 30s)
 - `--ei audioCtx <num>` (explicit audio context position override, e.g. 512, 768)
+- `--ez vadEnabled <true|false>` (enable E4.5 Silero VAD + window packing)
+- `--es vadModelPath <path>` (path to ggml-silero-vad.bin model file)
 
 ### 3. Pull Results
 ```bash

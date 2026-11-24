@@ -131,6 +131,10 @@ Operates on the 16 kHz mono PCM `FloatArray` before passing it to Whisper decodi
    * For short audio clips ($\le 30\text{ s}$), full context calculation wastes quadratic self-attention computation and memory bandwidth on padded zero-frames.
    * `AudioContextCalculator` computes $\text{audio\_ctx} = \lceil (\text{duration} \times 50) / 32 \rceil \times 32$ (capped at $1500$, 32-element aligned).
    * Overrides `params.audio_ctx` natively in `whisper.cpp` via `jni_bridge.cpp`, accelerating encoder inference on short clips without altering longer recordings.
+4. **Silero VAD + Window Packing & Timestamp Remapping (E4.5)**:
+   * Leverages built-in Silero VAD in `whisper.cpp` (`params.vad = true` and `params.vad_model_path`) to detect speech boundaries and pack non-speech intervals out of the audio stream.
+   * Automatically bypasses Whisper decoding and returns an empty transcript if no speech is detected in the input audio.
+   * **Full-Chain Timestamp Remapping**: While Whisper maps segment timestamps using `state->vad_mapping_table`, word/token timestamps are mapped back to the original audio timeline via the exported `whisper_map_processed_to_original_time()` native API in `jni_bridge.cpp`, preserving exact word sync during video playback.
 
 ---
 

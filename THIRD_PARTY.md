@@ -45,6 +45,11 @@ Models loaded via `whisper_models.json` in `app/src/main/assets/whisper_models.j
 - **French, Italian, Korean, Russian, Arabic:**
   - `fr.tiny`, `fr.base`, `it.tiny`, `it.base.q5`, `ko.tiny`, `ko.base`, `ru.tiny`, `ru.base`, `ar.base` — Hugging Face GGML repositories (`wabisabisocial`, `LocalAI-io`, `B1uqa`).
 
+### Voice Activity Detection (VAD) Models (GGML Format)
+- **Source:** [ggml-org/whisper-vad (Hugging Face)](https://huggingface.co/ggml-org/whisper-vad)
+- **License:** MIT License (Silero VAD)
+- **Model:** `ggml-silero-vad.bin` / `silero-v5.1.2.bin` (~885 KB)
+
 ---
 
 ## 3. Android AndroidX & Jetpack Libraries
