@@ -142,7 +142,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 | E5.2 | Thread count sweep | — | — | — | — | Pending |
 | E5.3 | Flash attention A/B | — | — | — | — | Pending |
 | E5.4 | Quantization: FP16 vs q8_0 vs q5_1 | — | — | — | — | Pending |
-| E5.5 | Model residency (keep loaded) | — | — | — | — | Pending |
+| E5.5 | Model residency (keep loaded) | — | — | — | — | ⏸️ Deferred / Skipped (revisit later per owner decision) |
 
 ---
 
@@ -481,7 +481,7 @@ Step 6  →  Part 7 Phase 2 (block processing) — post-release
 
 - [ ] **E5.4 — Quantization**: For each base model, compare FP16 / q8_0 / q5_1 (and optionally self-quantized q5_0). Measure time, WER, file size, and memory. Adopt quantized file as default only if WER rises ≤0.5 pp AND speed improves ≥10% on both lab phones. Record results per CPU variant.
 
-- [ ] **E5.5 — Model residency**: Measure model load time. If it's a meaningful share of short-clip time, keep model loaded while app is in foreground; release after idle timeout (proposal: 5 min) or on memory trim signal. Respect 3 GB phone limit.
+- [ ] **E5.5 — Model residency**: ⏸️ Deferred / Skipped for later consideration. (Measure model load time. If it's a meaningful share of short-clip time, keep model loaded while app is in foreground; release after idle timeout or on memory trim signal. Respect 3 GB phone limit.)
 
 - [ ] **E5.6 — Beam search** (optional 'Accurate' mode): Compare greedy vs. beam sizes 2–5 on small and base tiers. Adopt only if accuracy gain is clear and time fits the Accurate budget.
 

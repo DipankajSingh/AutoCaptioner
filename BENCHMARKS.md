@@ -22,7 +22,7 @@ This document logs all controlled benchmark runs across target hardware platform
 | E5.2 | Thread count sweep | — | — | — | — | Pending |
 | E5.3 | Flash attention A/B | — | — | — | — | Pending |
 | E5.4 | Quantization: FP16 vs q8_0 vs q5_1 | — | — | — | — | Pending |
-| E5.5 | Model residency (keep loaded) | — | — | — | — | Pending |
+| E5.5 | Model residency (keep loaded) | — | — | — | — | ⏸️ Deferred / Skipped (revisit later) |
 
 ---
 
